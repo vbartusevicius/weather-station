@@ -5,13 +5,13 @@
   (constraint hole_size (min 0.2mm)))
 (rule power_track_width
   (constraint track_width (min 0.22mm))
-  (condition "A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('PROBE-Power')"))
+  (condition "A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('REFLECTOR-Power') || A.hasNetclass('DOME-Power') || A.hasNetclass('PROBE-Power')"))
 (rule power_neck_down_at_fine_pitch_pins
   (constraint track_width (min 0.15mm))
-  (condition "(A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('PROBE-Power')) && (A.intersectsCourtyard('U1') || A.intersectsCourtyard('U2') || A.intersectsCourtyard('U4') || A.intersectsCourtyard('U5') || A.intersectsCourtyard('U6') || A.intersectsCourtyard('J2') || A.intersectsCourtyard('J3') || A.intersectsCourtyard('J4'))"))
+  (condition "(A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('REFLECTOR-Power') || A.hasNetclass('DOME-Power') || A.hasNetclass('PROBE-Power')) && (A.intersectsCourtyard('U1') || A.intersectsCourtyard('U2') || A.intersectsCourtyard('U4') || A.intersectsCourtyard('U5') || A.intersectsCourtyard('U6') || A.intersectsCourtyard('U7') || A.intersectsCourtyard('U8') || A.intersectsCourtyard('J2') || A.intersectsCourtyard('J3') || A.intersectsCourtyard('J4') || A.intersectsCourtyard('R1') || A.intersectsCourtyard('R5'))"))
 (rule neck_down_at_fine_pitch_pins
   (constraint track_width (min 0.1mm))
-  (condition "A.intersectsCourtyard('U1') || A.intersectsCourtyard('U2') || A.intersectsCourtyard('U4') || A.intersectsCourtyard('U5') || A.intersectsCourtyard('U6') || A.intersectsCourtyard('J2') || A.intersectsCourtyard('J3') || A.intersectsCourtyard('J4')"))
+  (condition "A.intersectsCourtyard('U1') || A.intersectsCourtyard('U2') || A.intersectsCourtyard('U4') || A.intersectsCourtyard('U5') || A.intersectsCourtyard('U6') || A.intersectsCourtyard('U7') || A.intersectsCourtyard('U8') || A.intersectsCourtyard('J2') || A.intersectsCourtyard('J3') || A.intersectsCourtyard('J4') || A.intersectsCourtyard('R1') || A.intersectsCourtyard('R5')"))
 (rule parts_under_raised_modules
   (constraint courtyard_clearance (min -100mm))
   (condition "A.Reference == 'U3' || B.Reference == 'U3'"))

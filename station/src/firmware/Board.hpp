@@ -17,7 +17,7 @@
 //   D7  / GPIO17 = US_SEL_B   (CD4052 ultrasonic transducer mux select B)
 //   D8  / GPIO19 = US_TX      (RMT TX 40 kHz ultrasonic burst output)
 //   D9  / GPIO20 = US_RX      (RMT RX / timer capture for ultrasonic echo zero-crossing)
-//   D10 / GPIO18 = LED_DATA   (RMT TX for 2x SK6805-EC15 RGB status LEDs via 5 V buffer)
+//   D10 / GPIO18 = RS485_IO   (UART1 half-duplex TX/RX to auto-direction SP3485EN RS-485 transceiver)
 namespace station::firmware::board {
 
 constexpr gpio_num_t vin_adc_pin = GPIO_NUM_0;
@@ -36,8 +36,14 @@ constexpr gpio_num_t us_sel_a_pin = GPIO_NUM_16;
 constexpr gpio_num_t us_sel_b_pin = GPIO_NUM_17;
 constexpr gpio_num_t us_tx_pin = GPIO_NUM_19;
 constexpr gpio_num_t us_rx_pin = GPIO_NUM_20;
-constexpr gpio_num_t led_data_pin = GPIO_NUM_18;
-constexpr std::size_t led_count = 2;
+constexpr gpio_num_t rs485_io_pin = GPIO_NUM_18;
+
+// Seeed XIAO ESP32-C6 internal FM8625H SPDT RF switch pins (selects onboard U.FL / IPEX external antenna):
+//   GPIO3  = RF_SW_PWR (LOW = enables FM8625H RF switch VDD)
+//   GPIO14 = ANT_SEL   (HIGH = routes RF to external U.FL horizontal FPC dipole; LOW = internal chip antenna)
+constexpr gpio_num_t rf_switch_power_pin = GPIO_NUM_3;
+constexpr gpio_num_t rf_antenna_select_pin = GPIO_NUM_14;
+constexpr std::int8_t wifi_max_tx_power_quarter_dbm = 82;  // 82 * 0.25 dBm = +20.5 dBm (112 mW max linear PA)
 
 // I2C 7-bit addresses of all onboard & probe/crown sensors
 constexpr std::uint8_t i2c_addr_as3935 = 0x03;
@@ -59,7 +65,8 @@ constexpr bool pins_distinct() {
     const gpio_num_t pins[] = {
         vin_adc_pin, ntc_sense_pin, rain_adc_pin, heat_pwm_pin,
         i2c_sda_pin, i2c_scl_pin,   us_sel_a_pin, us_sel_b_pin,
-        us_tx_pin,   us_rx_pin,     led_data_pin,
+        us_tx_pin,   us_rx_pin,     rs485_io_pin,
+        rf_switch_power_pin,        rf_antenna_select_pin,
     };
     for (std::size_t i = 0; i < sizeof(pins) / sizeof(pins[0]); ++i) {
         if (usb_pin(pins[i])) {

@@ -21,7 +21,8 @@ BOARD_REF_OFFSET = {
     "main": 0,
     "crown": 100,
     "reflector": 200,
-    "probe": 300,
+    "dome": 300,
+    "probe": 400,
 }
 
 
@@ -201,27 +202,40 @@ def build_panel(
         lx1 = round(lx0 + lw, 4)
         ly1 = round(ly0 + lh, 4)
         ry1 = round(ry0 + rh, 4)
-        ov_y0 = max(ly0, ry0)
-        ov_y1 = min(ly1, ry1)
-        ov_h = ov_y1 - ov_y0
-        t1 = round(ov_y0 + max(6.5, ov_h * 0.25), 4)
-        t2 = round(ov_y0 + min(ov_h - 6.5, ov_h * 0.75), 4)
-        hw = TAB_H / 2
-
+        l_ys, r_ys = [], []
         for drw in list(panel.GetDrawings()):
-            if is_vertical_edge_at_x(drw, lx1) or is_vertical_edge_at_x(drw, rx0):
+            if is_vertical_edge_at_x(drw, lx1):
+                l_ys.extend((round(pcbnew.ToMM(drw.GetStart().y), 4), round(pcbnew.ToMM(drw.GetEnd().y), 4)))
                 panel.Delete(drw)
-
-        add_edge_line(panel, lx1, ly0, lx1, t1 - hw)
-        add_edge_line(panel, lx1, t1 + hw, lx1, t2 - hw)
-        add_edge_line(panel, lx1, t2 + hw, lx1, ly1)
-
-        add_edge_line(panel, rx0, ry0, rx0, t1 - hw)
-        add_edge_line(panel, rx0, t1 + hw, rx0, t2 - hw)
-        add_edge_line(panel, rx0, t2 + hw, rx0, ry1)
+            elif is_vertical_edge_at_x(drw, rx0):
+                r_ys.extend((round(pcbnew.ToMM(drw.GetStart().y), 4), round(pcbnew.ToMM(drw.GetEnd().y), 4)))
+                panel.Delete(drw)
+        ly_s0, ly_s1 = (min(l_ys), max(l_ys)) if l_ys else (ly0, ly1)
+        ry_s0, ry_s1 = (min(r_ys), max(r_ys)) if r_ys else (ry0, ry1)
+        ov_y0 = max(ly_s0, ry_s0)
+        ov_y1 = min(ly_s1, ry_s1)
+        ov_h = ov_y1 - ov_y0
+        hw = TAB_H / 2
+        if ov_h < 9.0:
+            tc = round((ov_y0 + ov_y1) / 2.0, 4)
+            add_edge_line(panel, lx1, ly_s0, lx1, tc - hw)
+            add_edge_line(panel, lx1, tc + hw, lx1, ly_s1)
+            add_edge_line(panel, rx0, ry_s0, rx0, tc - hw)
+            add_edge_line(panel, rx0, tc + hw, rx0, ry_s1)
+            t_centres = (tc,)
+        else:
+            t1 = round(ov_y0 + ov_h * 0.28, 4)
+            t2 = round(ov_y0 + ov_h * 0.72, 4)
+            add_edge_line(panel, lx1, ly_s0, lx1, t1 - hw)
+            add_edge_line(panel, lx1, t1 + hw, lx1, t2 - hw)
+            add_edge_line(panel, lx1, t2 + hw, lx1, ly_s1)
+            add_edge_line(panel, rx0, ry_s0, rx0, t1 - hw)
+            add_edge_line(panel, rx0, t1 + hw, rx0, t2 - hw)
+            add_edge_line(panel, rx0, t2 + hw, rx0, ry_s1)
+            t_centres = (t1, t2)
 
         hole_off_x = 0.15
-        for tc in (t1, t2):
+        for tc in t_centres:
             add_edge_line(panel, lx1, tc - hw, rx0, tc - hw)
             add_edge_line(panel, lx1, tc + hw, rx0, tc + hw)
             for dy_h in HOLE_Y_OFFS:

@@ -1,0 +1,51 @@
+frame:
+  size: { x: 13.6, y: 13.6 }
+  # Circular-chamfered disc outline (with 6.8 mm vertical left/right mouse-bite flats at x=0 and x=13.6 for panelization)
+  outline:
+    - [3.4, 0.0]
+    - [10.2, 0.0]
+    - [12.4, 1.2]
+    - [13.6, 3.4]
+    - [13.6, 10.2]
+    - [12.4, 12.4]
+    - [10.2, 13.6]
+    - [3.4, 13.6]
+    - [1.2, 12.4]
+    - [0.0, 10.2]
+    - [0.0, 3.4]
+    - [1.2, 1.2]
+  copper_layers: 4
+  thickness: 1.2
+  min_drill: 0.2
+  min_track: 0.12
+  edge_clearance: 0.3
+  silk_inside: true
+  fine_pitch_power_pads: [J1, U1, U2]
+  raised_modules: []
+  plane_layers: [In1.Cu]
+  domains: [SELV-DOME]
+  domain_regions:
+    SELV-DOME:
+      - { x0: 1.5, y0: 1.5, x1: 12.1, y1: 12.1 }
+  isolators: []
+  power_nets: [+3V3]
+  pours:
+    - { net: GND, layers: [In1.Cu], region: { x0: 2.0, y0: 2.0, x1: 11.6, y1: 11.6 } }
+  no_coat_keepouts:
+    - { x0: 2.2, y0: 3.2, x1: 11.4, y1: 10.4, layer: F.SilkS }
+
+heights:
+  default: 1.2
+  J1: 2.5
+  U1: 0.8
+  U2: 3.0
+
+parts:
+  # --- Top (+y, F.Cu inside the hollow JGS1 Quartz Hemisphere): ONLY U1 (LTR-390UV) + U2 (VEML7700) for zero horizon shadowing! ---
+  U1:  { x: 4.6,   y: 6.8,   rot: 0,   block: uv_als, locked: true }
+  U2:  { x: 9.0,   y: 6.8,   rot: 90,  block: uv_als, locked: true }
+
+  # --- Bottom (-y, B.Cu, shaded underneath the PCB): C1, C2 decoupling caps + 4-pin vertical B2B riser receptor J1 ---
+  J1:  { x: 6.8,   y: 5.5,   rot: 0,   side: back, block: int_crown, locked: true }
+  C1:  { x: 4.5,   y: 10.2,  rot: 0,   side: back, block: uv_als }
+  C2:  { x: 9.1,   y: 10.2,  rot: 0,   side: back, block: uv_als }

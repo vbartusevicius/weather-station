@@ -10,7 +10,7 @@ C0805 = "Capacitor_SMD:C_0805_2012Metric"
 D_SMA = "Diode_SMD:D_SMA"
 TSOT23_6 = "Package_TO_SOT_SMD:TSOT-23-6"
 FUSE1812 = "Fuse:Fuse_1812_4532Metric"
-TERM_KF142R = "gateway_fp:TerminalBlock_Kefa_KF142R-5.08-2P"
+TERM_KF250_4P = "gateway_fp:TerminalBlock_Kefa_KF250-3.5-4P"
 L_ANR4012 = "Inductor_SMD:L_APV_ANR4012"
 SOT23_AO3400 = "gateway_fp:AOS_AO3400A_SOT-23"
 
@@ -24,10 +24,12 @@ def cap(value, fields=None, footprint=C0603):
 
 
 def build(gnd, heat_pwm):
-    """Build 12-32 V input protection, 5 V buck, VIN_ADC divider, and heater switch."""
+    """Build 12-32 V + RS-485 4-pole terminal J1, 5 V buck, VIN_ADC divider, and heater switch."""
     vin_raw = Net("VIN_RAW")
     vin_fused = Net("VIN_FUSED")
     vin_prot = Net("VIN_PROT")
+    rs485_a = Net("RS485_A")
+    rs485_b = Net("RS485_B")
     v5 = Net("+5V")
     vin_adc = Net("VIN_ADC")
     heat_sw = Net("HEAT_SW")
@@ -39,14 +41,16 @@ def build(gnd, heat_pwm):
     for n in (vin_raw, vin_fused, vin_prot, v5):
         power_flag(n)
 
-    # --- 12-32 V push-in terminal + PTC fuse + TVS + reverse-polarity Schottky ---
+    # --- 4-pole push-in terminal J1 (1=VIN+ Red, 2=GND Black, 3=RS485_A+ White, 4=RS485_B- Yellow) ---
     block("power_in")
-    j1 = part("Connector", "Screw_Terminal_01x02", "12-32V DC In", TERM_KF142R,
-              src(mpn="KF142R-5.08-2P", mfr="Cixi Kefa Elec", lcsc="C475144",
-                  source="2-pole 5.08 mm right-angle push-in spring terminal (12-32 V DC roof supply)"),
+    j1 = part("Connector", "Screw_Terminal_01x04", "12-32V + RS485", TERM_KF250_4P,
+              src(mpn="KF250-3.5-4P-1", mfr="Cixi Kefa Elec", lcsc="C475156",
+                  source="4-pole 3.5 mm push-in spring terminal (1:VIN+ Red, 2:GND Black, 3:RS485_A+ White, 4:RS485_B- Yellow)"),
               ref="J1")
     j1[1] += vin_raw
     j1[2] += gnd
+    j1[3] += rs485_a
+    j1[4] += rs485_b
 
     f1 = part("Device", "Polyfuse", "1.1A", FUSE1812,
               src(mpn="1812L110/33MR", mfr="Littelfuse", lcsc="C142747",
@@ -164,4 +168,6 @@ def build(gnd, heat_pwm):
         "v5": v5,
         "vin_adc": vin_adc,
         "heat_sw": heat_sw,
+        "rs485_a": rs485_a,
+        "rs485_b": rs485_b,
     }

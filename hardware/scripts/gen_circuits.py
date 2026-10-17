@@ -151,11 +151,18 @@ def collect_assembly_parts(variant, spec):
         "source": "LCSC / AliExpress / Audiowell",
     })
     items.append({
-        "item": "Piezoelectric Haptic Rain Disc",
+        "item": "20 mm Piezoelectric Haptic Rain Discs (4-Quadrant Symmetric Array)",
+        "qty": 4,
+        "part": "Murata 7BB-20-6L0 (Ø 20 mm brass/ceramic piezoelectric disc element)",
+        "description": "4 discs bonded (brass face only, using thin rigid cyanoacrylate Loctite 401) to the 4 coplanar Ø 20.4 mm ceiling pockets of crown.stl (NE, NW, SW, SE at r=26.8 mm) and plugged into crown J6..J9",
+        "source": "Murata / Mouser / Digi-Key / LCSC",
+    })
+    items.append({
+        "item": "JGS1 Fused Silica Hemispherical UV & Solar Optical Dome",
         "qty": 1,
-        "part": "27 mm brass/ceramic piezoelectric disc element with 2-pin JST-SH lead",
-        "description": "Bonded with thin structural acrylic/epoxy to the underside of the top crown rain dome; plugs into crown J6",
-        "source": "Murata / Steminc / LCSC",
+        "part": "JGS1 (or JGS2) UV-Grade Fused Silica Hemispherical Optical Dome with Flange (Ø 12.0 mm OD / Ø 10.0 mm clear aperture x 6.0 mm height x 1.0 mm wall) + 0.25 mm Virgin PTFE cosine diffuser disk",
+        "description": "185-2500 nm UV-B/UV-A/Visible/NIR transmission (>=92%); hemispherical dome eliminates low-sun-angle Fresnel reflection loss (cosine response up to 80 deg zenith) and sheds raindrops/snow without pooling",
+        "source": "Felix Glass FG-VFQD / AliExpress / Edmund Optics / Shanghai Optics",
     })
     items.append({
         "item": "Particulate Matter Sensor Module (PM1.0/2.5/4.0/10)",
@@ -172,10 +179,24 @@ def collect_assembly_parts(variant, spec):
         "source": "Digi-Key / Mouser / LCSC",
     })
     items.append({
-        "item": "3D-printed ASA roof enclosure parts (8-part modular set)",
-        "qty": 8,
-        "part": "enclosure/{base,mast_clamp,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,strut_cover,crown}.stl",
-        "description": "UV-stabilized white/light-grey ASA, 0.2 mm layers, vapor-smoothed + UV polyurethane topcoat, joined with 4x M3x12 316-stainless screws and clamped to mast with 4x M4x16 bolts",
+        "item": "IP68 Waterproof Compression Cable Gland (M12x1.5 / PG7)",
+        "qty": 1,
+        "part": "M12x1.5 or PG7 IP68 Nylon Cable Gland with EPDM rubber seal & 15 mm hex locknut (Ø 3.5-6.5 mm cable)",
+        "description": "Mounts in the single center Ø 12.2 mm bulkhead hole of base.stl (locknut seats in the 15.4 mm internal hex recess; knurled compression dome sits inside the Ø 26 mm protected upper mast chamber above the pole stop)",
+        "source": "Mouser / Digi-Key / local electrical",
+    })
+    items.append({
+        "item": "Dual-Band 2.4 / 5.8 GHz U.FL (IPEX-1) Flexible PCB Dipole Antenna",
+        "qty": 1,
+        "part": "Molex 1461530100 / Taoglas FXP830 (42x12 mm, +4.5 dBi, 100 mm U.FL coax)",
+        "description": "Plugs into XIAO ESP32-C6 U.FL jack (activated via GPIO3=LOW, GPIO14=HIGH) and snaps horizontally into the upper inner-wall cradle of base.stl so the main lobe radiates downward through the roof",
+        "source": "Mouser / Digi-Key / LCSC",
+    })
+    items.append({
+        "item": "3D-printed ASA roof enclosure parts (9-part modular set)",
+        "qty": 9,
+        "part": "enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,strut_cover,crown}.stl",
+        "description": "UV-stabilized white/light-grey ASA (plus TPU 95A for orings.stl), 0.2 mm layers, vapor-smoothed + UV polyurethane topcoat, clamped to mast with 4x M6x25 316-stainless bolts & captured M6 hex nuts",
         "source": "printed",
     })
     items.append({

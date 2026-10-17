@@ -52,6 +52,7 @@ MODELS_3D = {
     "JST_BM02B-SRSS-TB": ("JST_BM02B-SRSS-TB.step", 0),
     "HX_PZ2.54-1x4P-SMD": ("HX_PZ2.54-1x4P-SMD.step", 0),
     "HX_PM2.54-1x4P-RA-SMD": ("HX_PM2.54-1x4P-RA-SMD.step", 0),
+    "TerminalBlock_Kefa_KF250-3.5-4P": ("TerminalBlock_Kefa_KF250-3.5-4P.step", 0),
 }
 
 
@@ -92,6 +93,7 @@ POWER_CLASS = {
     "SELV-MAIN": "MAIN-Power",
     "SELV-CROWN": "CROWN-Power",
     "SELV-REFLECTOR": "REFLECTOR-Power",
+    "SELV-DOME": "DOME-Power",
     "SELV-PROBE": "PROBE-Power",
 }
 
@@ -338,7 +340,7 @@ DRU_4LAYER = """\
   (constraint hole_size (min 0.2mm)))
 (rule power_track_width
   (constraint track_width (min 0.22mm))
-  (condition "A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('REFLECTOR-Power') || A.hasNetclass('PROBE-Power')"))
+  (condition "A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('REFLECTOR-Power') || A.hasNetclass('DOME-Power') || A.hasNetclass('PROBE-Power')"))
 """
 
 
@@ -348,7 +350,7 @@ def neck_down_rule(refs):
     courtyards = " || ".join(f"A.intersectsCourtyard('{r}')" for r in refs)
     return ("(rule power_neck_down_at_fine_pitch_pins\n"
             "  (constraint track_width (min 0.15mm))\n"
-            f"  (condition \"(A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('REFLECTOR-Power') || A.hasNetclass('PROBE-Power')) && ({courtyards})\"))\n"
+            f"  (condition \"(A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('REFLECTOR-Power') || A.hasNetclass('DOME-Power') || A.hasNetclass('PROBE-Power')) && ({courtyards})\"))\n"
             "(rule neck_down_at_fine_pitch_pins\n"
             "  (constraint track_width (min 0.1mm))\n"
             f"  (condition \"{courtyards}\"))\n")
@@ -679,14 +681,11 @@ def prune_ground_tracks(board):
 
 def widen_neckdown_stubs(board):
     traces = [t for t in board.GetTracks() if t.Type() == pcbnew.PCB_TRACE_T]
-    min_sig = pcbnew.FromMM(0.15)
-    min_pwr = pcbnew.FromMM(0.22)
-    pwr_nets = {"+3V3", "+5V", "+5V_XIAO", "VIN_RAW", "VIN_FUSED", "VIN_PROT", "HEAT_SW", "CO2_HEAT_SW"}
+    min_w = pcbnew.FromMM(0.15)
     widened = 0
     for track in traces:
-        target = min_pwr if track.GetNetname() in pwr_nets else min_sig
-        if track.GetWidth() < target:
-            track.SetWidth(target)
+        if track.GetWidth() < min_w:
+            track.SetWidth(min_w)
             widened += 1
     return widened
 

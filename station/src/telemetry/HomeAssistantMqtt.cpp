@@ -4,11 +4,18 @@
 
 namespace station::telemetry {
 
+bool TelemetryFormatter::select_external_ufl_antenna(std::int8_t ufl_rssi_dbm, std::int8_t internal_rssi_dbm) {
+    // Prefer the external U.FL horizontal FPC dipole unless it is unplugged on the bench
+    // (indicated by internal chip antenna RSSI beating U.FL by more than 8 dB)
+    return (static_cast<int>(internal_rssi_dbm) - static_cast<int>(ufl_rssi_dbm)) <= 8;
+}
+
 std::string TelemetryFormatter::build_state_json(const StationSnapshot& s, const char* fw_version) {
-    char buf[1536];
+    char buf[1664];
     std::snprintf(
         buf, sizeof(buf),
         "{\"fw\":\"%s\",\"uptime_s\":%lu,"
+        "\"wifi\":{\"external_ufl\":%s,\"tx_power_dbm\":%.1f,\"rssi_dbm\":%d},"
         "\"wind\":{\"speed_m_s\":%.2f,\"dir_deg\":%.1f,\"avg_1m_m_s\":%.2f,\"avg_10m_m_s\":%.2f,"
         "\"gust_m_s\":%.2f,\"lull_m_s\":%.2f,\"mean_dir_deg\":%.1f,\"beaufort\":%.0f,"
         "\"sound_m_s\":%.1f,\"acoustic_temp_c\":%.1f,\"tilt_deg\":%.2f,\"north_offset_deg\":%.1f},"
@@ -24,6 +31,8 @@ std::string TelemetryFormatter::build_state_json(const StationSnapshot& s, const
         "\"lightning\":{\"strikes\":%lu,\"distance_km\":%u,\"energy\":%lu},"
         "\"heater\":{\"state\":%u,\"vin_v\":%.2f,\"reflector_c\":%.1f,\"duty_pct\":%.1f,\"power_w\":%.2f}}",
         fw_version, static_cast<unsigned long>(s.uptime_s),
+        s.wifi_rf.external_ufl_active ? "true" : "false",
+        static_cast<double>(s.wifi_rf.tx_power_dbm), static_cast<int>(s.wifi_rf.rssi_dbm),
         static_cast<double>(s.wind.current_speed_m_s), static_cast<double>(s.wind.current_dir_deg),
         static_cast<double>(s.wind.avg_1min_m_s), static_cast<double>(s.wind.avg_10min_m_s),
         static_cast<double>(s.wind.gust_3s_m_s), static_cast<double>(s.wind.lull_m_s),

@@ -6,6 +6,7 @@
 #include "environment/MetCalculations.hpp"
 #include "heater/DeIcingHeater.hpp"
 #include "rain/HapticRain.hpp"
+#include "rs485/Rs485Protocol.hpp"
 #include "telemetry/HomeAssistantMqtt.hpp"
 #include "wind/UltrasonicWind.hpp"
 
@@ -21,6 +22,8 @@ using station::heater::HeaterState;
 using station::rain::HapticRainProcessor;
 using station::rain::PrecipitationType;
 using station::rain::RainImpactEvent;
+using station::rs485::CommandType;
+using station::rs485::Rs485Protocol;
 using station::telemetry::StationSnapshot;
 using station::telemetry::TelemetryFormatter;
 using station::wind::ImuCompassReading;
@@ -230,6 +233,9 @@ void test_telemetry_and_ha_discovery_json(void) {
     const std::string disc = TelemetryFormatter::build_ha_discovery_json(
         "roof01", "wind_speed", "Wind Speed", "m/s", "wind_speed", "{{ value_json.wind.speed_m_s }}");
     TEST_ASSERT_NOT_NULL(std::strstr(disc.c_str(), "aeromet_roof01_wind_speed"));
+    TEST_ASSERT_NOT_NULL(std::strstr(state.c_str(), "\"external_ufl\":true"));
+    TEST_ASSERT_TRUE(TelemetryFormatter::select_external_ufl_antenna(-55, -72));
+    TEST_ASSERT_FALSE(TelemetryFormatter::select_external_ufl_antenna(-88, -62));
 }
 
 void test_longevity_sht45_bakeout_and_scd41_extreme_cold_guard(void) {
@@ -257,6 +263,20 @@ void test_longevity_sht45_bakeout_and_scd41_extreme_cold_guard(void) {
     TEST_ASSERT_FALSE(mgr.tick_second(1.5F, 98.0F, false).sht45_reading_locked);
 }
 
+void test_rs485_protocol_framing_and_commands(void) {
+    StationSnapshot snap{};
+    snap.uptime_s = 120;
+    snap.wind.current_speed_m_s = 4.25F;
+    snap.wind.current_dir_deg = 215.0F;
+    const std::string frame = Rs485Protocol::encode_telemetry_frame(snap);
+    TEST_ASSERT_NOT_NULL(std::strstr(frame.c_str(), "$AM,120,4.25,215.0,"));
+    TEST_ASSERT_NOT_NULL(std::strstr(frame.c_str(), "*"));
+    TEST_ASSERT_EQUAL(CommandType::Ping, Rs485Protocol::parse_command_frame("PING\r\n", 6));
+    TEST_ASSERT_EQUAL(CommandType::RequestState, Rs485Protocol::parse_command_frame("STATE?\n", 7));
+    TEST_ASSERT_EQUAL(CommandType::ResetDailyRain, Rs485Protocol::parse_command_frame("RESET_RAIN", 10));
+    TEST_ASSERT_EQUAL(CommandType::None, Rs485Protocol::parse_command_frame("BAD", 3));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ultrasonic_zero_wind_and_virtual_temp);
@@ -270,5 +290,6 @@ int main(void) {
     RUN_TEST(test_constant_wattage_heater_scaling_across_12_to_32v);
     RUN_TEST(test_telemetry_and_ha_discovery_json);
     RUN_TEST(test_longevity_sht45_bakeout_and_scd41_extreme_cold_guard);
+    RUN_TEST(test_rs485_protocol_framing_and_commands);
     return UNITY_END();
 }

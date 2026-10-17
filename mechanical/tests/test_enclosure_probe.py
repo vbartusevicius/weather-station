@@ -33,3 +33,4 @@ def test_boards_do_not_collide_with_enclosure_parts():
     assert pagoda.intersect(plates["probe"]).val().Volume() < 1e-3
     assert wind_tunnel.intersect(plates["reflector"]).val().Volume() < 1e-3
     assert crown.intersect(plates["crown"]).val().Volume() < 1e-3
+    assert crown.intersect(plates["dome"]).val().Volume() < 1e-3

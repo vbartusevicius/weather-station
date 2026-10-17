@@ -65,7 +65,9 @@ def board_point(board, x, y, n=0.0):
     w = cfg["max_outline"]["width"]
     h = cfg["max_outline"]["height"]
     if plane == "horizontal-xz":
-        return x - w / 2.0, cfg["y"] + n, y - h / 2.0
+        return (x - w / 2.0 + cfg.get("x_offset", 0.0),
+                cfg["y"] + n,
+                y - h / 2.0 + cfg.get("z_offset", 0.0))
     if plane == "vertical-xy":
         return x - w / 2.0, cfg["y_start"] + y, cfg["z"] + n
     raise ValueError(f"Unsupported board plane: {plane}")
@@ -123,11 +125,16 @@ def part_boxes():
             "x0": tx - 5.0, "x1": tx + 5.0, "y0": TUNNEL_Y1, "y1": TUNNEL_Y1 + 6.6,
             "z0": tz - 5.0, "z1": tz + 5.0,
         })
-    # Off-board 27 mm Piezoelectric Rain Disc bonded to underside of top rain dome (y=191.2..192.0)
-    boxes.append({
-        "board": "crown", "ref": "PIEZO_DISC", "side": "front", "footprint": "PIEZO_27MM",
-        "x0": -13.5, "x1": 13.5, "y0": 191.2, "y1": 192.0, "z0": -13.5, "z1": 13.5,
-    })
+    # Off-board 4x 20 mm Murata Piezoelectric Rain Discs (7BB-20-6L0) glued DIRECTLY to the 1.0 mm-thin
+    # acoustic rain-drum diaphragm pockets (r = 25.0 mm at 45/135/225/315 deg, y = 193.2..193.8 mm)
+    for deg, quad in ((45, "NE"), (135, "NW"), (225, "SW"), (315, "SE")):
+        rad = math.radians(deg)
+        px, pz = 25.0 * math.cos(rad), 25.0 * math.sin(rad)
+        boxes.append({
+            "board": "crown", "ref": f"PIEZO_{quad}", "side": "front", "footprint": "PIEZO_20MM",
+            "x0": px - 10.0, "x1": px + 10.0, "y0": 193.2, "y1": 193.8,
+            "z0": pz - 10.0, "z1": pz + 10.0,
+        })
     # Off-board Sensirion SEN55-SDN-T PM sensor in lower base bay (below/beside main board)
     boxes.append({
         "board": "main", "ref": "SEN55_MOD", "side": "back", "footprint": "SEN55_MODULE",
@@ -155,24 +162,15 @@ def transducer_pockets():
 
 
 def uv_window():
-    u6 = components("crown")["U6"]
-    u7 = components("crown")["U7"]
-    x6, _, z6 = board_point("crown", u6["x"], u6["y"])
-    x7, _, z7 = board_point("crown", u7["x"], u7["y"])
+    u1 = components("dome")["U1"]
+    u2 = components("dome")["U2"]
+    x1, _, z1 = board_point("dome", u1["x"], u1["y"])
+    x2, _, z2 = board_point("dome", u2["x"], u2["y"])
     return {
-        "x": round((x6 + x7) / 2.0, 3),
-        "z": round((z6 + z7) / 2.0, 3),
-        "diameter": ENV["top_crown"]["uv_window_diameter"],
+        "x": round((x1 + x2) / 2.0, 3),
+        "z": round((z1 + z2) / 2.0, 3),
+        "diameter": 18.0,
     }
-
-
-def led_windows():
-    main = components("main")
-    out = []
-    for ref in ("D4", "D5"):
-        x, y, z = board_point("main", main[ref]["x"], main[ref]["y"])
-        out.append({"ref": ref, "x": round(x, 3), "y": round(y, 3), "z": round(z, 3)})
-    return out
 
 
 def standoffs(board):

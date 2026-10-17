@@ -13,11 +13,12 @@ from matplotlib.patches import Circle, Polygon, Rectangle
 
 REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "mechanical/build" / ef.VARIANT
-COLOURS = {"main": "#2e7d32", "crown": "#1565c0", "reflector": "#ad1457", "probe": "#ef6c00"}
+COLOURS = {"main": "#2e7d32", "crown": "#1565c0", "reflector": "#ad1457", "dome": "#6a1b9a", "probe": "#ef6c00"}
 LABELLED = {
-    "main": {"J1", "J2", "J3", "J4", "C1", "U3", "L2", "SW1", "D4", "D5", "SEN55_MOD"},
-    "crown": {"J1", "J2", "J3", "J4", "J5", "J6", "U2", "U6", "U7", "U8", "XD_N", "XD_S", "PIEZO_DISC"},
+    "main": {"J1", "J2", "J3", "J4", "C1", "U3", "U7", "L2", "SW1", "SEN55_MOD"},
+    "crown": {"J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "U2", "U5", "U6", "XD_N", "XD_S", "PIEZO_NE", "PIEZO_SW"},
     "reflector": {"J1", "R1", "R2", "R3", "R4", "TH1"},
+    "dome": {"J1", "U1", "U2"},
     "probe": {"J1", "J2", "U1", "U2", "U3", "R1", "R2"},
 }
 
@@ -55,7 +56,7 @@ def side_view():
 
     # Board slabs and part bounding boxes
     boxes = ef.part_boxes()
-    for board in ("main", "probe", "reflector", "crown"):
+    for board in ("main", "probe", "reflector", "crown", "dome"):
         c = COLOURS[board]
         for slab in ef.board_slabs(board):
             rect(ax, slab["x0"], slab["y0"], slab["x1"] - slab["x0"], slab["y1"] - slab["y0"],
@@ -98,7 +99,7 @@ def top_view():
 
     # Board outlines and parts in XZ plane
     boxes = ef.part_boxes()
-    for board in ("main", "crown", "reflector", "probe"):
+    for board in ("main", "crown", "reflector", "dome", "probe"):
         c = COLOURS[board]
         for slab in ef.board_slabs(board):
             rect(ax, slab["x0"], slab["z0"], slab["x1"] - slab["x0"], slab["z1"] - slab["z0"],

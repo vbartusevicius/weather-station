@@ -1,0 +1,14 @@
+(version 1)
+(rule jlcpcb_minimum
+  (constraint track_width (min 0.12mm))
+  (constraint clearance (min 0.2mm))
+  (constraint hole_size (min 0.2mm)))
+(rule power_track_width
+  (constraint track_width (min 0.22mm))
+  (condition "A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('REFLECTOR-Power') || A.hasNetclass('DOME-Power') || A.hasNetclass('PROBE-Power')"))
+(rule power_neck_down_at_fine_pitch_pins
+  (constraint track_width (min 0.15mm))
+  (condition "(A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('REFLECTOR-Power') || A.hasNetclass('DOME-Power') || A.hasNetclass('PROBE-Power')) && (A.intersectsCourtyard('J1') || A.intersectsCourtyard('U1') || A.intersectsCourtyard('U2'))"))
+(rule neck_down_at_fine_pitch_pins
+  (constraint track_width (min 0.1mm))
+  (condition "A.intersectsCourtyard('J1') || A.intersectsCourtyard('U1') || A.intersectsCourtyard('U2')"))

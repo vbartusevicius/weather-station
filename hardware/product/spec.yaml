@@ -67,7 +67,7 @@ enclosure:
 variants:
   v1:
     description: "Monolithic solid-state ultrasonic, haptic-rain & multi-gas air-quality roof weather station (12-32V wired)"
-    boards: [main, crown, reflector, probe]
+    boards: [main, crown, reflector, dome, probe]
 
 boards:
   main:
@@ -80,7 +80,7 @@ boards:
   crown:
     plane: horizontal-xz     # enc_x = board_x - 20.5, enc_z = board_y - 28.0, top faces +y
     thickness: 1.2
-    y: 182.0                 # board top face y (bottom face at 180.8)
+    y: 181.5                 # lowered so all connectors & components have >5.5 mm clearance below the 4 Murata piezos & roof
     max_outline: { width: 41.0, height: 56.0 }
     domains:
       SELV-CROWN: all
@@ -91,6 +91,16 @@ boards:
     max_outline: { width: 24.0, height: 24.0 }
     domains:
       SELV-REFLECTOR: all
+  dome:
+    plane: horizontal-xz     # round Ø 12 mm UV/Light micro-PCB raised on 4-pin vertical B2B riser right inside the JGS1 hemisphere!
+    shape: circle
+    thickness: 1.2
+    y: 197.4                 # U1 (LTR-390UV) & U2 (VEML7700) sit at y = 197.4..200.4 inside the hollow JGS1 hemisphere above the y=197.8 lip
+    x_offset: 0.0
+    z_offset: 0.0
+    max_outline: { width: 12.0, height: 12.0 }
+    domains:
+      SELV-DOME: all
   probe:
     plane: vertical-xy       # vertical stem of the T inside the 5-plate pagoda (y = 69.0..119.0)
     thickness: 1.2
@@ -109,6 +119,15 @@ boards:
       pins: 10
       connector_pitch: 1.0
       cable_length_mm: 160.0
+    - from: crown
+      to: dome
+      signals: [+3V3, GND, I2C_SDA, I2C_SCL]
+      refs: { crown: J10, dome: J1 }
+      domain: SELV-CROWN
+      type: b2b_header
+      pins: 4
+      connector_pitch: 2.54
+      cable_length_mm: 28.0
     - from: main
       to: probe
       signals: [VIN_PROT, VIN_PROT, HEAT_SW, HEAT_SW, GND, NTC_SENSE, +3V3, GND, I2C_SDA, I2C_SCL]
@@ -189,10 +208,10 @@ derived:
       pin: D9/GPIO20
       net: US_RX
       note: 'RMT RX / GPTimer capture: ultrasonic echo zero-cross'
-    led_data:
+    rs485_io:
       pin: D10/GPIO18
-      net: LED_DATA
-      note: 'RMT TX: SK6805-EC15 RGB status LEDs via 5 V buffer'
+      net: RS485_IO
+      note: 'UART1 TX/RX: Auto-direction RS-485 transceiver (SP3485EN)'
   net_classes:
     main:
       SELV-MAIN:
@@ -211,8 +230,11 @@ derived:
       - US_SEL_B
       - US_TX
       - US_RX
-      - LED_DATA
-      - LED_CHAIN1
+      - RS485_IO
+      - RS485_DE
+      - RS485_RO
+      - RS485_A
+      - RS485_B
       - BUCK5_SW
       - BUCK5_BST
       - BUCK5_EN
@@ -273,6 +295,15 @@ derived:
       REFLECTOR-Power:
       - VIN_PROT
       - HEAT_SW
+    dome:
+      SELV-DOME:
+      - GND
+      - +3V3
+      - I2C_SDA
+      - I2C_SCL
+      - Net-*
+      DOME-Power:
+      - +3V3
     probe:
       SELV-PROBE:
       - GND

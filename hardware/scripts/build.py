@@ -60,13 +60,11 @@ def run_cad(*, do_test=False):
     sys.path.insert(0, str(REPO / "mechanical/scripts"))
     import build_enclosure
     import fit_drawing
-    import front_legend
     import legend_color_model
     import render_assembly3d
 
     build_enclosure.export_parts(REPO / "mechanical/build" / build_enclosure.VARIANT)
     fit_drawing.main()
-    front_legend.main()
     legend_color_model.main()
     render_assembly3d.main()
     if do_test:

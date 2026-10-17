@@ -35,6 +35,7 @@ PARTS = {
     "JST_BM02B-SRSS-TB": (4.0, 2.9, 4.25),
     "HX_PZ2.54-1x4P-SMD": (10.16, 5.0, 2.5),
     "HX_PM2.54-1x4P-RA-SMD": (10.16, 8.5, 2.5),
+    "TerminalBlock_Kefa_KF250-3.5-4P": (15.5, 12.0, 11.0),
 }
 
 

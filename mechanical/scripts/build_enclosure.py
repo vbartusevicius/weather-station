@@ -53,27 +53,27 @@ def cyl_y(x, z, y0, y1, diameter):
     return cone_y(y0, y1, diameter / 2.0, diameter / 2.0).translate((x, 0, z))
 
 
-def hex_prism_z(cx, cy, z0, z1, across_flats=10.25):
-    """Regular hexagonal prism along Z (flat sides horizontal) for captured M6 hex nuts (ISO 4032 s=10.0 mm)."""
+def hex_prism_y(y0, y1, across_flats=15.4):
+    """Regular hexagonal prism along Y (vertical axis) at (0, 0) for the M12/PG7 IP68 cable-gland locknut seat."""
     r_circ = across_flats / math.sqrt(3.0)
-    pts = [(cx + r_circ * math.cos(math.radians(60 * k)),
-            cy + r_circ * math.sin(math.radians(60 * k))) for k in range(6)]
-    return cq.Workplane("XY", origin=(0, 0, z0)).polyline(pts).close().extrude(z1 - z0)
+    pts = [(r_circ * math.cos(math.radians(60 * k)),
+            r_circ * math.sin(math.radians(60 * k))) for k in range(6)]
+    return cq.Workplane("XZ", origin=(0, y0, 0)).polyline(pts).close().extrude(-(y1 - y0))
 
 
 def build_base():
-    """Part 1: Rear Mast Cradle (y=0..34, z>=-1) with Flat M6 Clamping Ears & Captured M6 Hex Nut Traps
-    + Sealed Lower Electronics Bell Housing (y=34..68) with M12 Power Cable Entry Hole & Center Mast Conduit."""
+    """Part 1: Rear Mast Cradle (y=0..34, z>=-1) with Solid Flat Clamping Ears (for nut + washer)
+    + Sealed Lower Electronics Bell Housing (y=34..68) with Single Center IP68 M12/PG7 Cable-Gland Bulkhead."""
     mast_ir = SPEC["envelope"]["mast_socket"]["inner_diameter"] / 2.0
     mast_or = SPEC["envelope"]["mast_socket"]["outer_diameter"] / 2.0
 
-    # 1. Rear half-moon mast cradle (y = 0..34, z >= -1.0) + wide flat M6 clamping ears (x = -36..+36, y = 0..28, z = -1..+11)
+    # 1. Rear half-moon mast cradle (y = 0..34, z >= -1.0) + solid flat clamping ears (x = -33..+33, y = 0..28, z = -1..+8.0)
     cradle_cyl = cone_y(0.0, 34.0, mast_or, mast_or).cut(box(-40.0, 40.0, -0.5, 30.0, -40.0, -1.0))
-    flange = box(-36.0, 36.0, 0.0, 28.0, -1.0, 11.0)
+    flange = box(-33.0, 33.0, 0.0, 28.0, -1.0, 8.0)
     neck = cone_y(28.0, 35.0, mast_or, OUTER_R)
     rear_ear_flat = (
-        box(-37.0, -19.2, -0.5, 30.5, 11.0, 30.0)
-        .union(box(19.2, 37.0, -0.5, 30.5, 11.0, 30.0))
+        box(-35.0, -19.2, -0.5, 30.5, 8.0, 30.0)
+        .union(box(19.2, 35.0, -0.5, 30.5, 8.0, 30.0))
     )
     body = cradle_cyl.union(flange).union(neck).cut(rear_ear_flat)
 
@@ -82,27 +82,29 @@ def build_base():
     oring_groove = ring_cone_y(65.2, 66.6, INNER_R - 1.3, OUTER_R - 0.8, INNER_R - 1.3, OUTER_R - 0.8)
     body = body.union(bay_outer).cut(oring_groove)
 
-    # 3. Cut internal electronics cavity (y = 35.5..68.2, radius = INNER_R - 1.5)
-    cavity = cone_y(35.5, 68.2, INNER_R - 1.5, INNER_R - 1.5)
+    # 3. Cut internal electronics cavity (y = 34.5..68.2, radius = INNER_R - 1.5)
+    cavity = cone_y(34.5, 68.2, INNER_R - 1.5, INNER_R - 1.5)
     body = body.cut(cavity)
 
-    # 4. Cut mast bore (y = -0.1..29.5), central through-mast power cable hole (Ø 14 mm through floor y = 28..37),
-    #    AND dedicated M12 waterproof power cable gland hole (Ø 12.2 mm at x = 0.0, z = -30.0, clear of all 4 standoffs!)
-    mast_bore = cone_y(-0.1, 29.5, mast_ir, mast_ir)
-    center_power_hole = cone_y(28.0, 37.0, 7.0, 7.0)
-    m12_power_gland_hole = cone_y(28.0, 37.0, 6.1, 6.1).translate((0.0, 0, -30.0))
-    body = body.cut(mast_bore).cut(center_power_hole).cut(m12_power_gland_hole)
+    # 4. Stepped Center Bore for Mast Pole + IP68 M12x1.5 / PG7 Box-Wire Compression Cable Gland (Single Center Hole Only):
+    #    - y = -0.1..19.0: Ø 34.4 mm mast pole socket (mast pole stops against internal shoulder at y = 19.0)
+    #    - y = 19.0..30.0: Ø 26.0 mm recessed chamber housing the IP68 compression cable gland body & knurled cap
+    #    - y = 30.0..35.0: Ø 12.2 mm single center mounting hole for the M12x1.5 / PG7 cable gland threads
+    #    - y = 33.0..35.0: 15.4 mm across-flats hexagonal recess on the inner floor capturing the gland's hex locknut
+    mast_bore = cone_y(-0.1, 19.0, mast_ir, mast_ir)
+    gland_chamber = cone_y(18.8, 30.0, 13.0, 13.0)
+    center_gland_hole = cone_y(29.5, 36.0, 6.1, 6.1)
+    locknut_hex_seat = hex_prism_y(33.0, 35.0, across_flats=15.4)
+    body = body.cut(mast_bore).cut(gland_chamber).cut(center_gland_hole).cut(locknut_hex_seat)
 
-    # 5. Cut 4x M6 clearance bolt holes (Ø 6.4 mm at x = +/-27.0, y = 7.5 & 20.5)
-    #    + 4x captured M6 hex nut pockets (10.25 mm across-flats, 5.2 mm deep on the flat rear face z = 5.8..11.2)
-    for xb in (-27.0, 27.0):
+    # 5. Cut 4x M6 clearance bolt holes (Ø 6.4 mm at x = +/-25.5, y = 7.5 & 20.5) on the solid flat clamping ears
+    for xb in (-25.5, 25.5):
         for yb in (7.5, 20.5):
             bolt = (cq.Workplane("XY", origin=(0, 0, -10.0))
                     .center(xb, yb)
                     .circle(3.2)
                     .extrude(30.0))
-            nut_trap = hex_prism_z(xb, yb, 5.8, 11.5, across_flats=10.25)
-            body = body.cut(bolt).cut(nut_trap)
+            body = body.cut(bolt)
 
     # 6. Add 4 internal PCB standoffs supporting `main` (bottom of `main` is at y = 42.8)
     main_bot_y = SPEC["boards"]["main"]["y"] - SPEC["boards"]["main"]["thickness"]
@@ -118,24 +120,33 @@ def build_base():
             slit = box(sx - 3.5, sx + 3.5, 31.0, 36.5, sz + offset - 0.6, sz + offset + 0.6)
             body = body.cut(slit)
 
+    # 8. Horizontal Internal FPC Dipole Antenna Cradle (y = 51.2..64.8, z > 0 inner wall)
+    #    Holds a 42x12 mm Dual-Band 2.4/5.8 GHz U.FL FPC antenna horizontally above the main PCB
+    #    so its vertical torus main lobe radiates straight down through the roof into the house below.
+    fpc_shelf_bot = ring_cone_y(51.0, 52.0, INNER_R - 2.4, INNER_R - 1.4, INNER_R - 2.4, INNER_R - 1.4).intersect(
+        box(-22.0, 22.0, 50.5, 52.5, 20.0, OUTER_R))
+    fpc_shelf_top = ring_cone_y(64.0, 65.0, INNER_R - 2.4, INNER_R - 1.4, INNER_R - 2.4, INNER_R - 1.4).intersect(
+        box(-22.0, 22.0, 63.5, 65.5, 20.0, OUTER_R))
+    body = body.union(fpc_shelf_bot).union(fpc_shelf_top)
+
     return body
 
 
 def build_mast_clamp():
     """Part 2: Detachable Front Half-Moon Pole Clamp Saddle (y=0..28.0, z<=-1.5)
-    with Wide Flat M6 Bolt Seating Faces (x = -36..+36, z = -11.0)."""
+    with Solid Flat Bolt/Washer Seating Faces (x = -33..+33, z = -8.0)."""
     mast_ir = SPEC["envelope"]["mast_socket"]["inner_diameter"] / 2.0
     mast_or = SPEC["envelope"]["mast_socket"]["outer_diameter"] / 2.0
 
     half_cyl = cone_y(0.0, 28.0, mast_or, mast_or).intersect(box(-40.0, 40.0, -0.5, 29.0, -40.0, -1.5))
-    flange = box(-36.0, 36.0, 0.0, 28.0, -11.0, -1.5)
+    flange = box(-33.0, 33.0, 0.0, 28.0, -8.0, -1.5)
     ear_flat_cut = (
-        box(-37.0, -19.2, -0.5, 28.5, -25.0, -11.0)
-        .union(box(19.2, 37.0, -0.5, 28.5, -25.0, -11.0))
+        box(-35.0, -19.2, -0.5, 28.5, -25.0, -8.0)
+        .union(box(19.2, 35.0, -0.5, 28.5, -25.0, -8.0))
     )
     body = half_cyl.union(flange).cut(cone_y(-0.1, 29.0, mast_ir, mast_ir)).cut(ear_flat_cut)
 
-    for xb in (-27.0, 27.0):
+    for xb in (-25.5, 25.5):
         for yb in (7.5, 20.5):
             bolt = (cq.Workplane("XY", origin=(0, 0, -15.0))
                     .center(xb, yb)
@@ -245,15 +256,39 @@ def build_strut_cover():
 
 
 def build_crown():
-    """Part 8: Top Ultrasonic Shroud & Sloped Haptic Rain / Solar-UV Crown (y=172.5..198)."""
-    shroud = cone_y(174.0, 190.0, OUTER_R, OUTER_R)
+    """Part 8: Unified Top Ultrasonic Shroud & Thin-Diaphragm Haptic Rain Crown (`crown.stl/.step`, y=172.5..198.0):
+      - Center (r = 9..13.5 mm): Beefy 2.8 mm-thick Top Retaining Shoulder (y = 195.2..198.0) holding the O-Ring,
+        JGS1 Quartz Flange, and M22 Threaded Retainer Nut
+      - Smooth Taper (r = 13.5..16 mm) into a 1.2 mm-Thin Acoustic Rain-Drum Diaphragm (r = 15..38 mm, y = 193.6..196.2)
+        so raindrops easily flex the 1.2 mm roof directly above the 4x 20 mm Murata Piezo Discs (7x higher strain than 3.2 mm!)
+    """
+    shroud = cone_y(174.0, 191.5, OUTER_R, OUTER_R)
     crown_drip = ring_cone_y(172.5, 174.5, OUTER_R - 1.2, OUTER_R + 0.6, OUTER_R - 1.2, OUTER_R)
-    dome = cone_y(190.0, 198.0, OUTER_R, 6.0)
+    # Two-stage outer dome: outer rim transition (y=191.5..194.8, r=48..37) + shallow 4-deg rain diaphragm (y=194.8..196.4, r=37..14)
+    # + raised central JGS1 boss (y=196.4..198.0, r=14..9.0)
+    dome_rim = cone_y(191.5, 194.8, OUTER_R, 37.0)
+    dome_diaphragm = cone_y(194.8, 196.4, 37.0, 14.0)
+    dome_apex = cone_y(196.4, 198.0, 14.0, 9.0)
+    dome = dome_rim.union(dome_diaphragm).union(dome_apex)
     body = shroud.union(crown_drip).union(dome)
 
-    cavity = cone_y(176.2, 189.5, INNER_R - 1.5, INNER_R - 1.5).union(
-        cone_y(189.5, 194.5, INNER_R - 1.5, 12.0))
+    # Internal cavity tracks the outer dome closely (leaving a 1.0 mm-thin acoustic diaphragm across r = 14.5..36.5 mm!)
+    # while leaving the central JGS1 collar (r < 13.5 mm) thick and rigid!
+    cavity = (
+        cone_y(176.2, 190.5, INNER_R - 1.5, INNER_R - 1.5)
+        .union(cone_y(190.5, 193.8, INNER_R - 1.5, 36.5))
+        .union(cone_y(193.8, 195.3, 36.5, 14.2))
+    )
     body = body.cut(cavity)
+
+    # 4x 1.0 mm-Thin Coplanar Piezo Bonding Seats (r = 25.0 mm at 45/135/225/315 deg, bottom face at y = 193.8 mm,
+    # reinforced from underneath by the 0.20 mm solid brass Murata 7BB-20-6L0 disc!)
+    for deg in (45, 135, 225, 315):
+        rad = math.radians(deg)
+        px, pz = 25.0 * math.cos(rad), 25.0 * math.sin(rad)
+        pad_boss = cone_y(193.8, 195.2, 10.3, 10.3).translate((px, 0, pz)).intersect(dome)
+        pad_rim = ring_cone_y(193.4, 193.8, 10.0, 10.5, 10.0, 10.5).translate((px, 0, pz))
+        body = body.union(pad_boss).union(pad_rim)
 
     for tp in ef.transducer_pockets():
         hole = cone_y(173.8, 176.8, 5.2, 5.2).translate((tp["x"], 0, tp["z"]))
@@ -268,11 +303,19 @@ def build_crown():
             plug_slot = box(sx - 5.5, sx + 3.5, 173.5, 177.5, sz - 2.5, sz + 2.5)
             body = body.cut(plug_slot)
 
+    # Dead-center (0, 0) Heavy-Duty 2.8 mm Top Retaining Lip (y = 195.2..198.0) with Smooth Conical Taper (r = 12.2..15.0)
+    # transitioning into the 1.2 mm-thin rain diaphragm right outside the JGS1 collar!
     win = ef.uv_window()
-    r_win = win["diameter"] / 2.0
-    uv_hole = cone_y(190.0, 198.5, r_win, r_win).translate((win["x"], 0, win["z"]))
-    uv_chamfer = cone_y(195.2, 198.2, r_win, r_win + 4.5).translate((win["x"], 0, win["z"]))
-    body = body.cut(uv_hole).cut(uv_chamfer)
+    r_win = 9.0
+    uv_collar = ring_cone_y(191.0, 198.0, r_win, r_win + 3.5, r_win, r_win + 5.5).translate((win["x"], 0, win["z"])).intersect(dome)
+    uv_top_hole = cone_y(190.5, 198.5, r_win, r_win).translate((win["x"], 0, win["z"]))
+    uv_inner_bore = cone_y(190.5, 195.2, r_win + 1.6, r_win + 1.6).translate((win["x"], 0, win["z"]))
+    body = body.union(uv_collar).cut(uv_top_hole).cut(uv_inner_bore)
+
+    # Mold 3x internal M22 thread ridges (y = 191.3..192.8) inside uv_collar that engage the threaded retainer nut
+    for ty in (191.3, 191.85, 192.4):
+        thread_rib = ring_cone_y(ty, ty + 0.35, r_win + 1.15, r_win + 1.65, r_win + 1.65, r_win + 1.65).translate((win["x"], 0, win["z"]))
+        body = body.union(thread_rib)
 
     crown_bot_y = SPEC["boards"]["crown"]["y"] - SPEC["boards"]["crown"]["thickness"]
     for st in ef.standoffs("crown"):
@@ -286,13 +329,12 @@ def build_orings():
     """Part 9: Elastomeric O-Ring & Gasket Set (`orings.stl/.step` — TPU 95A or Nitrile/EPDM):
       1. Lower Base-to-Pagoda radial/axial O-ring gasket (y = 65.3..66.5, r = 43.8..47.1 mm)
       2. Middle Pagoda-to-Wind-Tunnel reflector cavity gasket (y = 119.0..120.2, r = 22.0..25.0 mm)
-      3. Upper Crown UV optical window seal ring (y = 193.8..195.0, r = 3.8..5.4 mm)
+      3. Upper Center (0, 0) O-ring placed FIRST (ABOVE the JGS1 flange, at y = 194.2..195.2, r = 8.6..10.5 mm)
     """
     ring_base = ring_cone_y(65.3, 66.5, INNER_R - 1.2, OUTER_R - 0.9, INNER_R - 1.2, OUTER_R - 0.9)
     ring_refl = ring_cone_y(119.0, 120.2, 22.0, 24.5, 22.0, 24.5)
     win = ef.uv_window()
-    r_win = win["diameter"] / 2.0
-    ring_uv = ring_cone_y(193.8, 195.0, r_win - 0.1, r_win + 1.4, r_win - 0.1, r_win + 1.4).translate((win["x"], 0, win["z"]))
+    ring_uv = ring_cone_y(194.2, 195.2, 8.6, 10.5, 8.6, 10.5).translate((win["x"], 0, win["z"]))
     return ring_base.union(ring_refl).union(ring_uv)
 
 

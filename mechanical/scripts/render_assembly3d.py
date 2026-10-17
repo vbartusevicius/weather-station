@@ -29,6 +29,7 @@ SILK = (0.10, 0.12, 0.15)
 PCB_MAIN = (0.10, 0.48, 0.22)
 PCB_CROWN = (0.12, 0.34, 0.68)
 PCB_REFLECTOR = (0.58, 0.16, 0.32)
+PCB_DOME = (0.48, 0.22, 0.68)
 PCB_PROBE = (0.16, 0.42, 0.36)
 PART = (0.18, 0.18, 0.20)
 SILVER = (0.78, 0.80, 0.83)
@@ -43,11 +44,15 @@ GLASS_UV = (0.35, 0.65, 0.92)
 
 
 def board_plates():
-    colours = {"main": PCB_MAIN, "crown": PCB_CROWN, "reflector": PCB_REFLECTOR, "probe": PCB_PROBE}
+    colours = {"main": PCB_MAIN, "crown": PCB_CROWN, "reflector": PCB_REFLECTOR, "dome": PCB_DOME, "probe": PCB_PROBE}
     plates = []
     for board in ef.SPEC["variants"][ef.VARIANT]["boards"]:
         s = ef.board_slab(board)
-        plates.append((box(s["x0"], s["x1"], s["y0"], s["y1"], s["z0"], s["z1"]), colours[board], board))
+        if board == "dome":
+            cx, cz = (s["x0"] + s["x1"]) / 2.0, (s["z0"] + s["z1"]) / 2.0
+            plates.append((cyl_y(cx, cz, s["y0"], s["y1"], s["x1"] - s["x0"]), colours[board], board))
+        else:
+            plates.append((box(s["x0"], s["x1"], s["y0"], s["y1"], s["z0"], s["z1"]), colours[board], board))
     return plates
 
 
@@ -60,9 +65,10 @@ def realistic_part(b):
         can = cyl_y(cx, cz, y0, y1, 10.0)
         face = cyl_y(cx, cz, y0 - 0.1, y0 + 0.4, 8.2)
         return [(can, ALU), (face, (0.25, 0.28, 0.32))]
-    if fp == "PIEZO_27MM":
-        brass = cyl_y(cx, cz, y0, y0 + 0.4, 27.0)
-        ceramic = cyl_y(cx, cz, y0 - 0.3, y0, 20.0)
+    if fp in ("PIEZO_27MM", "PIEZO_20MM"):
+        d = 20.0 if fp == "PIEZO_20MM" else 27.0
+        brass = cyl_y(cx, cz, y0, y0 + 0.4, d)
+        ceramic = cyl_y(cx, cz, y0 - 0.3, y0, d * 0.74)
         return [(brass, BRASS), (ceramic, IVORY)]
     if fp == "SEN55_MODULE":
         housing = box(x0, x1, y0, y1, z0, z1)
@@ -190,9 +196,14 @@ STL_COLOURS = {
 }
 
 
-def stl_part_views(stl_map):
-    """Render an individual 3/4 isometric view (`<part>.png`) for each of the 9 modular STL parts."""
+def stl_part_views(stl_map, crown_inside_items=()):
+    """Render an individual 3/4 isometric view (`<part>.png`) for each modular STL part,
+    and for `crown.png` show the cutaway Crown enclosure from above with its PCB and parts inside."""
     for name, solid in stl_map.items():
+        if name == "crown" and crown_inside_items:
+            # Close-up zoomed-in view looking right inside the transparent hollow JGS1 hemisphere & elevated `dome` Micro-PCB!
+            render("crown", crown_inside_items, (68, 228, 82), focal=(0, 190.5, 0), zoom=2.15)
+            continue
         bb = solid.val().BoundingBox()
         cx = (bb.xmin + bb.xmax) / 2.0
         cy = (bb.ymin + bb.ymax) / 2.0
@@ -200,10 +211,8 @@ def stl_part_views(stl_map):
         span = max(bb.xmax - bb.xmin, bb.ymax - bb.ymin, bb.zmax - bb.zmin, 25.0)
         dist = span * 2.1
         if name == "base":
-            # Look from +Z and higher +Y so both the 4x M6 hex nut traps and the interior floor power holes are visible
             cam = (cx + dist * 0.72, cy + dist * 0.92, cz + dist * 0.82)
         elif name == "mast_clamp":
-            # Look from -Z to show the flat outer M6 bolt-head seating faces
             cam = (cx + dist * 0.75, cy + dist * 0.55, cz - dist * 0.90)
         else:
             cam = (cx + dist * 0.85, cy + dist * 0.65, cz + dist * 0.95)
@@ -228,7 +237,25 @@ def main():
     legend = lcm.legend_bodies()
     crown_silk = crown.cut(legend)
     win = ef.uv_window()
-    uv_lens = cyl_y(win["x"], win["z"], 195.0, 196.8, win["diameter"] - 0.2)
+    # Hollow JGS1 Fused Silica Hemispherical Dome (Ø 18.0 mm OD / Ø 15.6 mm ID, 1.2 mm wall) + O-Ring + M22 Threaded Retainer Nut:
+    #   1. Solid 2.8 mm-thick Top Retaining Lip on `crown.stl` (y = 195.2..198.0 mm)
+    #   2. Crimson O-Ring FIRST (y = 194.2..195.2 mm, r = 8.6..10.5 mm) against the 2.8 mm-thick inner roof shoulder
+    #   3. Hollow JGS1 Quartz Flange (y = 193.0..194.2 mm, r = 7.8..10.4 mm) + Neck (y = 194.2..198.0 mm, r = 7.8..9.0 mm)
+    #   4. Hollow JGS1 Quartz Hemisphere (y = 198.0..207.0 mm, R_out = 9.0 mm, R_in = 7.8 mm) so U1 & U2 on the elevated
+    #      round Ø 13.6 mm `dome` Micro-PCB (y = 197.2..200.2 mm) sit visibly INSIDE the transparent glass dome!
+    #   5. Threaded M22 Retainer Nut (brass/gold at y = 191.2..193.0 mm, r = 8.4..10.5 mm) clamping the JGS1 flange from below!
+    uv_flange_shell = be.ring_cone_y(193.0, 194.2, 7.8, 10.4, 7.8, 10.4).translate((win["x"], 0, win["z"]))
+    uv_neck_shell = be.ring_cone_y(194.2, 198.0, 7.8, 9.0, 7.8, 9.0).translate((win["x"], 0, win["z"]))
+    hemi_outer = (cq.Workplane("XY", origin=(win["x"], 198.0, win["z"]))
+                  .sphere(9.0)
+                  .intersect(box(-25, 25, 198.0, 209.0, -25, 25)))
+    hemi_inner = (cq.Workplane("XY", origin=(win["x"], 198.0, win["z"]))
+                  .sphere(7.8)
+                  .intersect(box(-25, 25, 197.8, 209.0, -25, 25)))
+    uv_lens = uv_flange_shell.union(uv_neck_shell).union(hemi_outer.cut(hemi_inner))
+    uv_retainer_nut = be.ring_cone_y(191.2, 193.0, 8.4, 10.5, 8.4, 10.5).translate((win["x"], 0, win["z"]))
+    # Vertical 4-pin 2.54 mm board-to-board riser posts connecting `crown J10` (y=181.5) to round `dome J1` (y=196.0)
+    b2b_riser = box(-5.1, 5.1, 181.5, 196.0, -1.25, 1.25)
 
     stl_map = {
         "base": base,
@@ -262,7 +289,7 @@ def main():
     full_parts = part_solids()
     parts = [(s, c, 1.0) for s, c, _, _ in full_parts]
     boards = [(s, c, 1.0) for s, c, _ in plates]
-    inside = boards + parts + [(uv_lens, GLASS_UV, 0.85)]
+    inside = boards + parts + [(b2b_riser, GOLD, 1.0), (uv_retainer_nut, BRASS, 1.0), (uv_lens, GLASS_UV, 0.28)]
 
     exterior = [
         (base, STL_COLOURS["base"], 1.0),
@@ -306,11 +333,12 @@ def main():
     ] + inside
     render("section", section, (320, 105, 90), focal=(0, 102, 0), zoom=1.12)
 
-    # Exploded view separating all 9 modular parts (including O-rings) + all 4 PCBs
+    # Exploded view separating all 9 modular parts + all 5 PCBs
     main_grp = [(s, c, 1.0) for s, c, b in plates if b == "main"] + [(s, c, 1.0) for s, c, b, _ in full_parts if b == "main"]
     probe_grp = [(s, c, 1.0) for s, c, b in plates if b == "probe"] + [(s, c, 1.0) for s, c, b, _ in full_parts if b == "probe"]
     refl_grp = [(s, c, 1.0) for s, c, b in plates if b == "reflector"] + [(s, c, 1.0) for s, c, b, _ in full_parts if b == "reflector"]
     crown_pcb_grp = [(s, c, 1.0) for s, c, b in plates if b == "crown"] + [(s, c, 1.0) for s, c, b, _ in full_parts if b == "crown"]
+    dome_pcb_grp = [(s, c, 1.0) for s, c, b in plates if b == "dome"] + [(s, c, 1.0) for s, c, b, _ in full_parts if b == "dome"]
 
     exploded = (
         shifted([(base, STL_COLOURS["base"], 1.0), (mast_clamp.translate((0, 0, -24)), STL_COLOURS["mast_clamp"], 1.0)], -68)
@@ -323,11 +351,26 @@ def main():
         + shifted(refl_grp, 18)
         + shifted([(wind_tunnel, STL_COLOURS["wind_tunnel"], 0.92),
                    (strut_cover.translate((16, 0, 16)), STL_COLOURS["strut_cover"], 1.0)], 36)
-        + shifted(crown_pcb_grp, 64)
-        + shifted([(crown_silk, STL_COLOURS["crown"], 0.95), (legend, SILK, 1.0), (uv_lens, GLASS_UV, 0.9)], 95)
+        + shifted(crown_pcb_grp + [(b2b_riser, GOLD, 1.0)], 62)
+        + shifted(dome_pcb_grp + [(uv_retainer_nut, BRASS, 1.0)], 78)
+        + shifted([(crown_silk, STL_COLOURS["crown"], 0.95), (legend, SILK, 1.0), (uv_lens, GLASS_UV, 0.35)], 104)
     )
     render("exploded", exploded, (360, 210, 360), focal=(0, 115, 0), zoom=1.02)
-    stl_part_views(stl_map)
+
+    # Crown close-up from above showing transparent hollow JGS1 hemisphere + elevated `dome` Micro-PCB + B2B riser + O-ring + nut + 4 Murata piezos + lowered `crown` PCB
+    crown_inside_items = (
+        [(crown.intersect(keep), STL_COLOURS["crown"], 0.30),
+         (crown.cut(keep), STL_COLOURS["crown"], 0.12),
+         (uv_lens.intersect(keep), GLASS_UV, 0.38),
+         (uv_lens.cut(keep), GLASS_UV, 0.16),
+         (uv_retainer_nut.intersect(keep), BRASS, 1.0),
+         (uv_retainer_nut.cut(keep), BRASS, 0.35),
+         (b2b_riser, GOLD, 1.0),
+         (orings.intersect(box(-15, 15, 190, 200, -15, 15)), STL_COLOURS["orings"], 0.92)]
+        + crown_pcb_grp
+        + dome_pcb_grp
+    )
+    stl_part_views(stl_map, crown_inside_items=crown_inside_items)
 
 
 if __name__ == "__main__":

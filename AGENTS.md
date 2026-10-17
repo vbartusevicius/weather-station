@@ -2,7 +2,7 @@
 
 ## Project intent and current scope
 
-Design and build an all-solid-state, monolithic cylindrical rooftop weather and air-quality station (`Ø 96 × 198 mm` in UV-stabilized ASA) inspired by the Ambient Weather WS-4000 / Ecowitt WS90, WeatherFlow Tempest, and Vaisala WXT536, engineered to the same end-to-end verification standards as `knx-dali-gateway`:
+Design and build an all-solid-state, monolithic cylindrical rooftop weather and air-quality station (`Ø 96 × 198 mm` in UV-stabilized ASA) inspired by the Ambient Weather WS-4000 / Ecowitt WS90, WeatherFlow Tempest, and Vaisala WXT536, with full end-to-end automated hardware, mechanical, and firmware verification:
 
 - **Power & Connectivity:** Wide-input **12–32 V DC wired roof supply** (`KF142R-5.08-2P` push-in terminal, `1.1 A` PTC fuse, `SMAJ33A` TVS surge protection, `SS16` reverse-polarity protection, `470 µF` reservoir, `SCT2400` 40 V buck converter + `LM66100` ideal diode feeding a socketed **Seeed XIAO ESP32-C6**), plus a closed-loop **constant-wattage (`4.0 W`) PWM de-icing heater** (`AO3400A` MOSFET + `2× 27 Ω 2512` heater array + `10k` NTC thermistor) that scales duty cycle automatically from measured `VIN_ADC` (`12..32 V`).
 - **All-Solid-State Sensor Suite (12 Parameters, Zero Moving Parts):**

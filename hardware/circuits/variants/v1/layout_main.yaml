@@ -6,7 +6,7 @@ frame:
   min_track: 0.12
   edge_clearance: 0.3
   silk_inside: true
-  fine_pitch_power_pads: [U1, U2, U4, U5, U6, J2, J3, J4]
+  fine_pitch_power_pads: [U1, U2, U4, U5, U6, U7, U8, J2, J3, J4, R1, R5]
   raised_modules: [U3]
   plane_layers: [In1.Cu]
   domains: [SELV-MAIN]
@@ -22,7 +22,7 @@ frame:
 
 heights:
   default: 1.2
-  J1: 11.1
+  J1: 11.0
   F1: 1.2
   D1: 2.0
   D2: 2.0
@@ -34,9 +34,8 @@ heights:
   U2: 1.0
   U3: 11.0
   SW1: 1.5
-  U7: 1.1
-  D4: 0.65
-  D5: 0.65
+  U7: 1.65
+  U8: 1.15
   U4: 0.8
   U5: 0.9
   U6: 0.9
@@ -46,12 +45,12 @@ heights:
   J3: 4.25
 
 parts:
-  # --- Front (+y): Connectors, XIAO module (with 5V buck underneath), status LEDs ---
-  J1:  { x: 8.5,   y: 8.5,   rot: 180, block: power_in, locked: true }
-  F1:  { x: 19.5,  y: 6.0,   rot: 90,  block: power_in }
-  D1:  { x: 25.0,  y: 6.0,   rot: 90,  block: power_in }
-  D2:  { x: 30.5,  y: 6.0,   rot: 90,  block: power_in }
-  C1:  { x: 35.5,  y: 6.0,   rot: 90,  block: power_in }
+  # --- Front (+y): 4-Pole Push-In Terminal J1 (12-32V + RS-485), Protection, XIAO, RS-485 AFE ---
+  J1:  { x: 9.0,   y: 7.0,   rot: 180, block: power_in, locked: true }
+  F1:  { x: 20.5,  y: 6.0,   rot: 90,  block: power_in }
+  D1:  { x: 26.0,  y: 6.0,   rot: 90,  block: power_in }
+  D2:  { x: 31.2,  y: 6.0,   rot: 90,  block: power_in }
+  C1:  { x: 36.0,  y: 6.0,   rot: 90,  block: power_in }
 
   # XIAO ESP32-C6 on 5.0 mm sockets, with SCT2400 5V buck nested between socket rows
   U3:  { x: 14.5,  y: 31.0,  rot: 0,   block: mcu, locked: true }
@@ -74,14 +73,15 @@ parts:
   R11: { x: 25.0,  y: 32.9,  rot: 0,   block: mcu }
   C10: { x: 25.0,  y: 34.6,  rot: 0,   block: mcu }
 
-  SW1: { x: 4.5,   y: 46.0,  rot: 0,   block: mcu, locked: true }
-  U7:  { x: 12.0,  y: 45.5,  rot: 0,   block: status_leds }
-  C11: { x: 12.0,  y: 48.5,  rot: 0,   block: status_leds }
-  R12: { x: 16.0,  y: 45.5,  rot: 0,   block: status_leds }
-  D4:  { x: 4.5,   y: 51.5,  rot: 0,   block: status_leds, locked: true }
-  C12: { x: 8.0,   y: 51.5,  rot: 90,  block: status_leds }
-  D5:  { x: 11.5,  y: 51.5,  rot: 0,   block: status_leds, locked: true }
-  C13: { x: 15.0,  y: 51.5,  rot: 90,  block: status_leds }
+  SW1: { x: 4.5,   y: 44.5,  rot: 0,   block: mcu, locked: true }
+  U8:  { x: 10.5,  y: 44.0,  rot: 0,   block: rs485 }
+  C11: { x: 15.0,  y: 44.0,  rot: 90,  block: rs485 }
+  U7:  { x: 12.0,  y: 50.5,  rot: 0,   block: rs485 }
+  C12: { x: 17.5,  y: 48.0,  rot: 0,   block: rs485 }
+  R12: { x: 17.5,  y: 50.2,  rot: 0,   block: rs485 }
+  R13: { x: 17.5,  y: 52.4,  rot: 0,   block: rs485 }
+  R14: { x: 17.5,  y: 54.4,  rot: 0,   block: rs485 }
+  C13: { x: 4.5,   y: 50.0,  rot: 0,   block: rs485 }
 
   J2:  { x: 28.0,  y: 51.5,  rot: 0,   block: int_crown, locked: true }
   J3:  { x: 28.0,  y: 45.5,  rot: 0,   block: int_probe, locked: true }
@@ -107,4 +107,4 @@ parts:
   C17: { x: 16.5,  y: 44.5,  rot: 0,   side: back, block: lightning }
   L2:  { x: 31.0,  y: 43.0,  rot: 0,   side: back, block: lightning }
   C18: { x: 22.0,  y: 48.5,  rot: 0,   side: back, block: lightning }
-  R13: { x: 22.0,  y: 51.0,  rot: 0,   side: back, block: lightning }
+  R15: { x: 22.0,  y: 51.0,  rot: 0,   side: back, block: lightning }

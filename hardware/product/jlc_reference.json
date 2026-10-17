@@ -394,6 +394,44 @@
         "2": "2"
       }
     },
+    "C1647": {
+      "record": {
+        "componentModelEn": "CL10C180JB8NNNC",
+        "componentBrandEn": "Samsung Electro-Mechanics",
+        "componentSpecificationEn": "0603",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Samsung-Electro-Mechanics-CL10C180JB8NNNC_C1647.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C1647",
+            "attribute_value_name": "50V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C1647",
+            "attribute_value_name": "18pF"
+          }
+        ]
+      },
+      "footprint": "C0603",
+      "pads": [
+        [
+          "2",
+          0.700023999999964,
+          -0.0
+        ],
+        [
+          "1",
+          -0.700023999999964,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
+      }
+    },
     "C1850416": {
       "record": {
         "componentModelEn": "VEML7700-TT",
@@ -960,123 +998,6 @@
         "4": "NC",
         "5": "ST",
         "6": "VOUT"
-      }
-    },
-    "C2890035": {
-      "record": {
-        "componentModelEn": "SK6805-EC15",
-        "componentBrandEn": "OPSCO Optoelectronics",
-        "componentSpecificationEn": "SMD-4P,1.5x1.5mm",
-        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2108251530_OPSCO-Optoelectronics-SK6805-EC15_C2890035.pdf",
-        "componentLibraryType": "expand",
-        "attributes": []
-      },
-      "footprint": "LED-SMD_4P-L1.5-W1.5-BL",
-      "pads": [
-        [
-          "4",
-          -0.47510699999999817,
-          0.47510699999999817
-        ],
-        [
-          "1",
-          -0.47510699999999817,
-          -0.4748530000000619
-        ],
-        [
-          "2",
-          0.47510699999999817,
-          -0.47510699999999817
-        ],
-        [
-          "3",
-          0.47510699999999817,
-          0.47510699999999817
-        ]
-      ],
-      "pin_names": {
-        "1": "DIN",
-        "2": "VDD",
-        "3": "DOUT",
-        "4": "GND"
-      }
-    },
-    "C2905415": {
-      "record": {
-        "componentModelEn": "KH-2.54FH-1X4P-H8.5",
-        "componentBrandEn": "Shenzhen Kinghelm Elec",
-        "componentSpecificationEn": "Plugin,P=2.54mm",
-        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2110191530_Shenzhen-Kinghelm-Elec-KH-2-54FH-1X4P-H8-5_C2905415.pdf",
-        "componentLibraryType": "expand",
-        "attributes": []
-      },
-      "footprint": "HDR-TH_4P-P2.54-V-F",
-      "pads": [
-        [
-          "1",
-          -3.81,
-          -0.0
-        ],
-        [
-          "2",
-          -1.27,
-          -0.0
-        ],
-        [
-          "3",
-          1.27,
-          -0.0
-        ],
-        [
-          "4",
-          3.81,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "1": "1",
-        "2": "2",
-        "3": "3",
-        "4": "4"
-      }
-    },
-    "C2905435": {
-      "record": {
-        "componentModelEn": "KH-2.54PH180-1X4P-L11.5",
-        "componentBrandEn": "Shenzhen Kinghelm Elec",
-        "componentSpecificationEn": "Plugin,P=2.54mm",
-        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2110191530_Shenzhen-Kinghelm-Elec-KH-2-54PH180-1X4P-L11-5_C2905435.pdf",
-        "componentLibraryType": "expand",
-        "attributes": []
-      },
-      "footprint": "HDR-TH_4P-P2.54-V-M",
-      "pads": [
-        [
-          "1",
-          -3.81,
-          -0.0
-        ],
-        [
-          "2",
-          -1.27,
-          -0.0
-        ],
-        [
-          "3",
-          1.27,
-          -0.0
-        ],
-        [
-          "4",
-          3.81,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "1": "1",
-        "2": "2",
-        "3": "3",
-        "4": "4"
       }
     },
     "C3178344": {
@@ -1779,40 +1700,42 @@
         "1": "1"
       }
     },
-    "C475144": {
+    "C475156": {
       "record": {
-        "componentModelEn": "KF142R-5.08-2P",
+        "componentModelEn": "KF250-3.5-4P-1",
         "componentBrandEn": "Cixi Kefa Elec",
-        "componentSpecificationEn": "Push-Pull,P=5.08mm",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2303170930_Cixi-Kefa-Elec-KF142R-5-08-2P_C475144.pdf",
+        "componentSpecificationEn": "Plugin,P=3.5mm",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Cixi-Kefa-Elec-KF250-3-5-4P-1_C475156.pdf",
         "componentLibraryType": "expand",
         "attributes": []
       },
-      "footprint": "CONN-TH_2P-P5.08_KF142R-5.08-2P",
+      "footprint": "CONN-TH_4P-P3.50_KF250-3.5-4P-1",
       "pads": [
         [
           "1",
-          -2.54,
-          3.81
+          -5.250052999999992,
+          2.499995000000051
         ],
         [
           "2",
-          2.54,
-          3.81
+          -1.7499330000000572,
+          -2.4999949999999354
         ],
         [
-          "1",
-          -2.54,
-          -3.81
+          "3",
+          1.7501869999999935,
+          2.499995000000051
         ],
         [
-          "2",
-          2.54,
-          -3.81
+          "4",
+          5.250052999999992,
+          -2.4999949999999354
         ]
       ],
       "pin_names": {
         "1": "1",
+        "4": "4",
+        "3": "3",
         "2": "2"
       }
     },
@@ -2136,51 +2059,6 @@
         "16": "VDD"
       }
     },
-    "C7484": {
-      "record": {
-        "componentModelEn": "SN74AHCT1G125DBVR",
-        "componentBrandEn": "Texas Instruments",
-        "componentSpecificationEn": "SOT-23-5",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_1809192136_Texas-Instruments-SN74AHCT1G125DBVR_C7484.pdf",
-        "componentLibraryType": "expand",
-        "attributes": []
-      },
-      "footprint": "SOT-23-5_L3.0-W1.7-P0.95-LS2.8-BR",
-      "pads": [
-        [
-          "5",
-          -1.30009900000001,
-          -0.9499599999999445
-        ],
-        [
-          "4",
-          -1.30009900000001,
-          0.9499600000000601
-        ],
-        [
-          "3",
-          1.30009900000001,
-          0.9499600000000601
-        ],
-        [
-          "2",
-          1.30009900000001,
-          -0.0
-        ],
-        [
-          "1",
-          1.30009900000001,
-          -0.9499599999999445
-        ]
-      ],
-      "pin_names": {
-        "1": "OE#",
-        "2": "A",
-        "3": "GND",
-        "4": "Y",
-        "5": "VCC"
-      }
-    },
     "C7955": {
       "record": {
         "componentModelEn": "LM393DR2G",
@@ -2241,6 +2119,69 @@
         "5": "IN/B",
         "6": "IN/B/2",
         "7": "OUT/B",
+        "8": "VCC"
+      }
+    },
+    "C8963": {
+      "record": {
+        "componentModelEn": "SP3485EN-L/TR",
+        "componentBrandEn": "MaxLinear",
+        "componentSpecificationEn": "SOIC-8",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_MaxLinear-SP3485EN-L-TR_C8963.pdf",
+        "componentLibraryType": "base",
+        "attributes": []
+      },
+      "footprint": "SOIC-8_L5.0-W4.0-P1.27-LS6.0-BL",
+      "pads": [
+        [
+          "1",
+          -1.905,
+          -2.705100000000023
+        ],
+        [
+          "2",
+          -0.635,
+          -2.705100000000023
+        ],
+        [
+          "3",
+          0.635,
+          -2.705100000000023
+        ],
+        [
+          "4",
+          1.905,
+          -2.705100000000023
+        ],
+        [
+          "8",
+          -1.905,
+          2.705100000000023
+        ],
+        [
+          "7",
+          -0.635,
+          2.705100000000023
+        ],
+        [
+          "6",
+          0.635,
+          2.705100000000023
+        ],
+        [
+          "5",
+          1.905,
+          2.705100000000023
+        ]
+      ],
+      "pin_names": {
+        "1": "RO",
+        "2": "RE#",
+        "3": "DE",
+        "4": "DI",
+        "5": "GND",
+        "6": "A",
+        "7": "B",
         "8": "VCC"
       }
     },

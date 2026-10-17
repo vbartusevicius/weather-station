@@ -1,6 +1,6 @@
 (footprint "LED_SK6805-EC15_1.5x1.5mm"
 	(version 20241229)
-	(generator "knx-dali-gateway")
+	(generator "weather-station")
 	(layer "F.Cu")
 	(descr "OPSCO SK6805-EC15 addressable RGB LED, 1.5 x 1.5 x 0.65 mm, pads from the datasheet's recommended pattern. Datasheet numbers at the datasheet's top-view positions: 1 DIN bottom-left, 2 VDD bottom-right, 3 DOUT top-right, 4 GND top-left (use the gateway:SK6805-EC15 symbol)")
 	(attr smd)

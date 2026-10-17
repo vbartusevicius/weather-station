@@ -316,6 +316,25 @@
         "line_style": 0,
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
+        "name": "DOME-Power",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 1,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.3,
+        "tuning_profile": "",
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "clearance": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.2,
+        "line_style": 0,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
         "name": "MAIN-Power",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "priority": 1,
@@ -354,7 +373,45 @@
         "line_style": 0,
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
+        "name": "REFLECTOR-Power",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 1,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.3,
+        "tuning_profile": "",
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "clearance": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.2,
+        "line_style": 0,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
         "name": "SELV-CROWN",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 2,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.2,
+        "tuning_profile": "",
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "clearance": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.2,
+        "line_style": 0,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "name": "SELV-DOME",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "priority": 2,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
@@ -393,6 +450,25 @@
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
         "name": "SELV-PROBE",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 2,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.2,
+        "tuning_profile": "",
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "clearance": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.2,
+        "line_style": 0,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "name": "SELV-REFLECTOR",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "priority": 2,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
@@ -471,27 +547,31 @@
       },
       {
         "netclass": "SELV-MAIN",
-        "pattern": "LED_CHAIN1"
-      },
-      {
-        "netclass": "SELV-MAIN",
-        "pattern": "LED_DATA"
-      },
-      {
-        "netclass": "SELV-MAIN",
-        "pattern": "N$1"
-      },
-      {
-        "netclass": "SELV-MAIN",
-        "pattern": "N$2"
-      },
-      {
-        "netclass": "SELV-MAIN",
         "pattern": "NTC_SENSE"
       },
       {
         "netclass": "SELV-MAIN",
         "pattern": "RAIN_ADC"
+      },
+      {
+        "netclass": "SELV-MAIN",
+        "pattern": "RS485_A"
+      },
+      {
+        "netclass": "SELV-MAIN",
+        "pattern": "RS485_B"
+      },
+      {
+        "netclass": "SELV-MAIN",
+        "pattern": "RS485_DE"
+      },
+      {
+        "netclass": "SELV-MAIN",
+        "pattern": "RS485_IO"
+      },
+      {
+        "netclass": "SELV-MAIN",
+        "pattern": "RS485_RO"
       },
       {
         "netclass": "SELV-MAIN",

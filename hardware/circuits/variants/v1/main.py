@@ -37,8 +37,9 @@ def build():
 
     pwr = power_heater.build(gnd, heat_pwm)
     vin_prot, v5, vin_adc, heat_sw = pwr["vin_prot"], pwr["v5"], pwr["vin_adc"], pwr["heat_sw"]
+    rs485_a, rs485_b = pwr["rs485_a"], pwr["rs485_b"]
 
-    mcu = mcu_xiao.build(gnd, v3, v5, vin_adc, heat_pwm)
+    mcu = mcu_xiao.build(gnd, v3, v5, vin_adc, heat_pwm, rs485_a, rs485_b)
     ntc_sense = mcu["ntc_sense"]
     rain_adc = mcu["rain_adc"]
     sda, scl = mcu["sda"], mcu["scl"]
@@ -65,8 +66,8 @@ NET_CLASSES = {
     "SELV-MAIN": [
         "GND", "+3V3", "+5V", "+5V_XIAO", "VIN_ADC", "NTC_SENSE", "RAIN_ADC",
         "HEAT_PWM", "HEAT_GATE", "I2C_SDA", "I2C_SCL", "US_SEL_A", "US_SEL_B",
-        "US_TX", "US_RX", "LED_DATA", "LED_CHAIN1", "BUCK5_SW", "BUCK5_BST",
-        "BUCK5_EN", "BUCK5_FB", "AS_ACG", "AS_INP", "Net-*",
+        "US_TX", "US_RX", "RS485_IO", "RS485_DE", "RS485_RO", "RS485_A", "RS485_B",
+        "BUCK5_SW", "BUCK5_BST", "BUCK5_EN", "BUCK5_FB", "AS_ACG", "AS_INP", "Net-*",
     ],
     "MAIN-Power": ["VIN_RAW", "VIN_FUSED", "VIN_PROT", "HEAT_SW", "+5V", "+5V_XIAO"],
 }

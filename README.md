@@ -1,6 +1,6 @@
 # AeroMet V1 — All-Solid-State Ultrasonic, Haptic-Rain & Multi-Gas Roof Weather Station
 
-Open-source, monolithic cylindrical rooftop weather and air-quality station (**`Ø 96 × 198 mm`** in UV-stabilized **ASA**) with **zero moving parts**, engineered with the same end-to-end verification pipeline as `knx-dali-gateway`: SKiDL circuit generation, KiCad 10 4-layer PCBs (`0 DRC errors, 0 unrouted`), pin-for-pin JLCPCB/EasyEDA assembly verification, single-order `100.0 × 56.1 mm` breakaway mouse-bite panelization, parametric CadQuery 3D enclosure with BRep collision/fit checks, and portable C++17 ESP32-C6 firmware with live WebSocket Web UI and Home Assistant MQTT Auto-Discovery.
+Open-source, monolithic cylindrical rooftop weather and air-quality station (**`Ø 96 × 198 mm`** in UV-stabilized **ASA**) with **zero moving parts**, engineered with an end-to-end automated verification pipeline: SKiDL circuit generation, KiCad 10 4-layer PCBs (`0 DRC errors, 0 unrouted`), pin-for-pin JLCPCB/EasyEDA assembly verification, single-order `146.1 × 56.1 mm` 5-board breakaway mouse-bite panelization, parametric CadQuery 9-part 3D enclosure with BRep collision/fit checks, and portable C++17 ESP32-C6 firmware with Dual-Path Connectivity (boosted `2.4 / 5 GHz` U.FL Wi-Fi + `115,200 bps` RS-485 over the roof cable), live WebSocket Web UI, and Home Assistant MQTT Auto-Discovery.
 
 | Exploded Assembly View | Internal X-Ray View | Vertical Cutaway Section | Exterior Isometric |
 | :---: | :---: | :---: | :---: |
@@ -38,18 +38,6 @@ Open-source, monolithic cylindrical rooftop weather and air-quality station (**`
 3. **Hybrid Haptic Piezoelectric + Capacitive + IMU Rain DSP:**
    - Raindrops striking the `12°` sloped top crown dome excite a bonded `27 mm` piezoelectric disc (`crown J6`) amplified and integrated by `TLV9062` (`crown U5`).
    - Firmware cross-checks every acoustic impulse against the capacitive wet-surface baseline and the `LSM6DS3TR-C` accelerometer, rejecting dry wind-induced mast vibrations while integrating drop volume ($\text{mm}^3 \to \text{mm}$) and classifying hail impacts.
-
----
-
-## PCB Stack & Single-Order Breakaway Panel (`hardware/releases/v1/`)
-
-All three 4-layer `1.2 mm` PCBs are combined onto a single **`100.0 × 56.1 mm` mouse-bite breakaway panel (`panel/`)** so the entire station can be ordered at JLCPCB as **1 PCB + 1 PCBA job**:
-
-| Board | Dimensions | Top 3D Render | Bottom 3D Render | Layer Renders & Files |
-| :---: | :---: | :---: | :---: | :--- |
-| **`main`**<br>*(Lower Bay)* | `41.0 × 56.0 mm`<br>4 layers, `1.2 mm` | ![main top](hardware/releases/v1/enclosure/renders/main_top.png) | ![main bottom](hardware/releases/v1/enclosure/renders/main_bottom.png) | [`hardware/releases/v1/main/`](hardware/releases/v1/main/) |
-| **`crown`**<br>*(Top Shroud)* | `41.0 × 56.0 mm`<br>4 layers, `1.2 mm` | ![crown top](hardware/releases/v1/enclosure/renders/crown_top.png) | ![crown bottom](hardware/releases/v1/enclosure/renders/crown_bottom.png) | [`hardware/releases/v1/crown/`](hardware/releases/v1/crown/) |
-| **`probe`**<br>*(Pagoda Core)* | `14.0 × 56.0 mm`<br>4 layers, `1.2 mm` | ![probe top](hardware/releases/v1/enclosure/renders/probe_top.png) | ![probe bottom](hardware/releases/v1/enclosure/renders/probe_bottom.png) | [`hardware/releases/v1/probe/`](hardware/releases/v1/probe/) |
 
 ---
 

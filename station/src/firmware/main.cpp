@@ -1,6 +1,7 @@
 #include <cstdio>
 
 #include <driver/gpio.h>
+#include <driver/uart.h>
 #include <esp_http_server.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
@@ -13,6 +14,7 @@
 #include "firmware/WebAssets.hpp"
 #include "heater/DeIcingHeater.hpp"
 #include "rain/HapticRain.hpp"
+#include "rs485/Rs485Protocol.hpp"
 #include "telemetry/HomeAssistantMqtt.hpp"
 #include "wind/UltrasonicWind.hpp"
 
@@ -73,8 +75,47 @@ void init_gpio() {
     io_conf.pin_bit_mask = (1ULL << station::firmware::board::us_sel_a_pin) |
                            (1ULL << station::firmware::board::us_sel_b_pin) |
                            (1ULL << station::firmware::board::us_tx_pin) |
-                           (1ULL << station::firmware::board::heat_pwm_pin);
+                           (1ULL << station::firmware::board::heat_pwm_pin) |
+                           (1ULL << station::firmware::board::rf_switch_power_pin) |
+                           (1ULL << station::firmware::board::rf_antenna_select_pin);
     gpio_config(&io_conf);
+
+    // Enable XIAO ESP32-C6 FM8625H RF switch (GPIO3 = LOW) and route RF to external U.FL FPC dipole (GPIO14 = HIGH)
+    gpio_set_level(station::firmware::board::rf_switch_power_pin, 0);
+    gpio_set_level(station::firmware::board::rf_antenna_select_pin, 1);
+}
+
+void init_rs485_uart() {
+    uart_config_t uart_cfg{};
+    uart_cfg.baud_rate = static_cast<int>(station::rs485::Rs485Protocol::kDefaultBaudRate);
+    uart_cfg.data_bits = UART_DATA_8_BITS;
+    uart_cfg.parity = UART_PARITY_DISABLE;
+    uart_cfg.stop_bits = UART_STOP_BITS_1;
+    uart_cfg.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
+    uart_cfg.source_clk = UART_SCLK_DEFAULT;
+    uart_driver_install(UART_NUM_1, 512, 512, 0, nullptr, 0);
+    uart_param_config(UART_NUM_1, &uart_cfg);
+    uart_set_pin(UART_NUM_1, station::firmware::board::rs485_io_pin,
+                 station::firmware::board::rs485_io_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+}
+
+void poll_and_publish_rs485() {
+    char rx_buf[64];
+    const int n_rx = uart_read_bytes(UART_NUM_1, rx_buf, sizeof(rx_buf) - 1, 0);
+    if (n_rx > 0) {
+        rx_buf[n_rx] = '\0';
+        const auto cmd = station::rs485::Rs485Protocol::parse_command_frame(rx_buf, static_cast<std::size_t>(n_rx));
+        if (cmd == station::rs485::CommandType::Ping) {
+            static constexpr const char kPong[] = "$AM,PONG*0000\r\n";
+            uart_write_bytes(UART_NUM_1, kPong, sizeof(kPong) - 1);
+        } else if (cmd == station::rs485::CommandType::ResetDailyRain) {
+            g_rain_proc.reset_daily();
+        }
+    }
+    const std::string frame = station::rs485::Rs485Protocol::encode_telemetry_frame(g_snapshot);
+    if (!frame.empty()) {
+        uart_write_bytes(UART_NUM_1, frame.c_str(), frame.size());
+    }
 }
 
 }  // namespace
@@ -87,6 +128,7 @@ extern "C" void app_main(void) {
     }
 
     init_gpio();
+    init_rs485_uart();
     start_web_server();
 
     while (true) {
@@ -98,6 +140,7 @@ extern "C" void app_main(void) {
         g_snapshot.atmo = station::environment::MetCalculator::compute(g_snapshot.atmo_raw);
         g_snapshot.aq = station::airquality::AirQualityEvaluator::evaluate(g_snapshot.aq_raw);
         g_snapshot.heater = station::heater::DeIcingHeaterController::update({});
+        poll_and_publish_rs485();
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

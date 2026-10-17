@@ -1,0 +1,5 @@
+Designator,LCSC,Manufacturer part,JLCPCB footprint,Layer,KiCad rotation,JLCPCB rotation,Stock,Library,Result
+C1,C14663,CC0603KRX7R9BB104,C0603,Bottom,0,0,49455221,base,lands pin for pin
+C2,C14663,CC0603KRX7R9BB104,C0603,Bottom,0,0,49455221,base,lands pin for pin
+J1,C41417361,HX PZ2.54-1x4P TP-YQ,CONN-SMD_HX-PZ2.54-1X4P-TP-YQ,Bottom,0,0,61437,expand,lands pin for pin
+U2,C1850416,VEML7700-TT,SENSOR-SMD_EML7700-TT,Top,90,90,7324,expand,lands pin for pin
