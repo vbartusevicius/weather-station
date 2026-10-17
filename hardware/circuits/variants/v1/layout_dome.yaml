@@ -45,7 +45,7 @@ parts:
   U1:  { x: 4.6,   y: 6.8,   rot: 0,   block: uv_als, locked: true }
   U2:  { x: 9.0,   y: 6.8,   rot: 90,  block: uv_als, locked: true }
 
-  # --- Bottom (-y, B.Cu, shaded underneath the PCB): C1, C2 decoupling caps + 4-pin vertical B2B riser receptor J1 ---
-  J1:  { x: 6.8,   y: 5.5,   rot: 0,   side: back, block: int_crown, locked: true }
-  C1:  { x: 4.5,   y: 10.2,  rot: 0,   side: back, block: uv_als }
-  C2:  { x: 9.1,   y: 10.2,  rot: 0,   side: back, block: uv_als }
+  # --- Bottom (-y, B.Cu, shaded underneath the PCB): 4-pin vertical B2B male header J1 dead-center at (6.8, 6.8) + C1, C2 ---
+  J1:  { x: 6.8,   y: 6.8,   rot: 0,   side: back, block: int_crown, locked: true }
+  C1:  { x: 6.8,   y: 11.5,  rot: 0,   side: back, block: uv_als }
+  C2:  { x: 6.8,   y: 2.1,   rot: 0,   side: back, block: uv_als }

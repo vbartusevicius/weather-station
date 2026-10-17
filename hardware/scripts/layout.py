@@ -53,6 +53,7 @@ MODELS_3D = {
     "HX_PZ2.54-1x4P-SMD": ("HX_PZ2.54-1x4P-SMD.step", 0),
     "HX_PM2.54-1x4P-RA-SMD": ("HX_PM2.54-1x4P-RA-SMD.step", 0),
     "TerminalBlock_Kefa_KF250-3.5-4P": ("TerminalBlock_Kefa_KF250-3.5-4P.step", 0),
+    "MEMSIC_MMC5603NJ_WLCSP-4": ("MEMSIC_MMC5603NJ_WLCSP-4.step", 0),
 }
 
 

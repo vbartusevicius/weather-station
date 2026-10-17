@@ -305,8 +305,6 @@ def main():
     ] + inside
 
     render("iso", exterior, (260, 175, 260), focal=(0, 102, 0), zoom=1.12)
-    render("front", exterior, (0, 105, 360), focal=(0, 102, 0), zoom=1.12)
-    render("back", exterior, (0, 105, -360), focal=(0, 102, 0), zoom=1.12)
     render("inside", [
         (base, STL_COLOURS["base"], 0.22),
         (mast_clamp, STL_COLOURS["mast_clamp"], 0.28),

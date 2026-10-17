@@ -22,7 +22,7 @@ FP_LVC2G04 = "gateway_fp:TI_SN74LVC2G04_SOT-23-6"
 FP_CD4052 = "gateway_fp:TI_CD4052BM96_SOIC-16"
 FP_TLV9062 = "gateway_fp:TI_TLV9062IDR_SOIC-8"
 FP_LM393 = "gateway_fp:ON_LM393DR2G_SOIC-8"
-FP_LIS2MDL = "gateway_fp:ST_LIS2MDLTR_LGA-12"
+FP_MMC5603 = "gateway_fp:MEMSIC_MMC5603NJ_WLCSP-4"
 
 
 def res(value, fields=None, footprint=R0603):
@@ -254,29 +254,17 @@ def build(gnd, v5, v3, sda, scl, us_sel_a, us_sel_b, us_tx, us_rx, rain_adc):
     u5["7"] += rain_adc
 
     # =========================================================================
-    # 3. Digital Auto-North Magnetometer (LIS2MDLTR, I2C 0x1E)
+    # 3. Digital Auto-North Magnetometer (MEMSIC MMC5603NJ 20-bit AMR, I2C 0x30)
     # =========================================================================
     block("compass")
-    u6 = part("gateway", "LIS2MDL", "LIS2MDLTR", FP_LIS2MDL,
-              src(mpn="LIS2MDLTR", mfr="STMicroelectronics", lcsc="C919695",
-                  source="3-axis magnetometer for Digital True/Magnetic North auto-alignment (I2C 0x1E)"),
+    u6 = part("gateway", "MMC5603", "MMC5603NJ", FP_MMC5603,
+              src(mpn="MMC5603NJ", mfr="MEMSIC", lcsc="C404328",
+                  source="20-bit 3-axis AMR magnetometer with on-chip degaussing for Digital North auto-alignment (I2C 0x30)"),
               ref="U6")
-    lis_c1 = Net("LIS_C1")
-    u6["1"] += scl
-    u6["2"] += gnd
-    u6["3"] += v3
-    u6["4"] += sda
-    u6["5"] += v3
-    u6["6"] += lis_c1
-    u6["7"] += gnd
-    u6["8"] += gnd
-    u6["9"] += v3
-    u6["10"] += v3
-    u6["11"] += gnd
-    u6["12"] += gnd
-    c_lis1 = cap("220n 50V", src(source="LIS2MDL C1 charge-pump reservoir capacitor"))
-    c_lis1[1] += lis_c1
-    c_lis1[2] += gnd
-    c_lis2 = cap("100n 50V", src(source="LIS2MDL VDD decoupling"))
-    c_lis2[1] += v3
-    c_lis2[2] += gnd
+    u6["A1"] += gnd
+    u6["A2"] += scl
+    u6["B1"] += v3
+    u6["B2"] += sda
+    c_mmc = cap("100n 50V", src(source="MMC5603NJ VDD decoupling"))
+    c_mmc[1] += v3
+    c_mmc[2] += gnd

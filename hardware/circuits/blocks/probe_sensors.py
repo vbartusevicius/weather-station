@@ -131,11 +131,11 @@ def build(gnd, v3, sda, scl, vin_prot):
     c_sgp[1] += v3
     c_sgp[2] += gnd
 
-    # --- U3: Sensirion SHT45-AD1F-R2 Precision Temp & Humidity Sensor (I2C 0x44) ---
+    # --- U3: Sensirion SHT40-AD1F-R2 Temp & Humidity Sensor (I2C 0x44) ---
     block("thermo_hygro")
-    u3 = part("gateway", "SHT45", "SHT45-AD1F-R2", FP_SHT45,
-              src(mpn="SHT45-AD1F-R2", mfr="Sensirion", lcsc="C5360602",
-                  source="Sensirion SHT45-AD1F-R2 +/-0.1 C, +/-1.0% RH sensor with PTFE membrane (I2C 0x44)"),
+    u3 = part("gateway", "SHT45", "SHT40-AD1F-R2", FP_SHT45,
+              src(mpn="SHT40-AD1F-R2", mfr="Sensirion", lcsc="C7461846",
+                  source="Sensirion SHT40-AD1F-R2 +/-0.2 C, +/-1.8% RH sensor with IP67 PTFE membrane (I2C 0x44)"),
               ref="U3")
     u3["1"] += sda
     u3["2"] += scl

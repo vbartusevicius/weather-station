@@ -496,10 +496,6 @@
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "LIS_C1"
-      },
-      {
-        "netclass": "SELV-CROWN",
         "pattern": "N$1"
       },
       {

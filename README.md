@@ -1,59 +1,87 @@
-# AeroMet V1 — All-Solid-State Ultrasonic, Haptic-Rain & Multi-Gas Roof Weather Station
+# AeroMet V1 — Solid-State Roof Weather & Air-Quality Station
 
-Open-source, monolithic cylindrical rooftop weather and air-quality station (**`Ø 96 × 198 mm`** in UV-stabilized **ASA**) with **zero moving parts**, engineered with an end-to-end automated verification pipeline: SKiDL circuit generation, KiCad 10 4-layer PCBs (`0 DRC errors, 0 unrouted`), pin-for-pin JLCPCB/EasyEDA assembly verification, single-order `146.1 × 56.1 mm` 5-board breakaway mouse-bite panelization, parametric CadQuery 9-part 3D enclosure with BRep collision/fit checks, and portable C++17 ESP32-C6 firmware with Dual-Path Connectivity (boosted `2.4 / 5 GHz` U.FL Wi-Fi + `115,200 bps` RS-485 over the roof cable), live WebSocket Web UI, and Home Assistant MQTT Auto-Discovery.
+Open-source roof weather and air-quality station (`Ø 96 × 207 mm` in UV-stabilized ASA) with no moving parts. It measures wind speed and direction by ultrasonic time-of-flight, rainfall and hail by acoustic impact on a 4-piezo dome, UV and solar radiation under a fused-silica quartz hemisphere, temperature, humidity, barometric pressure, lightning distance, and outdoor air quality ($\text{PM}_{1.0}$, $\text{PM}_{2.5}$, $\text{PM}_{4.0}$, $\text{PM}_{10}$, $\text{VOC}$, $\text{NO}_x$, and $\text{CO}_2$).
 
-| Exploded Assembly View | Internal X-Ray View | Vertical Cutaway Section | Exterior Isometric |
+The station runs from a wired `12–32 V DC` supply and communicates over both **Wi-Fi** (boosted by an internal `2.4 / 5.8 GHz` U.FL dipole antenna) and **RS-485** (`115,200 bps` over the spare pair in a 4-wire roof cable).
+
+| Isometric (`iso.png`) | Cutaway Section (`section.png`) | X-Ray Inside (`inside.png`) | Exploded View (`exploded.png`) |
 | :---: | :---: | :---: | :---: |
-| ![Exploded View](hardware/releases/v1/enclosure/renders/exploded.png) | ![Internal View](hardware/releases/v1/enclosure/renders/inside.png) | ![Section View](hardware/releases/v1/enclosure/renders/section.png) | ![Isometric View](hardware/releases/v1/enclosure/renders/iso.png) |
+| ![Isometric](hardware/releases/v1/enclosure/renders/iso.png) | ![Section](hardware/releases/v1/enclosure/renders/section.png) | ![Inside](hardware/releases/v1/enclosure/renders/inside.png) | ![Exploded](hardware/releases/v1/enclosure/renders/exploded.png) |
 
 ---
 
-## Sensor Suite & Measured Parameters (12-in-1, Zero Moving Parts)
+## Measured Parameters & Hardware Architecture
 
-| Category | Parameter | Sensor / IC | Board & Zone | Accuracy / Range |
-| :--- | :--- | :--- | :--- | :--- |
-| **Wind Speed & Direction** | Instantaneous, 1m/10m WMO avg, 3s Gust, Lull, Beaufort, Acoustic Virtual Temp | **4× 40 kHz Waterproof Ultrasonic Transducers** + `SN74LVC2G04` + `CD4052BM96` + `TLV9062IDR` + `LM393DR2G` | `crown` (`y = 174..182 mm`, downward into `48 mm` reflective wind tunnel) | `0–60 m/s` (`0.05 m/s` res), `0–359.9°` (`0.5°` res) |
-| **Auto-North & Plumb** | Automatic True/Magnetic North wind alignment & mast tilt cosine correction | **ST `LIS2MDLTR`** (3-axis magnetometer) + **ST `LSM6DS3TR-C`** (6-axis IMU) | `crown` (`U8`) + `main` (`U5`) | `±0.5°` heading, `±0.1°` mast tilt |
-| **Precipitation (Hybrid)** | Rain start/end, State (`Drizzle..Violent / Hail`), Rate (`mm/h`), Event/Daily/Total (`mm`) | **27 mm Piezo Acoustic Disc** + **Capacitive Wet-Dome Sense** + `TLV9062IDR` charge/envelope AFE + IMU shake rejection | `crown` (`J6`, `U5` under `12°` sloped top dome) | `0.01 mm` resolution, `0–400 mm/h` |
-| **Temperature & Humidity** | Ambient Air Temp, Relative Humidity, Dew Point, Wet Bulb, Feels-Like, Abs Humidity | **Sensirion `SHT45-AD1F-R2`** (with factory PTFE membrane) | `probe` (`U3` at thermally isolated tip inside 5-plate pagoda) | `±0.1 °C` (`-40..+125 °C`), `±1.0% RH` |
-| **Barometric Pressure** | Station Pressure, Sea-Level QNH (`hPa`), 3-Hour Storm Tendency | **Bosch `BMP581`** | `main` (`U4` in vented lower bay) | `±0.03 hPa` relative (`0.08 Pa` RMS noise) |
-| **Solar & UV Radiation** | UV-A/UV-B Index (`0–16+`), Ambient Illuminance (`lx`), Solar Irradiance (`W/m²`) | **Lite-On `LTR-390UV-01`** + **Vishay `VEML7700-TT`** | `crown` (`U6`, `U7` under flush top fused-silica window) | `0–16+ UVI`, `0–140,000 lx` (`0–1,800 W/m²`) |
-| **Lightning Detection** | Storm front distance (`1–40 km`), Strike count, Strike energy | **ScioSense `AS3935-BQFT`** + `220 µH` 500 kHz RF tank | `main` (`U6`, `L2`) | `1–40 km` radius |
-| **Outdoor Air Quality** | **PM1.0, PM2.5, PM4.0, PM10** (`µg/m³`), **VOC Index**, **NOx Index**, **True CO₂** (`ppm`), US EPA AQI & EU EAQI | **Sensirion `SEN55-SDN-T`** (PM) + **`SGP41-D-R4`** (VOC/NOx) + **`SCD41-D-R2`** (photoacoustic CO₂) | `main` (`J4` lower labyrinth intake) + `probe` (`U1`, `U2` in pagoda) | `400–5,000 ppm` CO₂, `1–500` VOC/NOx index, `±10%` PM |
-
----
-
-## How It Works
-
-1. **Flexible `12–32 V DC` Wired Roof Supply & Constant-Wattage (`4.0 W`) De-Icing Heater:**
-   - The roof supply enters through the hollow mast into push-in spring terminal **`main J1` (`KF142R-5.08-2P`)**, protected by a `1.1 A` resettable PTC fuse (`F1`), `SMAJ33A` TVS diode (`D1`), `SS16` reverse-polarity Schottky (`D2`), and `470 µF / 35 V` reservoir capacitor (`C1`).
-   - An **`SCT2400`** wide-input buck converter (`4.5–40 V` in) steps `VIN_PROT` down to `+5V`, feeding the **Seeed XIAO ESP32-C6** (`U3`) through a **`TI LM66100`** ideal diode (`U2`) so USB-C service power never back-feeds the buck stage.
-   - XIAO `D0/GPIO0` (`VIN_ADC`) continuously measures the exact roof supply voltage (`12.0..32.0 V` via a `100k/10k` divider) while `D1/GPIO1` (`NTC_SENSE`) reads the `10k B3950` NTC thermistor (`probe TH1`) thermally coupled to the underside of the ultrasonic reflector cone.
-   - When outdoor temperature drops below `+2.5 °C`, `D3/GPIO21` (`HEAT_PWM`) drives N-MOSFET **`AO3400A` (`Q1`)** to power the `54 Ω` series heater array (`2× 27 Ω 2512` resistors `probe R1, R2`), automatically scaling PWM duty cycle $D = \min(1,\, P_{\text{target}} R_{\text{heat}} / V_{\text{in}}^2)$ so heater power stays regulated at **`4.0 W`** whether you feed `12 V`, `24 V`, or `32 V`.
-2. **Reflective 40 kHz Ultrasonic Anemometer with Speed-of-Sound Cancellation:**
-   - Four waterproof closed-face aluminum 40 kHz transducers (`N, E, S, W` at radius `21.0 mm`) face downward from the upper crown (`y = 174.0 mm`) toward the heated conical reflector deck `48.0 mm` below (`y = 126.0 mm`).
-   - Four intercardinal airfoil struts (`45°, 135°, 225°, 315°` at radius `39.0 mm`) leave the cardinal `N↔S` and `E↔W` acoustic paths 100% unobstructed.
-   - A cross-strapped **`CD4052BM96`** dual 4:1 analog mux (`crown U2`) steers the `SN74LVC2G04` TX burst and `TLV9062` 2-stage bandpass RX amplifier (`G ≈ 520×`) + `LM393` zero-crossing comparator across all 4 directions (`N→S`, `S→N`, `E→W`, `W→E`).
-   - Firmware computes wind components from inverse transit times $\Delta(1/t) = 1/t_2 - 1/t_1$, algebraically cancelling temperature/humidity speed-of-sound drift while extracting acoustic virtual temperature from $\Sigma(1/t)$ and rotating the wind vector to True North using the onboard `LIS2MDLTR` magnetometer and `LSM6DS3TR-C` tilt accelerometer.
-3. **Hybrid Haptic Piezoelectric + Capacitive + IMU Rain DSP:**
-   - Raindrops striking the `12°` sloped top crown dome excite a bonded `27 mm` piezoelectric disc (`crown J6`) amplified and integrated by `TLV9062` (`crown U5`).
-   - Firmware cross-checks every acoustic impulse against the capacitive wet-surface baseline and the `LSM6DS3TR-C` accelerometer, rejecting dry wind-induced mast vibrations while integrating drop volume ($\text{mm}^3 \to \text{mm}$) and classifying hail impacts.
+| Parameter | Sensor / Circuit | Range & Resolution | Location & Protection |
+| :--- | :--- | :--- | :--- |
+| **Wind Speed & Direction** | 4× `40 kHz` waterproof ultrasonic transducers + `SN74LVC2G04` + `CD4052B` + `TLV9062` + `LM393` | `0–60 m/s` (`0.01 m/s`), `0–359.9°` (`0.1°`), `4 Hz` | Downward-facing in `crown.stl` across a `48 mm` vertical wind gap (`D = 54 mm` span). |
+| **Compass & Mast Tilt** | `MEMSIC MMC5603NJ` 20-bit AMR compass + `ST LSM6DS3TR-C` 6-axis IMU | `±0.5°` heading, `±0.1°` tilt | Auto-aligns wind direction to North and subtracts pole vibration from the rain sensor. |
+| **Rain & Hail** | 4× `20 mm` `Murata 7BB-20-6L0` piezo discs in parallel + `TLV9062` charge/envelope amp | `0–200 mm/h`, `0.01 mm` step, hail hit counter | Bonded to four `1.0 mm`-thin ceiling pockets in `crown.stl` (`45°, 135°, 225°, 315°`). |
+| **UV Index & Solar Light** | `Lite-On LTR-390UV-01` (UV-A/UV-B) + `Vishay VEML7700-TT` (ALS) | `UVI 0–16+`, `0–140,000 lx` (`0–1,500 W/m²`) | Mounted on the elevated round `dome` PCB inside a hollow `Ø 18 mm` `JGS1` fused-silica quartz hemisphere. |
+| **Temperature & Humidity** | `Sensirion SHT40-AD1F-R2` with factory IP67 PTFE membrane | `-40..+85 °C` (`±0.2 °C`), `0–100% RH` (`±1.8%`) | Bottom tip of `probe` PCB below a milled thermal slot, exposed through a `4.6 × 4.6 mm` window in `probe_sleeve_front.stl`. |
+| **Barometric Pressure** | `Bosch BMP581` | `300–1,250 hPa` (`±0.03 hPa` relative) | Bottom of `main` PCB (`B.Cu`) with dynamic wind-pressure (Bernoulli) compensation. |
+| **Particulate Matter** | `Sensirion SEN55-SDN-T` | $\text{PM}_{1.0}, \text{PM}_{2.5}, \text{PM}_{4.0}, \text{PM}_{10}$ (`µg/m³`) | Lower `base.stl` bay behind `1.2 mm` bug-screened intake slits; plugs into `main J4`. |
+| **VOC & NOx** | `Sensirion SGP41-D-R4` | VOC Index (`1–500`), NOx Index (`1–500`) | Upper section of `probe` PCB behind a 5-slit draft hood in `probe_sleeve_front.stl`. |
+| **True $\text{CO}_2$** | `Sensirion SCD41-D-R2` + closed-loop `+8 °C` backside heater (`2× 470 Ω 1206` + `LM393` + `TH1`) | `400–5,000 ppm` | Upper section of `probe` PCB; backside pocket in `probe_sleeve_back.stl` traps warmth in winter. |
+| **Lightning Detector** | `ScioSense AS3935-BQFT` + `220 µH` / `470 pF C0G` `500 kHz` tank | `1–40 km` storm distance & strike count | Mounted on `main` PCB inside the sealed lower base bay. |
+| **Wind-Tunnel De-Icer** | 4× `100 Ω` `2512` `1 W` parallel resistors (`25 Ω`, `4.0 W`) + `10k` NTC `TH1` | Constant `4.0 W` PWM (`12–32 V` auto-scaled) | Horizontal `reflector` PCB (`24 × 24 mm`) seated directly under the ultrasonic reflector cone. |
+| **Power & Connectivity** | `KF250-3.5-4P` terminal (`J1`) + `SCT2400` buck + `XIAO ESP32-C6` + `SP3485EN` RS-485 | `12–32 V DC`, Wi-Fi 6 (`+20.5 dBm` + U.FL dipole) + `115,200 bps` RS-485 | All 4 wires of the roof cable (`VIN+`, `GND`, `RS485_A`, `RS485_B`) terminate in `main J1`. |
 
 ---
 
-## Repository Structure & Developer Commands
+## Modular 3D-Printed Enclosure (`hardware/releases/v1/enclosure/`)
+
+The enclosure is split into **9 modular parts** so every piece prints in UV-stabilized ASA (plus TPU 95A or standard elastomer rings for `orings.stl`) without trapping internal boards or connectors.
+
+| Part & Files | Render | Function & Assembly |
+| :--- | :---: | :--- |
+| **1. `base`**<br>[`base.stl`](hardware/releases/v1/enclosure/base.stl) · [`base.step`](hardware/releases/v1/enclosure/base.step) | ![base](hardware/releases/v1/enclosure/renders/base.png) | Sealed lower electronics bay for `main` PCB and `SEN55`. Includes 4 snap-fit PCB corner clips, a horizontal internal cradle for the `2.4 / 5.8 GHz` U.FL dipole antenna, a single center `Ø 12.2 mm` bulkhead hole with a `15.4 mm` hex locknut seat for an IP68 `M12 / PG7` cable gland, and flat rear `M6` clamping ears. |
+| **2. `mast_clamp`**<br>[`mast_clamp.stl`](hardware/releases/v1/enclosure/mast_clamp.stl) · [`mast_clamp.step`](hardware/releases/v1/enclosure/mast_clamp.step) | ![mast_clamp](hardware/releases/v1/enclosure/renders/mast_clamp.png) | Detachable front pole saddle (`4× Ø 6.4 mm` M6 bolt holes) with flat outer seating faces for standard M6 bolts and washers. Clamps onto `Ø 25–34 mm` roof poles without flexing `base.stl`. |
+| **3. `orings`**<br>[`orings.stl`](hardware/releases/v1/enclosure/orings.stl) · [`orings.step`](hardware/releases/v1/enclosure/orings.step) | ![orings](hardware/releases/v1/enclosure/renders/orings.png) | Three elastomeric gasket rings (printable in TPU 95A or fitted with standard EPDM/nitrile O-rings): lower `base ↔ pagoda` seal, middle `pagoda ↔ wind_tunnel` reflector pocket seal, and top `crown` JGS1 quartz dome flange seal. |
+| **4. `probe_sleeve_back`**<br>[`probe_sleeve_back.stl`](hardware/releases/v1/enclosure/probe_sleeve_back.stl) · [`probe_sleeve_back.step`](hardware/releases/v1/enclosure/probe_sleeve_back.step) | ![probe_sleeve_back](hardware/releases/v1/enclosure/renders/probe_sleeve_back.png) | Rear half of the `probe` PCB protective clamshell. Forms a closed dead-air pocket over the backside `0.5 W` `SCD41` heater (`R1\|\|R2`, `TH1`, `U4`, `Q1`) to shield `B.Cu` from moisture and wind. |
+| **5. `probe_sleeve_front`**<br>[`probe_sleeve_front.stl`](hardware/releases/v1/enclosure/probe_sleeve_front.stl) · [`probe_sleeve_front.step`](hardware/releases/v1/enclosure/probe_sleeve_front.step) | ![probe_sleeve_front](hardware/releases/v1/enclosure/renders/probe_sleeve_front.png) | Front half of the `probe` clamshell. Snaps onto `probe_sleeve_back.stl` around the `probe` PCB; includes an internal horizontal thermal rib that locks into the PCB slot (`y = 88 mm`), a 5-slit diffusion hood over `SCD41`/`SGP41`, and a `4.6 × 4.6 mm` window exposing only `SHT40`'s PTFE face. |
+| **6. `pagoda`**<br>[`pagoda.stl`](hardware/releases/v1/enclosure/pagoda.stl) · [`pagoda.step`](hardware/releases/v1/enclosure/pagoda.step) | ![pagoda](hardware/releases/v1/enclosure/renders/pagoda.png) | 5-plate double-louvred Stevenson radiation shield (`y = 65..121 mm`). Open at the top collar so `probe J2` protrudes in plain view to plug the horizontal `reflector` PCB onto it before seating `wind_tunnel.stl`. |
+| **7. `wind_tunnel`**<br>[`wind_tunnel.stl`](hardware/releases/v1/enclosure/wind_tunnel.stl) · [`wind_tunnel.step`](hardware/releases/v1/enclosure/wind_tunnel.step) | ![wind_tunnel](hardware/releases/v1/enclosure/renders/wind_tunnel.png) | Conical ultrasonic reflector deck (`y = 119..130 mm`) + 4 intercardinal (`45°, 135°, 225°, 315°`) struts. The `45°` NE strut has an open U-channel and `10 × 5 mm` pass-through slots so a pre-crimped 10-pin JST-SH cable installs without crimping tools. |
+| **8. `strut_cover`**<br>[`strut_cover.stl`](hardware/releases/v1/enclosure/strut_cover.stl) · [`strut_cover.step`](hardware/releases/v1/enclosure/strut_cover.step) | ![strut_cover](hardware/releases/v1/enclosure/renders/strut_cover.png) | Snap-on cover strip (`y = 127..173.5 mm`) that closes the `45°` NE cable strut back into a smooth cylinder after laying the `main ↔ crown` JST-SH ribbon cable inside. |
+| **9. `crown`**<br>[`crown.stl`](hardware/releases/v1/enclosure/crown.stl) · [`crown.step`](hardware/releases/v1/enclosure/crown.step) · [`crown_color.3mf`](hardware/releases/v1/enclosure/crown_color.3mf) | ![crown](hardware/releases/v1/enclosure/renders/crown.png) | Top ultrasonic shroud & rain dome (`y = 172.5..198 mm`). Features 4 downward transducer collars, 4 snap-fit corner clips for `crown` PCB, four `1.0 mm`-thin ceiling pockets for the `20 mm` Murata piezo discs, and a `2.8 mm`-thick central collar with `M22` internal threads and O-ring seat for the hollow `Ø 18 mm` `JGS1` quartz hemisphere. |
+
+---
+
+## 5-Board PCB Stack & Single-Order Breakaway Panel (`hardware/releases/v1/`)
+
+All five 4-layer `1.2 mm` PCBs (`main`, `crown`, `reflector`, `dome`, `probe`) are panelized onto a single **`141.7 × 56.1 mm` mouse-bite breakaway panel** (`0 DRC errors, 0 unrouted`, 58 consolidated BOM lines, 129 SMT placements) so the entire station can be ordered at JLCPCB as **one PCB/PCBA job**:
+
+| Panel Top (`panel/renders/top.svg`) | Panel Bottom (`panel/renders/bottom.svg`) |
+| :---: | :---: |
+| ![Panel Top](hardware/releases/v1/panel/renders/top.svg) | ![Panel Bottom](hardware/releases/v1/panel/renders/bottom.svg) |
+
+| Board | Size | Role & Key Components | Schematics, Gerbers & Renders |
+| :--- | :---: | :--- | :--- |
+| **1. `main`** | `41.0 × 56.0 mm` | 4-pole terminal `J1` (`12–32 V` + `RS-485 A/B`), `1.1 A` PTC fuse, `SMAJ33A` TVS, `SCT2400` `5 V` buck, `LM66100` ideal diode, socketed `Seeed XIAO ESP32-C6`, `SP3485EN` auto-direction RS-485 transceiver, `BMP581` barometer, `LSM6DS3TR-C` IMU, `AS3935` lightning detector, `AO3400A` heater switch. | [`hardware/releases/v1/main/`](hardware/releases/v1/main/) · [Top SVG](hardware/releases/v1/main/renders/top.svg) · [Bottom SVG](hardware/releases/v1/main/renders/bottom.svg) · [Schematic PDF](hardware/releases/v1/main/schematic.pdf) |
+| **2. `crown`** | `41.0 × 56.0 mm` | 4× ultrasonic transducer headers (`J2..J5`), reciprocal `1 kΩ` `40 kHz` AFE (`SN74LVC2G04`, `CD4052B`, `TLV9062`, `LM393` zero-cross + envelope gate), 4× Murata piezo headers (`J6..J9`) + `TLV9062` charge/envelope amp, `MMC5603NJ` compass, center 4-pin vertical B2B socket `J10` (`to dome`). | [`hardware/releases/v1/crown/`](hardware/releases/v1/crown/) · [Top SVG](hardware/releases/v1/crown/renders/top.svg) · [Bottom SVG](hardware/releases/v1/crown/renders/bottom.svg) · [Schematic PDF](hardware/releases/v1/crown/schematic.pdf) |
+| **3. `reflector`** | `24.0 × 24.0 mm` | Horizontal de-icing heater board under the wind-tunnel cone: 4× `100 Ω` `2512` `1 W` resistors wired in parallel (`25 Ω`, `4.0 W`), center `10k 1%` NTC thermistor (`TH1`), and underside 4-pin SMD male header `J1` plugging directly into `probe J2`. | [`hardware/releases/v1/reflector/`](hardware/releases/v1/reflector/) · [Top SVG](hardware/releases/v1/reflector/renders/top.svg) · [Bottom SVG](hardware/releases/v1/reflector/renders/bottom.svg) · [Schematic PDF](hardware/releases/v1/reflector/schematic.pdf) |
+| **4. `dome`** | `Ø 13.6 mm` round | Elevated UV & solar micro-PCB inside the hollow `JGS1` fused-silica hemisphere: `LTR-390UV-01` (`U1`) and `VEML7700-TT` (`U2`) on `F.Cu` (`zero top passives to avoid horizon shadows`), with `C1`, `C2`, and the 4-pin vertical B2B male header `J1` on `B.Cu`. | [`hardware/releases/v1/dome/`](hardware/releases/v1/dome/) · [Top SVG](hardware/releases/v1/dome/renders/top.svg) · [Bottom SVG](hardware/releases/v1/dome/renders/bottom.svg) · [Schematic PDF](hardware/releases/v1/dome/schematic.pdf) |
+| **5. `probe`** | `14.0 × 50.0 mm` | Vertical pagoda stem: `SCD41-D-R2` ($\text{CO}_2$) + `SGP41-D-R4` ($\text{VOC}/\text{NO}_x$) above a milled thermal isolation slot, `SHT40-AD1F-R2` (`Temp/RH`) at the lower intake tip, backside `0.5 W` parallel heater (`2× 470 Ω 1206`) + `LM393`/`TH1` `+8 °C` thermostat behind `SCD41`, and top right-angle 4-pin SMD socket `J2` (`to reflector`). | [`hardware/releases/v1/probe/`](hardware/releases/v1/probe/) · [Top SVG](hardware/releases/v1/probe/renders/top.svg) · [Bottom SVG](hardware/releases/v1/probe/renders/bottom.svg) · [Schematic PDF](hardware/releases/v1/probe/schematic.pdf) |
+
+---
+
+## Repository Structure & Build Commands
 
 | Folder | Contents |
-| --- | --- |
-| `station/` | ESP32-C6 C++17 firmware (PlatformIO / ESP-IDF 5.5), 4-panel LittleFS Web UI (`data/`), Home Assistant MQTT Auto-Discovery, and native Unity unit tests |
-| `hardware/` | SKiDL circuit blocks (`circuits/`), KiCad 10 PCB layouts (`layout/v1/`), JLCPCB/EasyEDA pin-for-pin verifier (`scripts/jlc_parts.py`), breakaway panelizer (`scripts/panelize.py`), and release bundle (`releases/v1/`) |
-| `mechanical/` | Parametric CadQuery 3D roof enclosure (`base.stl`, `pagoda.stl`, `crown.stl`, `crown_embossed.stl`, `crown_color.3mf`), fit drawings (`fit_side.svg`, `fit_front.svg`), and VTK ray-traced renders |
+| :--- | :--- |
+| [`hardware/product/spec.yaml`](hardware/product/spec.yaml) | Single source of truth for board dimensions, coordinates, interconnects, MCU pins, and enclosure geometry. |
+| [`hardware/circuits/`](hardware/circuits/) | SKiDL circuit generators (`main`, `crown`, `reflector`, `dome`, `probe`), custom KiCad symbols/footprints, and 3D STEP models. |
+| [`hardware/releases/v1/`](hardware/releases/v1/) | Ready-to-order Gerbers, drills, JLCPCB BOM/CPL CSVs, schematics, 3D renders, STLs/STEPs, and [`assembly_parts.csv`](hardware/releases/v1/assembly_parts.csv). |
+| [`mechanical/scripts/`](mechanical/scripts/) | CadQuery 3D enclosure generator (`build_enclosure.py`) and VTK ray-traced renderer (`render_assembly3d.py`). |
+| [`station/`](station/) | ESP32-C6 C++17 firmware (`wind/`, `rain/`, `environment/`, `airquality/`, `heater/`, `rs485/`, `telemetry/`), Web UI (`station/data/`), and Unity native unit tests. |
 
-| Task | Command |
-| --- | --- |
-| **Full build, route, 3D CAD, release & test pipeline** | `python3 hardware/scripts/build.py` |
-| **Run EDA + CAD + Python lint test suites** | `python3 hardware/scripts/build.py v1 --test` |
-| **Run C++17 firmware native unit tests (Unity)** | `docker compose --profile lint run --rm -T cpp-lint "pio test -d station -e native"` |
-| **Lint all Python sources (Ruff)** | `docker compose --profile lint run --rm -T lint check .` |
+```bash
+# Run full hardware, CAD, release packaging, and verification test pipeline
+python3 hardware/scripts/build.py
 
-Licences per folder: [`LICENSE.md`](LICENSE.md). Architecture and engineering rules: [`AGENTS.md`](AGENTS.md).
+# Run C++17 firmware native unit tests (12 test suites)
+docker compose --profile lint run --rm -T cpp-lint "pio test -d station -e native"
+
+# Run Python & C++ linters
+docker compose --profile lint run --rm lint check .
+```

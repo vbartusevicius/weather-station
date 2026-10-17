@@ -47,9 +47,9 @@ def build():
     crown_sensors.build(gnd, v5, v3, sda, scl, us_sel_a, us_sel_b, us_tx, us_rx, rain_adc)
 
     block("int_dome")
-    j10 = part("Connector_Generic", "Conn_01x04", "DOME_RISER", B2B_HDR4,
-               src(mpn="HX PZ2.54-1x4P TP-YQ", mfr="HCTL", lcsc="C41417361",
-                   source="4-pin 2.54 mm vertical SMD riser header elevating the 12x12 mm `dome` Micro-PCB inside the JGS1 hemisphere"),
+    j10 = part("Connector_Generic", "Conn_01x04", "DOME_SOCKET", B2B_HDR4,
+               src(mpn="HX PM2.54-1x4P TP-YQ", mfr="HCTL", lcsc="C42379197",
+                   source="4-pin 2.54 mm vertical SMD female socket receiving the `dome` Micro-PCB male riser pins"),
                ref="J10")
     wire(j10, DOME_B2B_LINK, nets)
 
@@ -60,7 +60,7 @@ NET_CLASSES = {
         "US_TX", "US_RX", "RAIN_ADC", "XD_N", "XD_E", "XD_S", "XD_W",
         "US_TX_DRV", "US_TX_AC", "US_RX_MUX", "US_VREF", "US_VTH", "US_AMP1_IN",
         "US_AMP1_FB", "US_AMP1_OUT", "US_AMP2_IN", "US_AMP2_FB", "US_AMP2_OUT",
-        "PIEZO_IN", "PIEZO_INV", "PIEZO_STG1", "PIEZO_ENV", "LIS_C1", "Net-*",
+        "PIEZO_IN", "PIEZO_INV", "PIEZO_STG1", "PIEZO_ENV", "Net-*",
     ],
     "CROWN-Power": ["+5V", "+3V3"],
 }

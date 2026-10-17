@@ -1,7 +1,7 @@
 {
     "$schema": "https://schemas.kicad.org/drc.v1.json",
     "coordinate_units": "mm",
-    "date": "2026-10-17T18:36:03",
+    "date": "2026-10-17T19:32:59",
     "ignored_checks": [
         {
             "description": "Footprint has no courtyard defined",
@@ -34,27 +34,19 @@
     "unconnected_items": [],
     "violations": [
         {
-            "description": "Silkscreen clipped by board edge",
+            "description": "Track has unconnected end",
             "items": [
                 {
-                    "description": "Segment on Edge.Cuts",
+                    "description": "Track [CROWN_GND] on F.Cu, length 2.1361 mm",
                     "pos": {
-                        "x": 138.6,
-                        "y": -20.0
+                        "x": 76.2038,
+                        "y": -46.3832
                     },
-                    "uuid": "ee705b95-1954-44ef-ae82-313a8a24a81e"
-                },
-                {
-                    "description": "Reference field of C401",
-                    "pos": {
-                        "x": 131.1,
-                        "y": -20.3664
-                    },
-                    "uuid": "8c3bf69b-1629-46c4-8ee4-dc710adf8a69"
+                    "uuid": "ab4baf98-f198-4c92-a29c-7a6965238b6e"
                 }
             ],
             "severity": "warning",
-            "type": "silk_edge_clearance"
+            "type": "track_dangling"
         },
         {
             "description": "Silkscreen clipped by board edge",
@@ -65,7 +57,7 @@
                         "x": 138.6,
                         "y": -20.0
                     },
-                    "uuid": "ee705b95-1954-44ef-ae82-313a8a24a81e"
+                    "uuid": "a1689ee7-a733-42bd-aee7-0ad56d7e06fb"
                 },
                 {
                     "description": "Reference field of C402",
@@ -73,7 +65,30 @@
                         "x": 138.1,
                         "y": -20.3664
                     },
-                    "uuid": "ce566870-f37c-42db-82ad-196ec5d81716"
+                    "uuid": "3b5f9eaa-0ea2-4130-8fc0-90a048f89c2e"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_edge_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "items": [
+                {
+                    "description": "Segment on Edge.Cuts",
+                    "pos": {
+                        "x": 138.6,
+                        "y": -20.0
+                    },
+                    "uuid": "a1689ee7-a733-42bd-aee7-0ad56d7e06fb"
+                },
+                {
+                    "description": "Reference field of C401",
+                    "pos": {
+                        "x": 131.1,
+                        "y": -20.3664
+                    },
+                    "uuid": "402c72a1-039e-4d0a-9917-58d7d01ad0ed"
                 }
             ],
             "severity": "warning",
@@ -86,40 +101,17 @@
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 41.15,
-                        "y": -40.62
-                    },
-                    "uuid": "b16056f3-e8ef-444c-9d11-603c7ec00935"
-                },
-                {
-                    "description": "NPTH pad of MOUSE_BITES",
-                    "pos": {
-                        "x": 41.15,
                         "y": -41.22
                     },
-                    "uuid": "ba495de2-0585-4370-afaf-7f37df267a93"
-                }
-            ],
-            "severity": "warning",
-            "type": "hole_to_hole"
-        },
-        {
-            "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
-            "items": [
+                    "uuid": "6336feb9-9902-4fe0-8fe1-74f97f91304c"
+                },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 41.15,
                         "y": -40.62
                     },
-                    "uuid": "b16056f3-e8ef-444c-9d11-603c7ec00935"
-                },
-                {
-                    "description": "NPTH pad of MOUSE_BITES",
-                    "pos": {
-                        "x": 41.15,
-                        "y": -40.02
-                    },
-                    "uuid": "ed2546f1-809c-4d7b-b690-1dc625952269"
+                    "uuid": "c7bf9cd6-2469-49ca-b528-6f1b62058832"
                 }
             ],
             "severity": "warning",
@@ -134,15 +126,38 @@
                         "x": 41.15,
                         "y": -40.02
                     },
-                    "uuid": "ed2546f1-809c-4d7b-b690-1dc625952269"
+                    "uuid": "51ecfbcd-139b-40ae-85d2-bec7d5251ffe"
                 },
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 41.15,
+                        "y": -40.62
+                    },
+                    "uuid": "c7bf9cd6-2469-49ca-b528-6f1b62058832"
+                }
+            ],
+            "severity": "warning",
+            "type": "hole_to_hole"
+        },
+        {
+            "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
+            "items": [
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 41.15,
                         "y": -39.42
                     },
-                    "uuid": "ee1efafd-7965-43aa-b135-78494f6953ae"
+                    "uuid": "1d8b7afa-aacd-4a63-90d3-263425cf255f"
+                },
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 41.15,
+                        "y": -40.02
+                    },
+                    "uuid": "51ecfbcd-139b-40ae-85d2-bec7d5251ffe"
                 }
             ],
             "severity": "warning",
@@ -151,21 +166,21 @@
         {
             "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
             "items": [
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 41.15,
+                        "y": -15.98
+                    },
+                    "uuid": "a7693f74-7107-490e-be8c-80f5cef49487"
+                },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 41.15,
                         "y": -16.579999
                     },
-                    "uuid": "38b3096f-b8cb-4d55-830d-f8793c44ad29"
-                },
-                {
-                    "description": "NPTH pad of MOUSE_BITES",
-                    "pos": {
-                        "x": 41.15,
-                        "y": -15.98
-                    },
-                    "uuid": "b1f3b3c1-0c5b-4fe1-8a1a-0649f4a699a2"
+                    "uuid": "dfa7619f-5426-4369-afd4-ad3a35b25dff"
                 }
             ],
             "severity": "warning",
@@ -180,7 +195,7 @@
                         "x": 41.15,
                         "y": -15.379999
                     },
-                    "uuid": "817bf4d4-22f4-44bb-afb9-a966d22b7adc"
+                    "uuid": "93cc52da-e2c1-4669-807a-aa00422bca51"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -188,7 +203,7 @@
                         "x": 41.15,
                         "y": -15.98
                     },
-                    "uuid": "b1f3b3c1-0c5b-4fe1-8a1a-0649f4a699a2"
+                    "uuid": "a7693f74-7107-490e-be8c-80f5cef49487"
                 }
             ],
             "severity": "warning",
@@ -197,21 +212,21 @@
         {
             "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
             "items": [
-                {
-                    "description": "NPTH pad of MOUSE_BITES",
-                    "pos": {
-                        "x": 41.15,
-                        "y": -15.379999
-                    },
-                    "uuid": "817bf4d4-22f4-44bb-afb9-a966d22b7adc"
-                },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 41.15,
                         "y": -14.78
                     },
-                    "uuid": "d4a3941a-712e-4069-8b62-5be9c27ea742"
+                    "uuid": "4109e154-02c0-4aeb-9111-03642a824c61"
+                },
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 41.15,
+                        "y": -15.379999
+                    },
+                    "uuid": "93cc52da-e2c1-4669-807a-aa00422bca51"
                 }
             ],
             "severity": "warning",
@@ -226,7 +241,7 @@
                         "x": 42.85,
                         "y": -40.62
                     },
-                    "uuid": "68b5750b-2891-4d3b-bf9e-daca21a8ff1d"
+                    "uuid": "25e5583e-d63a-4317-9409-296d233c6306"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -234,7 +249,7 @@
                         "x": 42.85,
                         "y": -41.22
                     },
-                    "uuid": "7f971f1b-12c8-46ea-a380-9df350590da5"
+                    "uuid": "99072f54-26c9-4160-bd95-eda0f466fa54"
                 }
             ],
             "severity": "warning",
@@ -249,7 +264,7 @@
                         "x": 42.85,
                         "y": -40.62
                     },
-                    "uuid": "68b5750b-2891-4d3b-bf9e-daca21a8ff1d"
+                    "uuid": "25e5583e-d63a-4317-9409-296d233c6306"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -257,7 +272,7 @@
                         "x": 42.85,
                         "y": -40.02
                     },
-                    "uuid": "ad957674-7825-4267-8492-995d416821fd"
+                    "uuid": "9110d0c8-6867-4495-87b2-2ced6b848b7f"
                 }
             ],
             "severity": "warning",
@@ -272,7 +287,7 @@
                         "x": 42.85,
                         "y": -39.42
                     },
-                    "uuid": "87928fcd-d3ca-430f-9b0a-f85484d30466"
+                    "uuid": "33732ebd-0f49-4a27-9cc8-dc1a1acaaf49"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -280,7 +295,7 @@
                         "x": 42.85,
                         "y": -40.02
                     },
-                    "uuid": "ad957674-7825-4267-8492-995d416821fd"
+                    "uuid": "9110d0c8-6867-4495-87b2-2ced6b848b7f"
                 }
             ],
             "severity": "warning",
@@ -295,7 +310,7 @@
                         "x": 42.85,
                         "y": -16.579999
                     },
-                    "uuid": "4c305820-eb49-4dee-b2c5-bf7b9e0c2ad4"
+                    "uuid": "3acd3933-b782-4121-9531-4a35851f4b1b"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -303,7 +318,7 @@
                         "x": 42.85,
                         "y": -15.98
                     },
-                    "uuid": "b1f4ca37-e5e2-4300-8f9a-65131353fd94"
+                    "uuid": "ba3f5f97-ee32-4e11-bb88-58aee4a66808"
                 }
             ],
             "severity": "warning",
@@ -318,7 +333,7 @@
                         "x": 42.85,
                         "y": -15.379999
                     },
-                    "uuid": "8c18f95e-0e63-4b95-abaa-24e4f1c0b4d8"
+                    "uuid": "3fa93ab6-0761-40de-a91d-484b2ae30941"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -326,7 +341,7 @@
                         "x": 42.85,
                         "y": -15.98
                     },
-                    "uuid": "b1f4ca37-e5e2-4300-8f9a-65131353fd94"
+                    "uuid": "ba3f5f97-ee32-4e11-bb88-58aee4a66808"
                 }
             ],
             "severity": "warning",
@@ -335,21 +350,21 @@
         {
             "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
             "items": [
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 42.85,
+                        "y": -15.379999
+                    },
+                    "uuid": "3fa93ab6-0761-40de-a91d-484b2ae30941"
+                },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 42.85,
                         "y": -14.78
                     },
-                    "uuid": "40e8d536-263f-4178-9988-1594b12d73aa"
-                },
-                {
-                    "description": "NPTH pad of MOUSE_BITES",
-                    "pos": {
-                        "x": 42.85,
-                        "y": -15.379999
-                    },
-                    "uuid": "8c18f95e-0e63-4b95-abaa-24e4f1c0b4d8"
+                    "uuid": "becd1c6c-b0c7-491a-b8dc-a77129d03a28"
                 }
             ],
             "severity": "warning",
@@ -358,21 +373,44 @@
         {
             "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
             "items": [
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 84.15,
+                        "y": -17.58
+                    },
+                    "uuid": "2a3532ec-6f20-4518-b027-f692554d4a6f"
+                },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 84.15,
                         "y": -18.18
                     },
-                    "uuid": "601801f9-9711-4501-bd18-4bd8e721eccb"
-                },
+                    "uuid": "6941e09b-f122-4cc3-83da-e36f59dacc7b"
+                }
+            ],
+            "severity": "warning",
+            "type": "hole_to_hole"
+        },
+        {
+            "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
+            "items": [
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 84.15,
                         "y": -17.58
                     },
-                    "uuid": "62a3f30e-c594-4396-9926-8a395fce71ae"
+                    "uuid": "2a3532ec-6f20-4518-b027-f692554d4a6f"
+                },
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 84.15,
+                        "y": -16.98
+                    },
+                    "uuid": "2ce58e73-295d-4748-a89a-b5353f935196"
                 }
             ],
             "severity": "warning",
@@ -387,30 +425,7 @@
                         "x": 84.15,
                         "y": -16.98
                     },
-                    "uuid": "39046742-43c0-4bf9-b491-55b946f0b1e8"
-                },
-                {
-                    "description": "NPTH pad of MOUSE_BITES",
-                    "pos": {
-                        "x": 84.15,
-                        "y": -17.58
-                    },
-                    "uuid": "62a3f30e-c594-4396-9926-8a395fce71ae"
-                }
-            ],
-            "severity": "warning",
-            "type": "hole_to_hole"
-        },
-        {
-            "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
-            "items": [
-                {
-                    "description": "NPTH pad of MOUSE_BITES",
-                    "pos": {
-                        "x": 84.15,
-                        "y": -16.98
-                    },
-                    "uuid": "39046742-43c0-4bf9-b491-55b946f0b1e8"
+                    "uuid": "2ce58e73-295d-4748-a89a-b5353f935196"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -418,7 +433,7 @@
                         "x": 84.15,
                         "y": -16.38
                     },
-                    "uuid": "5a87c945-078f-436e-ba5a-1065e3a7a49b"
+                    "uuid": "cf9431e8-75b3-406e-be50-884500d941b2"
                 }
             ],
             "severity": "warning",
@@ -433,7 +448,7 @@
                         "x": 84.15,
                         "y": -7.02
                     },
-                    "uuid": "0f2f0d6d-b381-4a46-8dee-ecabe9d0ee3f"
+                    "uuid": "0122ffd5-2016-46b9-89f8-5e3fd94c8f2c"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -441,7 +456,7 @@
                         "x": 84.15,
                         "y": -7.62
                     },
-                    "uuid": "855d6386-ff38-439b-a7fb-38c9446f87b1"
+                    "uuid": "3e5df89c-73b4-40d5-8239-9b656d6a75b5"
                 }
             ],
             "severity": "warning",
@@ -456,7 +471,7 @@
                         "x": 84.15,
                         "y": -7.02
                     },
-                    "uuid": "0f2f0d6d-b381-4a46-8dee-ecabe9d0ee3f"
+                    "uuid": "0122ffd5-2016-46b9-89f8-5e3fd94c8f2c"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -464,7 +479,7 @@
                         "x": 84.15,
                         "y": -6.42
                     },
-                    "uuid": "689b4f27-bb99-4d60-a59a-7235f3bf4f36"
+                    "uuid": "cf26c9f9-3a29-41f6-a4e7-f814acd45ec8"
                 }
             ],
             "severity": "warning",
@@ -477,17 +492,17 @@
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 84.15,
-                        "y": -6.42
+                        "y": -5.819999
                     },
-                    "uuid": "689b4f27-bb99-4d60-a59a-7235f3bf4f36"
+                    "uuid": "34e46c8d-1fba-4575-9210-e217ab6d41be"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 84.15,
-                        "y": -5.819999
+                        "y": -6.42
                     },
-                    "uuid": "eccc0852-8dc2-44fa-b974-f3f77f0f44e8"
+                    "uuid": "cf26c9f9-3a29-41f6-a4e7-f814acd45ec8"
                 }
             ],
             "severity": "warning",
@@ -502,7 +517,7 @@
                         "x": 85.85,
                         "y": -17.58
                     },
-                    "uuid": "3cabe495-24a9-4e51-9843-266226dd8790"
+                    "uuid": "0409e172-e848-41de-80fe-2f65055cf96b"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -510,7 +525,7 @@
                         "x": 85.85,
                         "y": -18.18
                     },
-                    "uuid": "864e2bc0-9756-46e7-b535-d736fcb4eb12"
+                    "uuid": "bc387dbe-84d1-4b34-8a50-7f7f8dfdba02"
                 }
             ],
             "severity": "warning",
@@ -519,21 +534,21 @@
         {
             "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
             "items": [
-                {
-                    "description": "NPTH pad of MOUSE_BITES",
-                    "pos": {
-                        "x": 85.85,
-                        "y": -16.98
-                    },
-                    "uuid": "1d021388-f89e-4af7-a665-2746a2df4faa"
-                },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 85.85,
                         "y": -17.58
                     },
-                    "uuid": "3cabe495-24a9-4e51-9843-266226dd8790"
+                    "uuid": "0409e172-e848-41de-80fe-2f65055cf96b"
+                },
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 85.85,
+                        "y": -16.98
+                    },
+                    "uuid": "1713a736-5a30-4537-89b6-65e2af1c1ccb"
                 }
             ],
             "severity": "warning",
@@ -548,7 +563,7 @@
                         "x": 85.85,
                         "y": -16.98
                     },
-                    "uuid": "1d021388-f89e-4af7-a665-2746a2df4faa"
+                    "uuid": "1713a736-5a30-4537-89b6-65e2af1c1ccb"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -556,7 +571,7 @@
                         "x": 85.85,
                         "y": -16.38
                     },
-                    "uuid": "eaac3a3d-ead1-48a2-b8a6-6ea780a8cd86"
+                    "uuid": "5ee7e739-f250-4e30-9da4-9cba65fdf402"
                 }
             ],
             "severity": "warning",
@@ -565,21 +580,21 @@
         {
             "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
             "items": [
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 85.85,
+                        "y": -7.02
+                    },
+                    "uuid": "462bf433-4e71-40d2-84a7-bb0f71075353"
+                },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 85.85,
                         "y": -7.62
                     },
-                    "uuid": "1e346bc2-729b-412d-aada-ef5a6c863396"
-                },
-                {
-                    "description": "NPTH pad of MOUSE_BITES",
-                    "pos": {
-                        "x": 85.85,
-                        "y": -7.02
-                    },
-                    "uuid": "8efaac6a-a53f-41c2-8ec6-ea27e0c338ec"
+                    "uuid": "bcb583e8-b84d-4499-a51b-903f95010f35"
                 }
             ],
             "severity": "warning",
@@ -592,17 +607,17 @@
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 85.85,
-                        "y": -6.42
+                        "y": -7.02
                     },
-                    "uuid": "734faed2-72fb-4144-9f9a-f50d99f46b96"
+                    "uuid": "462bf433-4e71-40d2-84a7-bb0f71075353"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 85.85,
-                        "y": -7.02
+                        "y": -6.42
                     },
-                    "uuid": "8efaac6a-a53f-41c2-8ec6-ea27e0c338ec"
+                    "uuid": "fd657e2f-7d68-4679-ab1e-c132e821d79a"
                 }
             ],
             "severity": "warning",
@@ -611,21 +626,21 @@
         {
             "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
             "items": [
-                {
-                    "description": "NPTH pad of MOUSE_BITES",
-                    "pos": {
-                        "x": 85.85,
-                        "y": -6.42
-                    },
-                    "uuid": "734faed2-72fb-4144-9f9a-f50d99f46b96"
-                },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 85.85,
                         "y": -5.819999
                     },
-                    "uuid": "b6790039-f2c3-4c48-a0c5-1a5af1a8ff51"
+                    "uuid": "0ed1258b-6d09-467f-8973-b02cec7a9fa3"
+                },
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 85.85,
+                        "y": -6.42
+                    },
+                    "uuid": "fd657e2f-7d68-4679-ab1e-c132e821d79a"
                 }
             ],
             "severity": "warning",
@@ -640,7 +655,7 @@
                         "x": 110.15,
                         "y": -7.1
                     },
-                    "uuid": "1e1dd0ca-dba3-43ee-a1a6-fe641804e5a4"
+                    "uuid": "6d118fb4-ff75-4e57-a497-d29b771e38d0"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -648,7 +663,7 @@
                         "x": 110.15,
                         "y": -7.7
                     },
-                    "uuid": "8a923c7f-d625-4dc8-a15f-f1af3421b1e1"
+                    "uuid": "d82bcb0d-317a-4aeb-8c08-b1c7f90eb8ee"
                 }
             ],
             "severity": "warning",
@@ -663,7 +678,7 @@
                         "x": 110.15,
                         "y": -7.1
                     },
-                    "uuid": "1e1dd0ca-dba3-43ee-a1a6-fe641804e5a4"
+                    "uuid": "6d118fb4-ff75-4e57-a497-d29b771e38d0"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -671,7 +686,7 @@
                         "x": 110.15,
                         "y": -6.5
                     },
-                    "uuid": "2f0c41af-71df-4617-9ca3-aa0cbe1ec1d7"
+                    "uuid": "f84b710b-b72c-433c-be50-39bf48b9eafb"
                 }
             ],
             "severity": "warning",
@@ -686,7 +701,7 @@
                         "x": 110.15,
                         "y": -5.899999
                     },
-                    "uuid": "13a88d07-4bfc-4e5c-97e6-a8409ae0bbe4"
+                    "uuid": "41b8258b-7b8d-42a2-bec2-e77844038613"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -694,7 +709,7 @@
                         "x": 110.15,
                         "y": -6.5
                     },
-                    "uuid": "2f0c41af-71df-4617-9ca3-aa0cbe1ec1d7"
+                    "uuid": "f84b710b-b72c-433c-be50-39bf48b9eafb"
                 }
             ],
             "severity": "warning",
@@ -703,21 +718,21 @@
         {
             "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
             "items": [
-                {
-                    "description": "NPTH pad of MOUSE_BITES",
-                    "pos": {
-                        "x": 111.85,
-                        "y": -7.1
-                    },
-                    "uuid": "9bf50fc7-23e3-4355-b907-62f1f6be83d0"
-                },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 111.85,
                         "y": -7.7
                     },
-                    "uuid": "c7850c76-9bd5-4f68-97f1-c81d18b3040f"
+                    "uuid": "96801a4c-571c-4d73-99ef-cce5874364dd"
+                },
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 111.85,
+                        "y": -7.1
+                    },
+                    "uuid": "d85c5ec0-72ea-4e6d-9bed-9c49f09ec3eb"
                 }
             ],
             "severity": "warning",
@@ -730,17 +745,17 @@
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 111.85,
-                        "y": -7.1
+                        "y": -6.5
                     },
-                    "uuid": "9bf50fc7-23e3-4355-b907-62f1f6be83d0"
+                    "uuid": "85d1fe3d-4d25-46d8-b9f2-1ecf0a66bea6"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 111.85,
-                        "y": -6.5
+                        "y": -7.1
                     },
-                    "uuid": "c6cf1ad9-72ab-43d9-8542-2b8c2296e441"
+                    "uuid": "d85c5ec0-72ea-4e6d-9bed-9c49f09ec3eb"
                 }
             ],
             "severity": "warning",
@@ -755,7 +770,7 @@
                         "x": 111.85,
                         "y": -5.899999
                     },
-                    "uuid": "2361b743-90fa-46c8-9a2d-85fa703f996f"
+                    "uuid": "52d611ae-498b-41b4-b841-b2d1e6d4fad9"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -763,7 +778,7 @@
                         "x": 111.85,
                         "y": -6.5
                     },
-                    "uuid": "c6cf1ad9-72ab-43d9-8542-2b8c2296e441"
+                    "uuid": "85d1fe3d-4d25-46d8-b9f2-1ecf0a66bea6"
                 }
             ],
             "severity": "warning",
@@ -772,21 +787,21 @@
         {
             "description": "Drilled hole too close to other hole (board setup constraints min 0.2500 mm; actual 0.1000 mm)",
             "items": [
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 125.75,
+                        "y": -7.1
+                    },
+                    "uuid": "84f5998f-bf2f-4d9c-b892-4e60b88adc2d"
+                },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 125.75,
                         "y": -7.7
                     },
-                    "uuid": "73b0e10d-4804-4793-96f8-61de7d5e25c4"
-                },
-                {
-                    "description": "NPTH pad of MOUSE_BITES",
-                    "pos": {
-                        "x": 125.75,
-                        "y": -7.1
-                    },
-                    "uuid": "d6d986f9-8139-40ea-b0ff-cd2665e42d86"
+                    "uuid": "ef72e983-83a8-4ab8-8d79-a3fc142a86a4"
                 }
             ],
             "severity": "warning",
@@ -801,7 +816,7 @@
                         "x": 125.75,
                         "y": -6.5
                     },
-                    "uuid": "4424b0e6-f9f4-4bce-9eeb-3548d13904df"
+                    "uuid": "06a2ca6e-877b-4cea-8040-c7db513f8e78"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -809,7 +824,7 @@
                         "x": 125.75,
                         "y": -7.1
                     },
-                    "uuid": "d6d986f9-8139-40ea-b0ff-cd2665e42d86"
+                    "uuid": "84f5998f-bf2f-4d9c-b892-4e60b88adc2d"
                 }
             ],
             "severity": "warning",
@@ -824,7 +839,7 @@
                         "x": 125.75,
                         "y": -6.5
                     },
-                    "uuid": "4424b0e6-f9f4-4bce-9eeb-3548d13904df"
+                    "uuid": "06a2ca6e-877b-4cea-8040-c7db513f8e78"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -832,7 +847,7 @@
                         "x": 125.75,
                         "y": -5.899999
                     },
-                    "uuid": "ab4993d8-1025-478f-8bb4-bcb982bea271"
+                    "uuid": "c37263f5-d54d-4fdf-9eaa-7b28764636dd"
                 }
             ],
             "severity": "warning",
@@ -847,7 +862,7 @@
                         "x": 127.449999,
                         "y": -7.1
                     },
-                    "uuid": "93d3dc08-5468-4fa8-99e9-9e2b721e8c1c"
+                    "uuid": "1f33fb3c-14e9-4d72-8665-3280dc75abee"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -855,7 +870,7 @@
                         "x": 127.449999,
                         "y": -7.7
                     },
-                    "uuid": "c52ae49a-c002-4fbb-8e9b-f6859561875a"
+                    "uuid": "25b1f16c-23ce-4748-909e-3ad2ae238498"
                 }
             ],
             "severity": "warning",
@@ -870,7 +885,7 @@
                         "x": 127.449999,
                         "y": -7.1
                     },
-                    "uuid": "93d3dc08-5468-4fa8-99e9-9e2b721e8c1c"
+                    "uuid": "1f33fb3c-14e9-4d72-8665-3280dc75abee"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
@@ -878,7 +893,7 @@
                         "x": 127.449999,
                         "y": -6.5
                     },
-                    "uuid": "b97eb8be-3b7a-426f-8ffc-35c638619a33"
+                    "uuid": "20ec2c9e-5483-43e1-af6e-bbe3409fa9b9"
                 }
             ],
             "severity": "warning",
@@ -891,17 +906,17 @@
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 127.449999,
-                        "y": -5.899999
+                        "y": -6.5
                     },
-                    "uuid": "83101f5a-a0b8-44ee-bfd5-b66632a25c9f"
+                    "uuid": "20ec2c9e-5483-43e1-af6e-bbe3409fa9b9"
                 },
                 {
                     "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
                         "x": 127.449999,
-                        "y": -6.5
+                        "y": -5.899999
                     },
-                    "uuid": "b97eb8be-3b7a-426f-8ffc-35c638619a33"
+                    "uuid": "d03abb5c-9cb0-4967-8fcb-c1ee26e9ef6c"
                 }
             ],
             "severity": "warning",
@@ -938,21 +953,6 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint U302",
-                    "pos": {
-                        "x": 121.0,
-                        "y": -6.8
-                    },
-                    "uuid": "083cbc1e-516c-4951-bd73-eecb7a205d98"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
             "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
@@ -968,60 +968,15 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Connector_JST'",
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
-                    "description": "Footprint J401",
+                    "description": "Footprint C402",
                     "pos": {
-                        "x": 134.6,
-                        "y": -4.5
+                        "x": 138.1,
+                        "y": -22.0
                     },
-                    "uuid": "0e8615b6-9d8a-450d-93cd-d6b243ea4780"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint U403",
-                    "pos": {
-                        "x": 133.1,
-                        "y": -13.5
-                    },
-                    "uuid": "0ea06382-d7f8-49bd-bbf1-3bc6ad26413e"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint U106",
-                    "pos": {
-                        "x": 63.5,
-                        "y": -42.0
-                    },
-                    "uuid": "0f26658c-0e1c-414b-b2ea-a251df375b4e"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint J402",
-                    "pos": {
-                        "x": 134.6,
-                        "y": -46.5
-                    },
-                    "uuid": "12006f11-9669-4f8b-8ed4-86183c14d6d5"
+                    "uuid": "12008f3e-4a73-4e18-b63b-79c100b5ca2a"
                 }
             ],
             "severity": "warning",
@@ -1058,66 +1013,6 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint U402",
-                    "pos": {
-                        "x": 133.1,
-                        "y": -38.0
-                    },
-                    "uuid": "26f11aac-dd7d-4c51-b3c2-948f001b8607"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint U105",
-                    "pos": {
-                        "x": 53.0,
-                        "y": -37.0
-                    },
-                    "uuid": "27a9c8cf-09ce-43db-a263-742128993913"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C113",
-                    "pos": {
-                        "x": 58.0,
-                        "y": -32.5
-                    },
-                    "uuid": "29a1d9c9-4c86-40aa-9309-8a3fc870d4a9"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint J106",
-                    "pos": {
-                        "x": 77.0,
-                        "y": -44.0
-                    },
-                    "uuid": "3125990e-5e2c-47f7-bf9e-49a962ce7ee0"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
             "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
@@ -1133,6 +1028,36 @@
             "type": "lib_footprint_issues"
         },
         {
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
+            "items": [
+                {
+                    "description": "Footprint U105",
+                    "pos": {
+                        "x": 53.0,
+                        "y": -37.0
+                    },
+                    "uuid": "32e504f3-fb7b-4532-a29f-d6c73ef090d3"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
+            "items": [
+                {
+                    "description": "Footprint U301",
+                    "pos": {
+                        "x": 116.6,
+                        "y": -6.8
+                    },
+                    "uuid": "341e72df-defa-4f37-be4b-0f518d6f621c"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
             "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
@@ -1141,7 +1066,22 @@
                         "x": 138.1,
                         "y": -38.0
                     },
-                    "uuid": "3342d1c7-b7c9-4f9d-950a-a89538c55686"
+                    "uuid": "37ee3803-1432-442d-8dc9-138244897ef1"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
+            "items": [
+                {
+                    "description": "Footprint J108",
+                    "pos": {
+                        "x": 50.0,
+                        "y": -14.0
+                    },
+                    "uuid": "38b071f1-45a7-4c78-8f73-1b08d55e6ebf"
                 }
             ],
             "severity": "warning",
@@ -1181,27 +1121,12 @@
             "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
             "items": [
                 {
-                    "description": "Footprint R9",
+                    "description": "Footprint R113",
                     "pos": {
-                        "x": 25.0,
-                        "y": -29.5
+                        "x": 47.5,
+                        "y": -41.5
                     },
-                    "uuid": "5502f2f0-7f33-452f-851c-3bf4f055d987"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C401",
-                    "pos": {
-                        "x": 131.1,
-                        "y": -22.0
-                    },
-                    "uuid": "559ba25f-ea82-4e7a-b1f6-494ff8c92a3c"
+                    "uuid": "3b43af0c-f346-44f0-a3ed-3bc4284689b0"
                 }
             ],
             "severity": "warning",
@@ -1211,27 +1136,42 @@
             "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint J107",
+                    "description": "Footprint U106",
                     "pos": {
-                        "x": 50.0,
-                        "y": -48.0
+                        "x": 63.5,
+                        "y": -42.0
                     },
-                    "uuid": "56498136-5fd2-40ca-a490-730257394984"
+                    "uuid": "4c05d658-0674-4b11-8a56-9e031bf46742"
                 }
             ],
             "severity": "warning",
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint C402",
+                    "description": "Footprint U403",
                     "pos": {
-                        "x": 138.1,
-                        "y": -22.0
+                        "x": 133.1,
+                        "y": -13.5
                     },
-                    "uuid": "58866a2e-ae36-451f-9277-d776e5c40253"
+                    "uuid": "51184c49-5476-400d-8e3f-471c82f4c2a9"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R9",
+                    "pos": {
+                        "x": 25.0,
+                        "y": -29.5
+                    },
+                    "uuid": "5502f2f0-7f33-452f-851c-3bf4f055d987"
                 }
             ],
             "severity": "warning",
@@ -1268,15 +1208,15 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
             "items": [
                 {
-                    "description": "Footprint U301",
+                    "description": "Footprint R117",
                     "pos": {
-                        "x": 116.6,
-                        "y": -6.8
+                        "x": 58.0,
+                        "y": -35.5
                     },
-                    "uuid": "621e4a46-3f6b-415f-ad32-d403a56e85f8"
+                    "uuid": "60694eac-a645-4d35-ac75-10fcfb18996a"
                 }
             ],
             "severity": "warning",
@@ -1313,15 +1253,15 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint R116",
+                    "description": "Footprint U402",
                     "pos": {
-                        "x": 58.0,
-                        "y": -38.5
+                        "x": 133.1,
+                        "y": -38.0
                     },
-                    "uuid": "6bd87a79-2842-4073-9516-2567eb42c221"
+                    "uuid": "67d5bdb4-db11-4485-9fe1-ceb1ca1e7d67"
                 }
             ],
             "severity": "warning",
@@ -1346,27 +1286,12 @@
             "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint U401",
+                    "description": "Footprint J110",
                     "pos": {
-                        "x": 134.6,
-                        "y": -28.5
+                        "x": 63.5,
+                        "y": -28.0
                     },
-                    "uuid": "6fe7df6a-8675-405a-8a51-91d232f6f3cb"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R114",
-                    "pos": {
-                        "x": 47.5,
-                        "y": -38.5
-                    },
-                    "uuid": "71113947-e038-4406-b95d-bdcbf783ebbf"
+                    "uuid": "6c9f1fb6-d52b-4aa1-9a57-3c443d46fbda"
                 }
             ],
             "severity": "warning",
@@ -1376,12 +1301,12 @@
             "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint J110",
+                    "description": "Footprint J402",
                     "pos": {
-                        "x": 63.5,
-                        "y": -28.0
+                        "x": 134.6,
+                        "y": -46.5
                     },
-                    "uuid": "7421fa89-6717-48ee-a205-9b8819009077"
+                    "uuid": "6f841ce3-0d7a-425f-a8a6-5028b660ef1f"
                 }
             ],
             "severity": "warning",
@@ -1433,6 +1358,21 @@
             "type": "lib_footprint_issues"
         },
         {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R115",
+                    "pos": {
+                        "x": 53.0,
+                        "y": -28.0
+                    },
+                    "uuid": "7703eec9-8431-402d-976f-6de206845ef6"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
             "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
@@ -1442,21 +1382,6 @@
                         "y": -15.0
                     },
                     "uuid": "7849911c-5873-4bc8-a3c5-870a236a9c57"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint J109",
-                    "pos": {
-                        "x": 77.0,
-                        "y": -18.0
-                    },
-                    "uuid": "790bc9f9-8df5-47f9-8985-2cacc979b934"
                 }
             ],
             "severity": "warning",
@@ -1493,21 +1418,6 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C114",
-                    "pos": {
-                        "x": 59.5,
-                        "y": -42.0
-                    },
-                    "uuid": "7ef9d701-fb57-45b3-ae00-fcaa32ef17d2"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
             "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
             "items": [
                 {
@@ -1517,6 +1427,21 @@
                         "y": -5.5
                     },
                     "uuid": "7f543711-7af9-4ae6-9f20-6ff34855570d"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C401",
+                    "pos": {
+                        "x": 131.1,
+                        "y": -22.0
+                    },
+                    "uuid": "7f793de8-7a47-4a1d-96b0-a43ea97934fa"
                 }
             ],
             "severity": "warning",
@@ -1538,15 +1463,15 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
-                    "description": "Footprint R117",
+                    "description": "Footprint C405",
                     "pos": {
-                        "x": 58.0,
-                        "y": -35.5
+                        "x": 137.6,
+                        "y": -13.5
                     },
-                    "uuid": "8c0f1421-7dd1-4291-a141-cd9a5bb88578"
+                    "uuid": "8e9f33d7-647d-4c49-91b6-453b70c577ac"
                 }
             ],
             "severity": "warning",
@@ -1631,12 +1556,87 @@
             "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
+                    "description": "Footprint C112",
+                    "pos": {
+                        "x": 47.5,
+                        "y": -35.5
+                    },
+                    "uuid": "a1e36704-46d2-4125-a451-2a030dab97bf"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C114",
+                    "pos": {
+                        "x": 67.0,
+                        "y": -42.0
+                    },
+                    "uuid": "a318ef22-a079-4ea2-a2f7-22042fc9e828"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
+            "items": [
+                {
+                    "description": "Footprint J106",
+                    "pos": {
+                        "x": 77.0,
+                        "y": -44.0
+                    },
+                    "uuid": "a68b91ba-938f-4f11-b33f-1b6ee2a3d5b0"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R114",
+                    "pos": {
+                        "x": 47.5,
+                        "y": -38.5
+                    },
+                    "uuid": "a9671c0b-afa6-4499-ad50-ab2d01026af8"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
                     "description": "Footprint C12",
                     "pos": {
                         "x": 17.5,
                         "y": -48.0
                     },
                     "uuid": "afe49991-b2f9-4364-9b92-4ac5f313216e"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Connector_JST'",
+            "items": [
+                {
+                    "description": "Footprint J101",
+                    "pos": {
+                        "x": 71.0,
+                        "y": -11.5
+                    },
+                    "uuid": "b01c468b-0ef6-4b91-a925-8831ec107a5f"
                 }
             ],
             "severity": "warning",
@@ -1673,15 +1673,15 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint C405",
+                    "description": "Footprint U302",
                     "pos": {
-                        "x": 137.6,
-                        "y": -13.5
+                        "x": 121.0,
+                        "y": -6.8
                     },
-                    "uuid": "b958a584-a048-4cf8-ab9a-3488730a52a6"
+                    "uuid": "b635f14f-b1b9-46b2-b48c-737dc95a9f0e"
                 }
             ],
             "severity": "warning",
@@ -1703,15 +1703,15 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint C111",
+                    "description": "Footprint J109",
                     "pos": {
-                        "x": 53.0,
-                        "y": -32.0
+                        "x": 77.0,
+                        "y": -18.0
                     },
-                    "uuid": "bf966fe5-00f3-483d-a15f-0a4f6d65595d"
+                    "uuid": "c0e8cfff-5efa-4b8d-a408-305636fe30ba"
                 }
             ],
             "severity": "warning",
@@ -1733,6 +1733,36 @@
             "type": "lib_footprint_issues"
         },
         {
+            "description": "The current configuration does not include the footprint library 'Connector_JST'",
+            "items": [
+                {
+                    "description": "Footprint J401",
+                    "pos": {
+                        "x": 134.6,
+                        "y": -4.5
+                    },
+                    "uuid": "c418d329-c496-4887-9d89-f1f6a526001f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C113",
+                    "pos": {
+                        "x": 58.0,
+                        "y": -32.5
+                    },
+                    "uuid": "c4cce899-9364-47d7-a1f8-025a57034330"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
             "description": "The current configuration does not include the footprint library 'Button_Switch_SMD'",
             "items": [
                 {
@@ -1742,6 +1772,21 @@
                         "y": -44.5
                     },
                     "uuid": "cb7d2242-436a-49b4-8727-ccd8ba231d61"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R116",
+                    "pos": {
+                        "x": 58.0,
+                        "y": -38.5
+                    },
+                    "uuid": "ce210060-4803-4b9b-a264-6c22164ff52a"
                 }
             ],
             "severity": "warning",
@@ -1793,21 +1838,6 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C115",
-                    "pos": {
-                        "x": 67.5,
-                        "y": -42.0
-                    },
-                    "uuid": "d3b3b19a-7b5e-4b3c-af81-cd367cb211ad"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
             "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
             "items": [
                 {
@@ -1838,6 +1868,36 @@
             "type": "lib_footprint_issues"
         },
         {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C111",
+                    "pos": {
+                        "x": 53.0,
+                        "y": -32.0
+                    },
+                    "uuid": "da2b6190-4293-40c8-b74b-e93758c4a739"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
+            "items": [
+                {
+                    "description": "Footprint J107",
+                    "pos": {
+                        "x": 50.0,
+                        "y": -48.0
+                    },
+                    "uuid": "dd0d1925-040a-4a3f-9d4c-c0117be128e9"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
             "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
             "items": [
                 {
@@ -1847,21 +1907,6 @@
                         "y": -5.5
                     },
                     "uuid": "df608f20-9406-4d57-bba3-04fe9116169e"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C112",
-                    "pos": {
-                        "x": 47.5,
-                        "y": -35.5
-                    },
-                    "uuid": "e0d8c5ec-ed18-4afb-a313-96f2ecfc4681"
                 }
             ],
             "severity": "warning",
@@ -1883,45 +1928,15 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R115",
-                    "pos": {
-                        "x": 53.0,
-                        "y": -28.0
-                    },
-                    "uuid": "e2a868aa-68a7-4783-a5d9-433c08c92109"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
             "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint J108",
+                    "description": "Footprint U401",
                     "pos": {
-                        "x": 50.0,
-                        "y": -14.0
+                        "x": 134.6,
+                        "y": -28.5
                     },
-                    "uuid": "e50da96d-f5e3-4461-9735-ea3ca3788d4a"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R113",
-                    "pos": {
-                        "x": 47.5,
-                        "y": -41.5
-                    },
-                    "uuid": "e91f64e6-c206-4203-a132-1638013656d5"
+                    "uuid": "ed965626-a1c2-4de6-b6e9-5342658963b3"
                 }
             ],
             "severity": "warning",
@@ -1958,75 +1973,45 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Connector_JST'",
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
-                    "description": "Footprint J101",
+                    "description": "Footprint C106",
                     "pos": {
-                        "x": 71.0,
-                        "y": -11.5
-                    },
-                    "uuid": "fb0eb4d1-513a-49a2-8563-cd88b60a470a"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R108",
-                    "pos": {
-                        "x": 72.5,
-                        "y": -43.0
-                    },
-                    "uuid": "010b2df6-ad52-4941-a3c0-af98f115e7c2"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R402",
-                    "pos": {
-                        "x": 134.6,
-                        "y": -31.0
-                    },
-                    "uuid": "03293928-dbad-4abd-86b4-92b3e7316dc4"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R406",
-                    "pos": {
-                        "x": 130.6,
-                        "y": -42.0
-                    },
-                    "uuid": "05a073cd-bb2b-47d5-963c-3817e7e5042d"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R109",
-                    "pos": {
-                        "x": 61.0,
+                        "x": 66.5,
                         "y": -39.5
                     },
-                    "uuid": "0f6ec48a-7349-4dee-9ab2-5c657fb62594"
+                    "uuid": "011647f4-56fe-472c-be70-2fb143f96cda"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
+            "items": [
+                {
+                    "description": "Footprint U101",
+                    "pos": {
+                        "x": 54.0,
+                        "y": -18.0
+                    },
+                    "uuid": "04e9b49c-9f49-4f4f-b635-986b8f5b7bf7"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C102",
+                    "pos": {
+                        "x": 54.0,
+                        "y": -22.0
+                    },
+                    "uuid": "0c5538c1-9a31-48ea-810e-e037dafbeab9"
                 }
             ],
             "severity": "warning",
@@ -2041,7 +2026,52 @@
                         "x": 72.5,
                         "y": -48.0
                     },
-                    "uuid": "11779cae-f79a-4bf8-bac0-06941e461226"
+                    "uuid": "0d467c7e-ac9f-4d71-a91b-6e0d63b1ea20"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C103",
+                    "pos": {
+                        "x": 71.0,
+                        "y": -18.0
+                    },
+                    "uuid": "137f76b9-82cf-4cb0-a507-e179a3afb4d4"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C105",
+                    "pos": {
+                        "x": 72.5,
+                        "y": -30.0
+                    },
+                    "uuid": "189e821d-58f2-4c49-aaac-b909c498cd35"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C301",
+                    "pos": {
+                        "x": 118.8,
+                        "y": -11.5
+                    },
+                    "uuid": "1b9c105a-fcb8-45c1-b645-c827b6945bdf"
                 }
             ],
             "severity": "warning",
@@ -2051,12 +2081,12 @@
             "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
             "items": [
                 {
-                    "description": "Footprint R104",
+                    "description": "Footprint R102",
                     "pos": {
                         "x": 66.5,
-                        "y": -42.0
+                        "y": -32.0
                     },
-                    "uuid": "1200faa8-0d91-48e9-9287-02d73d108c1a"
+                    "uuid": "221bc2eb-4e1c-4a04-9a46-77ec1bf8ed7c"
                 }
             ],
             "severity": "warning",
@@ -2066,12 +2096,27 @@
             "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
             "items": [
                 {
-                    "description": "Footprint R403",
+                    "description": "Footprint R405",
                     "pos": {
-                        "x": 129.9,
-                        "y": -26.5
+                        "x": 139.3,
+                        "y": -31.0
                     },
-                    "uuid": "1f53fe0b-7ba0-47f7-b054-1c62ee0e7e28"
+                    "uuid": "26204c6b-916d-4e55-88e2-20db45675034"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
+            "items": [
+                {
+                    "description": "Footprint J102",
+                    "pos": {
+                        "x": 63.5,
+                        "y": -50.5
+                    },
+                    "uuid": "26389a5c-0032-4445-95a0-46ba1ecb3ff7"
                 }
             ],
             "severity": "warning",
@@ -2096,12 +2141,42 @@
             "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
-                    "description": "Footprint C17",
+                    "description": "Footprint C101",
                     "pos": {
-                        "x": 16.5,
-                        "y": -44.5
+                        "x": 54.0,
+                        "y": -14.0
                     },
-                    "uuid": "3167fc2a-1037-4f28-b34a-e31c5189e8bb"
+                    "uuid": "2834eb41-46ce-432d-8b7b-04c5d21d158d"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R403",
+                    "pos": {
+                        "x": 129.9,
+                        "y": -26.5
+                    },
+                    "uuid": "2973daf9-0d8c-4c01-82b3-25ad48c0f8d6"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R108",
+                    "pos": {
+                        "x": 72.5,
+                        "y": -43.0
+                    },
+                    "uuid": "2bb51e16-d337-4405-b137-d095ec99cd0d"
                 }
             ],
             "severity": "warning",
@@ -2111,12 +2186,27 @@
             "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
-                    "description": "Footprint C106",
+                    "description": "Footprint C302",
                     "pos": {
-                        "x": 66.5,
-                        "y": -39.5
+                        "x": 118.8,
+                        "y": -2.1
                     },
-                    "uuid": "32c5b391-48e4-4c67-96a1-a45d63886bfa"
+                    "uuid": "2d78e9a9-6c7f-45dd-8a29-28764e9e9dea"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R101",
+                    "pos": {
+                        "x": 58.0,
+                        "y": -23.0
+                    },
+                    "uuid": "2dda7eed-7c0c-4562-8ada-1a5cdde6950b"
                 }
             ],
             "severity": "warning",
@@ -2131,22 +2221,7 @@
                         "x": 137.4,
                         "y": -42.2
                     },
-                    "uuid": "34b83c5f-5f46-48de-9071-a7b27f7feec6"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R405",
-                    "pos": {
-                        "x": 139.3,
-                        "y": -31.0
-                    },
-                    "uuid": "37946d3b-756b-4042-b320-a2dbee8d963c"
+                    "uuid": "2fbd0057-c501-400e-ad3d-e8fbbd022eb8"
                 }
             ],
             "severity": "warning",
@@ -2156,12 +2231,87 @@
             "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
-                    "description": "Footprint C302",
+                    "description": "Footprint C17",
                     "pos": {
-                        "x": 121.1,
-                        "y": -10.2
+                        "x": 16.5,
+                        "y": -44.5
                     },
-                    "uuid": "39857cc6-ccab-45c5-901d-134b2a464f57"
+                    "uuid": "3167fc2a-1037-4f28-b34a-e31c5189e8bb"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R112",
+                    "pos": {
+                        "x": 78.5,
+                        "y": -46.5
+                    },
+                    "uuid": "32dca32a-9e65-49c2-99f0-8348a2f5b201"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R404",
+                    "pos": {
+                        "x": 139.3,
+                        "y": -26.5
+                    },
+                    "uuid": "349dc30d-3e00-4807-8693-3d4dffa80b3c"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C403",
+                    "pos": {
+                        "x": 139.3,
+                        "y": -36.5
+                    },
+                    "uuid": "352b4a04-7cfc-494e-9c66-daf4241c3f84"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R104",
+                    "pos": {
+                        "x": 66.5,
+                        "y": -42.0
+                    },
+                    "uuid": "35cdea95-92a1-4060-8fab-8440cfd56f8b"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R110",
+                    "pos": {
+                        "x": 67.0,
+                        "y": -44.5
+                    },
+                    "uuid": "36d16dd6-460a-4b9d-9fe3-5405e2867ca2"
                 }
             ],
             "severity": "warning",
@@ -2177,51 +2327,6 @@
                         "y": -14.0
                     },
                     "uuid": "3b387251-6e88-4c9f-b6d2-3cfad3dfefc6"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C103",
-                    "pos": {
-                        "x": 71.0,
-                        "y": -18.0
-                    },
-                    "uuid": "3b485988-ad5e-4c34-8b2e-1b80e1496b65"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R112",
-                    "pos": {
-                        "x": 78.5,
-                        "y": -46.5
-                    },
-                    "uuid": "3b56e9de-0bb2-4619-b7d1-db9423cc8b6b"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R101",
-                    "pos": {
-                        "x": 58.0,
-                        "y": -23.0
-                    },
-                    "uuid": "3bb3d231-3fbd-420a-ba6c-8e3cb1a2da5f"
                 }
             ],
             "severity": "warning",
@@ -2246,27 +2351,12 @@
             "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint U103",
+                    "description": "Footprint U102",
                     "pos": {
-                        "x": 72.5,
-                        "y": -35.0
+                        "x": 63.5,
+                        "y": -18.0
                     },
-                    "uuid": "4261edd7-4c72-4810-bc16-318fc37fe116"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C102",
-                    "pos": {
-                        "x": 54.0,
-                        "y": -22.0
-                    },
-                    "uuid": "44caadef-6b52-4d2f-bb44-76c8c6bd9182"
+                    "uuid": "3e82a27b-0d56-465b-b5a3-355eb45fd3df"
                 }
             ],
             "severity": "warning",
@@ -2281,22 +2371,7 @@
                         "x": 78.5,
                         "y": -34.0
                     },
-                    "uuid": "56e271e8-aafd-4469-94ae-1ed92a38b113"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint J103",
-                    "pos": {
-                        "x": 78.5,
-                        "y": -28.0
-                    },
-                    "uuid": "5feb06d0-0b0b-43d6-bc04-fca2be5128e5"
+                    "uuid": "45443d11-4f9c-4bee-b83e-7f6a24c81ae1"
                 }
             ],
             "severity": "warning",
@@ -2306,12 +2381,12 @@
             "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
             "items": [
                 {
-                    "description": "Footprint R106",
+                    "description": "Footprint R111",
                     "pos": {
-                        "x": 78.5,
-                        "y": -36.5
+                        "x": 67.0,
+                        "y": -46.8
                     },
-                    "uuid": "72e33151-be5b-46e1-9233-efe6f5ec3023"
+                    "uuid": "4613e89f-5192-40de-a821-97ab76335e8b"
                 }
             ],
             "severity": "warning",
@@ -2321,12 +2396,102 @@
             "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
-                    "description": "Footprint C105",
+                    "description": "Footprint C109",
+                    "pos": {
+                        "x": 61.0,
+                        "y": -36.5
+                    },
+                    "uuid": "4952520e-3915-4360-85fb-93e6ae676805"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R402",
+                    "pos": {
+                        "x": 134.6,
+                        "y": -31.0
+                    },
+                    "uuid": "497600cd-7ac1-4059-a165-ac683cc4db9b"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R109",
+                    "pos": {
+                        "x": 61.0,
+                        "y": -39.5
+                    },
+                    "uuid": "4ff74dee-2f54-4bdb-8013-1c7bdccafffb"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R107",
                     "pos": {
                         "x": 72.5,
-                        "y": -30.0
+                        "y": -40.5
                     },
-                    "uuid": "7373858f-b17b-4a34-b9c6-6ba491e8bb0f"
+                    "uuid": "55563c4e-58e4-4ce6-bea8-0aa8f5e11bb5"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
+            "items": [
+                {
+                    "description": "Footprint U404",
+                    "pos": {
+                        "x": 134.1,
+                        "y": -36.5
+                    },
+                    "uuid": "635a4666-8100-4742-8ca3-b5762e59f0e9"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
+            "items": [
+                {
+                    "description": "Footprint J104",
+                    "pos": {
+                        "x": 63.5,
+                        "y": -5.5
+                    },
+                    "uuid": "63ece49d-6a98-4acf-87d0-f776bff4a27a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C110",
+                    "pos": {
+                        "x": 78.5,
+                        "y": -49.5
+                    },
+                    "uuid": "6fa840ad-49a4-45a7-ba84-1a93884d8cd2"
                 }
             ],
             "severity": "warning",
@@ -2348,45 +2513,15 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C109",
-                    "pos": {
-                        "x": 61.0,
-                        "y": -36.5
-                    },
-                    "uuid": "78f41aa3-fb09-4c0a-92ed-f55d64941f51"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint TH401",
-                    "pos": {
-                        "x": 134.6,
-                        "y": -28.0
-                    },
-                    "uuid": "7937c786-ac12-463f-b22a-4a9af5f9c2a5"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
             "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint U404",
+                    "description": "Footprint J105",
                     "pos": {
-                        "x": 134.1,
-                        "y": -36.5
+                        "x": 48.5,
+                        "y": -28.0
                     },
-                    "uuid": "7e3af294-3cd2-4b81-8131-aa51d8323705"
+                    "uuid": "77feb3c0-9f3d-447c-8f1e-5f4178ba1ca3"
                 }
             ],
             "severity": "warning",
@@ -2402,6 +2537,21 @@
                         "y": -43.0
                     },
                     "uuid": "7e5f0790-cec2-45ac-9738-9e386b84fff6"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R406",
+                    "pos": {
+                        "x": 130.6,
+                        "y": -42.0
+                    },
+                    "uuid": "7f0b4e49-83b0-46fd-a937-f8fd4beb10cd"
                 }
             ],
             "severity": "warning",
@@ -2483,45 +2633,45 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R103",
-                    "pos": {
-                        "x": 66.5,
-                        "y": -34.5
-                    },
-                    "uuid": "98e77732-b2aa-4973-832e-0a746328f9ae"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
             "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint U101",
+                    "description": "Footprint U103",
                     "pos": {
-                        "x": 54.0,
-                        "y": -18.0
+                        "x": 72.5,
+                        "y": -35.0
                     },
-                    "uuid": "9b2f5719-ce7d-44ee-8471-d73c84cc4f83"
+                    "uuid": "9ebc630a-f68c-4ec1-84cf-4f39d233ad56"
                 }
             ],
             "severity": "warning",
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
             "items": [
                 {
-                    "description": "Footprint C110",
+                    "description": "Footprint TH401",
+                    "pos": {
+                        "x": 134.6,
+                        "y": -28.0
+                    },
+                    "uuid": "a0fa5e0c-8c30-424d-90bb-5649222e5c72"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R106",
                     "pos": {
                         "x": 78.5,
-                        "y": -49.5
+                        "y": -36.5
                     },
-                    "uuid": "9e8b9522-0af6-4ae3-84dd-59735af97fc0"
+                    "uuid": "a65786ec-42ed-4ed7-abe7-b8cf626ee044"
                 }
             ],
             "severity": "warning",
@@ -2543,21 +2693,6 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint J105",
-                    "pos": {
-                        "x": 48.5,
-                        "y": -28.0
-                    },
-                    "uuid": "b3169182-6699-4ca7-84ab-43c78810e983"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
             "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
@@ -2567,21 +2702,6 @@
                         "y": -16.0
                     },
                     "uuid": "b45fc6be-f1f2-4671-b87d-7b6a067bd005"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C104",
-                    "pos": {
-                        "x": 66.5,
-                        "y": -37.0
-                    },
-                    "uuid": "b57ef9ef-7861-463a-afee-28812759a9ac"
                 }
             ],
             "severity": "warning",
@@ -2618,60 +2738,15 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C101",
-                    "pos": {
-                        "x": 54.0,
-                        "y": -14.0
-                    },
-                    "uuid": "b88cf676-5837-4f6f-9972-6ffd893505ae"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R107",
-                    "pos": {
-                        "x": 72.5,
-                        "y": -40.5
-                    },
-                    "uuid": "b8fe246f-a0d3-45c0-9cff-6c52b7244b22"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
             "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint J301",
+                    "description": "Footprint J103",
                     "pos": {
-                        "x": 118.8,
-                        "y": -5.5
+                        "x": 78.5,
+                        "y": -28.0
                     },
-                    "uuid": "bbda67d4-0ac7-404d-b59d-2f23418acc91"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R102",
-                    "pos": {
-                        "x": 66.5,
-                        "y": -32.0
-                    },
-                    "uuid": "bfdfa7eb-c814-47e0-b82f-9b66b2289b61"
+                    "uuid": "c45ac48d-0c5a-4c32-9b39-017f99dace41"
                 }
             ],
             "severity": "warning",
@@ -2693,6 +2768,21 @@
             "type": "lib_footprint_issues"
         },
         {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C107",
+                    "pos": {
+                        "x": 78.5,
+                        "y": -39.0
+                    },
+                    "uuid": "d0813058-84d7-473f-9697-1291ccdbf9a0"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
             "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
@@ -2708,60 +2798,15 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R404",
-                    "pos": {
-                        "x": 139.3,
-                        "y": -26.5
-                    },
-                    "uuid": "d3b68411-43da-4440-903b-4790d6a59455"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint J104",
-                    "pos": {
-                        "x": 63.5,
-                        "y": -5.5
-                    },
-                    "uuid": "d3ebc5e8-5f3d-4b39-be2d-9c8992a1687d"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
             "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
             "items": [
                 {
-                    "description": "Footprint C107",
+                    "description": "Footprint C108",
                     "pos": {
                         "x": 78.5,
-                        "y": -39.0
+                        "y": -41.5
                     },
-                    "uuid": "d44e881d-1952-4e78-a860-17c3f1e0d38b"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R111",
-                    "pos": {
-                        "x": 67.0,
-                        "y": -46.8
-                    },
-                    "uuid": "d89574d2-0123-44a9-9f74-bb05716e7401"
+                    "uuid": "d541bec5-9923-40be-835f-03f3e8e4a927"
                 }
             ],
             "severity": "warning",
@@ -2783,90 +2828,15 @@
             "type": "lib_footprint_issues"
         },
         {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C403",
-                    "pos": {
-                        "x": 139.3,
-                        "y": -36.5
-                    },
-                    "uuid": "e6335887-4db4-4dc7-8b03-5b8650aa9635"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C108",
-                    "pos": {
-                        "x": 78.5,
-                        "y": -41.5
-                    },
-                    "uuid": "ec7b509d-2e79-4f7a-882e-f500449a4e41"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
             "description": "The current configuration does not include the footprint library 'gateway_fp'",
             "items": [
                 {
-                    "description": "Footprint J102",
+                    "description": "Footprint J301",
                     "pos": {
-                        "x": 63.5,
-                        "y": -50.5
+                        "x": 118.8,
+                        "y": -6.8
                     },
-                    "uuid": "f3940a09-e459-4d01-a239-c4543a9dce9f"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C301",
-                    "pos": {
-                        "x": 116.5,
-                        "y": -10.2
-                    },
-                    "uuid": "f44ad219-1d67-4654-8977-7418a48ac61e"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint U102",
-                    "pos": {
-                        "x": 63.5,
-                        "y": -18.0
-                    },
-                    "uuid": "f4c6fa17-96e1-4156-9502-39676e3f9f84"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R110",
-                    "pos": {
-                        "x": 67.0,
-                        "y": -44.5
-                    },
-                    "uuid": "f8dc5a36-116e-48a5-8f4d-0b4c44445303"
+                    "uuid": "e2ba4334-88d9-42f1-a9ee-ba7d508fa621"
                 }
             ],
             "severity": "warning",
@@ -2881,7 +2851,37 @@
                         "x": 134.6,
                         "y": -25.0
                     },
-                    "uuid": "fc9cf81f-3141-4a5b-905c-60c89dad80a2"
+                    "uuid": "ee973726-a2ff-4874-8295-8ee8c5cb1f37"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R103",
+                    "pos": {
+                        "x": 66.5,
+                        "y": -34.5
+                    },
+                    "uuid": "f3186217-6231-43f3-b691-c41baa82078e"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C104",
+                    "pos": {
+                        "x": 66.5,
+                        "y": -37.0
+                    },
+                    "uuid": "f4d5f80f-7ba7-4763-b34f-9e20eb892eeb"
                 }
             ],
             "severity": "warning",
@@ -2891,20 +2891,43 @@
             "description": "Silkscreen clearance",
             "items": [
                 {
-                    "description": "Segment on F.Silkscreen",
-                    "pos": {
-                        "x": 131.5,
-                        "y": -39.6
-                    },
-                    "uuid": "426f97a0-8f96-4018-bbbb-b2f2d5720e63"
-                },
-                {
                     "description": "Reference field of U402",
                     "pos": {
                         "x": 130.294999,
                         "y": -38.0
                     },
-                    "uuid": "6b8db453-35fd-4cb7-ace0-4ef6574f85aa"
+                    "uuid": "41619a30-d99c-4f13-b0c3-873e678c54de"
+                },
+                {
+                    "description": "Segment on F.Silkscreen",
+                    "pos": {
+                        "x": 131.5,
+                        "y": -39.6
+                    },
+                    "uuid": "cbfa7bfe-90bf-4abe-a681-3456271e2455"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_overlap"
+        },
+        {
+            "description": "Silkscreen clearance",
+            "items": [
+                {
+                    "description": "Reference field of C113",
+                    "pos": {
+                        "x": 60.966904,
+                        "y": -32.5
+                    },
+                    "uuid": "77a96409-489c-4360-bcf4-c8e9129a3499"
+                },
+                {
+                    "description": "Reference field of J110",
+                    "pos": {
+                        "x": 63.5,
+                        "y": -32.403599
+                    },
+                    "uuid": "fdb0f04b-22ee-4c28-92c9-39c7bac54f74"
                 }
             ],
             "severity": "warning",
@@ -2914,58 +2937,12 @@
             "description": "Silkscreen clipped by solder mask",
             "items": [
                 {
-                    "description": "Reference field of U302",
-                    "pos": {
-                        "x": 118.824999,
-                        "y": -6.8
-                    },
-                    "uuid": "302929b9-17b1-4706-b08c-b577ec5a2165"
-                },
-                {
-                    "description": "Pad 3 [DOME_GND] of U302 on F.Cu",
-                    "pos": {
-                        "x": 121.0,
-                        "y": -7.435
-                    },
-                    "uuid": "1c2c2d14-cfc8-44b5-a7b2-dbb4bf68e736"
-                }
-            ],
-            "severity": "warning",
-            "type": "silk_over_copper"
-        },
-        {
-            "description": "Silkscreen clipped by solder mask",
-            "items": [
-                {
-                    "description": "Reference field of U302",
-                    "pos": {
-                        "x": 118.824999,
-                        "y": -6.8
-                    },
-                    "uuid": "302929b9-17b1-4706-b08c-b577ec5a2165"
-                },
-                {
-                    "description": "Pad 2 [DOME_+3V3] of U302 on F.Cu",
-                    "pos": {
-                        "x": 121.0,
-                        "y": -6.165
-                    },
-                    "uuid": "c8389772-d524-4723-bd30-0cf74842deb2"
-                }
-            ],
-            "severity": "warning",
-            "type": "silk_over_copper"
-        },
-        {
-            "description": "Silkscreen clipped by solder mask",
-            "items": [
-                {
                     "description": "Reference field of U402",
                     "pos": {
                         "x": 130.294999,
                         "y": -38.0
                     },
-                    "uuid": "6b8db453-35fd-4cb7-ace0-4ef6574f85aa"
+                    "uuid": "41619a30-d99c-4f13-b0c3-873e678c54de"
                 },
                 {
                     "description": "Pad 2 [PROBE_GND] of U402 on F.Cu",
@@ -2973,7 +2950,7 @@
                         "x": 131.9626,
                         "y": -38.0
                     },
-                    "uuid": "f5adddd9-9817-490a-8f9d-44fba4c61381"
+                    "uuid": "67974986-11f5-42a3-8e63-bbe1d955ceb0"
                 }
             ],
             "severity": "warning",
@@ -2983,20 +2960,66 @@
             "description": "Silkscreen clipped by solder mask",
             "items": [
                 {
-                    "description": "Reference field of J301",
+                    "description": "Reference field of U302",
                     "pos": {
-                        "x": 118.8,
-                        "y": -9.9036
+                        "x": 118.824999,
+                        "y": -6.8
                     },
-                    "uuid": "af92db6f-ee85-46b9-b489-bff689a92b54"
+                    "uuid": "cd39829b-4e42-440e-a589-17964bad94de"
+                },
+                {
+                    "description": "Pad 3 [DOME_GND] of U302 on F.Cu",
+                    "pos": {
+                        "x": 121.0,
+                        "y": -7.435
+                    },
+                    "uuid": "8a538d41-34ed-490b-bea1-2747c139401f"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of U302",
+                    "pos": {
+                        "x": 118.824999,
+                        "y": -6.8
+                    },
+                    "uuid": "cd39829b-4e42-440e-a589-17964bad94de"
+                },
+                {
+                    "description": "Pad 2 [DOME_+3V3] of U302 on F.Cu",
+                    "pos": {
+                        "x": 121.0,
+                        "y": -6.165
+                    },
+                    "uuid": "30bc3d51-c6a8-4541-9918-308cffbe0154"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of C302",
+                    "pos": {
+                        "x": 116.214047,
+                        "y": -2.1
+                    },
+                    "uuid": "d0110424-ae8a-44e9-a5dc-2cf6086f2083"
                 },
                 {
                     "description": "Pad 1 [DOME_+3V3] of C302 on B.Cu",
                     "pos": {
-                        "x": 120.325,
-                        "y": -10.2
+                        "x": 118.025,
+                        "y": -2.1
                     },
-                    "uuid": "895d06b4-f6b7-4546-bac9-14063a5e7548"
+                    "uuid": "7ffa0d99-bab7-487c-bdfe-558ea6aeebe7"
                 }
             ],
             "severity": "warning",
@@ -3008,18 +3031,18 @@
                 {
                     "description": "Reference field of J301",
                     "pos": {
-                        "x": 118.8,
-                        "y": -9.9036
+                        "x": 113.169285,
+                        "y": -6.8
                     },
-                    "uuid": "af92db6f-ee85-46b9-b489-bff689a92b54"
+                    "uuid": "4ae9dc24-6adf-4bd0-b804-ad725fcba7f4"
                 },
                 {
-                    "description": "Pad 2 [DOME_GND] of C301 on B.Cu",
+                    "description": "Pad 1 [DOME_+3V3] of J301 on B.Cu",
                     "pos": {
-                        "x": 117.275,
-                        "y": -10.2
+                        "x": 114.99,
+                        "y": -5.2001
                     },
-                    "uuid": "3af6133e-b0fc-4d65-b5e6-96d3881af2f5"
+                    "uuid": "00a6bd0c-1b6e-48d1-b136-2608b6834bac"
                 }
             ],
             "severity": "warning",
@@ -3029,20 +3052,66 @@
             "description": "Silkscreen clipped by solder mask",
             "items": [
                 {
-                    "description": "Reference field of R104",
+                    "description": "Reference field of J301",
                     "pos": {
-                        "x": 63.914047,
-                        "y": -42.0
+                        "x": 113.169285,
+                        "y": -6.8
                     },
-                    "uuid": "730c943b-fb8d-44db-aa72-a2918afe5136"
+                    "uuid": "4ae9dc24-6adf-4bd0-b804-ad725fcba7f4"
                 },
                 {
-                    "description": "Pad 1 [CROWN_US_AMP1_IN] of R104 on B.Cu",
+                    "description": "NPTH pad of MOUSE_BITES",
                     "pos": {
-                        "x": 65.675,
-                        "y": -42.0
+                        "x": 111.85,
+                        "y": -6.5
                     },
-                    "uuid": "2ff2b591-13af-4405-9786-67d2abe7d672"
+                    "uuid": "85d1fe3d-4d25-46d8-b9f2-1ecf0a66bea6"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of J301",
+                    "pos": {
+                        "x": 113.169285,
+                        "y": -6.8
+                    },
+                    "uuid": "4ae9dc24-6adf-4bd0-b804-ad725fcba7f4"
+                },
+                {
+                    "description": "NPTH pad of MOUSE_BITES",
+                    "pos": {
+                        "x": 111.85,
+                        "y": -7.1
+                    },
+                    "uuid": "d85c5ec0-72ea-4e6d-9bed-9c49f09ec3eb"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of C301",
+                    "pos": {
+                        "x": 116.214047,
+                        "y": -11.5
+                    },
+                    "uuid": "d96ded80-d887-4f6a-ab42-c14e13a56ae5"
+                },
+                {
+                    "description": "Pad 1 [DOME_+3V3] of C301 on B.Cu",
+                    "pos": {
+                        "x": 118.025,
+                        "y": -11.5
+                    },
+                    "uuid": "61cc9cc8-4731-4d16-b9c0-4b0d241cb185"
                 }
             ],
             "severity": "warning",
@@ -3057,7 +3126,7 @@
                         "x": 63.914047,
                         "y": -39.5
                     },
-                    "uuid": "eaddfd16-5497-4cbd-81b8-09790fa093e4"
+                    "uuid": "663c8358-d771-40fe-8073-617b3b1a571b"
                 },
                 {
                     "description": "Pad 1 [CROWN_US_RX_MUX] of C106 on B.Cu",
@@ -3065,7 +3134,7 @@
                         "x": 65.725,
                         "y": -39.5
                     },
-                    "uuid": "823b436f-909f-4bb0-aa9d-fdeb8cb2fb49"
+                    "uuid": "9437f5bb-cdfa-4d0a-beab-3af55a9e0f72"
                 }
             ],
             "severity": "warning",
@@ -3075,135 +3144,20 @@
             "description": "Silkscreen clipped by solder mask",
             "items": [
                 {
-                    "description": "Reference field of C104",
+                    "description": "Reference field of R104",
                     "pos": {
                         "x": 63.914047,
-                        "y": -37.0
+                        "y": -42.0
                     },
-                    "uuid": "a38a6348-efa5-4b9c-9323-b2197057bb3c"
+                    "uuid": "48a33a50-b084-453a-97cc-83566f3ee409"
                 },
                 {
-                    "description": "Pad 1 [CROWN_US_VREF] of C104 on B.Cu",
+                    "description": "Pad 1 [CROWN_US_AMP1_IN] of R104 on B.Cu",
                     "pos": {
-                        "x": 65.725,
-                        "y": -37.0
+                        "x": 65.675,
+                        "y": -42.0
                     },
-                    "uuid": "e0d5b340-e5b4-4c69-b32d-8b6d6d307a32"
-                }
-            ],
-            "severity": "warning",
-            "type": "silk_over_copper"
-        },
-        {
-            "description": "Silkscreen clipped by solder mask",
-            "items": [
-                {
-                    "description": "Reference field of R105",
-                    "pos": {
-                        "x": 75.914047,
-                        "y": -34.0
-                    },
-                    "uuid": "b3d3a459-361e-49c1-9c50-28875cb91b45"
-                },
-                {
-                    "description": "Pad 1 [CROWN_US_AMP1_FB] of R105 on B.Cu",
-                    "pos": {
-                        "x": 77.675,
-                        "y": -34.0
-                    },
-                    "uuid": "48ef31b2-7aff-4bd9-b126-96cccc3ebc8f"
-                }
-            ],
-            "severity": "warning",
-            "type": "silk_over_copper"
-        },
-        {
-            "description": "Silkscreen clipped by solder mask",
-            "items": [
-                {
-                    "description": "Reference field of R106",
-                    "pos": {
-                        "x": 75.914047,
-                        "y": -36.5
-                    },
-                    "uuid": "bb1ae3d0-9dc8-498d-a429-0d799b41caca"
-                },
-                {
-                    "description": "Pad 1 [CROWN_US_AMP1_FB] of R106 on B.Cu",
-                    "pos": {
-                        "x": 77.675,
-                        "y": -36.5
-                    },
-                    "uuid": "d6268013-4276-49bf-af92-215213c2af72"
-                }
-            ],
-            "severity": "warning",
-            "type": "silk_over_copper"
-        },
-        {
-            "description": "Silkscreen clipped by solder mask",
-            "items": [
-                {
-                    "description": "Reference field of R106",
-                    "pos": {
-                        "x": 75.914047,
-                        "y": -36.5
-                    },
-                    "uuid": "bb1ae3d0-9dc8-498d-a429-0d799b41caca"
-                },
-                {
-                    "description": "Pad 4 [CROWN_GND] of U103 on B.Cu",
-                    "pos": {
-                        "x": 74.405,
-                        "y": -37.7051
-                    },
-                    "uuid": "f18dc17c-4a13-468e-ac93-42a13aca8e91"
-                }
-            ],
-            "severity": "warning",
-            "type": "silk_over_copper"
-        },
-        {
-            "description": "Silkscreen clipped by solder mask",
-            "items": [
-                {
-                    "description": "Reference field of C107",
-                    "pos": {
-                        "x": 75.914047,
-                        "y": -39.0
-                    },
-                    "uuid": "460daffd-7498-4ece-a3ab-71b3303edb8d"
-                },
-                {
-                    "description": "Pad 1 [CROWN_N$2] of C107 on B.Cu",
-                    "pos": {
-                        "x": 77.725,
-                        "y": -39.0
-                    },
-                    "uuid": "5b2d33f8-3539-4f15-9a39-b26f9128c037"
-                }
-            ],
-            "severity": "warning",
-            "type": "silk_over_copper"
-        },
-        {
-            "description": "Silkscreen clipped by solder mask",
-            "items": [
-                {
-                    "description": "Reference field of U103",
-                    "pos": {
-                        "x": 68.936,
-                        "y": -35.0
-                    },
-                    "uuid": "dd74121b-6137-49d0-934f-f4499cc6dae6"
-                },
-                {
-                    "description": "Pad 2 [CROWN_GND] of R103 on B.Cu",
-                    "pos": {
-                        "x": 67.325,
-                        "y": -34.5
-                    },
-                    "uuid": "65316630-6593-4520-9b5b-f4f239babc42"
+                    "uuid": "983634ec-955a-4a58-a238-bfe867bc716f"
                 }
             ],
             "severity": "warning",
@@ -3218,7 +3172,7 @@
                         "x": 69.914047,
                         "y": -40.5
                     },
-                    "uuid": "1dad6745-a8de-4956-8571-e91ce4d6911d"
+                    "uuid": "567a70e5-39b9-4d9b-9cad-8952e1bb3ff6"
                 },
                 {
                     "description": "Pad 1 [CROWN_US_AMP2_IN] of R107 on B.Cu",
@@ -3226,30 +3180,7 @@
                         "x": 71.675,
                         "y": -40.5
                     },
-                    "uuid": "74d874a3-a882-4872-b7d8-a2d498a3f621"
-                }
-            ],
-            "severity": "warning",
-            "type": "silk_over_copper"
-        },
-        {
-            "description": "Silkscreen clipped by solder mask",
-            "items": [
-                {
-                    "description": "Reference field of R103",
-                    "pos": {
-                        "x": 63.914047,
-                        "y": -34.5
-                    },
-                    "uuid": "3c919434-82b8-4ca0-9b89-a2d3e7ea7efb"
-                },
-                {
-                    "description": "Pad 1 [CROWN_US_VREF] of R103 on B.Cu",
-                    "pos": {
-                        "x": 65.675,
-                        "y": -34.5
-                    },
-                    "uuid": "d39cafed-8a6a-4d9a-ba7c-071b03501e53"
+                    "uuid": "58a5d749-390d-44bb-9149-3bd6925f8ea5"
                 }
             ],
             "severity": "warning",
@@ -3264,7 +3195,7 @@
                         "x": 69.914047,
                         "y": -43.0
                     },
-                    "uuid": "a62f666a-2939-4cfb-a338-6d0537041322"
+                    "uuid": "6bf0c966-d913-41ad-a0fe-be42cacddf63"
                 },
                 {
                     "description": "Pad 1 [CROWN_US_AMP2_FB] of R108 on B.Cu",
@@ -3272,7 +3203,168 @@
                         "x": 71.675,
                         "y": -43.0
                     },
-                    "uuid": "5a02f034-c456-47a8-81ad-98ae4482b16e"
+                    "uuid": "d375d73a-a502-4554-830e-a541da64ff16"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of R105",
+                    "pos": {
+                        "x": 75.914047,
+                        "y": -34.0
+                    },
+                    "uuid": "bec7c625-05a2-4c31-b8ff-900c99f5235a"
+                },
+                {
+                    "description": "Pad 1 [CROWN_US_AMP1_FB] of R105 on B.Cu",
+                    "pos": {
+                        "x": 77.675,
+                        "y": -34.0
+                    },
+                    "uuid": "f1481a1b-2e8b-4125-845e-9458fbff4176"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of R106",
+                    "pos": {
+                        "x": 75.914047,
+                        "y": -36.5
+                    },
+                    "uuid": "db560453-9e03-443d-9dc5-41c6aa35c63e"
+                },
+                {
+                    "description": "Pad 1 [CROWN_US_AMP1_FB] of R106 on B.Cu",
+                    "pos": {
+                        "x": 77.675,
+                        "y": -36.5
+                    },
+                    "uuid": "58c956b0-7bab-4450-a251-cb5b7f71f76b"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of R106",
+                    "pos": {
+                        "x": 75.914047,
+                        "y": -36.5
+                    },
+                    "uuid": "db560453-9e03-443d-9dc5-41c6aa35c63e"
+                },
+                {
+                    "description": "Pad 4 [CROWN_GND] of U103 on B.Cu",
+                    "pos": {
+                        "x": 74.405,
+                        "y": -37.7051
+                    },
+                    "uuid": "1d7aa61d-1023-4d36-bd6e-3ed6f2321765"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of C107",
+                    "pos": {
+                        "x": 75.914047,
+                        "y": -39.0
+                    },
+                    "uuid": "d7dec513-5399-4be8-a07f-0465c52e4c46"
+                },
+                {
+                    "description": "Pad 1 [CROWN_N$2] of C107 on B.Cu",
+                    "pos": {
+                        "x": 77.725,
+                        "y": -39.0
+                    },
+                    "uuid": "394e19e4-208c-4f86-b218-a7f270cfa20b"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of U103",
+                    "pos": {
+                        "x": 68.936,
+                        "y": -35.0
+                    },
+                    "uuid": "d0ec9f09-243a-4c45-9237-b1f6ff4faa39"
+                },
+                {
+                    "description": "Pad 2 [CROWN_GND] of R103 on B.Cu",
+                    "pos": {
+                        "x": 67.325,
+                        "y": -34.5
+                    },
+                    "uuid": "5610673f-dbd1-4687-972f-25e33741c741"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of R103",
+                    "pos": {
+                        "x": 63.914047,
+                        "y": -34.5
+                    },
+                    "uuid": "b694d605-ec2c-413a-a7b9-a8127cc3e7ef"
+                },
+                {
+                    "description": "Pad 1 [CROWN_US_VREF] of R103 on B.Cu",
+                    "pos": {
+                        "x": 65.675,
+                        "y": -34.5
+                    },
+                    "uuid": "28abc35f-07ba-4f26-a450-8c1f2a9aa588"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of C104",
+                    "pos": {
+                        "x": 63.914047,
+                        "y": -37.0
+                    },
+                    "uuid": "749d94fe-84fd-4572-97a2-e4d669edb43d"
+                },
+                {
+                    "description": "Pad 1 [CROWN_US_VREF] of C104 on B.Cu",
+                    "pos": {
+                        "x": 65.725,
+                        "y": -37.0
+                    },
+                    "uuid": "dfce939b-19ba-4e40-ae94-ea0227ae809a"
                 }
             ],
             "severity": "warning",

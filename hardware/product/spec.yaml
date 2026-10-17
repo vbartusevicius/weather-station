@@ -92,13 +92,13 @@ boards:
     domains:
       SELV-REFLECTOR: all
   dome:
-    plane: horizontal-xz     # round Ø 12 mm UV/Light micro-PCB raised on 4-pin vertical B2B riser right inside the JGS1 hemisphere!
+    plane: horizontal-xz     # round Ø 13.6 mm UV/Light micro-PCB raised on 4-pin vertical B2B riser right inside the JGS1 hemisphere!
     shape: circle
     thickness: 1.2
     y: 197.4                 # U1 (LTR-390UV) & U2 (VEML7700) sit at y = 197.4..200.4 inside the hollow JGS1 hemisphere above the y=197.8 lip
     x_offset: 0.0
     z_offset: 0.0
-    max_outline: { width: 12.0, height: 12.0 }
+    max_outline: { width: 13.6, height: 13.6 }
     domains:
       SELV-DOME: all
   probe:
@@ -280,7 +280,6 @@ derived:
       - PIEZO_INV
       - PIEZO_STG1
       - PIEZO_ENV
-      - LIS_C1
       - Net-*
       CROWN-Power:
       - +5V

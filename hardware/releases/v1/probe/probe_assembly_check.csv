@@ -16,5 +16,5 @@ R6,C25804,0603WAF1002T5E,R0603,Bottom,0,0,31516754,base,lands pin for pin
 TH1,C279936,SDNT1608X103F3950FTF,R0603,Bottom,0,0,127133,expand,lands pin for pin
 U1,C3659294,SCD41-D-R2,LGA-20_L10.1-W10.1-P1.25-TL_SCD41-D-R2,Top,0,0,2800,expand,lands pin for pin
 U2,C3659325,SGP41-D-R4,DFN-6_L2.4-W2.4-P0.80-TL-EP,Top,0,0,2438,expand,lands pin for pin
-U3,C5360602,SHT45-AD1F-R2,DFN-4_L1.5-W1.5-P0.8-TL-EP,Top,0,0,6139,expand,lands pin for pin
+U3,C7461846,SHT40-AD1F-R2,DFN-4_L1.5-W1.5-P0.80-TL-EP,Top,0,0,2720,expand,lands pin for pin
 U4,C7955,LM393DR2G,SOIC-8_L5.0-W4.0-P1.27-LS6.0-BL,Bottom,90,90,210152,base,lands pin for pin

@@ -1411,6 +1411,45 @@
         "7": "OUTB"
       }
     },
+    "C404328": {
+      "record": {
+        "componentModelEn": "MMC5603NJ",
+        "componentBrandEn": "MEMSIC",
+        "componentSpecificationEn": "WLP-4(0.8x0.8)",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_1912111437_MEMSIC-MMC5603NJ_C404328.pdf",
+        "componentLibraryType": "expand",
+        "attributes": []
+      },
+      "footprint": "FLIPCHIP-4_L0.8-W0.8-R2-C2-P0.40-TL",
+      "pads": [
+        [
+          "A1",
+          -0.19989799999999433,
+          0.19989799999999433
+        ],
+        [
+          "A2",
+          0.19989799999999433,
+          0.19989799999999433
+        ],
+        [
+          "B1",
+          -0.19989799999999433,
+          -0.19989799999999433
+        ],
+        [
+          "B2",
+          0.19989799999999433,
+          -0.19989799999999433
+        ]
+      ],
+      "pin_names": {
+        "A1": "VSA",
+        "A2": "SCL",
+        "B1": "VDD",
+        "B2": "SDA"
+      }
+    },
     "C41417361": {
       "record": {
         "componentModelEn": "HX PZ2.54-1x4P TP-YQ",
@@ -1481,6 +1520,45 @@
       "pin_names": {
         "2": "2",
         "1": "1"
+      }
+    },
+    "C42379197": {
+      "record": {
+        "componentModelEn": "HX PM2.54-1x4P TP-YQ",
+        "componentBrandEn": "hanxia",
+        "componentSpecificationEn": "SMD,P=2.54mm(Staggered pins)",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2411121402_hanxia-HX-PM2-54-1x4P-TP-YQ_C42379197.pdf",
+        "componentLibraryType": "expand",
+        "attributes": []
+      },
+      "footprint": "HDR-SMD_HX-PM2.54-1X4P-TP-YQ",
+      "pads": [
+        [
+          "2",
+          -1.27,
+          -1.8000979999999973
+        ],
+        [
+          "3",
+          1.27,
+          1.8000979999999973
+        ],
+        [
+          "1",
+          -3.81,
+          1.8000979999999973
+        ],
+        [
+          "4",
+          3.81,
+          -1.8000979999999973
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "4": "4",
+        "3": "3",
+        "2": "2"
       }
     },
     "C440198": {
@@ -2057,6 +2135,51 @@
         "14": "X_CH_1_IN/OUT",
         "15": "X_CH_2_IN/OUT",
         "16": "VDD"
+      }
+    },
+    "C7461846": {
+      "record": {
+        "componentModelEn": "SHT40-AD1F-R2",
+        "componentBrandEn": "Sensirion",
+        "componentSpecificationEn": "DFN-4(1.5x1.5)",
+        "dataManualUrl": "",
+        "componentLibraryType": "expand",
+        "attributes": []
+      },
+      "footprint": "DFN-4_L1.5-W1.5-P0.80-TL-EP",
+      "pads": [
+        [
+          "5",
+          0.0,
+          -0.0
+        ],
+        [
+          "4",
+          0.6774179999999788,
+          0.4000499999999538
+        ],
+        [
+          "3",
+          0.6774179999999788,
+          -0.4000499999999538
+        ],
+        [
+          "2",
+          -0.6774179999999788,
+          -0.4000499999999538
+        ],
+        [
+          "1",
+          -0.6774179999999788,
+          0.4000499999999538
+        ]
+      ],
+      "pin_names": {
+        "1": "SDA",
+        "2": "SCL",
+        "3": "VDD",
+        "4": "VSS",
+        "5": "EP"
       }
     },
     "C7955": {

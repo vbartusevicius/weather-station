@@ -106,11 +106,19 @@ def build_base():
                     .extrude(30.0))
             body = body.cut(bolt)
 
-    # 6. Add 4 internal PCB standoffs supporting `main` (bottom of `main` is at y = 42.8)
+    # 6. Add 4 internal PCB standoffs supporting `main` (bottom of `main` is at y = 42.8) + 4 corner snap-fit retention clips
     main_bot_y = SPEC["boards"]["main"]["y"] - SPEC["boards"]["main"]["thickness"]
     for st in ef.standoffs("main"):
         post = cone_y(35.0, main_bot_y, 2.5, 2.5).translate((st["x"], 0, st["z"]))
         body = body.union(post)
+    for sx in (-1.0, 1.0):
+        for sz in (-1.0, 1.0):
+            cx, cz = sx * 21.4, sz * 28.9
+            guide = box(cx - 0.75, cx + 0.75, 35.0, 45.4, cz - 0.75, cz + 0.75)
+            hook = box(min(cx - sx * 1.6, cx + sx * 0.75), max(cx - sx * 1.6, cx + sx * 0.75),
+                       44.12, 45.2,
+                       min(cz - sz * 1.6, cz + sz * 0.75), max(cz - sz * 1.6, cz + sz * 0.75))
+            body = body.union(guide).union(hook)
 
     # 7. Cut 4x 1.2 mm anti-spider micro-slit intake grilles + condensation weep drains on the bottom overhang
     for deg in (30, 150, 210, 330):
@@ -321,6 +329,15 @@ def build_crown():
     for st in ef.standoffs("crown"):
         post = cone_y(176.0, crown_bot_y, 2.4, 2.4).translate((st["x"], 0, st["z"]))
         body = body.union(post)
+    # 4x Snap-Fit Corner Retention Clips inside `crown.stl` locking `crown` PCB (y = 180.3..181.5) onto the standoffs
+    for sx in (-1.0, 1.0):
+        for sz in (-1.0, 1.0):
+            cx, cz = sx * 21.4, sz * 28.9
+            guide = box(cx - 0.75, cx + 0.75, 176.0, 182.8, cz - 0.75, cz + 0.75)
+            hook = box(min(cx - sx * 1.6, cx + sx * 0.75), max(cx - sx * 1.6, cx + sx * 0.75),
+                       181.62, 182.7,
+                       min(cz - sz * 1.6, cz + sz * 0.75), max(cz - sz * 1.6, cz + sz * 0.75))
+            body = body.union(guide).union(hook)
 
     return body
 

@@ -66,3 +66,6 @@ def test_cables_reach_between_boards_with_slack():
         p2 = ef.board_point(b_to, c2["x"], c2["y"])
         dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(p1, p2)))
         assert dist + 10.0 <= lk["cable_length_mm"]
+        if lk["type"] == "b2b_header":
+            assert abs(p1[0] - p2[0]) <= 0.05, f"{b_from}:{r_from} vs {b_to}:{r_to} X mismatch: {p1[0]} vs {p2[0]}"
+            assert abs(p1[2] - p2[2]) <= 1.6, f"{b_from}:{r_from} vs {b_to}:{r_to} Z mismatch: {p1[2]} vs {p2[2]}"
