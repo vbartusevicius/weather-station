@@ -1,0 +1,110 @@
+frame:
+  size: { x: 41.0, y: 56.0 }
+  copper_layers: 4
+  thickness: 1.2
+  min_drill: 0.2
+  min_track: 0.12
+  edge_clearance: 0.3
+  silk_inside: true
+  fine_pitch_power_pads: [U1, U2, U4, U5, U6, J2, J3, J4]
+  raised_modules: [U3]
+  plane_layers: [In1.Cu]
+  domains: [SELV-MAIN]
+  domain_regions:
+    SELV-MAIN:
+      - { x0: 0.0, y0: 0.0, x1: 41.0, y1: 56.0 }
+  isolators: []
+  power_nets: [VIN_RAW, VIN_FUSED, VIN_PROT, HEAT_SW, +5V, +5V_XIAO]
+  pours:
+    - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 40.5, y1: 55.5 } }
+  no_coat_keepouts:
+    - { x0: 4.8, y0: 17.3, x1: 8.2, y1: 20.7, layer: B.SilkS }   # U4 BMP581 MEMS pressure port
+
+heights:
+  default: 1.2
+  J1: 11.1
+  F1: 1.2
+  D1: 2.0
+  D2: 2.0
+  D3: 2.0
+  C1: 1.3
+  U1: 1.1
+  L1: 1.5
+  Q1: 1.1
+  U2: 1.0
+  U3: 11.0
+  SW1: 1.5
+  U7: 1.1
+  D4: 0.65
+  D5: 0.65
+  U4: 0.8
+  U5: 0.9
+  U6: 0.9
+  L2: 4.5
+  J4: 4.5
+  J2: 4.25
+  J3: 4.25
+
+parts:
+  # --- Front (+y): Connectors, XIAO module (with 5V buck underneath), status LEDs ---
+  J1:  { x: 8.5,   y: 8.5,   rot: 180, block: power_in, locked: true }
+  F1:  { x: 19.5,  y: 6.0,   rot: 90,  block: power_in }
+  D1:  { x: 25.0,  y: 6.0,   rot: 90,  block: power_in }
+  D2:  { x: 30.5,  y: 6.0,   rot: 90,  block: power_in }
+  C1:  { x: 35.5,  y: 6.0,   rot: 90,  block: power_in }
+
+  # XIAO ESP32-C6 on 5.0 mm sockets, with SCT2400 5V buck nested between socket rows
+  U3:  { x: 14.5,  y: 31.0,  rot: 0,   block: mcu, locked: true }
+  U1:  { x: 14.5,  y: 27.0,  rot: 0,   block: buck5v }
+  L1:  { x: 14.5,  y: 33.0,  rot: 0,   block: buck5v }
+  C3:  { x: 11.2,  y: 25.5,  rot: 90,  block: buck5v }
+  R1:  { x: 11.2,  y: 29.0,  rot: 90,  block: buck5v }
+  R2:  { x: 11.2,  y: 32.5,  rot: 90,  block: buck5v }
+  R3:  { x: 17.8,  y: 25.5,  rot: 90,  block: buck5v }
+  R4:  { x: 17.8,  y: 29.0,  rot: 90,  block: buck5v }
+  C7:  { x: 17.8,  y: 32.5,  rot: 90,  block: buck5v }
+  C4:  { x: 12.0,  y: 36.8,  rot: 0,   block: buck5v }
+  C5:  { x: 17.0,  y: 36.8,  rot: 0,   block: buck5v }
+  C6:  { x: 14.5,  y: 22.8,  rot: 0,   block: buck5v }
+
+  U2:  { x: 25.0,  y: 24.5,  rot: 0,   block: mcu_power }
+  C9:  { x: 25.0,  y: 27.5,  rot: 0,   block: mcu_power }
+  R9:  { x: 25.0,  y: 29.5,  rot: 0,   block: mcu }
+  R10: { x: 25.0,  y: 31.2,  rot: 0,   block: mcu }
+  R11: { x: 25.0,  y: 32.9,  rot: 0,   block: mcu }
+  C10: { x: 25.0,  y: 34.6,  rot: 0,   block: mcu }
+
+  SW1: { x: 4.5,   y: 46.0,  rot: 0,   block: mcu, locked: true }
+  U7:  { x: 12.0,  y: 45.5,  rot: 0,   block: status_leds }
+  C11: { x: 12.0,  y: 48.5,  rot: 0,   block: status_leds }
+  R12: { x: 16.0,  y: 45.5,  rot: 0,   block: status_leds }
+  D4:  { x: 4.5,   y: 51.5,  rot: 0,   block: status_leds, locked: true }
+  C12: { x: 8.0,   y: 51.5,  rot: 90,  block: status_leds }
+  D5:  { x: 11.5,  y: 51.5,  rot: 0,   block: status_leds, locked: true }
+  C13: { x: 15.0,  y: 51.5,  rot: 90,  block: status_leds }
+
+  J2:  { x: 28.0,  y: 51.5,  rot: 0,   block: int_crown, locked: true }
+  J3:  { x: 28.0,  y: 45.5,  rot: 0,   block: int_probe, locked: true }
+  J4:  { x: 33.5,  y: 39.0,  rot: 0,   block: pm_sensor, locked: true }
+  C19: { x: 38.0,  y: 32.5,  rot: 90,  block: pm_sensor }
+
+  # --- Back (-y): Heater MOSFET, Barometer, 6-Axis IMU, Lightning Detector ---
+  R5:  { x: 25.0,  y: 14.0,  rot: 0,   side: back, block: vin_sense }
+  R6:  { x: 25.0,  y: 16.5,  rot: 0,   side: back, block: vin_sense }
+  C8:  { x: 25.0,  y: 19.0,  rot: 0,   side: back, block: vin_sense }
+  Q1:  { x: 34.0,  y: 26.0,  rot: 0,   side: back, block: heater_drv }
+  R7:  { x: 29.0,  y: 25.0,  rot: 0,   side: back, block: heater_drv }
+  R8:  { x: 29.0,  y: 27.5,  rot: 0,   side: back, block: heater_drv }
+  D3:  { x: 35.0,  y: 31.5,  rot: 0,   side: back, block: heater_drv }
+
+  U4:  { x: 6.5,   y: 19.0,  rot: 0,   side: back, block: baro }
+  C14: { x: 6.5,   y: 16.0,  rot: 0,   side: back, block: baro }
+  U5:  { x: 18.0,  y: 19.0,  rot: 0,   side: back, block: imu }
+  C15: { x: 18.0,  y: 15.5,  rot: 0,   side: back, block: imu }
+
+  U6:  { x: 22.0,  y: 43.0,  rot: 0,   side: back, block: lightning }
+  C16: { x: 16.5,  y: 42.0,  rot: 0,   side: back, block: lightning }
+  C17: { x: 16.5,  y: 44.5,  rot: 0,   side: back, block: lightning }
+  L2:  { x: 31.0,  y: 43.0,  rot: 0,   side: back, block: lightning }
+  C18: { x: 22.0,  y: 48.5,  rot: 0,   side: back, block: lightning }
+  R13: { x: 22.0,  y: 51.0,  rot: 0,   side: back, block: lightning }

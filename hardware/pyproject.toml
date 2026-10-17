@@ -1,0 +1,6 @@
+[tool.ruff]
+extend-exclude = ["build", "releases"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

@@ -1,0 +1,95 @@
+frame:
+  size: { x: 41.0, y: 56.0 }
+  copper_layers: 4
+  thickness: 1.2
+  min_drill: 0.2
+  min_track: 0.12
+  edge_clearance: 0.3
+  silk_inside: true
+  fine_pitch_power_pads: [J1, J2, J3, J4, J5, J6, U1, U2, U3, U4, U5, U6, U7, U8]
+  raised_modules: []
+  plane_layers: [In1.Cu]
+  domains: [SELV-CROWN]
+  domain_regions:
+    SELV-CROWN:
+      - { x0: 0.0, y0: 0.0, x1: 41.0, y1: 56.0 }
+  isolators: []
+  power_nets: [+5V, +3V3]
+  pours:
+    - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 40.5, y1: 55.5 } }
+  no_coat_keepouts:
+    - { x0: 16.5, y0: 25.5, x1: 25.5, y1: 31.8, layer: F.SilkS }  # U6 LTR-390UV + U7 VEML7700 optical window
+
+heights:
+  default: 1.2
+  J1: 4.25
+  J2: 4.25
+  J3: 4.25
+  J4: 4.25
+  J5: 4.25
+  J6: 4.25
+  U1: 1.15
+  U2: 1.65
+  U3: 1.65
+  U4: 1.65
+  U5: 1.65
+  U6: 0.8
+  U7: 3.0
+  U8: 0.8
+
+parts:
+  # --- Front (+y): UV/ALS optical sensors at centre window, Compass, Piezo Rain AFE, J1 ---
+  J1:  { x: 28.0,  y: 11.5,  rot: 0,   block: int_main, locked: true }
+
+  U6:  { x: 18.2,  y: 28.0,  rot: 0,   block: uv_als, locked: true }
+  C12: { x: 18.2,  y: 24.5,  rot: 0,   block: uv_als }
+  U7:  { x: 23.2,  y: 28.0,  rot: 90,  block: uv_als, locked: true }
+  C13: { x: 23.2,  y: 22.5,  rot: 0,   block: uv_als }
+
+  U8:  { x: 20.5,  y: 42.0,  rot: 0,   block: compass, locked: true }
+  C14: { x: 16.5,  y: 42.0,  rot: 90,  block: compass }
+  C15: { x: 24.5,  y: 42.0,  rot: 90,  block: compass }
+
+  J6:  { x: 10.0,  y: 48.0,  rot: 0,   block: rain_afe, locked: true }
+  U5:  { x: 10.0,  y: 37.0,  rot: 0,   block: rain_afe }
+  C9:  { x: 10.0,  y: 32.0,  rot: 0,   block: rain_afe }
+  R13: { x: 4.5,   y: 41.5,  rot: 0,   block: rain_afe }
+  R14: { x: 4.5,   y: 38.5,  rot: 0,   block: rain_afe }
+  C10: { x: 4.5,   y: 35.5,  rot: 0,   block: rain_afe }
+  R15: { x: 10.0,  y: 28.0,  rot: 0,   block: rain_afe }
+  R16: { x: 15.0,  y: 38.5,  rot: 0,   block: rain_afe }
+  R17: { x: 15.0,  y: 35.5,  rot: 0,   block: rain_afe }
+  C11: { x: 15.0,  y: 32.5,  rot: 0,   block: rain_afe }
+
+  # --- Back (-y): 4x N/E/S/W Ultrasonic Transducer Headers & Ultrasonic ToF AFE ---
+  J2:  { x: 20.5,  y: 50.5,  rot: 0,   side: back, block: us_transducers, locked: true }
+  J3:  { x: 35.5,  y: 28.0,  rot: 90,  side: back, block: us_transducers, locked: true }
+  J4:  { x: 20.5,  y: 5.5,   rot: 180, side: back, block: us_transducers, locked: true }
+  J5:  { x: 5.5,   y: 28.0,  rot: -90, side: back, block: us_transducers, locked: true }
+
+  U2:  { x: 20.5,  y: 18.0,  rot: 0,   side: back, block: us_afe }
+  C3:  { x: 28.0,  y: 18.0,  rot: 90,  side: back, block: us_afe }
+  U1:  { x: 11.0,  y: 18.0,  rot: 0,   side: back, block: us_afe }
+  C1:  { x: 11.0,  y: 14.0,  rot: 0,   side: back, block: us_afe }
+  C2:  { x: 11.0,  y: 22.0,  rot: 0,   side: back, block: us_afe }
+  R1:  { x: 15.0,  y: 23.0,  rot: 0,   side: back, block: us_afe }
+
+  U3:  { x: 29.5,  y: 35.0,  rot: 0,   side: back, block: us_afe }
+  C6:  { x: 29.5,  y: 30.0,  rot: 0,   side: back, block: us_afe }
+  R2:  { x: 23.5,  y: 32.0,  rot: 0,   side: back, block: us_afe }
+  R3:  { x: 23.5,  y: 34.5,  rot: 0,   side: back, block: us_afe }
+  C4:  { x: 23.5,  y: 37.0,  rot: 0,   side: back, block: us_afe }
+  C5:  { x: 23.5,  y: 39.5,  rot: 0,   side: back, block: us_afe }
+  R4:  { x: 23.5,  y: 42.0,  rot: 0,   side: back, block: us_afe }
+  R5:  { x: 35.5,  y: 34.0,  rot: 0,   side: back, block: us_afe }
+  R6:  { x: 35.5,  y: 36.5,  rot: 0,   side: back, block: us_afe }
+  C7:  { x: 35.5,  y: 39.0,  rot: 0,   side: back, block: us_afe }
+  R7:  { x: 35.5,  y: 41.5,  rot: 0,   side: back, block: us_afe }
+  R8:  { x: 29.5,  y: 40.5,  rot: 0,   side: back, block: us_afe }
+  R9:  { x: 29.5,  y: 43.0,  rot: 0,   side: back, block: us_afe }
+
+  U4:  { x: 29.5,  y: 48.0,  rot: 0,   side: back, block: us_afe }
+  R10: { x: 24.0,  y: 44.5,  rot: 0,   side: back, block: us_afe }
+  R11: { x: 24.0,  y: 46.8,  rot: 0,   side: back, block: us_afe }
+  R12: { x: 35.5,  y: 46.5,  rot: 0,   side: back, block: us_afe }
+  C8:  { x: 35.5,  y: 49.5,  rot: 0,   side: back, block: us_afe }

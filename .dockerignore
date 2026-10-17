@@ -1,0 +1,9 @@
+.git
+.DS_Store
+__pycache__
+.pytest_cache
+.ruff_cache
+.pio
+hardware/build
+mechanical/build
+hardware/releases

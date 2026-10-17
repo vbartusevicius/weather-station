@@ -1,0 +1,4 @@
+# PlatformIO extra scripts run inside SCons with injected globals
+# (env, Import, COMMAND_LINE_TARGETS, ...).
+[lint]
+ignore = ["F821"]

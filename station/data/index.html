@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AeroMet V1 — Roof Weather Station</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo-dot"></span>
+      <div>
+        <h1>AeroMet V1</h1>
+        <span class="subtitle">Solid-State Ultrasonic &amp; Haptic Roof Weather Station</span>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="overview">Overview &amp; Wind</button>
+      <button class="tab" data-tab="airquality">Air Quality &amp; Storm</button>
+      <button class="tab" data-tab="diagnostics">Ultrasonic &amp; Rain DSP</button>
+      <button class="tab" data-tab="settings">Settings &amp; OTA</button>
+    </nav>
+    <div class="status-pills">
+      <span class="pill ok" id="pill-link">LIVE WS</span>
+      <span class="pill" id="pill-vin">24.0 V</span>
+      <span class="pill" id="pill-heater">HEATER IDLE</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- TAB 1: OVERVIEW & WIND ROSE -->
+    <section class="panel active" id="tab-overview">
+      <div class="grid-3">
+        <!-- WIND ROSE CARD -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Ultrasonic Wind &amp; Auto-North</h2>
+            <span class="badge" id="wind-beaufort">Beaufort 2 (Light Breeze)</span>
+          </div>
+          <div class="wind-rose-wrap">
+            <svg viewBox="0 0 220 220" class="wind-rose">
+              <circle cx="110" cy="110" r="92" class="rose-ring" />
+              <circle cx="110" cy="110" r="64" class="rose-ring-inner" />
+              <line x1="110" y1="18" x2="110" y2="202" class="rose-axis" />
+              <line x1="18" y1="110" x2="202" y2="110" class="rose-axis" />
+              <text x="110" y="14" class="rose-dir north">N</text>
+              <text x="209" y="114" class="rose-dir">E</text>
+              <text x="110" y="216" class="rose-dir">S</text>
+              <text x="11" y="114" class="rose-dir">W</text>
+              <g id="wind-arrow" transform="rotate(215 110 110)">
+                <polygon points="110,24 102,52 110,46 118,52" class="arrow-head" />
+                <line x1="110" y1="44" x2="110" y2="150" class="arrow-shaft" />
+              </g>
+              <circle cx="110" cy="110" r="32" class="rose-center" />
+              <text x="110" y="108" class="rose-speed" id="wind-speed">4.8</text>
+              <text x="110" y="123" class="rose-unit">m/s (215° SW)</text>
+            </svg>
+          </div>
+          <div class="metric-row">
+            <div><span class="lbl">1m Avg</span><strong id="wind-avg1m">4.4 m/s</strong></div>
+            <div><span class="lbl">10m Avg</span><strong id="wind-avg10m">4.1 m/s</strong></div>
+            <div><span class="lbl">3s Gust</span><strong class="accent" id="wind-gust">7.2 m/s</strong></div>
+            <div><span class="lbl">Lull</span><strong id="wind-lull">2.9 m/s</strong></div>
+          </div>
+          <div class="sub-footer">
+            <span>Auto-North Offset: <b id="wind-north">+14.2°</b></span>
+            <span>Mast Tilt: <b id="wind-tilt">0.4°</b></span>
+          </div>
+        </div>
+
+        <!-- TEMPERATURE, HUMIDITY, PRESSURE, UV -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Thermo-Hygro, Baro &amp; Solar</h2>
+            <span class="badge ok">SHT45 + BMP581</span>
+          </div>
+          <div class="hero-temp">
+            <div>
+              <span class="big-val" id="env-temp">18.4 °C</span>
+              <span class="feels" id="env-feels">Feels like 17.8 °C</span>
+            </div>
+            <div class="rh-box">
+              <span class="big-rh" id="env-rh">62.5 %</span>
+              <span class="lbl">Relative Humidity</span>
+            </div>
+          </div>
+          <div class="metric-grid">
+            <div class="m-box"><span class="lbl">Dew Point</span><strong id="env-dew">11.1 °C</strong></div>
+            <div class="m-box"><span class="lbl">Wet Bulb</span><strong id="env-wet">14.2 °C</strong></div>
+            <div class="m-box"><span class="lbl">Sea-Level QNH</span><strong id="env-qnh">1016.8 hPa</strong></div>
+            <div class="m-box"><span class="lbl">Station Baro</span><strong id="env-baro">1009.4 hPa</strong></div>
+            <div class="m-box"><span class="lbl">Solar Irradiance</span><strong id="env-solar">642 W/m²</strong></div>
+            <div class="m-box"><span class="lbl">Illuminance</span><strong id="env-lux">81,250 lx</strong></div>
+          </div>
+          <div class="uv-bar-wrap">
+            <div class="uv-header">
+              <span>UV Index (LTR-390UV)</span>
+              <strong id="env-uv">5.4 (Moderate)</strong>
+            </div>
+            <div class="uv-track"><div class="uv-fill" id="uv-fill" style="width: 45%"></div></div>
+          </div>
+        </div>
+
+        <!-- HAPTIC RAIN & PRECIPITATION -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Hybrid Haptic + Cap Rain</h2>
+            <span class="badge info" id="rain-state">Light Rain</span>
+          </div>
+          <div class="hero-temp">
+            <div>
+              <span class="big-val" id="rain-rate">1.8 mm/h</span>
+              <span class="feels">Instantaneous Rain Rate</span>
+            </div>
+            <div class="rh-box">
+              <span class="big-rh" id="rain-daily">6.4 mm</span>
+              <span class="lbl">Daily Accumulation</span>
+            </div>
+          </div>
+          <div class="metric-grid">
+            <div class="m-box"><span class="lbl">Event Rain</span><strong id="rain-event">2.1 mm</strong></div>
+            <div class="m-box"><span class="lbl">Hourly Rain</span><strong id="rain-hourly">1.4 mm</strong></div>
+            <div class="m-box"><span class="lbl">Total Rain</span><strong id="rain-total">142.8 mm</strong></div>
+            <div class="m-box"><span class="lbl">Raindrops</span><strong id="rain-drops">4,812</strong></div>
+            <div class="m-box"><span class="lbl">Hail Hits</span><strong id="rain-hail">0</strong></div>
+            <div class="m-box"><span class="lbl">Shake Rejected</span><strong id="rain-rejected">19</strong></div>
+          </div>
+          <div class="sub-footer">
+            <span>Capacitive Dome: <b class="ok-txt" id="rain-wet">WET (245 mV)</b></span>
+            <span>IMU Filter: <b>Active</b></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: AIR QUALITY & LIGHTNING -->
+    <section class="panel" id="tab-airquality">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <h2>Outdoor Air Quality (SEN55 + SGP41 + SCD41)</h2>
+            <span class="badge ok" id="aq-badge">US AQI 28 · Good (EAQI 1)</span>
+          </div>
+          <div class="metric-grid">
+            <div class="m-box"><span class="lbl">PM1.0 (Ultrafine)</span><strong id="aq-pm1">3.8 µg/m³</strong></div>
+            <div class="m-box"><span class="lbl">PM2.5 (Fine)</span><strong id="aq-pm25">6.4 µg/m³</strong></div>
+            <div class="m-box"><span class="lbl">PM4.0 (Respirable)</span><strong id="aq-pm4">8.1 µg/m³</strong></div>
+            <div class="m-box"><span class="lbl">PM10 (Coarse)</span><strong id="aq-pm10">13.2 µg/m³</strong></div>
+            <div class="m-box"><span class="lbl">VOC Index (SGP41)</span><strong id="aq-voc">98 (Normal)</strong></div>
+            <div class="m-box"><span class="lbl">NOx Index (SGP41)</span><strong id="aq-nox">2 (Clean Air)</strong></div>
+            <div class="m-box"><span class="lbl">True CO₂ (SCD41)</span><strong id="aq-co2">418 ppm</strong></div>
+            <div class="m-box"><span class="lbl">Dominant Pollutant</span><strong id="aq-dom">PM2.5</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Franklin Lightning Detector (AS3935)</h2>
+            <span class="badge" id="lt-badge">Clear · No Storm Front</span>
+          </div>
+          <div class="metric-grid">
+            <div class="m-box"><span class="lbl">Storm Distance</span><strong id="lt-dist">-- km</strong></div>
+            <div class="m-box"><span class="lbl">Strike Count</span><strong id="lt-count">0</strong></div>
+            <div class="m-box"><span class="lbl">Last Strike Energy</span><strong id="lt-energy">0</strong></div>
+            <div class="m-box"><span class="lbl">500 kHz Tank Tuning</span><strong class="ok-txt">Calibrated (Q=18)</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: ULTRASONIC & RAIN DSP DIAGNOSTICS -->
+    <section class="panel" id="tab-diagnostics">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <h2>40 kHz Bidirectional Ultrasonic ToF Matrix</h2>
+            <span class="badge ok">CD4052 + TLV9062 + LM393</span>
+          </div>
+          <div class="metric-grid">
+            <div class="m-box"><span class="lbl">North → South ToF</span><strong id="tof-ns">301.42 µs</strong></div>
+            <div class="m-box"><span class="lbl">South → North ToF</span><strong id="tof-sn">304.18 µs</strong></div>
+            <div class="m-box"><span class="lbl">East → West ToF</span><strong id="tof-ew">301.95 µs</strong></div>
+            <div class="m-box"><span class="lbl">West → East ToF</span><strong id="tof-we">303.65 µs</strong></div>
+            <div class="m-box"><span class="lbl">Speed of Sound (c)</span><strong id="tof-c">342.6 m/s</strong></div>
+            <div class="m-box"><span class="lbl">Acoustic Virtual Temp</span><strong id="tof-tv">18.7 °C</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>12–32 V Power &amp; Constant-Wattage De-Icing Heater</h2>
+            <span class="badge" id="ht-state">Thermostatic Standby</span>
+          </div>
+          <div class="metric-grid">
+            <div class="m-box"><span class="lbl">Roof Supply (VIN_ADC)</span><strong id="ht-vin">24.12 V</strong></div>
+            <div class="m-box"><span class="lbl">Reflector Cone NTC</span><strong id="ht-temp">18.3 °C</strong></div>
+            <div class="m-box"><span class="lbl">PWM Duty (AO3400A)</span><strong id="ht-duty">0.0 %</strong></div>
+            <div class="m-box"><span class="lbl">Regulated Power</span><strong id="ht-power">0.00 W (Max 4.0 W)</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: SETTINGS & OTA -->
+    <section class="panel" id="tab-settings">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><h2>Station Calibration &amp; MQTT Home Assistant</h2></div>
+          <div class="form-grid">
+            <label>Station Altitude (m MSL)<input type="number" value="65" /></label>
+            <label>Magnetic Declination (°)<input type="number" value="6.2" step="0.1" /></label>
+            <label>MQTT Broker URI<input type="text" value="mqtt://192.168.1.10:1883" /></label>
+            <label>HA Discovery Prefix<input type="text" value="homeassistant" /></label>
+          </div>
+          <button class="btn-primary">Save &amp; Republish HA Discovery</button>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2>Dual Wireless OTA Update</h2></div>
+          <p class="muted">Upload <code>firmware.bin</code> (ESP32-C6 application) or <code>littlefs.bin</code> (Web UI assets).</p>
+          <button class="btn-primary">Select .bin Image for OTA</button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

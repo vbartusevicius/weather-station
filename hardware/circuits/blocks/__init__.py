@@ -1,0 +1,1 @@
+"""Hardware circuit functional blocks."""

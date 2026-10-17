@@ -1,0 +1,3 @@
+Designator,Value,Manufacturer part,Notes
+U3,XIAO ESP32C6,102010636,XIAO ESP32C6 Pre-Soldered on 2x 1x7 5.0 mm female socket strips
+U6,AS3935-BQFT,AS3935-BQFT,"ScioSense AS3935 Franklin lightning sensor IC (1-40 km range, I2C 0x03)"

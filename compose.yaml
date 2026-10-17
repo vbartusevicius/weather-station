@@ -1,0 +1,39 @@
+services:
+  eda:
+    profiles: ["hardware"]
+    image: knx-dali-gateway-eda
+    build:
+      context: .
+      dockerfile: docker/eda/Dockerfile
+    volumes: [".:/work"]
+    working_dir: /work
+
+  cad:
+    profiles: ["hardware"]
+    image: knx-dali-gateway-cad
+    build:
+      context: .
+      dockerfile: docker/cad/Dockerfile
+    volumes: [".:/work"]
+    working_dir: /work
+
+  lint:
+    profiles: ["lint"]
+    image: knx-dali-gateway-lint
+    build:
+      context: .
+      dockerfile: docker/lint/Dockerfile
+    volumes: [".:/work"]
+    working_dir: /work
+
+  cpp-lint:
+    profiles: ["lint"]
+    image: knx-dali-gateway-cpp-lint
+    build:
+      context: .
+      dockerfile: docker/cpp-lint/Dockerfile
+    volumes: [".:/work", "platformio-cache:/root/.platformio"]
+    working_dir: /work
+
+volumes:
+  platformio-cache:

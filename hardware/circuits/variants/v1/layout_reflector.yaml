@@ -1,0 +1,41 @@
+frame:
+  size: { x: 24.0, y: 24.0 }
+  copper_layers: 4
+  thickness: 1.2
+  min_drill: 0.2
+  min_track: 0.12
+  edge_clearance: 0.3
+  silk_inside: true
+  fine_pitch_power_pads: [J1]
+  raised_modules: []
+  plane_layers: [In1.Cu]
+  domains: [SELV-REFLECTOR]
+  domain_regions:
+    SELV-REFLECTOR:
+      - { x0: 0.0, y0: 0.0, x1: 24.0, y1: 24.0 }
+  isolators: []
+  power_nets: [VIN_PROT, HEAT_SW]
+  pours:
+    - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 23.5, y1: 23.5 } }
+
+heights:
+  default: 1.2
+  J1: 2.5
+  R1: 0.8
+  R2: 0.8
+  R3: 0.8
+  R4: 0.8
+  TH1: 0.8
+  C1: 0.8
+
+parts:
+  # --- Top (+y, F.Cu pressed flat against reflector apex): TH1 at EXACT centre (12.0, 12.0) + 4x 100R 2512 parallel ring ---
+  TH1: { x: 12.0,  y: 12.0,  rot: 0,   block: reflector_heater, locked: true }
+  C1:  { x: 12.0,  y: 15.0,  rot: 0,   block: reflector_heater }
+  R1:  { x: 5.5,   y: 18.5,  rot: 0,   block: reflector_heater, locked: true }
+  R2:  { x: 18.5,  y: 18.5,  rot: 0,   block: reflector_heater, locked: true }
+  R3:  { x: 5.5,   y: 5.5,   rot: 0,   block: reflector_heater, locked: true }
+  R4:  { x: 18.5,  y: 5.5,   rot: 0,   block: reflector_heater, locked: true }
+
+  # --- Bottom (-y, B.Cu): 1x4 2.54 mm vertical SMD male pin header (zero through-holes!) directly under centre ---
+  J1:  { x: 12.0,  y: 12.0,  rot: 0,   side: back, block: int_probe, locked: true }
