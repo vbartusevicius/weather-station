@@ -4,6 +4,7 @@
 
 #include "airquality/AirQuality.hpp"
 #include "environment/MetCalculations.hpp"
+#include "firmware/ButtonController.hpp"
 #include "heater/DeIcingHeater.hpp"
 #include "rain/HapticRain.hpp"
 #include "rs485/Rs485Protocol.hpp"
@@ -277,6 +278,20 @@ void test_rs485_protocol_framing_and_commands(void) {
     TEST_ASSERT_EQUAL(CommandType::None, Rs485Protocol::parse_command_frame("BAD", 3));
 }
 
+void test_reboot_and_factory_reset_button_controller(void) {
+    station::firmware::ButtonController btn{};
+    // 1. Short press (250 ms) -> triggers Reboot on release
+    TEST_ASSERT_EQUAL(station::firmware::ButtonAction::None, btn.update(true, 1000));
+    TEST_ASSERT_EQUAL(station::firmware::ButtonAction::None, btn.update(true, 1150));
+    TEST_ASSERT_EQUAL(station::firmware::ButtonAction::Reboot, btn.update(false, 1250));
+
+    // 2. Long press (>= 10,000 ms) -> triggers FactoryReset while held and does NOT re-trigger Reboot on release
+    TEST_ASSERT_EQUAL(station::firmware::ButtonAction::None, btn.update(true, 5000));
+    TEST_ASSERT_EQUAL(station::firmware::ButtonAction::None, btn.update(true, 14999));
+    TEST_ASSERT_EQUAL(station::firmware::ButtonAction::FactoryReset, btn.update(true, 15000));
+    TEST_ASSERT_EQUAL(station::firmware::ButtonAction::None, btn.update(false, 15500));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ultrasonic_zero_wind_and_virtual_temp);
@@ -291,5 +306,6 @@ int main(void) {
     RUN_TEST(test_telemetry_and_ha_discovery_json);
     RUN_TEST(test_longevity_sht45_bakeout_and_scd41_extreme_cold_guard);
     RUN_TEST(test_rs485_protocol_framing_and_commands);
+    RUN_TEST(test_reboot_and_factory_reset_button_controller);
     return UNITY_END();
 }

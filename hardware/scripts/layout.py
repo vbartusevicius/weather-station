@@ -258,7 +258,7 @@ def add_pour(board, net, layer, region, priority=0):
 
 def clear_frame(board):
     for item in list(board.GetDrawings()):
-        if item.GetLayer() in (pcbnew.Edge_Cuts, pcbnew.F_SilkS):
+        if item.GetLayer() in (pcbnew.Edge_Cuts, pcbnew.F_SilkS, pcbnew.B_SilkS):
             board.Remove(item)
     for zone in zones(board):
         board.RemoveNative(zone)
@@ -296,6 +296,17 @@ def apply_frame(board, plan):
             seg.SetStart(pos(*a))
             seg.SetEnd(pos(*b))
             board.Add(seg)
+    for lbl in frame.get("silk_labels", []):
+        txt = pcbnew.PCB_TEXT(board)
+        lyr = pcbnew.B_SilkS if lbl.get("layer") == "B.SilkS" else pcbnew.F_SilkS
+        txt.SetLayer(lyr)
+        txt.SetText(str(lbl["text"]))
+        txt.SetPosition(pos(lbl["x"], lbl["y"]))
+        txt.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(0.8), pcbnew.FromMM(0.8)))
+        txt.SetTextThickness(pcbnew.FromMM(0.15))
+        if lyr == pcbnew.B_SilkS:
+            txt.SetMirrored(True)
+        board.Add(txt)
     for layer in frame.get("plane_layers", []):
         board.SetLayerType(LAYERS[layer], pcbnew.LT_POWER)
     all_copper = [LAYERS[n] for n in LAYERS if board.IsLayerEnabled(LAYERS[n])]

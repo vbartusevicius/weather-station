@@ -3,7 +3,7 @@ C1,36.000mm,6.000mm,Top,90
 C10,25.000mm,34.600mm,Top,0
 C11,15.000mm,44.000mm,Top,90
 C12,17.500mm,48.000mm,Top,0
-C13,4.500mm,50.000mm,Top,0
+C13,4.500mm,44.500mm,Top,0
 C14,6.500mm,16.000mm,Bottom,0
 C15,18.000mm,15.500mm,Bottom,0
 C16,16.500mm,42.000mm,Bottom,0
@@ -43,10 +43,10 @@ R6,25.000mm,16.500mm,Bottom,0
 R7,29.000mm,25.000mm,Bottom,0
 R8,29.000mm,27.500mm,Bottom,0
 R9,25.000mm,29.500mm,Top,0
-SW1,4.500mm,44.500mm,Top,0
+SW1,5.500mm,50.500mm,Bottom,90
 U1,14.500mm,27.000mm,Top,180
 U2,25.131mm,24.500mm,Top,270
 U4,6.500mm,19.000mm,Bottom,0
 U5,18.000mm,19.000mm,Bottom,0
-U7,12.000mm,50.500mm,Top,0
+U7,12.500mm,50.500mm,Top,0
 U8,10.500mm,44.000mm,Top,0

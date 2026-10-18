@@ -144,11 +144,11 @@ def collect_assembly_parts(variant, spec):
 
     # Off-board sensors & transducers
     items.append({
-        "item": "Waterproof 40 kHz Ultrasonic Transducers",
+        "item": "Waterproof 40 kHz Closed-Face Ultrasonic Transceivers + 2-Pin JST-SH Pigtails",
         "qty": 4,
-        "part": "EU10AIF40H07T/R or NU40A10TR-1 (10 mm closed-face aluminum IP67 40 kHz transducer)",
-        "description": "4 downward-facing transducers pressed into the N/E/S/W crown pockets and plugged into crown J2..J5 via 2-pin JST-SH pigtails",
-        "source": "LCSC / AliExpress / Audiowell",
+        "part": "STEMINC SMATR10H40X80 / TaiMI TM-A1040H07TR (Ø 10.0x7.0 mm closed-face aluminum 40 kHz transceiver) OR INGHAi GU14095B-40TR (LCSC C242186) / Same Sky CUSA-TR65-065-2200-W68 / CUSA-TR65-065-2200-TH68 (IP68 Ø 14x9 mm) + 4x 2-Pin JST-SH (SHR-02V-S-B) Pigtails",
+        "description": "4 inward-angled (29.0 deg V-beam) transceivers seated in the N/E/S/W covered barrels of crown_base.stl, locked from the back by the 4 slotted press-fit retaining rings (in struts.stl), and plugged into crown J2..J5 (BM02B-SRSS-TB, LCSC C160388)",
+        "source": "LCSC (C242186) / Digi-Key & Mouser (Same Sky CUSA-TR65) / STEMINC (SMATR10H40X80)",
     })
     items.append({
         "item": "20 mm Piezoelectric Haptic Rain Discs (4-Quadrant Symmetric Array)",
@@ -158,25 +158,39 @@ def collect_assembly_parts(variant, spec):
         "source": "Murata / Mouser / Digi-Key / LCSC",
     })
     items.append({
-        "item": "JGS1 Fused Silica Hemispherical UV & Solar Optical Dome",
+        "item": "JGS1 Fused Silica UV & Solar Optical Dome (or Ø 20x1.5 mm JGS1 Flat Disc)",
         "qty": 1,
-        "part": "JGS1 (or JGS2) UV-Grade Fused Silica Hemispherical Optical Dome with Flange (Ø 12.0 mm OD / Ø 10.0 mm clear aperture x 6.0 mm height x 1.0 mm wall) + 0.25 mm Virgin PTFE cosine diffuser disk",
-        "description": "185-2500 nm UV-B/UV-A/Visible/NIR transmission (>=92%); hemispherical dome eliminates low-sun-angle Fresnel reflection loss (cosine response up to 80 deg zenith) and sheds raindrops/snow without pooling",
-        "source": "Felix Glass FG-VFQD / AliExpress / Edmund Optics / Shanghai Optics",
+        "part": "JGS1/JGS2 UV Fused Silica Hemispherical Dome (Ø 18.0 mm OD / Ø 15.6 mm ID x 9.0 mm height with Ø 20.5 mm flange, Bena Optics DW-series / AliExpress) OR standard Ø 20.0 x 1.5 mm JGS1 Quartz Glass Disc",
+        "description": "185-2500 nm UV-B/UV-A/Visible/NIR transmission (>=92%); seats from underneath against the top crimson O-ring inside crown.stl and is clamped by the M22x1.0 threaded retainer nut",
+        "source": "AliExpress / Bena Optics / Crystran / Edmund Optics",
     })
     items.append({
         "item": "Particulate Matter Sensor Module (PM1.0/2.5/4.0/10)",
         "qty": 1,
         "part": "Sensirion SEN55-SDN-T (or SEN54-SDN-T) + 6-pin JST-ZH cable",
-        "description": "Laser-scattering PM1.0/PM2.5/PM4.0/PM10 environmental module seated in the lower intake bay; plugs into main J4",
+        "description": "Laser-scattering PM1.0/PM2.5/PM4.0/10 environmental module seated in the lower intake bay; plugs into main J4",
         "source": "Sensirion / Digi-Key / Mouser",
     })
     items.append({
-        "item": "Board-to-board 10-pin JST-SH cables",
+        "item": "Round Jacketed 10-Core Dismountable JST-SH Cable + Probe Jumper",
         "qty": 2,
-        "part": "JST A10SR10SR30K152A (150 mm main J2 <-> crown J1) + A10SR10SR30K051A (50 mm main J3 <-> probe J1)",
-        "description": "1:1 10-pin 1.0 mm JST-SH jumper cables connecting main to crown (through the NE airfoil strut conduit) and main to probe",
-        "source": "Digi-Key / Mouser / LCSC",
+        "part": "160 mm Ø 4.2 mm Round Jacketed 10-Core 30AWG Cable with 10-pin 1.0 mm JST-SH (SHR-10V-S-B) plugs (main J2 <-> crown J1) + 60 mm 10-pin JST-SH jumper (main J3 <-> probe J1)",
+        "description": "Passes through the 45-deg NE split-C strut, the wind_tunnel radial channel, and the 12.6x3.6 mm rear conduit of probe_sleeve_back with the SHR-10V-S-B connector attached (or crimp pins removable via housing lance tabs)",
+        "source": "Digi-Key / Mouser / LCSC / AliExpress",
+    })
+    items.append({
+        "item": "Stainless Steel M6 Fastener Set (Pagoda Through-Bolts & Mast Clamp Bolts)",
+        "qty": 1,
+        "part": "4x M6x55 mm Socket Cap Bolts + 4x M6 Hex Nuts (Pagoda stack) + 4x M6x35 mm Hex Bolts + 8x M6 Washers + 4x M6 Locknuts (Mast Clamp)",
+        "description": "A4-70 / 316 stainless steel fasteners clamping the 5-plate pagoda stack (through the Ø 6.2 mm column bores) and clamping the mast saddle onto Ø 25-34 mm roof poles",
+        "source": "Local hardware / McMaster-Carr / Mouser",
+    })
+    items.append({
+        "item": "Elastomeric O-Ring Seal Set (5 Rings)",
+        "qty": 1,
+        "part": "3x Ø 88x1.5 mm EPDM/NBR O-Rings (base<->pagoda, pagoda<->wind_tunnel, crown_base<->crown) + 1x Ø 21x1.5 mm O-Ring (probe_sleeve bottom) + 1x Ø 17x1.5 mm O-Ring (JGS1 UV dome)",
+        "description": "Standard metric EPDM/nitrile O-rings (or 3D-printed in TPU 95A from orings.stl) sealing all 3 bayonet joints, the bottom pagoda bulkhead, and the JGS1 quartz dome",
+        "source": "Local hardware / McMaster-Carr / TPU 95A print",
     })
     items.append({
         "item": "IP68 Waterproof Compression Cable Gland (M12x1.5 / PG7)",

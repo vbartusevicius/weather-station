@@ -31,11 +31,11 @@ heights:
 parts:
   # --- Top (+y, F.Cu pressed flat against reflector apex): TH1 at EXACT centre (12.0, 12.0) + 4x 100R 2512 parallel ring ---
   TH1: { x: 12.0,  y: 12.0,  rot: 0,   block: reflector_heater, locked: true }
-  C1:  { x: 12.0,  y: 15.0,  rot: 0,   block: reflector_heater }
+  C1:  { x: 12.0,  y: 8.5,   rot: 0,   block: reflector_heater }
   R1:  { x: 5.5,   y: 18.5,  rot: 0,   block: reflector_heater, locked: true }
   R2:  { x: 18.5,  y: 18.5,  rot: 0,   block: reflector_heater, locked: true }
   R3:  { x: 5.5,   y: 5.5,   rot: 0,   block: reflector_heater, locked: true }
   R4:  { x: 18.5,  y: 5.5,   rot: 0,   block: reflector_heater, locked: true }
 
-  # --- Bottom (-y, B.Cu): 1x4 2.54 mm vertical SMD male pin header (zero through-holes!) directly under centre ---
-  J1:  { x: 12.0,  y: 12.0,  rot: 0,   side: back, block: int_probe, locked: true }
+  # --- Bottom (-y, B.Cu): 1x4 2.54 mm vertical SMD male pin header at (12.0, 13.85) -> enc_z = +1.85 mm (aligned 0.00 mm with probe J2!) ---
+  J1:  { x: 12.0,  y: 13.85, rot: 0,   side: back, block: int_probe, locked: true }

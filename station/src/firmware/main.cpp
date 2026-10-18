@@ -3,6 +3,7 @@
 #include <driver/gpio.h>
 #include <driver/uart.h>
 #include <esp_http_server.h>
+#include <esp_system.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -11,6 +12,7 @@
 #include "airquality/AirQuality.hpp"
 #include "environment/MetCalculations.hpp"
 #include "firmware/Board.hpp"
+#include "firmware/ButtonController.hpp"
 #include "firmware/WebAssets.hpp"
 #include "heater/DeIcingHeater.hpp"
 #include "rain/HapticRain.hpp"
@@ -27,6 +29,7 @@ namespace {
 station::telemetry::StationSnapshot g_snapshot{};
 station::wind::WmoWindAggregator g_wind_agg{};
 station::rain::HapticRainProcessor g_rain_proc{};
+station::firmware::ButtonController g_btn_ctrl{};
 
 esp_err_t handle_index(httpd_req_t* req) {
     httpd_resp_set_type(req, "text/html; charset=utf-8");
@@ -83,6 +86,13 @@ void init_gpio() {
     // Enable XIAO ESP32-C6 FM8625H RF switch (GPIO3 = LOW) and route RF to external U.FL FPC dipole (GPIO14 = HIGH)
     gpio_set_level(station::firmware::board::rf_switch_power_pin, 0);
     gpio_set_level(station::firmware::board::rf_antenna_select_pin, 1);
+
+    gpio_config_t btn_conf{};
+    btn_conf.intr_type = GPIO_INTR_DISABLE;
+    btn_conf.mode = GPIO_MODE_INPUT;
+    btn_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    btn_conf.pin_bit_mask = (1ULL << station::firmware::board::fab_sw_pin);
+    gpio_config(&btn_conf);
 }
 
 void init_rs485_uart() {
@@ -132,7 +142,17 @@ extern "C" void app_main(void) {
     start_web_server();
 
     while (true) {
-        g_snapshot.uptime_s = static_cast<std::uint32_t>(esp_timer_get_time() / 1000000ULL);
+        const std::uint32_t now_ms = static_cast<std::uint32_t>(esp_timer_get_time() / 1000ULL);
+        const bool btn_pressed = (gpio_get_level(station::firmware::board::fab_sw_pin) == 0);
+        const auto btn_action = g_btn_ctrl.update(btn_pressed, now_ms);
+        if (btn_action == station::firmware::ButtonAction::FactoryReset) {
+            nvs_flash_erase();
+            esp_restart();
+        } else if (btn_action == station::firmware::ButtonAction::Reboot) {
+            esp_restart();
+        }
+
+        g_snapshot.uptime_s = now_ms / 1000U;
         g_snapshot.wind_raw = station::wind::UltrasonicWindSolver::solve({});
         g_wind_agg.push_sample(g_snapshot.wind_raw.speed_m_s, g_snapshot.wind_raw.direction_deg);
         g_snapshot.wind = g_wind_agg.summary();

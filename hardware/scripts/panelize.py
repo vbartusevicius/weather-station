@@ -87,6 +87,18 @@ def is_vertical_edge_at_x(drw: pcbnew.BOARD_ITEM, x_target: float) -> bool:
     return abs(sx - x_target) < 0.08 and abs(ex - x_target) < 0.08
 
 
+def is_horizontal_edge_at_y(drw: pcbnew.BOARD_ITEM, y_target: float, x_min: float, x_max: float) -> bool:
+    if drw.GetLayer() != pcbnew.Edge_Cuts or not isinstance(drw, pcbnew.PCB_SHAPE):
+        return False
+    if drw.GetShape() != pcbnew.SHAPE_T_SEGMENT:
+        return False
+    sy = pcbnew.ToMM(drw.GetStart().y)
+    ey = pcbnew.ToMM(drw.GetEnd().y)
+    sx = pcbnew.ToMM(drw.GetStart().x)
+    ex = pcbnew.ToMM(drw.GetEnd().x)
+    return abs(sy - y_target) < 0.08 and abs(ey - y_target) < 0.08 and min(sx, ex) >= x_min - 0.2 and max(sx, ex) <= x_max + 0.2
+
+
 def board_edge_bounds(brd: pcbnew.BOARD) -> tuple[float, float, float, float]:
     xs, ys = [], []
     for d in brd.GetDrawings():
@@ -136,10 +148,21 @@ def build_panel(
         net_prefix = f"{bname.upper()}_"
         src, bx0, by0, bw, bh = loaded[bname]
 
-        target_x0 = round(cur_right + SLOT_W, 4)
-        dx = round(target_x0 - bx0, 4)
-        dy = round((y0_0 + h0) - (by0 + bh), 4)
-        target_y0 = round(by0 + dy, 4)
+        if bname == "dome" and any(p[0] == "reflector" for p in placements):
+            # Stack the round `dome` PCB directly ABOVE `reflector` in the same column to shorten the panel by 15.7 mm!
+            _, _, _, ref_x0, ref_y0, ref_w, _ref_h = next(p for p in placements if p[0] == "reflector")
+            target_x0 = round(ref_x0 + (ref_w - bw) / 2.0, 4)
+            target_y1 = round(ref_y0 - SLOT_W, 4)
+            dx = round(target_x0 - bx0, 4)
+            dy = round(target_y1 - (by0 + bh), 4)
+            target_y0 = round(by0 + dy, 4)
+            advance_right = False
+        else:
+            target_x0 = round(cur_right + SLOT_W, 4)
+            dx = round(target_x0 - bx0, 4)
+            dy = round((y0_0 + h0) - (by0 + bh), 4)
+            target_y0 = round(by0 + dy, 4)
+            advance_right = True
         vec = pcbnew.VECTOR2I_MM(dx, dy)
 
         net_map = {"": panel.FindNet("")}
@@ -187,7 +210,8 @@ def build_panel(
             panel.Add(drw)
 
         placements.append((bname, dx, dy, target_x0, target_y0, bw, bh))
-        cur_right = target_x0 + bw
+        if advance_right:
+            cur_right = target_x0 + bw
 
         for p in json.loads((REPO / "hardware/build" / variant / bname / "parts.json").read_text()):
             cp = dict(p)
@@ -195,10 +219,11 @@ def build_panel(
             combined_parts.append(cp)
 
     mb_coords: list[tuple[float, float]] = []
-    n = len(placements)
+    horiz_placements = [p for p in placements if p[0] != "dome"]
+    n = len(horiz_placements)
     for i in range(n - 1):
-        _, _, _, lx0, ly0, lw, lh = placements[i]
-        _, _, _, rx0, ry0, _rw, rh = placements[i + 1]
+        _, _, _, lx0, ly0, lw, lh = horiz_placements[i]
+        _, _, _, rx0, ry0, _rw, rh = horiz_placements[i + 1]
         lx1 = round(lx0 + lw, 4)
         ly1 = round(ly0 + lh, 4)
         ry1 = round(ry0 + rh, 4)
@@ -241,6 +266,37 @@ def build_panel(
             for dy_h in HOLE_Y_OFFS:
                 mb_coords.append((lx1 + hole_off_x, tc + dy_h))
                 mb_coords.append((rx0 - hole_off_x, tc + dy_h))
+
+    # Connect the round `dome` PCB vertically to the top edge of `reflector` via a mouse-bite breakaway tab!
+    dome_pl = next((p for p in placements if p[0] == "dome"), None)
+    refl_pl = next((p for p in placements if p[0] == "reflector"), None)
+    if dome_pl and refl_pl:
+        _, _, _, dx0, dy0, dw, dh = dome_pl
+        _, _, _, rx0, ry0, rw, _rh = refl_pl
+        dy1 = round(dy0 + dh, 4)
+        top_xs, bot_xs = [], []
+        for drw in list(panel.GetDrawings()):
+            if is_horizontal_edge_at_y(drw, dy1, dx0, dx0 + dw):
+                top_xs.extend((round(pcbnew.ToMM(drw.GetStart().x), 4), round(pcbnew.ToMM(drw.GetEnd().x), 4)))
+                panel.Delete(drw)
+            elif is_horizontal_edge_at_y(drw, ry0, rx0, rx0 + rw):
+                bot_xs.extend((round(pcbnew.ToMM(drw.GetStart().x), 4), round(pcbnew.ToMM(drw.GetEnd().x), 4)))
+                panel.Delete(drw)
+        tx0, tx1 = (min(top_xs), max(top_xs)) if top_xs else (dx0 + 4.6, dx0 + dw - 4.6)
+        bx0_s, bx1_s = (min(bot_xs), max(bot_xs)) if bot_xs else (rx0, rx0 + rw)
+        xc = round(dx0 + dw / 2.0, 4)
+        hw = TAB_H / 2
+        add_edge_line(panel, tx0, dy1, xc - hw, dy1)
+        add_edge_line(panel, xc + hw, dy1, tx1, dy1)
+        add_edge_line(panel, bx0_s, ry0, xc - hw, ry0)
+        add_edge_line(panel, xc + hw, ry0, bx1_s, ry0)
+        add_edge_line(panel, xc - hw, dy1, xc - hw, ry0)
+        add_edge_line(panel, xc + hw, dy1, xc + hw, ry0)
+        for dx_h in HOLE_Y_OFFS:
+            # Curve the upper mouse-bite holes along `dome`'s R=6.8 mm circle so snapping the tab leaves a round disc!
+            y_arc = round(dy0 + dh / 2.0 + (6.65 ** 2 - dx_h ** 2) ** 0.5, 4)
+            mb_coords.append((xc + dx_h, y_arc))
+            mb_coords.append((xc + dx_h, ry0 - 0.15))
 
     add_mouse_bite_holes(panel, mb_coords)
 

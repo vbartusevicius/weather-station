@@ -1,5 +1,17 @@
 frame:
-  size: { x: 41.0, y: 56.0 }
+  size: { x: 34.0, y: 34.0 }
+  # Compact 34.0 x 34.0 mm Square Outline with 4.5 mm 45-deg corner chamfers (corner radius = 20.8 mm!)
+  # so all 4 inward-angled ultrasonic barrels (at r = 25.5 mm) and all 4 square struts (at r = 31.0 mm)
+  # sit 100% outside the `crown` PCB with full top-down insertion clearance!
+  outline:
+    - [4.5,  0.0]
+    - [29.5, 0.0]
+    - [34.0, 4.5]
+    - [34.0, 29.5]
+    - [29.5, 34.0]
+    - [4.5,  34.0]
+    - [0.0,  29.5]
+    - [0.0,  4.5]
   copper_layers: 4
   thickness: 1.2
   min_drill: 0.2
@@ -12,11 +24,22 @@ frame:
   domains: [SELV-CROWN]
   domain_regions:
     SELV-CROWN:
-      - { x0: 0.0, y0: 0.0, x1: 41.0, y1: 56.0 }
+      - { x0: 0.0, y0: 0.0, x1: 34.0, y1: 34.0 }
   isolators: []
   power_nets: [+5V, +3V3]
   pours:
-    - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 40.5, y1: 55.5 } }
+    - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 33.5, y1: 33.5 } }
+  # Explicit Silkscreen Connector Labels distinguishing the 4 Piezo Rain connectors (`PZ_NE/NW/SW/SE` on F.SilkS)
+  # from the 4 Ultrasonic Wind connectors (`US_N/E/S/W` on B.SilkS)!
+  silk_labels:
+    - { text: "PZ_NE", x: 27.5, y: 31.8, layer: F.SilkS }
+    - { text: "PZ_NW", x: 6.5,  y: 31.8, layer: F.SilkS }
+    - { text: "PZ_SW", x: 6.5,  y: 2.2,  layer: F.SilkS }
+    - { text: "PZ_SE", x: 27.5, y: 2.2,  layer: F.SilkS }
+    - { text: "US_N",  x: 11.5, y: 31.5, layer: B.SilkS }
+    - { text: "US_E",  x: 31.5, y: 11.5, layer: B.SilkS }
+    - { text: "US_S",  x: 11.5, y: 2.5,  layer: B.SilkS }
+    - { text: "US_W",  x: 2.5,  y: 11.5, layer: B.SilkS }
 
 heights:
   default: 1.2
@@ -38,60 +61,61 @@ heights:
   U6: 0.8
 
 parts:
-  # --- Front (+y, F.Cu at y = 181.5 mm): Center 4-Pin B2B Riser J10 (to `dome` J1), 4x Murata Headers (J6..J9), Compass (U6), J1 ---
-  J1:  { x: 28.0,  y: 11.5,  rot: 0,   block: int_main, locked: true }
-  J10: { x: 20.5,  y: 28.0,  rot: 0,   block: int_dome, locked: true }
+  # --- Front (+y, F.Cu at y = 182.8 mm): Center 4-Pin B2B Riser J10 (at exact center 17.0, 17.0), 4x Piezo Headers (J6..J9 = PZ_NE/NW/SW/SE), Compass (U6), J1 ---
+  J1:  { x: 17.0,  y: 5.5,   rot: 0,   block: int_main, locked: true }
+  J10: { x: 17.0,  y: 17.0,  rot: 0,   block: int_dome, locked: true }
 
-  U6:  { x: 20.5,  y: 42.0,  rot: 0,   block: compass, locked: true }
-  C14: { x: 24.0,  y: 42.0,  rot: 90,  block: compass }
+  U6:  { x: 17.0,  y: 27.5,  rot: 0,   block: compass, locked: true }
+  C14: { x: 20.5,  y: 27.5,  rot: 90,  block: compass }
 
-  # 4x 2-Pin JST-SH Headers for the 4x 20 mm Murata Piezo Discs (at y=181.5 mm, >5.25 mm below the piezo discs!)
-  J6:  { x: 34.0,  y: 44.0,  rot: 0,   block: rain_afe, locked: true }
-  J7:  { x: 7.0,   y: 48.0,  rot: 0,   block: rain_afe, locked: true }
-  J8:  { x: 7.0,   y: 14.0,  rot: 180, block: rain_afe, locked: true }
-  J9:  { x: 34.0,  y: 18.0,  rot: 180, block: rain_afe, locked: true }
+  # 4x 2-Pin JST-SH Piezo Rain Headers (`PZ_NE`, `PZ_NW`, `PZ_SW`, `PZ_SE`)
+  J6:  { x: 27.5,  y: 28.0,  rot: 0,   block: rain_afe, locked: true }
+  J7:  { x: 6.5,   y: 28.0,  rot: 0,   block: rain_afe, locked: true }
+  J8:  { x: 5.5,   y: 6.0,   rot: 180, block: rain_afe, locked: true }
+  J9:  { x: 28.5,  y: 6.0,   rot: 180, block: rain_afe, locked: true }
 
-  U5:  { x: 10.0,  y: 37.0,  rot: 0,   block: rain_afe }
-  C11: { x: 10.0,  y: 32.0,  rot: 0,   block: rain_afe }
-  R13: { x: 4.5,   y: 41.5,  rot: 0,   block: rain_afe }
-  R14: { x: 4.5,   y: 38.5,  rot: 0,   block: rain_afe }
-  C12: { x: 4.5,   y: 35.5,  rot: 0,   block: rain_afe }
-  R15: { x: 10.0,  y: 28.0,  rot: 0,   block: rain_afe }
-  R16: { x: 15.0,  y: 38.5,  rot: 0,   block: rain_afe }
-  R17: { x: 15.0,  y: 35.5,  rot: 0,   block: rain_afe }
-  C13: { x: 15.0,  y: 32.5,  rot: 0,   block: rain_afe }
+  U5:  { x: 7.0,   y: 20.5,  rot: 0,   block: rain_afe }
+  C11: { x: 7.0,   y: 14.5,  rot: 0,   block: rain_afe }
+  R13: { x: 2.5,   y: 22.0,  rot: 0,   block: rain_afe }
+  R14: { x: 2.5,   y: 19.0,  rot: 0,   block: rain_afe }
+  C12: { x: 2.5,   y: 16.0,  rot: 0,   block: rain_afe }
+  R15: { x: 7.0,   y: 11.5,  rot: 0,   block: rain_afe }
+  R16: { x: 27.0,  y: 21.0,  rot: 0,   block: rain_afe }
+  R17: { x: 27.0,  y: 18.0,  rot: 0,   block: rain_afe }
+  C13: { x: 27.0,  y: 15.0,  rot: 0,   block: rain_afe }
 
-  # --- Back (-y, B.Cu): 4x N/E/S/W Ultrasonic Transducer Headers & Reciprocal Ultrasonic ToF AFE ---
-  J2:  { x: 20.5,  y: 50.5,  rot: 0,   side: back, block: us_transducers, locked: true }
-  J3:  { x: 35.5,  y: 28.0,  rot: 90,  side: back, block: us_transducers, locked: true }
-  J4:  { x: 20.5,  y: 5.5,   rot: 180, side: back, block: us_transducers, locked: true }
-  J5:  { x: 5.5,   y: 28.0,  rot: -90, side: back, block: us_transducers, locked: true }
+  # --- Back (-y, B.Cu): 4x Ultrasonic Transducer Pigtail Headers (`US_N`, `US_E`, `US_S`, `US_W`) & Ultrasonic ToF AFE ---
+  #Every IC & passive on B.Cu has >= 4.0 mm center-to-center spacing for 0 courtyard overlaps!
+  J2:  { x: 17.0,  y: 30.5,  rot: 0,   side: back, block: us_transducers, locked: true }
+  J3:  { x: 30.5,  y: 17.0,  rot: 90,  side: back, block: us_transducers, locked: true }
+  J4:  { x: 17.0,  y: 3.5,   rot: 180, side: back, block: us_transducers, locked: true }
+  J5:  { x: 3.5,   y: 17.0,  rot: -90, side: back, block: us_transducers, locked: true }
 
-  U2:  { x: 20.5,  y: 18.0,  rot: 0,   side: back, block: us_afe }
-  C3:  { x: 28.0,  y: 18.0,  rot: 90,  side: back, block: us_afe }
-  U1:  { x: 11.0,  y: 18.0,  rot: 0,   side: back, block: us_afe }
-  C1:  { x: 11.0,  y: 14.0,  rot: 0,   side: back, block: us_afe }
-  C2:  { x: 11.0,  y: 22.0,  rot: 0,   side: back, block: us_afe }
-  R1:  { x: 15.0,  y: 23.0,  rot: 0,   side: back, block: us_afe }
+  U2:  { x: 16.5,  y: 9.8,   rot: 0,   side: back, block: us_afe }
+  C3:  { x: 23.5,  y: 9.8,   rot: 90,  side: back, block: us_afe }
+  U1:  { x: 8.5,   y: 10.0,  rot: 0,   side: back, block: us_afe }
+  C1:  { x: 8.5,   y: 5.5,   rot: 0,   side: back, block: us_afe }
+  C2:  { x: 8.5,   y: 14.5,  rot: 0,   side: back, block: us_afe }
+  R1:  { x: 12.0,  y: 16.5,  rot: 0,   side: back, block: us_afe }
 
-  U3:  { x: 29.5,  y: 35.0,  rot: 0,   side: back, block: us_afe }
-  C5:  { x: 29.5,  y: 30.0,  rot: 0,   side: back, block: us_afe }
-  R2:  { x: 23.5,  y: 32.0,  rot: 0,   side: back, block: us_afe }
-  R3:  { x: 23.5,  y: 34.5,  rot: 0,   side: back, block: us_afe }
-  C4:  { x: 23.5,  y: 37.0,  rot: 0,   side: back, block: us_afe }
-  C6:  { x: 23.5,  y: 39.5,  rot: 0,   side: back, block: us_afe }
-  R4:  { x: 23.5,  y: 42.0,  rot: 0,   side: back, block: us_afe }
-  R5:  { x: 35.5,  y: 34.0,  rot: 0,   side: back, block: us_afe }
-  R6:  { x: 35.5,  y: 36.5,  rot: 0,   side: back, block: us_afe }
-  C7:  { x: 35.5,  y: 39.0,  rot: 0,   side: back, block: us_afe }
-  C8:  { x: 35.5,  y: 41.5,  rot: 0,   side: back, block: us_afe }
-  R7:  { x: 29.5,  y: 40.5,  rot: 0,   side: back, block: us_afe }
-  R8:  { x: 29.5,  y: 43.0,  rot: 0,   side: back, block: us_afe }
-  C9:  { x: 18.0,  y: 36.5,  rot: 0,   side: back, block: us_afe }
-  R9:  { x: 18.0,  y: 39.5,  rot: 0,   side: back, block: us_afe }
+  U3:  { x: 23.0,  y: 20.0,  rot: 0,   side: back, block: us_afe }
+  C5:  { x: 23.0,  y: 15.0,  rot: 0,   side: back, block: us_afe }
+  R2:  { x: 16.5,  y: 17.5,  rot: 0,   side: back, block: us_afe }
+  R3:  { x: 16.5,  y: 20.0,  rot: 0,   side: back, block: us_afe }
+  C4:  { x: 16.5,  y: 22.5,  rot: 0,   side: back, block: us_afe }
+  C6:  { x: 16.5,  y: 25.0,  rot: 0,   side: back, block: us_afe }
+  R4:  { x: 11.5,  y: 19.0,  rot: 0,   side: back, block: us_afe }
+  R5:  { x: 28.5,  y: 8.0,   rot: 0,   side: back, block: us_afe }
+  R6:  { x: 28.5,  y: 10.5,  rot: 0,   side: back, block: us_afe }
+  C7:  { x: 28.5,  y: 23.5,  rot: 0,   side: back, block: us_afe }
+  C8:  { x: 28.5,  y: 26.0,  rot: 0,   side: back, block: us_afe }
+  R7:  { x: 28.5,  y: 13.0,  rot: 0,   side: back, block: us_afe }
+  R8:  { x: 28.5,  y: 21.0,  rot: 0,   side: back, block: us_afe }
+  C9:  { x: 11.5,  y: 22.0,  rot: 0,   side: back, block: us_afe }
+  R9:  { x: 11.5,  y: 25.0,  rot: 0,   side: back, block: us_afe }
 
-  U4:  { x: 29.5,  y: 48.0,  rot: 0,   side: back, block: us_afe }
-  R10: { x: 24.0,  y: 44.5,  rot: 0,   side: back, block: us_afe }
-  R11: { x: 24.0,  y: 46.8,  rot: 0,   side: back, block: us_afe }
-  R12: { x: 35.5,  y: 46.5,  rot: 0,   side: back, block: us_afe }
-  C10: { x: 35.5,  y: 49.5,  rot: 0,   side: back, block: us_afe }
+  U4:  { x: 23.5,  y: 28.5,  rot: 0,   side: back, block: us_afe }
+  R10: { x: 7.5,   y: 25.0,  rot: 0,   side: back, block: us_afe }
+  R11: { x: 7.5,   y: 27.5,  rot: 0,   side: back, block: us_afe }
+  R12: { x: 29.5,  y: 28.5,  rot: 0,   side: back, block: us_afe }
+  C10: { x: 11.5,  y: 27.8,  rot: 0,   side: back, block: us_afe }

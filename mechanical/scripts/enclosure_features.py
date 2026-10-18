@@ -59,15 +59,20 @@ def layout_plan(board):
 
 def board_point(board, x, y, n=0.0):
     """Map board coordinates (x, y) + normal offset n (+n = front/top, -n = back/bottom)
-    into 3D enclosure (enc_x, enc_y, enc_z) coordinates."""
+    into 3D enclosure (enc_x, enc_y, enc_z) coordinates (supporting optional `rot_deg` in XZ)."""
     cfg = SPEC["boards"][board]
     plane = cfg["plane"]
     w = cfg["max_outline"]["width"]
     h = cfg["max_outline"]["height"]
     if plane == "horizontal-xz":
-        return (x - w / 2.0 + cfg.get("x_offset", 0.0),
+        u = x - w / 2.0
+        v = y - h / 2.0
+        rot_rad = math.radians(cfg.get("rot_deg", 0.0))
+        rx = u * math.cos(rot_rad) - v * math.sin(rot_rad)
+        rz = u * math.sin(rot_rad) + v * math.cos(rot_rad)
+        return (rx + cfg.get("x_offset", 0.0),
                 cfg["y"] + n,
-                y - h / 2.0 + cfg.get("z_offset", 0.0))
+                rz + cfg.get("z_offset", 0.0))
     if plane == "vertical-xy":
         return x - w / 2.0, cfg["y_start"] + y, cfg["z"] + n
     raise ValueError(f"Unsupported board plane: {plane}")
@@ -110,19 +115,25 @@ def part_boxes():
             h = c["height"]
             n0, n1 = (-thick - h, -thick) if c["side"] == "back" else (0.0, h)
             b = c["bbox"]
-            boxes.append(span_box(
-                board_point(board, b["x0"], b["y0"], n0),
-                board_point(board, b["x1"], b["y1"], n1),
-                board=board, ref=ref, side=c["side"], footprint=c["footprint"],
-            ))
-    # Off-board 4x 40 kHz Ultrasonic Transducers (N, E, S, W at r=21 mm, flush with y=174.0 ceiling)
+            corners = [board_point(board, bx, by, n)
+                       for bx in (b["x0"], b["x1"])
+                       for by in (b["y0"], b["y1"])
+                       for n in (n0, n1)]
+            boxes.append({
+                "board": board, "ref": ref, "side": c["side"], "footprint": c["footprint"],
+                "x0": min(p[0] for p in corners), "x1": max(p[0] for p in corners),
+                "y0": min(p[1] for p in corners), "y1": max(p[1] for p in corners),
+                "z0": min(p[2] for p in corners), "z1": max(p[2] for p in corners),
+            })
+    # Off-board 4x 40 kHz Ultrasonic Transducers (N, E, S, W at r=17.5 mm, flush from y=174.0 ceiling up to y=181.6 underside of `crown` PCB!)
     tr_r = ENV["wind_tunnel"]["transducer_radius"]
+    crown_bot_y = SPEC["boards"]["crown"]["y"] - SPEC["boards"]["crown"]["thickness"]
     for name, deg in ENV["wind_tunnel"]["transducer_angles_deg"].items():
         rad = math.radians(deg)
         tx, tz = tr_r * math.cos(rad), tr_r * math.sin(rad)
         boxes.append({
             "board": "crown", "ref": f"XD_{name}", "side": "back", "footprint": "ULTRASONIC_10MM",
-            "x0": tx - 5.0, "x1": tx + 5.0, "y0": TUNNEL_Y1, "y1": TUNNEL_Y1 + 6.6,
+            "x0": tx - 5.0, "x1": tx + 5.0, "y0": TUNNEL_Y1, "y1": crown_bot_y,
             "z0": tz - 5.0, "z1": tz + 5.0,
         })
     # Off-board 4x 20 mm Murata Piezoelectric Rain Discs (7BB-20-6L0) glued DIRECTLY to the 1.0 mm-thin
@@ -174,9 +185,16 @@ def uv_window():
 
 
 def standoffs(board):
-    """4 corner mounting bosses per horizontal board (inset 2.5 mm from corners)."""
+    """4 mounting bosses per horizontal board."""
     cfg = SPEC["boards"][board]
     w, h = cfg["max_outline"]["width"], cfg["max_outline"]["height"]
+    if board == "crown":
+        local_pts = [(5.5, 2.0), (w - 5.5, 2.0), (5.5, h - 2.0), (w - 5.5, h - 2.0)]
+        pts = []
+        for bx, by in local_pts:
+            ex, ey, ez = board_point(board, bx, by)
+            pts.append({"x": round(ex, 3), "y": round(ey, 3), "z": round(ez, 3), "bx": bx, "by": by})
+        return pts
     pts = []
     for bx in (2.2, w - 2.2):
         for by in (2.2, h - 2.2):

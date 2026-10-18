@@ -43,11 +43,12 @@ envelope:
     acoustic_gap_mm: 48.0
     reflector_apex_y: 130.0
     strut_angles_deg: [45, 135, 225, 315]
-    strut_radius: 39.0
+    strut_radius: 31.0
     strut_chord: 9.0
     strut_thickness: 5.5
     cable_conduit_strut_deg: 45
-    transducer_radius: 27.0
+    transducer_radius: 25.5
+    transducer_tilt_deg: 29.0
     transducer_angles_deg: { N: 90, E: 0, S: 270, W: 180 }
   top_crown:
     y_start: 174.0
@@ -78,10 +79,11 @@ boards:
     domains:
       SELV-MAIN: all
   crown:
-    plane: horizontal-xz     # enc_x = board_x - 20.5, enc_z = board_y - 28.0, top faces +y
+    plane: horizontal-xz     # compact 34.0 x 34.0 mm square-chamfered board at y = 182.8 mm (corner r = 20.8 mm, 100% inside the 4 ultrasonic barrels & 4 struts!)
+    shape: octagon
     thickness: 1.2
-    y: 181.5                 # lowered so all connectors & components have >5.5 mm clearance below the 4 Murata piezos & roof
-    max_outline: { width: 41.0, height: 56.0 }
+    y: 182.8
+    max_outline: { width: 34.0, height: 34.0 }
     domains:
       SELV-CROWN: all
   reflector:

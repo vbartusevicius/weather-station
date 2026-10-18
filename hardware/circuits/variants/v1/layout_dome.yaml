@@ -1,19 +1,28 @@
 frame:
   size: { x: 13.6, y: 13.6 }
-  # Circular-chamfered disc outline (with 6.8 mm vertical left/right mouse-bite flats at x=0 and x=13.6 for panelization)
+  # 16-segment true circular disc outline (Ø 13.6 mm centered at 6.8, 6.8) with a 4.4 mm bottom chord (y=0.0, x=4.6..9.0)
+  # where the mouse-bite breakaway tab connects `dome` to the top of `reflector`!
   outline:
-    - [3.4, 0.0]
-    - [10.2, 0.0]
-    - [12.4, 1.2]
-    - [13.6, 3.4]
-    - [13.6, 10.2]
-    - [12.4, 12.4]
-    - [10.2, 13.6]
-    - [3.4, 13.6]
-    - [1.2, 12.4]
-    - [0.0, 10.2]
-    - [0.0, 3.4]
-    - [1.2, 1.2]
+    - [4.6, 0.0]
+    - [9.0, 0.0]
+    - [10.8, 0.7]
+    - [12.2, 1.9]
+    - [13.1, 3.5]
+    - [13.6, 5.4]
+    - [13.6, 8.2]
+    - [13.1, 10.1]
+    - [12.2, 11.7]
+    - [10.8, 12.9]
+    - [9.0, 13.6]
+    - [4.6, 13.6]
+    - [2.8, 12.9]
+    - [1.4, 11.7]
+    - [0.5, 10.1]
+    - [0.0, 8.2]
+    - [0.0, 5.4]
+    - [0.5, 3.5]
+    - [1.4, 1.9]
+    - [2.8, 0.7]
   copper_layers: 4
   thickness: 1.2
   min_drill: 0.2

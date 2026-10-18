@@ -1,6 +1,6 @@
 Designator,Mid X,Mid Y,Layer,Rotation
-C1,12.000mm,15.000mm,Top,0
-J1,12.000mm,12.000mm,Bottom,0
+C1,12.000mm,8.500mm,Top,0
+J1,12.000mm,13.850mm,Bottom,0
 R1,5.500mm,18.500mm,Top,0
 R2,18.500mm,18.500mm,Top,0
 R3,5.500mm,5.500mm,Top,0

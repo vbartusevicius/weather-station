@@ -6,6 +6,7 @@ Writes mechanical/build/<variant>/assembly.step and renders/*.png:
   - main_top.png, main_bottom.png, crown_top.png, crown_bottom.png, probe_top.png, probe_bottom.png
 """
 
+import math
 import sys
 from pathlib import Path
 
@@ -16,7 +17,6 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "mechanical/scripts"))
 import build_enclosure as be
 import enclosure_features as ef
-import legend_color_model as lcm
 from build_enclosure import box, cyl_y
 
 OUT = REPO / "mechanical/build" / ef.VARIANT
@@ -47,10 +47,17 @@ def board_plates():
     colours = {"main": PCB_MAIN, "crown": PCB_CROWN, "reflector": PCB_REFLECTOR, "dome": PCB_DOME, "probe": PCB_PROBE}
     plates = []
     for board in ef.SPEC["variants"][ef.VARIANT]["boards"]:
+        cfg = ef.SPEC["boards"][board]
         s = ef.board_slab(board)
         if board == "dome":
             cx, cz = (s["x0"] + s["x1"]) / 2.0, (s["z0"] + s["z1"]) / 2.0
             plates.append((cyl_y(cx, cz, s["y0"], s["y1"], s["x1"] - s["x0"]), colours[board], board))
+        elif cfg.get("shape") == "octagon":
+            # Compact 34.0 x 34.0 mm Square-Chamfered `crown` PCB (`x = -17..+17, z = -17..+17` with 4.5 mm 45-deg corner chamfers!)
+            pts = [(-12.5, -17.0), (12.5, -17.0), (17.0, -12.5), (17.0, 12.5),
+                   (12.5, 17.0), (-12.5, 17.0), (-17.0, 12.5), (-17.0, -12.5)]
+            oct_slab = cq.Workplane("XZ", origin=(0, s["y0"], 0)).polyline(pts).close().extrude(-(s["y1"] - s["y0"]))
+            plates.append((oct_slab, colours[board], board))
         else:
             plates.append((box(s["x0"], s["x1"], s["y0"], s["y1"], s["z0"], s["z1"]), colours[board], board))
     return plates
@@ -62,9 +69,15 @@ def realistic_part(b):
     cx, cy, cz = (x0 + x1) / 2.0, (y0 + y1) / 2.0, (z0 + z1) / 2.0
 
     if fp == "ULTRASONIC_10MM":
-        can = cyl_y(cx, cz, y0, y1, 10.0)
-        face = cyl_y(cx, cz, y0 - 0.1, y0 + 0.4, 8.2)
-        return [(can, ALU), (face, (0.25, 0.28, 0.32))]
+        tilt_deg = ef.SPEC["envelope"]["wind_tunnel"].get("transducer_tilt_deg", 29.0)
+        # Rotate around `axis = (cz, 0, -cx)` by `+tilt_deg` (29.0 deg) so the transducer face tilts INWARD (`V-beam`)!
+        # Includes the Press-Fit Rear Retaining Ring (`ret_ring`, colored orange) pressed behind the silver transducer can!
+        axis = (cz, 0, -cx) if (cx != 0 or cz != 0) else (1, 0, 0)
+        can = be.cone_y(-2.3, 3.2, 5.0, 5.0).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2, cz))
+        face = be.cone_y(-2.4, -1.9, 4.0, 4.0).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2, cz))
+        ret_ring = be.ring_cone_y(3.2, 4.8, 3.0, 5.2, 3.0, 5.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2, cz))
+        pigtail = be.cone_y(3.2, 5.8, 1.2, 1.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2, cz))
+        return [(can, ALU), (face, (0.25, 0.28, 0.32)), (ret_ring, (0.94, 0.45, 0.22)), (pigtail, GOLD)]
     if fp in ("PIEZO_27MM", "PIEZO_20MM"):
         d = 20.0 if fp == "PIEZO_20MM" else 27.0
         brass = cyl_y(cx, cz, y0, y0 + 0.4, d)
@@ -96,6 +109,15 @@ def realistic_part(b):
         return [(body, GOLD), (membrane, IVORY)]
     if "JST" in fp or "BM10B" in fp or "BM02B" in fp or "B6B" in fp:
         return [(box(x0 + 0.15, x1 - 0.15, y0, y1, z0 + 0.15, z1 - 0.15), IVORY)]
+    if "HX_PM2.54-1x4P-RA-SMD" in fp:
+        # Right-angle 1x4 2.54 mm female socket on `probe J2` facing straight UP (+Y) to y = 120.1 mm to mate flush with `reflector J1`!
+        housing = box(-5.08, 5.08, 114.2, 120.1, 0.6, 3.1)
+        return [(housing, PART)]
+    if "HX_PZ2.54-1x4P-SMD" in fp and b.get("board") == "reflector":
+        # Vertical 1x4 2.54 mm male header on underside of `reflector J1` (insulator at y = 120.1..122.6, 4 gold pins down to y = 115.2)
+        insulator = box(-5.08, 5.08, 120.1, 122.6, 0.6, 3.1)
+        pins = [box(px - 0.32, px + 0.32, 115.2, 122.6, 1.53, 2.17) for px in (-3.81, -1.27, 1.27, 3.81)]
+        return [(insulator, PART)] + [(p, GOLD) for p in pins]
     if "LED_SK6805" in fp:
         return [(box(x0, x1, y0, y1, z0, z1), (0.10, 0.88, 0.32))]
     if fp.startswith("C_"):
@@ -189,20 +211,24 @@ STL_COLOURS = {
     "orings": (0.88, 0.18, 0.24),             # Elastomer Seal Crimson-Red
     "probe_sleeve_back": (0.18, 0.58, 0.62),  # Deep Teal
     "probe_sleeve_front": (0.36, 0.80, 0.72), # Mint Cyan
-    "pagoda": (0.93, 0.95, 0.97),             # Pearl White
-    "wind_tunnel": (0.58, 0.64, 0.78),        # Cool Indigo-Silver
-    "strut_cover": (0.92, 0.42, 0.28),        # Coral Orange
-    "crown": (0.76, 0.86, 0.95),              # Arctic Ice Blue
+    "pagoda": (0.70, 0.76, 0.82),             # Titanium Silver-Grey (high contrast against white background!)
+    "wind_tunnel": (0.52, 0.60, 0.76),        # Cool Indigo-Silver
+    "struts": (0.92, 0.42, 0.28),             # Coral Orange (Double-C Split Threaded Struts & Hex Nuts)
+    "crown_base": (0.48, 0.68, 0.86),         # Sky Steel Blue (Lower Ultrasonic & Crown PCB Tray)
+    "crown": (0.76, 0.86, 0.95),              # Arctic Ice Blue (Top Piezo Rain & JGS1 UV Dome Lid)
 }
 
 
-def stl_part_views(stl_map, crown_inside_items=()):
+def stl_part_views(stl_map, crown_inside_items=(), pagoda_inside_items=()):
     """Render an individual 3/4 isometric view (`<part>.png`) for each modular STL part,
-    and for `crown.png` show the cutaway Crown enclosure from above with its PCB and parts inside."""
+    and for `crown.png` and `pagoda.png` show the zoomed-in cutaway with internal boards, O-rings, and hardware."""
     for name, solid in stl_map.items():
         if name == "crown" and crown_inside_items:
-            # Close-up zoomed-in view looking right inside the transparent hollow JGS1 hemisphere & elevated `dome` Micro-PCB!
             render("crown", crown_inside_items, (68, 228, 82), focal=(0, 190.5, 0), zoom=2.15)
+            continue
+        if name == "pagoda" and pagoda_inside_items:
+            # Clean, 100% opaque cross-sectional slice zoomed out (zoom=1.32) so the full outer M90 threaded connections on both sides are visible!
+            render("pagoda", pagoda_inside_items, (230, 108, 70), focal=(0, 96.5, 0), zoom=1.32)
             continue
         bb = solid.val().BoundingBox()
         cx = (bb.xmin + bb.xmax) / 2.0
@@ -214,6 +240,35 @@ def stl_part_views(stl_map, crown_inside_items=()):
             cam = (cx + dist * 0.72, cy + dist * 0.92, cz + dist * 0.82)
         elif name == "mast_clamp":
             cam = (cx + dist * 0.75, cy + dist * 0.55, cz - dist * 0.90)
+        elif name == "wind_tunnel":
+            cam = (cx + dist * 0.75, cy - dist * 0.80, cz + dist * 0.75)
+        elif name == "struts":
+            # Explode the front-right (45-deg NE) strut's two C-halves and two M12x1.75 hex nuts slightly in `struts.png`
+            # and show the central M22x1.5 JGS1 Dome Nut + 4 Slotted Ultrasonic Press-Fit Retaining Rings in the center!
+            st0 = ef.strut_centres()[0]
+            sx, sz = st0["x"], st0["z"]
+            uv_box = box(-24.0, 24.0, 185.0, 196.0, -24.0, 24.0)
+            uv_n = solid.intersect(uv_box).translate((0, -40.0, 0))
+            struts_only = solid.cut(uv_box)
+            ne_box = box(10.0, 50.0, 120.0, 180.0, 10.0, 50.0)
+            other_struts = struts_only.cut(ne_box)
+            ne_sub = struts_only.intersect(ne_box)
+            nut_ring_bot = be.ring_cone_y(121.6, 124.6, 5.10, 9.5, 5.10, 9.5).translate((sx, 0, sz))
+            nut_ring_top = be.ring_cone_y(175.6, 178.6, 5.10, 9.5, 5.10, 9.5).translate((sx, 0, sz))
+            bot_n = ne_sub.intersect(nut_ring_bot).translate((0, -4.5, 0))
+            top_n = ne_sub.intersect(nut_ring_top).translate((0, 4.5, 0))
+            c_only = ne_sub.cut(nut_ring_bot).cut(nut_ring_top)
+            c_back = c_only.intersect(box(10, 50, 120, 180, 10, sz)).translate((0, 0, -2.0))
+            c_front = c_only.intersect(box(10, 50, 120, 180, sz, 50)).translate((0, 0, 2.0))
+            render(name, [
+                (other_struts, STL_COLOURS[name], 1.0),
+                (c_back, STL_COLOURS[name], 1.0),
+                (c_front, STL_COLOURS[name], 1.0),
+                (bot_n, BRASS, 1.0),
+                (top_n, BRASS, 1.0),
+                (uv_n, BRASS, 1.0),
+            ], (cx + dist * 0.88, cy + dist * 0.48, cz + dist * 0.72), focal=(cx + 4, cy - 5, cz + 4), zoom=1.24)
+            continue
         else:
             cam = (cx + dist * 0.85, cy + dist * 0.65, cz + dist * 0.95)
         render(name, [(solid, STL_COLOURS[name], 1.0)], cam, focal=(cx, cy, cz), zoom=1.18)
@@ -232,19 +287,12 @@ def main():
     sleeve_front = be.build_probe_sleeve_front()
     pagoda = be.build_pagoda()
     wind_tunnel = be.build_wind_tunnel()
-    strut_cover = be.build_strut_cover()
+    struts = be.build_struts()
+    crown_base = be.build_crown_base()
     crown = be.build_crown()
-    legend = lcm.legend_bodies()
-    crown_silk = crown.cut(legend)
     win = ef.uv_window()
-    # Hollow JGS1 Fused Silica Hemispherical Dome (Ø 18.0 mm OD / Ø 15.6 mm ID, 1.2 mm wall) + O-Ring + M22 Threaded Retainer Nut:
-    #   1. Solid 2.8 mm-thick Top Retaining Lip on `crown.stl` (y = 195.2..198.0 mm)
-    #   2. Crimson O-Ring FIRST (y = 194.2..195.2 mm, r = 8.6..10.5 mm) against the 2.8 mm-thick inner roof shoulder
-    #   3. Hollow JGS1 Quartz Flange (y = 193.0..194.2 mm, r = 7.8..10.4 mm) + Neck (y = 194.2..198.0 mm, r = 7.8..9.0 mm)
-    #   4. Hollow JGS1 Quartz Hemisphere (y = 198.0..207.0 mm, R_out = 9.0 mm, R_in = 7.8 mm) so U1 & U2 on the elevated
-    #      round Ø 13.6 mm `dome` Micro-PCB (y = 197.2..200.2 mm) sit visibly INSIDE the transparent glass dome!
-    #   5. Threaded M22 Retainer Nut (brass/gold at y = 191.2..193.0 mm, r = 8.4..10.5 mm) clamping the JGS1 flange from below!
-    uv_flange_shell = be.ring_cone_y(193.0, 194.2, 7.8, 10.4, 7.8, 10.4).translate((win["x"], 0, win["z"]))
+    # Hollow JGS1 Fused Silica Hemispherical Dome (Ø 18.0 mm OD / Ø 15.6 mm ID, 1.2 mm wall) + O-Ring + Standard ISO M22x1.5 Hex-Flange Retainer Nut:
+    uv_flange_shell = be.ring_cone_y(193.0, 194.2, 7.8, 10.35, 7.8, 10.35).translate((win["x"], 0, win["z"]))
     uv_neck_shell = be.ring_cone_y(194.2, 198.0, 7.8, 9.0, 7.8, 9.0).translate((win["x"], 0, win["z"]))
     hemi_outer = (cq.Workplane("XY", origin=(win["x"], 198.0, win["z"]))
                   .sphere(9.0)
@@ -253,9 +301,25 @@ def main():
                   .sphere(7.8)
                   .intersect(box(-25, 25, 197.8, 209.0, -25, 25)))
     uv_lens = uv_flange_shell.union(uv_neck_shell).union(hemi_outer.cut(hemi_inner))
-    uv_retainer_nut = be.ring_cone_y(191.2, 193.0, 8.4, 10.5, 8.4, 10.5).translate((win["x"], 0, win["z"]))
+    uv_nut_hex = be.hex_prism_y(189.8, 191.0, across_flats=22.0, cx=win["x"], cz=win["z"]).cut(
+        be.cone_y(189.5, 193.5, 8.2, 8.2).translate((win["x"], 0, win["z"])))
+    uv_nut_barrel = be.ring_cone_y(190.4, 193.0, 8.2, 10.20, 8.2, 10.20).translate((win["x"], 0, win["z"]))
+    uv_retainer_nut = be.add_external_thread_y(uv_nut_hex.union(uv_nut_barrel), (191.2, 192.7),
+                                               r_root=10.20, depth=0.70, half_base=0.45, half_crest=0.14,
+                                               cx=win["x"], cz=win["z"])
     # Vertical 4-pin 2.54 mm board-to-board riser posts connecting `crown J10` (y=181.5) to round `dome J1` (y=196.0)
     b2b_riser = box(-5.1, 5.1, 181.5, 196.0, -1.25, 1.25)
+    # 4x M6x55 mm Stainless Steel Through-Bolts + Bottom M6 Hex Nuts clamping the Pagoda stack through the Ø 6.2 mm bores (at r = 23.0 mm)
+    # Top M6 bolt head (y = 117.8..120.2 mm) sits recessed inside the Ø 10.4 mm counterbore well, 12.5 mm radially clear of the r = 35.5 mm strut nuts!
+    m4_bolts = None
+    for deg in (45, 135, 225, 315):
+        rad = math.radians(deg)
+        px, pz = 20.5 * math.cos(rad), 20.5 * math.sin(rad)
+        shaft = be.cone_y(67.8, 117.8, 2.95, 2.95).translate((px, 0, pz))
+        head = be.cone_y(117.8, 120.2, 4.8, 4.8).translate((px, 0, pz))
+        nut = be.hex_prism_y(67.8, 70.1, across_flats=9.8, cx=px, cz=pz)
+        bolt = shaft.union(head).union(nut)
+        m4_bolts = bolt if m4_bolts is None else m4_bolts.union(bolt)
 
     stl_map = {
         "base": base,
@@ -265,7 +329,8 @@ def main():
         "probe_sleeve_front": sleeve_front,
         "pagoda": pagoda,
         "wind_tunnel": wind_tunnel,
-        "strut_cover": strut_cover,
+        "struts": struts,
+        "crown_base": crown_base,
         "crown": crown,
     }
 
@@ -278,7 +343,8 @@ def main():
         .union(sleeve_front)
         .union(pagoda)
         .union(wind_tunnel)
-        .union(strut_cover)
+        .union(struts)
+        .union(crown_base)
         .union(crown)
     )
     for plate, _, _ in plates:
@@ -299,9 +365,9 @@ def main():
         (sleeve_front, STL_COLOURS["probe_sleeve_front"], 1.0),
         (pagoda, STL_COLOURS["pagoda"], 1.0),
         (wind_tunnel, STL_COLOURS["wind_tunnel"], 1.0),
-        (strut_cover, STL_COLOURS["strut_cover"], 1.0),
-        (crown_silk, STL_COLOURS["crown"], 1.0),
-        (legend, SILK, 1.0),
+        (struts, STL_COLOURS["struts"], 1.0),
+        (crown_base, STL_COLOURS["crown_base"], 1.0),
+        (crown, STL_COLOURS["crown"], 1.0),
     ] + inside
 
     render("iso", exterior, (260, 175, 260), focal=(0, 102, 0), zoom=1.12)
@@ -313,11 +379,13 @@ def main():
         (sleeve_front, STL_COLOURS["probe_sleeve_front"], 0.45),
         (pagoda, STL_COLOURS["pagoda"], 0.18),
         (wind_tunnel, STL_COLOURS["wind_tunnel"], 0.25),
-        (strut_cover, STL_COLOURS["strut_cover"], 0.65),
+        (struts, STL_COLOURS["struts"], 0.55),
+        (crown_base, STL_COLOURS["crown_base"], 0.22),
         (crown, STL_COLOURS["crown"], 0.22),
+        (m4_bolts, ALU, 1.0),
     ] + inside, (250, 165, 250), focal=(0, 102, 0), zoom=1.12)
 
-    # Half cutaway section (x <= 0) showing the internal boards, O-rings, pagoda probe sleeve, reflector cone, and transducers
+    # Half cutaway section (x <= 0) showing the internal boards, O-rings, meshing threads, pagoda conduit, and transducers
     keep = box(-60, 0, -5, 210, -60, 60)
     section = [
         (base.intersect(keep), STL_COLOURS["base"], 1.0),
@@ -327,11 +395,14 @@ def main():
         (sleeve_front.intersect(keep), STL_COLOURS["probe_sleeve_front"], 1.0),
         (pagoda.intersect(keep), STL_COLOURS["pagoda"], 1.0),
         (wind_tunnel.intersect(keep), STL_COLOURS["wind_tunnel"], 1.0),
+        (struts.intersect(keep), STL_COLOURS["struts"], 1.0),
+        (crown_base.intersect(keep), STL_COLOURS["crown_base"], 1.0),
         (crown.intersect(keep), STL_COLOURS["crown"], 1.0),
+        (m4_bolts.intersect(keep), ALU, 1.0),
     ] + inside
     render("section", section, (320, 105, 90), focal=(0, 102, 0), zoom=1.12)
 
-    # Exploded view separating all 9 modular parts + all 5 PCBs
+    # Exploded view separating all 10 modular parts + all 5 PCBs
     main_grp = [(s, c, 1.0) for s, c, b in plates if b == "main"] + [(s, c, 1.0) for s, c, b, _ in full_parts if b == "main"]
     probe_grp = [(s, c, 1.0) for s, c, b in plates if b == "probe"] + [(s, c, 1.0) for s, c, b, _ in full_parts if b == "probe"]
     refl_grp = [(s, c, 1.0) for s, c, b in plates if b == "reflector"] + [(s, c, 1.0) for s, c, b, _ in full_parts if b == "reflector"]
@@ -339,36 +410,54 @@ def main():
     dome_pcb_grp = [(s, c, 1.0) for s, c, b in plates if b == "dome"] + [(s, c, 1.0) for s, c, b, _ in full_parts if b == "dome"]
 
     exploded = (
-        shifted([(base, STL_COLOURS["base"], 1.0), (mast_clamp.translate((0, 0, -24)), STL_COLOURS["mast_clamp"], 1.0)], -68)
-        + shifted(main_grp, -34)
-        + shifted([(orings, STL_COLOURS["orings"], 1.0)], -16)
+        shifted([(base, STL_COLOURS["base"], 1.0), (mast_clamp.translate((0, 0, -24)), STL_COLOURS["mast_clamp"], 1.0)], -72)
+        + shifted(main_grp, -38)
+        + shifted([(orings, STL_COLOURS["orings"], 1.0)], -18)
         + shifted([(pagoda, STL_COLOURS["pagoda"], 0.42)], -6)
         + [(sleeve_back.translate((0, 0, -22)), STL_COLOURS["probe_sleeve_back"], 1.0),
            (sleeve_front.translate((0, 0, 22)), STL_COLOURS["probe_sleeve_front"], 1.0)]
         + probe_grp
         + shifted(refl_grp, 18)
-        + shifted([(wind_tunnel, STL_COLOURS["wind_tunnel"], 0.92),
-                   (strut_cover.translate((16, 0, 16)), STL_COLOURS["strut_cover"], 1.0)], 36)
-        + shifted(crown_pcb_grp + [(b2b_riser, GOLD, 1.0)], 62)
-        + shifted(dome_pcb_grp + [(uv_retainer_nut, BRASS, 1.0)], 78)
-        + shifted([(crown_silk, STL_COLOURS["crown"], 0.95), (legend, SILK, 1.0), (uv_lens, GLASS_UV, 0.35)], 104)
+        + shifted([(wind_tunnel, STL_COLOURS["wind_tunnel"], 0.95)], 32)
+        + shifted([(struts, STL_COLOURS["struts"], 1.0)], 48)
+        + shifted([(crown_base, STL_COLOURS["crown_base"], 0.92)], 66)
+        + shifted(crown_pcb_grp + [(b2b_riser, GOLD, 1.0)], 84)
+        + shifted(dome_pcb_grp + [(uv_retainer_nut, BRASS, 1.0)], 98)
+        + shifted([(crown, STL_COLOURS["crown"], 0.95), (uv_lens, GLASS_UV, 0.35)], 118)
     )
-    render("exploded", exploded, (360, 210, 360), focal=(0, 115, 0), zoom=1.02)
+    render("exploded", exploded, (360, 210, 360), focal=(0, 115, 0), zoom=0.98)
 
-    # Crown close-up from above showing transparent hollow JGS1 hemisphere + elevated `dome` Micro-PCB + B2B riser + O-ring + nut + 4 Murata piezos + lowered `crown` PCB
+    # Crown close-up from above showing transparent hollow JGS1 hemisphere + elevated `dome` Micro-PCB + B2B riser + O-ring + nut + 4 Murata piezos + `crown` PCB + `crown_base` + `crown` meshing threads
     crown_inside_items = (
-        [(crown.intersect(keep), STL_COLOURS["crown"], 0.30),
+        [(crown_base.intersect(keep), STL_COLOURS["crown_base"], 0.55),
+         (crown_base.cut(keep), STL_COLOURS["crown_base"], 0.14),
+         (crown.intersect(keep), STL_COLOURS["crown"], 0.35),
          (crown.cut(keep), STL_COLOURS["crown"], 0.12),
          (uv_lens.intersect(keep), GLASS_UV, 0.38),
          (uv_lens.cut(keep), GLASS_UV, 0.16),
          (uv_retainer_nut.intersect(keep), BRASS, 1.0),
          (uv_retainer_nut.cut(keep), BRASS, 0.35),
          (b2b_riser, GOLD, 1.0),
-         (orings.intersect(box(-15, 15, 190, 200, -15, 15)), STL_COLOURS["orings"], 0.92)]
+         (orings.intersect(box(-50, 50, 184, 200, -50, 50)), STL_COLOURS["orings"], 0.92)]
         + crown_pcb_grp
         + dome_pcb_grp
     )
-    stl_part_views(stl_map, crown_inside_items=crown_inside_items)
+    # Pagoda clean 100% opaque cross-sectional slice (`x <= 0` only — zero translucent ghosting!)
+    # Slice ALL items (including `probe_grp` and `refl_grp`!) on `x <= 0` so the `x > 0` half of `probe J1`
+    # does not stick out in front of the cut plane and obscure the `x = 0` cross-section of `probe_sleeve_front/back`!
+    col_slice = keep.cut(box(-30.0, 0.0, 64.0, 125.0, 14.50, 40.0))
+    STEEL_BOLT = (0.26, 0.31, 0.38)
+    pagoda_inside_items = (
+        [(pagoda.intersect(col_slice), STL_COLOURS["pagoda"], 1.0),
+         (wind_tunnel.intersect(keep), STL_COLOURS["wind_tunnel"], 1.0),
+         (sleeve_back.intersect(keep), STL_COLOURS["probe_sleeve_back"], 1.0),
+         (sleeve_front.intersect(keep), STL_COLOURS["probe_sleeve_front"], 1.0),
+         (m4_bolts.intersect(keep), STEEL_BOLT, 1.0),
+         (orings.intersect(box(-50, 0, 64, 122, -50, 50)), STL_COLOURS["orings"], 1.0)]
+        + [(s.intersect(keep), c, op) for s, c, op in probe_grp]
+        + [(s.intersect(keep), c, op) for s, c, op in refl_grp]
+    )
+    stl_part_views(stl_map, crown_inside_items=crown_inside_items, pagoda_inside_items=pagoda_inside_items)
 
 
 if __name__ == "__main__":

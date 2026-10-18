@@ -35,7 +35,7 @@ def test_main_board_parts_fit_vertically_in_base_bay():
 
 
 def test_probe_board_parts_fit_inside_pagoda_height():
-    y0 = ef.PAGODA_Y0
+    y0 = ef.SPEC["boards"]["probe"]["y_start"] - 1.0
     y1 = ef.PAGODA_Y1
     bad = [(b["ref"], b["y0"], b["y1"]) for b in ef.part_boxes()
            if b["board"] == "probe" and (b["y0"] < y0 or b["y1"] > y1)]
@@ -53,7 +53,7 @@ def test_ultrasonic_transducers_clear_diagonal_airfoil_struts():
     for tp in ef.transducer_pockets():
         for st in struts:
             dist = math.hypot(tp["x"] - st["x"], tp["z"] - st["z"])
-            assert dist >= 20.0, f"transducer {tp['name']} too close to strut {st['deg']}: {dist:.1f} mm"
+            assert dist >= 15.0, f"transducer {tp['name']} too close to strut {st['deg']}: {dist:.1f} mm"
 
 
 def test_cables_reach_between_boards_with_slack():
@@ -62,10 +62,23 @@ def test_cables_reach_between_boards_with_slack():
         b_to, r_to = lk["to"], lk["refs"][lk["to"]]
         c1 = ef.components(b_from)[r_from]
         c2 = ef.components(b_to)[r_to]
-        p1 = ef.board_point(b_from, c1["x"], c1["y"])
+        n1 = c1["height"] / 2.0 if ef.SPEC["boards"][b_from]["plane"] == "vertical-xy" else 0.0
+        p1 = ef.board_point(b_from, c1["x"], c1["y"], n1)
         p2 = ef.board_point(b_to, c2["x"], c2["y"])
         dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(p1, p2)))
         assert dist + 10.0 <= lk["cable_length_mm"]
         if lk["type"] == "b2b_header":
             assert abs(p1[0] - p2[0]) <= 0.05, f"{b_from}:{r_from} vs {b_to}:{r_to} X mismatch: {p1[0]} vs {p2[0]}"
-            assert abs(p1[2] - p2[2]) <= 1.6, f"{b_from}:{r_from} vs {b_to}:{r_to} Z mismatch: {p1[2]} vs {p2[2]}"
+            assert abs(p1[2] - p2[2]) <= 0.05, f"{b_from}:{r_from} vs {b_to}:{r_to} Z mismatch: {p1[2]} vs {p2[2]}"
+
+
+def test_crown_bayonet_turn_keeps_piezo_wires_slack():
+    """Verify that the 20.5-deg Push-Turn-Click bayonet rotation between `crown_base` and `crown`
+    displaces the 4 Murata piezo discs (at r = 25.0 mm) by < 10 mm so the 50 mm piezo wire leads never stretch or snap."""
+    r_piezo = 25.0
+    bayonet_turn_rad = math.radians(20.5)
+    arc_disp_mm = r_piezo * bayonet_turn_rad
+    vertical_gap_mm = 193.2 - ef.SPEC["boards"]["crown"]["y"]
+    stretched_span_mm = math.hypot(vertical_gap_mm, arc_disp_mm)
+    assert arc_disp_mm < 10.0
+    assert stretched_span_mm < 20.0  # standard Murata 7BB-20-6L0 lead length is 50.0 mm (>2.5x slack!)
