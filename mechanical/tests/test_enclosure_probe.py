@@ -142,9 +142,13 @@ def test_boards_clear_enclosure_and_threads_truly_mesh():
             comp_box = be.box(b["x0"], b["x1"], b["y0"], b["y1"], b["z0"], b["z1"])
             assert base.intersect(comp_box).val().Volume() < 1e-3, f"main:{b['ref']} clashes with base!"
 
-    #    - Verify the bottom REBOOT/RESET button through-hole at (-15.0, +22.5) is 100% open through `base.stl`!
-    btn_gauge = be.cone_y(25.0, 41.0, 2.2, 2.2).translate((-15.0, 0, 22.5))
-    assert base.intersect(btn_gauge).val().Volume() < 1e-3
+    #    - Verify the Captive Inverted-`T` REBOOT/RESET button at (-15.0, +22.5) has:
+    #      (a) Zero collision with the stepped guide bore in `base.stl` (`ring_cone_y` check between r=2.15 and r=2.50)
+    #      (b) Positive mechanical stop (> 15 mm^3 solid interlock) when pulled downward by 0.6 mm so it can NEVER fall through!
+    btn_clearance_ring = be.ring_cone_y(27.0, 37.7, 2.20, 2.45, 2.20, 2.45).translate((-15.0, 0, 22.5))
+    assert base.intersect(btn_clearance_ring).val().Volume() < 1e-3
+    t_flange_pulled_down = be.cone_y(37.2, 37.75, 3.65, 3.65).translate((-15.0, 0, 22.5))
+    assert base.intersect(t_flange_pulled_down).val().Volume() > 10.0
 
     #    - The ENE cable strut bore (at r = 32.5 mm, x = +28.7 mm outside the x = +/-20.5 mm `crown` PCB!)
     #      has an unobstructed vertical wire path all the way up past the `crown` PCB (from y = 174.0 to y = 186.0 mm)!

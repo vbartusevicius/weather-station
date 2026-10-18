@@ -253,7 +253,7 @@ def stl_part_views(stl_map, crown_inside_items=(), pagoda_inside_items=()):
             ne_box = box(10.0, 50.0, 120.0, 180.0, 10.0, 50.0)
             other_struts = struts_only.cut(ne_box)
             ne_sub = struts_only.intersect(ne_box)
-            nut_ring_bot = be.ring_cone_y(121.6, 124.6, 5.10, 9.5, 5.10, 9.5).translate((sx, 0, sz))
+            nut_ring_bot = be.ring_cone_y(123.3, 126.1, 5.10, 9.5, 5.10, 9.5).translate((sx, 0, sz))
             nut_ring_top = be.ring_cone_y(175.6, 178.6, 5.10, 9.5, 5.10, 9.5).translate((sx, 0, sz))
             bot_n = ne_sub.intersect(nut_ring_bot).translate((0, -4.5, 0))
             top_n = ne_sub.intersect(nut_ring_top).translate((0, 4.5, 0))

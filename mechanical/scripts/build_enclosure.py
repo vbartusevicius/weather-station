@@ -233,43 +233,54 @@ def build_base():
         weep = box(wx - 2.0, wx + 2.0, 34.4, 35.4, wz - 2.0, wz + 2.0)
         body = body.cut(weep)
 
-    # 8. Waterproof Bottom REBOOT / FACTORY-RESET Button Boss & Through-Hole (`at enc_x = -16.0, enc_z = +23.5 mm`,
-    #    r = 28.4 mm near the North-West corner of `main` PCB — far from the mast socket and mast clamp!):
-    #    - Solid vertical cylindrical boss (`y = 29.5..40.0 mm, Ø 10.0 mm OD`) with a flat horizontal bottom spot-face
-    #      at `y = 29.5 mm` (cut below `y = 29.5 mm` so the bottom of the boss is a clean flat horizontal circle!)
-    #    - Complete unobstructed through-bore (`y = 24.0..41.5 mm, Ø 4.8 mm`) all the way through `base.stl` so the
-    #      hole is 100% open and visible in `base.stl` and `base.step`, plus an internal O-ring groove (`y = 32.2..33.8, Ø 7.0 mm`)!
+    # 8. Gravity-Return Captive Inverted-`T` REBOOT / FACTORY-RESET Button & Stepped Counterbore Boss (`at enc_x = -15.0, enc_z = +22.5 mm`):
+    #    - No O-ring (so zero friction prevents `SW1`'s 1.5 N spring + gravity from returning the button!).
+    #    - `btn_boss` (`y = 29.2..40.0 mm, Ø 10.4 mm OD`) has a stepped through-bore:
+    #      * Lower guide bore (`y = 24.0..37.8 mm, r = 2.50 mm` = Ø 5.0 mm ID)
+    #      * Upper T-flange counterbore (`y = 37.8..40.5 mm, r = 4.00 mm` = Ø 8.0 mm ID), forming a 1.50 mm-wide
+    #        internal annular stop shelf at `y = 37.8 mm` so the T-button drops in from above and can NEVER fall through!
+    #    - The Inverted-`T` Button Pin (`t_button`, with 0.35 mm radial and 0.30 mm vertical sliding clearance so it is
+    #      a separate non-touching manifold shell in `base.stl`/`base.step`!) has:
+    #      * Bottom protruding finger tip (`y = 27.0..38.10 mm, r = 2.15 mm` = Ø 4.3 mm)
+    #      * Wide `T`-retaining flange (`y = 38.10..39.50 mm, r = 3.65 mm` = Ø 7.3 mm) resting above the `y = 37.80 mm` shelf
+    #      * Top actuator tip (`y = 39.50..41.05 mm, r = 1.80 mm` = Ø 3.6 mm) sitting 0.25 mm below `SW1` on B.Cu (`y = 41.30 mm`)!
     bx, bz = -15.0, 22.5
-    btn_boss = cone_y(29.2, 40.0, 5.0, 5.0).translate((bx, 0, bz))
-    btn_bottom_flat = cone_y(24.0, 29.2, 5.4, 5.4).translate((bx, 0, bz))
-    btn_bore = cone_y(24.0, 41.5, 2.4, 2.4).translate((bx, 0, bz))
-    btn_oring_groove = cone_y(32.2, 33.8, 3.5, 3.5).translate((bx, 0, bz))
-    body = body.union(btn_boss).cut(btn_bottom_flat).cut(btn_bore).cut(btn_oring_groove)
+    btn_boss = cone_y(29.2, 40.0, 5.2, 5.2).translate((bx, 0, bz))
+    btn_bottom_flat = cone_y(24.0, 29.2, 5.6, 5.6).translate((bx, 0, bz))
+    btn_lower_bore = cone_y(24.0, 41.5, 2.50, 2.50).translate((bx, 0, bz))
+    btn_upper_counterbore = cone_y(37.80, 41.5, 4.00, 4.00).translate((bx, 0, bz))
+    t_button = (cone_y(27.0, 38.10, 2.15, 2.15)
+                .union(cone_y(38.10, 39.50, 3.65, 3.65))
+                .union(cone_y(39.50, 41.05, 1.80, 1.80))
+                .translate((bx, 0, bz)))
+    body = body.union(btn_boss).cut(btn_bottom_flat).cut(btn_lower_bore).cut(btn_upper_counterbore).union(t_button)
 
-    # 9. Removable Conical "Umbrella" Drip Canopy (`y = 57.2..62.0 mm, r = 0..38.8 mm`) + 4 Slide-In Twist-Lock Wall Grooves:
-    #    - 4 wall grooves molded on the inner wall of `base.stl` (`at 0, 90, 180, 270 deg`, lower shelf `y = 56.0..57.0 mm`,
-    #      upper keeper lip `y = 58.8..59.8 mm` with a 15-deg drop-in entry gap)
-    #    - The Umbrella has 4 radial tabs (`r = 38.0..41.8 mm, y = 57.25..58.55 mm` with 0.25 mm clearance) so you can
-    #      twist the Umbrella 15 deg and lift it straight out whenever you need to uncover the `main` PCB!
+    # 9. Removable Conical "Umbrella" Drip Canopy (`y = 57.25..62.0 mm, r = 0..42.0 mm`) + 4 Click-Detent Wall Grooves:
+    #    - 4 horizontal bayonet grooves on the inner wall of `base.stl` (`at 0, 90, 180, 270 deg`):
+    #      * Lower support shelf (`y = 56.20..57.15 mm, r = 40.2..42.65 mm`) with a soft `0.30 mm` click-detent bump
+    #        at `deg + 4.5..6.2` that clicks behind the tab edge when rotated into the locked position (`deg - 6..+4`),
+    #        plus a solid rotation end-stop wall at `deg - 7.5`!
+    #      * Upper keeper lip (`y = 58.65..59.55 mm, r = 40.2..42.65 mm, deg - 8.5..+4.5`) with a drop-in entry gap
+    #        at `deg + 5..+15` so you drop the umbrella in, twist 10 deg until it clicks, or twist back 10 deg to lift out!
+    #    - The Umbrella's 4 locking tabs are a smooth, continuous extension of the 1.25 mm-thick conical shell itself
+    #      out to `r = 42.0 mm` (no boxy step!), and the cable pass-through window (`13.0 x 11.0 mm`) is >2x smaller!
     for deg in (0, 90, 180, 270):
-        lower_shelf = arc_sector_y(56.0, 57.0, 40.2, 42.7, deg - 10.0, deg + 10.0)
-        upper_keeper = arc_sector_y(58.8, 59.8, 40.2, 42.7, deg - 10.0, deg + 4.0)
-        body = body.union(lower_shelf).union(upper_keeper)
+        lower_shelf = arc_sector_y(56.20, 57.15, 40.2, 42.65, deg - 8.5, deg + 12.0)
+        click_bump = arc_sector_y(57.15, 57.42, 40.5, 42.65, deg + 4.5, deg + 6.2)
+        end_stop = arc_sector_y(57.15, 58.65, 40.2, 42.65, deg - 8.5, deg - 6.3)
+        upper_keeper = arc_sector_y(58.65, 59.55, 40.2, 42.65, deg - 8.5, deg + 4.5)
+        body = body.union(lower_shelf).union(click_bump).union(end_stop).union(upper_keeper)
 
-    umbrella_cone = cone_y(57.2, 62.0, 38.8, 2.0).cut(cone_y(56.0, 60.8, 37.6, 0.5))
-    umbrella_cable_window = box(10.0, 36.0, 56.0, 62.5, 8.0, 36.0)
-    umbrella = umbrella_cone.cut(umbrella_cable_window)
+    # Continuous conical shell sloping smoothly from (r=2.0, y=62.0) to (r=42.0, y=58.50) with 1.25 mm uniform thickness:
+    umbrella_full = cone_y(58.50, 62.0, 42.0, 2.0).cut(cone_y(57.25, 60.75, 42.0, 0.5))
+    # Trim the outer rim (`r = 39.0..42.2 mm`) everywhere except the 4 continuous conical tab extensions (`deg - 6..+4`):
+    outer_trim = ring_cone_y(56.5, 60.0, 39.0, 42.4, 39.0, 42.4)
     for deg in (0, 90, 180, 270):
-        tab = arc_sector_y(57.25, 58.55, 38.0, 41.8, deg - 6.0, deg + 6.0)
-        umbrella = umbrella.union(tab)
+        outer_trim = outer_trim.cut(arc_sector_y(56.0, 60.5, 38.8, 42.5, deg - 6.0, deg + 4.0))
+    # Compact 13.0 x 11.0 mm cable cutout (`>2x smaller` than the previous 26 x 28 mm cutout, while still passing the 12x3 mm JST-SH plug!):
+    umbrella_cable_window = box(11.0, 24.0, 56.0, 62.5, 11.0, 22.0)
+    umbrella = umbrella_full.cut(outer_trim).cut(umbrella_cable_window)
     body = body.union(umbrella)
-
-    # 10. Horizontal Internal FPC Dipole Antenna Cradle (y = 51.2..64.5, z > 0 inner wall)
-    fpc_shelf_bot = ring_cone_y(51.0, 52.0, 41.6, 42.6, 41.6, 42.6).intersect(
-        box(-22.0, 22.0, 50.5, 52.5, 20.0, OUTER_R))
-    fpc_shelf_top = ring_cone_y(63.5, 64.5, 41.6, 42.6, 41.6, 42.6).intersect(
-        box(-22.0, 22.0, 63.0, 65.0, 20.0, OUTER_R))
-    body = body.union(fpc_shelf_bot).union(fpc_shelf_top)
 
     return body
 
@@ -477,11 +488,6 @@ def build_pagoda():
         m6_bore = cone_y(68.0, 121.6, 3.1, 3.1).translate((px, 0, pz))
         body = body.union(top_well_boss).cut(top_female_sock).cut(bolt_head_well).cut(m6_bore)
 
-    # Wide Radial Cable Channel in Top Deck (y = 117.6..124.2, >= 13.0 mm wide) routing the round 10-core `crown` cable
-    # (with or without its 12.0x3.0 mm JST-SH connector!) from the 45-deg NE strut (`r = 35.5 mm`) around the M6 boss to `probe_sleeve_back`!
-    cable_trench = box(-6.5, 28.5, 117.6, 124.2, -5.0, 4.2).union(box(21.5, 29.5, 117.6, 124.2, -2.0, 28.5))
-    body = body.cut(cable_trench)
-
     # 4x Sheltered Ventilation & Moisture-Weep Micro-Grilles in `pagoda`'s Top Piece (`at 0, 90, 180, 270 deg`, `r = 25..36 mm`, `y = 114.8..120.2 mm`)
     # so any moisture or condensation entering through the C-shaped struts or joints dissipates downward into the 5th louver space!
     for deg in (0, 90, 180, 270):
@@ -509,17 +515,15 @@ def build_wind_tunnel():
 
     deck_plate = cone_y(124.48, 126.5, OUTER_R, OUTER_R)
     reflector_cone = cone_y(126.5, 130.0, OUTER_R, 6.0)
-    reflector_cavity = cone_y(118.5, 124.48, 18.5, 18.5)
-    # Radial cable cavity (y = 118.5..124.48) connecting the 45-deg NE strut nut pocket (`x=24.4, z=24.4`) to the center cavity
-    ne_cable_cavity = box(-3.5, 26.5, 118.5, 124.48, -4.2, 26.5)
-    body = outer_skirt.union(deck_plate).union(reflector_cone).cut(reflector_cavity).cut(ne_cable_cavity)
+    body = outer_skirt.union(deck_plate).union(reflector_cone)
 
     for st in ef.strut_centres():
         sx, sz = st["x"], st["z"]
-        # Flat spot-face at y = 126.48 mm for the strut's bottom flange stopper + Ø 12.2 mm through-hole for standard ISO M12x1.75 thread!
-        spot_face = cone_y(126.45, 130.5, 7.2, 7.2).translate((sx, 0, sz))
+        # Recessed `nut_pocket` pushed 1.5 mm deeper into the thick `wind_tunnel` deck (`up to y = 126.0 mm`)
+        # with `spot_face` at `y = 127.15 mm` so there is 3.4..5.9 mm of open vertical wire space above `pagoda` top (`y = 120.1 mm`)!
+        spot_face = cone_y(127.15, 130.5, 7.2, 7.2).translate((sx, 0, sz))
         strut_hole = cone_y(123.0, 130.5, 6.1, 6.1).translate((sx, 0, sz))
-        nut_pocket = cone_y(118.5, 124.5, 7.6, 7.6).translate((sx, 0, sz))
+        nut_pocket = cone_y(118.5, 126.0, 7.6, 7.6).translate((sx, 0, sz))
         body = body.cut(spot_face).cut(strut_hole).cut(nut_pocket)
 
     return body
@@ -537,25 +541,25 @@ def build_struts():
     all_struts = None
     for st in ef.strut_centres():
         sx, sz = st["x"], st["z"]
-        tube = ring_cone_y(121.6, 178.9, 3.2, 4.92, 3.2, 4.92).translate((sx, 0, sz))
-        bot_stopper = ring_cone_y(126.5, 128.0, 3.2, 7.0, 3.2, 7.0).translate((sx, 0, sz))
+        tube = ring_cone_y(123.3, 178.9, 3.2, 4.92, 3.2, 4.92).translate((sx, 0, sz))
+        bot_stopper = ring_cone_y(127.2, 128.5, 3.2, 7.0, 3.2, 7.0).translate((sx, 0, sz))
         top_stopper = ring_cone_y(172.5, 174.0, 3.2, 7.0, 3.2, 7.0).translate((sx, 0, sz))
         strut = tube.union(bot_stopper).union(top_stopper)
 
-        # Add standard ISO M12x1.75 external male helical threads (pitch = 1.75 mm) on bottom and top ends
-        strut = add_external_thread_y(strut, (122.4, 124.15),
+        # Add standard ISO M12x1.75 external male helical threads (pitch = 1.75 mm) on bottom (`recessed higher into wind_tunnel!`) and top ends
+        strut = add_external_thread_y(strut, (123.9, 125.65),
                                       r_root=4.92, depth=0.90, half_base=0.55, half_crest=0.16, cx=sx, cz=sz)
         strut = add_external_thread_y(strut, (176.1, 177.85),
                                       r_root=4.92, depth=0.90, half_base=0.55, half_crest=0.16, cx=sx, cz=sz)
 
         # Split the hollow threaded tube into two C-shaped half-shells along the longitudinal plane (0.48 mm gap)
-        split_slot = box(sx - 8.5, sx + 8.5, 121.2, 179.2, sz - 0.24, sz + 0.24)
+        split_slot = box(sx - 8.5, sx + 8.5, 122.8, 179.2, sz - 0.24, sz + 0.24)
         strut = strut.cut(split_slot)
 
-        # Bottom & Top ISO M12x1.75 Hex Locknuts (with 0.20 mm radial thread clearance `r_minor = 5.12 mm`)
-        bot_nut = hex_prism_y(121.8, 124.4, across_flats=12.0, cx=sx, cz=sz).cut(
-            cone_y(121.6, 124.6, 5.12, 5.12).translate((sx, 0, sz)))
-        bot_nut = cut_internal_thread_y(bot_nut, (122.4, 124.15),
+        # Bottom & Top ISO M12x1.75 Hex Locknuts (`bot_nut` recessed up at y = 123.5..125.9 mm inside `wind_tunnel`!)
+        bot_nut = hex_prism_y(123.5, 125.9, across_flats=12.0, cx=sx, cz=sz).cut(
+            cone_y(123.3, 126.1, 5.12, 5.12).translate((sx, 0, sz)))
+        bot_nut = cut_internal_thread_y(bot_nut, (123.9, 125.65),
                                         r_minor=5.12, depth=0.90, half_base=0.55, half_crest=0.16, clearance=0.20, cx=sx, cz=sz)
 
         top_nut = hex_prism_y(175.8, 178.4, across_flats=12.0, cx=sx, cz=sz).cut(
@@ -719,8 +723,7 @@ def build_orings():
     ring_crown = ring_cone_y(184.9, 186.5, 44.1, 47.0, 44.1, 47.0)
     win = ef.uv_window()
     ring_uv = ring_cone_y(194.2, 195.1, 8.6, 10.3, 8.6, 10.3).translate((win["x"], 0, win["z"]))
-    ring_btn = ring_cone_y(32.3, 33.7, 1.9, 3.4, 1.9, 3.4).translate((-15.0, 0, 22.5))
-    return ring_base.union(ring_probe_bot).union(ring_refl).union(ring_crown).union(ring_uv).union(ring_btn)
+    return ring_base.union(ring_probe_bot).union(ring_refl).union(ring_crown).union(ring_uv)
 
 
 ALL_PARTS = (
