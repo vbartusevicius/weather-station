@@ -32,6 +32,8 @@ frame:
   # Explicit Top Silkscreen (`F.SilkS`) Connector Labels distinguishing the 4 Ultrasonic Wind connectors
   # (`US_N/E/S/W` at the N/E/S/W mid-edges) from the 4 Piezo Rain connectors (`PZ_NE/NW/SW/SE` near the 4 corners)!
   silk_labels:
+    - { text: "MAIN",  x: 17.0, y: 7.2,  layer: F.SilkS }
+    - { text: "DOME",  x: 17.0, y: 13.8, layer: F.SilkS }
     - { text: "US_N",  x: 12.2, y: 31.8, layer: F.SilkS }
     - { text: "US_E",  x: 31.5, y: 22.0, layer: F.SilkS }
     - { text: "US_S",  x: 12.2, y: 2.2,  layer: F.SilkS }

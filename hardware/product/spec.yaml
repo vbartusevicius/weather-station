@@ -74,7 +74,7 @@ boards:
   main:
     plane: horizontal-xz     # enc_x = board_x - 20.5, enc_z = board_y - 28.0, top faces +y
     thickness: 1.2
-    y: 44.0                  # board top face y (bottom face at 42.8)
+    y: 46.5                  # board top face y (bottom face at 42.8)
     max_outline: { width: 41.0, height: 56.0 }
     domains:
       SELV-MAIN: all

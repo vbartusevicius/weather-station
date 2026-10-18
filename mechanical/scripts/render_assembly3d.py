@@ -258,8 +258,11 @@ def stl_part_views(stl_map, crown_inside_items=(), pagoda_inside_items=()):
             bot_n = ne_sub.intersect(nut_ring_bot).translate((0, -4.5, 0))
             top_n = ne_sub.intersect(nut_ring_top).translate((0, 4.5, 0))
             c_only = ne_sub.cut(nut_ring_bot).cut(nut_ring_top)
-            c_back = c_only.intersect(box(10, 50, 120, 180, 10, sz)).translate((0, 0, -2.0))
-            c_front = c_only.intersect(box(10, 50, 120, 180, sz, 50)).translate((0, 0, 2.0))
+            front_mask = (box(10, 50, 120, 180, sz, 50)
+                          .union(box(sx - 4.38, sx - 3.55, 128.7, 172.3, sz - 1.30, sz + 0.35))
+                          .cut(box(sx + 3.55, sx + 4.38, 128.7, 172.3, sz - 0.35, sz + 1.30)))
+            c_back = c_only.cut(front_mask).translate((0, 0, -5.5))
+            c_front = c_only.intersect(front_mask).translate((0, 0, 5.5))
             render(name, [
                 (other_struts, STL_COLOURS[name], 1.0),
                 (c_back, STL_COLOURS[name], 1.0),

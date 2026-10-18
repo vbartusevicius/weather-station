@@ -146,11 +146,6 @@ def part_boxes():
             "x0": px - 10.0, "x1": px + 10.0, "y0": 193.2, "y1": 193.8,
             "z0": pz - 10.0, "z1": pz + 10.0,
         })
-    # Off-board Sensirion SEN55-SDN-T PM sensor in lower base bay (below/beside main board)
-    boxes.append({
-        "board": "main", "ref": "SEN55_MOD", "side": "back", "footprint": "SEN55_MODULE",
-        "x0": -20.0, "x1": 20.0, "y0": 34.2, "y1": 41.2, "z0": -11.0, "z1": 11.0,
-    })
     return boxes
 
 

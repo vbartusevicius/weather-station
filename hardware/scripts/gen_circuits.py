@@ -174,8 +174,8 @@ def collect_assembly_parts(variant, spec):
     items.append({
         "item": "Round Jacketed 10-Core Dismountable JST-SH Cable + Probe Jumper",
         "qty": 2,
-        "part": "160 mm Ø 4.2 mm Round Jacketed 10-Core 30AWG Cable with 10-pin 1.0 mm JST-SH (SHR-10V-S-B) plugs (main J2 <-> crown J1) + 60 mm 10-pin JST-SH jumper (main J3 <-> probe J1)",
-        "description": "Passes through the 45-deg NE split-C strut, the wind_tunnel radial channel, and the 12.6x3.6 mm rear conduit of probe_sleeve_back with the SHR-10V-S-B connector attached (or crimp pins removable via housing lance tabs)",
+        "part": "260 mm (250-300 mm) Ø 4.2 mm Round Jacketed 10-Core 30AWG Cable with 10-pin 1.0 mm JST-SH (SHR-10V-S-B) plugs (main J2 <-> crown J1, 224.2 mm routed path + 35 mm service loop) + 60 mm 10-pin JST-SH jumper (main J3 <-> probe J1, 32.0 mm direct + 28 mm slack)",
+        "description": "Passes through the 13x11 mm umbrella cutout, the 12.6x3.35 mm rear conduit of probe_sleeve_back, and the 45-deg NE split-C strut with the SHR-10V-S-B connector attached (or crimp pins removable via housing lance tabs)",
         "source": "Digi-Key / Mouser / LCSC / AliExpress",
     })
     items.append({

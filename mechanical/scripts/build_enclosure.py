@@ -207,17 +207,18 @@ def build_base():
                     .extrude(30.0))
             body = body.cut(bolt)
 
-    # 6. Add 4 internal PCB standoffs supporting `main` (bottom of `main` is at y = 42.8) + 4 corner snap-fit retention clips
+    # 6. Add 4 internal PCB standoffs supporting `main` (bottom of `main` is at y = 45.3) + 4 corner snap-fit retention clips
+    #    Start at `y = 33.8 mm` (`0.70 mm` embedded into the `y = 34.5 mm` floor) so they are 100% fused into `base.stl`!
     main_bot_y = SPEC["boards"]["main"]["y"] - SPEC["boards"]["main"]["thickness"]
     for st in ef.standoffs("main"):
-        post = cone_y(35.0, main_bot_y, 1.65, 1.65).translate((st["x"], 0, st["z"]))
+        post = cone_y(33.8, main_bot_y, 1.65, 1.65).translate((st["x"], 0, st["z"]))
         body = body.union(post)
     for sx in (-1.0, 1.0):
         for sz in (-1.0, 1.0):
             cx, cz = sx * 21.4, sz * 28.9
-            guide = box(cx - 0.75, cx + 0.75, 35.0, 45.4, cz - 0.75, cz + 0.75)
+            guide = box(cx - 0.75, cx + 0.75, 33.8, 47.9, cz - 0.75, cz + 0.75)
             hook = box(min(cx - sx * 1.6, cx + sx * 0.75), max(cx - sx * 1.6, cx + sx * 0.75),
-                       44.12, 45.2,
+                       46.62, 47.7,
                        min(cz - sz * 1.6, cz + sz * 0.75), max(cz - sz * 1.6, cz + sz * 0.75))
             body = body.union(guide).union(hook)
 
@@ -245,13 +246,13 @@ def build_base():
     #      * Wide `T`-retaining flange (`y = 38.10..39.50 mm, r = 3.65 mm` = Ø 7.3 mm) resting above the `y = 37.80 mm` shelf
     #      * Top actuator tip (`y = 39.50..41.05 mm, r = 1.80 mm` = Ø 3.6 mm) sitting 0.25 mm below `SW1` on B.Cu (`y = 41.30 mm`)!
     bx, bz = -15.0, 22.5
-    btn_boss = cone_y(29.2, 40.0, 5.2, 5.2).translate((bx, 0, bz))
+    btn_boss = cone_y(29.2, 42.0, 5.2, 5.2).translate((bx, 0, bz))
     btn_bottom_flat = cone_y(24.0, 29.2, 5.6, 5.6).translate((bx, 0, bz))
-    btn_lower_bore = cone_y(24.0, 41.5, 2.50, 2.50).translate((bx, 0, bz))
-    btn_upper_counterbore = cone_y(37.80, 41.5, 4.00, 4.00).translate((bx, 0, bz))
-    t_button = (cone_y(27.0, 38.10, 2.15, 2.15)
-                .union(cone_y(38.10, 39.50, 3.65, 3.65))
-                .union(cone_y(39.50, 41.05, 1.80, 1.80))
+    btn_lower_bore = cone_y(24.0, 44.0, 2.50, 2.50).translate((bx, 0, bz))
+    btn_upper_counterbore = cone_y(39.80, 44.0, 4.00, 4.00).translate((bx, 0, bz))
+    t_button = (cone_y(27.0, 40.10, 2.15, 2.15)
+                .union(cone_y(40.10, 41.50, 3.65, 3.65))
+                .union(cone_y(41.50, 43.55, 1.80, 1.80))
                 .translate((bx, 0, bz)))
     body = body.union(btn_boss).cut(btn_bottom_flat).cut(btn_lower_bore).cut(btn_upper_counterbore).union(t_button)
 
@@ -265,19 +266,19 @@ def build_base():
     #    - The Umbrella's 4 locking tabs are a smooth, continuous extension of the 1.25 mm-thick conical shell itself
     #      out to `r = 42.0 mm` (no boxy step!), and the cable pass-through window (`13.0 x 11.0 mm`) is >2x smaller!
     for deg in (0, 90, 180, 270):
-        lower_shelf = arc_sector_y(56.20, 57.15, 40.2, 42.65, deg - 8.5, deg + 12.0)
-        click_bump = arc_sector_y(57.15, 57.42, 40.5, 42.65, deg + 4.5, deg + 6.2)
-        end_stop = arc_sector_y(57.15, 58.65, 40.2, 42.65, deg - 8.5, deg - 6.3)
-        upper_keeper = arc_sector_y(58.65, 59.55, 40.2, 42.65, deg - 8.5, deg + 4.5)
+        lower_shelf = arc_sector_y(55.90, 56.90, 40.2, 42.65, deg - 9.0, deg + 12.0)
+        click_bump = arc_sector_y(56.90, 57.18, 40.5, 42.65, deg + 4.8, deg + 6.5)
+        end_stop = arc_sector_y(56.90, 59.05, 40.2, 42.65, deg - 9.0, deg - 6.8)
+        upper_keeper = arc_sector_y(59.05, 59.95, 40.2, 42.65, deg - 9.0, deg + 4.5)
         body = body.union(lower_shelf).union(click_bump).union(end_stop).union(upper_keeper)
 
-    # Continuous conical shell sloping smoothly from (r=2.0, y=62.0) to (r=42.0, y=58.50) with 1.25 mm uniform thickness:
-    umbrella_full = cone_y(58.50, 62.0, 42.0, 2.0).cut(cone_y(57.25, 60.75, 42.0, 0.5))
-    # Trim the outer rim (`r = 39.0..42.2 mm`) everywhere except the 4 continuous conical tab extensions (`deg - 6..+4`):
+    # Continuous conical shell sloping smoothly from (r=2.0, y=62.0) to (r=41.9, y=58.50) with 1.25 mm uniform thickness
+    # and >= 0.25 mm vertical & angular clearance from the 4 wall grooves so the Removable Umbrella is a 100% separate
+    # non-touching shell (`Split to Objects`) inside `base.stl`!
+    umbrella_full = cone_y(58.50, 62.0, 41.9, 2.0).cut(cone_y(57.25, 60.75, 41.9, 0.5))
     outer_trim = ring_cone_y(56.5, 60.0, 39.0, 42.4, 39.0, 42.4)
     for deg in (0, 90, 180, 270):
-        outer_trim = outer_trim.cut(arc_sector_y(56.0, 60.5, 38.8, 42.5, deg - 6.0, deg + 4.0))
-    # Compact 13.0 x 11.0 mm cable cutout (`>2x smaller` than the previous 26 x 28 mm cutout, while still passing the 12x3 mm JST-SH plug!):
+        outer_trim = outer_trim.cut(arc_sector_y(56.0, 60.5, 38.8, 42.0, deg - 5.8, deg + 3.8))
     umbrella_cable_window = box(11.0, 24.0, 56.0, 62.5, 11.0, 22.0)
     umbrella = umbrella_full.cut(outer_trim).cut(umbrella_cable_window)
     body = body.union(umbrella)
@@ -541,10 +542,13 @@ def build_struts():
     all_struts = None
     for st in ef.strut_centres():
         sx, sz = st["x"], st["z"]
-        tube = ring_cone_y(123.3, 178.9, 3.2, 4.92, 3.2, 4.92).translate((sx, 0, sz))
-        bot_stopper = ring_cone_y(127.2, 128.5, 3.2, 7.0, 3.2, 7.0).translate((sx, 0, sz))
-        top_stopper = ring_cone_y(172.5, 174.0, 3.2, 7.0, 3.2, 7.0).translate((sx, 0, sz))
-        strut = tube.union(bot_stopper).union(top_stopper)
+        # Use a 2.12 mm thick wall (`r = 2.90..5.02 mm`) along the central unthreaded span (`y = 128.5..172.5 mm`)
+        # so the C-shaped side walls have a deep, unmistakable 3-wall Male Tongue + Female U-Groove joint!
+        tube_ends = ring_cone_y(123.3, 178.9, 3.00, 4.92, 3.00, 4.92).translate((sx, 0, sz))
+        tube_mid = ring_cone_y(128.5, 172.5, 2.90, 5.05, 2.90, 5.05).translate((sx, 0, sz))
+        bot_stopper = ring_cone_y(127.2, 128.5, 3.00, 7.0, 3.00, 7.0).translate((sx, 0, sz))
+        top_stopper = ring_cone_y(172.5, 174.0, 3.00, 7.0, 3.00, 7.0).translate((sx, 0, sz))
+        strut = tube_ends.union(tube_mid).union(bot_stopper).union(top_stopper)
 
         # Add standard ISO M12x1.75 external male helical threads (pitch = 1.75 mm) on bottom (`recessed higher into wind_tunnel!`) and top ends
         strut = add_external_thread_y(strut, (123.9, 125.65),
@@ -552,9 +556,21 @@ def build_struts():
         strut = add_external_thread_y(strut, (176.1, 177.85),
                                       r_root=4.92, depth=0.90, half_base=0.55, half_crest=0.16, cx=sx, cz=sz)
 
-        # Split the hollow threaded tube into two C-shaped half-shells along the longitudinal plane (0.48 mm gap)
-        split_slot = box(sx - 8.5, sx + 8.5, 122.8, 179.2, sz - 0.24, sz + 0.24)
+        # Split the hollow threaded tube into two hermaphroditic C-shaped half-shells (`z < sz - 0.18` and `z > sz + 0.18`):
+        #   - On the `-X` C-wall (`dx < 0`): Front C-Half has a protruding Male Tongue (`z = sz - 1.15..sz + 0.35`)
+        #     mating into a deep Female U-Groove (`z = sz - 1.45..sz - 0.10`) in the Back C-Half!
+        #   - On the `+X` C-wall (`dx > 0`): Back C-Half has a protruding Male Tongue (`z = sz - 0.35..sz + 1.15`)
+        #     mating into a deep Female U-Groove (`z = sz + 0.10..sz + 1.45`) in the Front C-Half!
+        split_slot = box(sx - 8.5, sx + 8.5, 122.8, 179.2, sz - 0.18, sz + 0.18)
         strut = strut.cut(split_slot)
+        # -X wall: Female U-Groove in Back C-Half (`z < sz`) + Male Tongue on Front C-Half (`z > sz`)
+        fem_groove_negx = box(sx - 4.50, sx - 3.44, 128.55, 172.45, sz - 1.45, sz - 0.10)
+        male_tongue_negx = box(sx - 4.30, sx - 3.64, 128.80, 172.20, sz - 1.15, sz + 0.35)
+        # +X wall: Female U-Groove in Front C-Half (`z > sz`) + Male Tongue on Back C-Half (`z < sz`)
+        fem_groove_posx = box(sx + 3.44, sx + 4.50, 128.55, 172.45, sz + 0.10, sz + 1.45)
+        male_tongue_posx = box(sx + 3.64, sx + 4.30, 128.80, 172.20, sz - 0.35, sz + 1.15)
+        strut = (strut.cut(fem_groove_negx).cut(fem_groove_posx)
+                 .union(male_tongue_negx).union(male_tongue_posx))
 
         # Bottom & Top ISO M12x1.75 Hex Locknuts (`bot_nut` recessed up at y = 123.5..125.9 mm inside `wind_tunnel`!)
         bot_nut = hex_prism_y(123.5, 125.9, across_flats=12.0, cx=sx, cz=sz).cut(

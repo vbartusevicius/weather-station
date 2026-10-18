@@ -17,6 +17,9 @@ frame:
   power_nets: [VIN_PROT, HEAT_SW]
   pours:
     - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 23.5, y1: 23.5 } }
+  silk_labels:
+    - { text: "PROBE", x: 12.0, y: 21.8, layer: F.SilkS }
+    - { text: "PROBE", x: 12.0, y: 18.2, layer: B.SilkS }
 
 heights:
   default: 1.2

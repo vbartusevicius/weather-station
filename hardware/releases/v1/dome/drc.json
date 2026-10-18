@@ -1,7 +1,7 @@
 {
     "$schema": "https://schemas.kicad.org/drc.v1.json",
     "coordinate_units": "mm",
-    "date": "2026-10-18T19:59:59",
+    "date": "2026-10-18T21:11:31",
     "ignored_checks": [
         {
             "description": "Footprint has no courtyard defined",
@@ -42,7 +42,7 @@
                         "x": 9.0,
                         "y": -6.8
                     },
-                    "uuid": "4c33c699-4a68-4499-92d4-ea4acb4345ed"
+                    "uuid": "586111d7-d4c1-41e9-a8b4-d693ca165b44"
                 }
             ],
             "severity": "warning",
@@ -57,37 +57,7 @@
                         "x": 4.6,
                         "y": -6.8
                     },
-                    "uuid": "972620ed-1abc-4ddc-b4ac-53aac1a567a2"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C2",
-                    "pos": {
-                        "x": 6.8,
-                        "y": -2.1
-                    },
-                    "uuid": "295a7428-79a9-4135-8e83-d9daa87d7769"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint J1",
-                    "pos": {
-                        "x": 6.8,
-                        "y": -6.8
-                    },
-                    "uuid": "2e6d62c2-b3e5-4823-ae48-5b4fa0b2000b"
+                    "uuid": "ec1f2e94-b63c-416a-9bd0-c9f1e09d0f31"
                 }
             ],
             "severity": "warning",
@@ -102,11 +72,110 @@
                         "x": 6.8,
                         "y": -11.5
                     },
-                    "uuid": "b7948120-ab64-4eff-8d23-7d0e40588745"
+                    "uuid": "2e2e7b9a-a082-4ddb-9df1-2d23f16935ca"
                 }
             ],
             "severity": "warning",
             "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
+            "items": [
+                {
+                    "description": "Footprint J1",
+                    "pos": {
+                        "x": 6.8,
+                        "y": -6.8
+                    },
+                    "uuid": "8a5717b0-db0b-4540-9c9d-7e5d1b9c7eeb"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C2",
+                    "pos": {
+                        "x": 6.8,
+                        "y": -2.1
+                    },
+                    "uuid": "be1a9b3a-7e03-4188-8ad4-ece9194dcd0a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "Silkscreen clearance",
+            "items": [
+                {
+                    "description": "PCB text 'CROWN' on B.Silkscreen",
+                    "pos": {
+                        "x": 6.8,
+                        "y": -11.2
+                    },
+                    "uuid": "513cee20-332a-4a53-aebe-f1c2ab84969c"
+                },
+                {
+                    "description": "Segment of C1 on B.Silkscreen",
+                    "pos": {
+                        "x": 6.65942,
+                        "y": -10.99
+                    },
+                    "uuid": "898fdc9c-272a-48c8-acc7-834a59386227"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_overlap"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "PCB text 'CROWN' on B.Silkscreen",
+                    "pos": {
+                        "x": 6.8,
+                        "y": -11.2
+                    },
+                    "uuid": "513cee20-332a-4a53-aebe-f1c2ab84969c"
+                },
+                {
+                    "description": "Pad 2 [GND] of C1 on B.Cu",
+                    "pos": {
+                        "x": 7.575,
+                        "y": -11.5
+                    },
+                    "uuid": "0f753767-3465-4988-bacd-63b1212d702e"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "PCB text 'CROWN' on B.Silkscreen",
+                    "pos": {
+                        "x": 6.8,
+                        "y": -11.2
+                    },
+                    "uuid": "513cee20-332a-4a53-aebe-f1c2ab84969c"
+                },
+                {
+                    "description": "Pad 1 [+3V3] of C1 on B.Cu",
+                    "pos": {
+                        "x": 6.025,
+                        "y": -11.5
+                    },
+                    "uuid": "5a764302-ab4a-479b-aa06-1e2a32d2197f"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
         }
     ]
 }

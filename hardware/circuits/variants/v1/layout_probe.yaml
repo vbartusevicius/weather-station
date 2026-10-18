@@ -25,6 +25,9 @@ frame:
     - { x0: 4.2, y0: 12.2, x1: 6.8,  y1: 14.8, layer: F.SilkS }  # U3 SHT45 PTFE membrane window
     - { x0: 1.8, y0: 23.3, x1: 12.2, y1: 33.7, layer: F.SilkS }  # U1 SCD41 acoustic gas window
     - { x0: 3.9, y0: 36.4, x1: 7.1,  y1: 39.6, layer: F.SilkS }  # U2 SGP41 MOX hotplate aperture
+  silk_labels:
+    - { text: "MAIN",      x: 7.0, y: 8.2,  layer: F.SilkS }
+    - { text: "REFLECTOR", x: 7.0, y: 42.8, layer: F.SilkS }
 
 heights:
   default: 1.2

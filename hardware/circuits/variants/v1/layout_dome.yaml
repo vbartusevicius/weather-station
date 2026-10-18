@@ -42,6 +42,8 @@ frame:
     - { net: GND, layers: [In1.Cu], region: { x0: 2.0, y0: 2.0, x1: 11.6, y1: 11.6 } }
   no_coat_keepouts:
     - { x0: 2.2, y0: 3.2, x1: 11.4, y1: 10.4, layer: F.SilkS }
+  silk_labels:
+    - { text: "CROWN", x: 6.8, y: 11.2, layer: B.SilkS }
 
 heights:
   default: 1.2
