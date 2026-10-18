@@ -114,13 +114,16 @@ def test_boards_clear_enclosure_and_threads_truly_mesh():
     assert sleeve_front.intersect(jst_plug_gauge).val().Volume() < 1e-3
     assert pagoda.intersect(jst_plug_gauge).val().Volume() < 1e-3
 
-    # 7. Crown Base 29.0-deg Inward-Looking (V-Beam) Ultrasonic Barrel Seat + Press-Fit Ring & Square Crown PCB Clearance:
+    # 7. Crown Base 29.0-deg Inward-Looking (V-Beam) Ultrasonic Barrel Seat + Unobstructed Bore + Press-Fit Ring Verification:
     tilt_deg = ef.SPEC["envelope"]["wind_tunnel"].get("transducer_tilt_deg", 29.0)
     for tp in ef.transducer_pockets():
         tx, tz = tp["x"], tp["z"]
         axis = (tz, 0, -tx) if (tx != 0 or tz != 0) else (1, 0, 0)
-        xd_can = be.cone_y(-2.3, 3.2, 5.0, 5.0).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2, tz))
-        ret_ring = be.ring_cone_y(3.2, 4.8, 3.0, 5.2, 3.0, 5.2).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2, tz))
+        xd_can = be.cone_y(-1.75, 3.4, 5.0, 5.0).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2, tz))
+        ret_ring = be.ring_cone_y(3.4, 4.8, 3.0, 5.2, 3.0, 5.2).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2, tz))
+        # Verify the Ø 8.9 mm (`r = 4.43 mm`) acoustic aperture bore is 100% round and unobstructed from s = -10.0 to +8.0 mm!
+        bore_gauge = be.cone_y(-10.0, 8.0, 4.43, 4.43).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2, tz))
+        assert crown_base.intersect(bore_gauge).val().Volume() < 1e-3, f"XD_{tp['name']} aperture has a chord blockage!"
         assert crown_base.intersect(xd_can).val().Volume() < 1e-3
         assert crown_base.intersect(ret_ring).val().Volume() < 1e-3
         assert plates["crown"].intersect(xd_can).val().Volume() < 1e-3

@@ -71,12 +71,12 @@ def realistic_part(b):
     if fp == "ULTRASONIC_10MM":
         tilt_deg = ef.SPEC["envelope"]["wind_tunnel"].get("transducer_tilt_deg", 29.0)
         # Rotate around `axis = (cz, 0, -cx)` by `+tilt_deg` (29.0 deg) so the transducer face tilts INWARD (`V-beam`)!
-        # Includes the Press-Fit Rear Retaining Ring (`ret_ring`, colored orange) pressed behind the silver transducer can!
+        # Seats against the 1.0+ mm bottom resting shoulder (`s = -1.80 mm`) with the Press-Fit Rear Retaining Ring behind it!
         axis = (cz, 0, -cx) if (cx != 0 or cz != 0) else (1, 0, 0)
-        can = be.cone_y(-2.3, 3.2, 5.0, 5.0).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2, cz))
-        face = be.cone_y(-2.4, -1.9, 4.0, 4.0).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2, cz))
-        ret_ring = be.ring_cone_y(3.2, 4.8, 3.0, 5.2, 3.0, 5.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2, cz))
-        pigtail = be.cone_y(3.2, 5.8, 1.2, 1.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2, cz))
+        can = be.cone_y(-1.75, 3.4, 5.0, 5.0).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2, cz))
+        face = be.cone_y(-1.80, -1.3, 4.3, 4.3).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2, cz))
+        ret_ring = be.ring_cone_y(3.4, 4.8, 3.0, 5.2, 3.0, 5.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2, cz))
+        pigtail = be.cone_y(3.4, 5.8, 1.2, 1.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2, cz))
         return [(can, ALU), (face, (0.25, 0.28, 0.32)), (ret_ring, (0.94, 0.45, 0.22)), (pigtail, GOLD)]
     if fp in ("PIEZO_27MM", "PIEZO_20MM"):
         d = 20.0 if fp == "PIEZO_20MM" else 27.0

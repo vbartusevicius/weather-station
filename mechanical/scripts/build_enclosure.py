@@ -608,20 +608,34 @@ def build_crown_base():
     tilt_deg = SPEC["envelope"]["wind_tunnel"].get("transducer_tilt_deg", 29.0)
     for tp in ef.transducer_pockets():
         tx, tz = tp["x"], tp["z"]
-        # Full-Length Covered Inward-Looking (`29.0 deg` V-Beam) Ultrasonic Barrel Seat:
-        #   - Protrudes 2.2 mm below the y=174.0 ceiling inside a covered aerodynamic lower nozzle shroud (`y = 171.8..174.5`)
-        #     so the front of the tilted transducer is 100% covered in solid plastic, and rises to y = 181.2 mm inside
-        #     `crown_base.stl` (completely outside the 34.0 x 34.0 mm square `crown` PCB for unobstructed top insertion!)
-        #   - Internal 1.05 mm annular front stop lip (`r = 4.20 mm` acoustic window vs `r = 5.25 mm` transducer chamber)
-        #   - Rear counterbore seat (`s = +3.2..+5.2 mm`) for the slotted Press-Fit Rear Retaining Ring!
+        # Full-Length Inward-Looking (`29.0 deg` V-Beam) Ultrasonic Barrel Seat matching the exact two-segment bottom profile:
+        #   1. Left/inward angled face (`barrel_angled`, starting at `s = -2.80 mm` — parallel to and 1.00 mm below the
+        #      sensor's bottom face at `s = -1.80 mm`)
+        #   2. Right/outward horizontal face (`barrel_above_floor`, clipped flat at the `y = 174.00 mm` underside floor
+        #      of `crown_base.stl` so nothing hangs below `y = 174.00 mm` on the right side while filling the barrel above `y = 174.00 mm`!)
         axis = (tz, 0, -tx) if (tx != 0 or tz != 0) else (1, 0, 0)
-        barrel_shroud = (cone_y(-4.2, 5.2, 6.8, 6.8)
+        barrel_angled = (cone_y(-2.80, 4.2, 6.80, 6.80)
+                         .rotate((0, 0, 0), (0, 1, 0), 23.0)
                          .rotate((0, 0, 0), axis, tilt_deg)
-                         .translate((tx, 176.2, tz))
-                         .intersect(box(-42.0, 42.0, 171.8, 181.2, -42.0, 42.0)))
-        upper_seat_cup = cone_y(-2.4, 6.5, 5.25, 5.25).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2, tz))
-        lower_aperture = cone_y(-6.0, 6.5, 4.20, 4.20).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2, tz))
+                         .translate((tx, 176.2, tz)))
+        barrel_above_floor = (cone_y(-7.5, 4.2, 6.80, 6.80)
+                              .rotate((0, 0, 0), (0, 1, 0), 23.0)
+                              .rotate((0, 0, 0), axis, tilt_deg)
+                              .translate((tx, 176.2, tz))
+                              .intersect(box(-42.0, 42.0, 174.0, 185.0, -42.0, 42.0)))
+        barrel_shroud = barrel_angled.union(barrel_above_floor)
+        upper_seat_cup = (cone_y(-1.80, 8.0, 5.25, 5.25)
+                          .rotate((0, 0, 0), (0, 1, 0), 23.0)
+                          .rotate((0, 0, 0), axis, tilt_deg)
+                          .translate((tx, 176.2, tz)))
+        lower_aperture = (cone_y(-9.0, 8.0, 4.45, 4.45)
+                          .rotate((0, 0, 0), (0, 1, 0), 23.0)
+                          .rotate((0, 0, 0), axis, tilt_deg)
+                          .translate((tx, 176.2, tz)))
         body = body.union(barrel_shroud).cut(upper_seat_cup).cut(lower_aperture)
+    # Trim the sharp lowest barrel corner horizontally at `y = 171.05 mm` (leaving `1.03 mm` of solid plastic
+    # directly below the sensor's deepest corner at `y = 172.08 mm`!):
+    body = body.cut(box(-45.0, 45.0, 160.0, 171.05, -45.0, 45.0))
 
     for st in ef.strut_centres():
         sx, sz = st["x"], st["z"]
