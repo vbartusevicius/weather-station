@@ -1,9 +1,10 @@
-#include "rs485/Rs485Protocol.hpp"
+#include "Rs485Protocol.hpp"
 
 #include <cstdio>
 #include <cstring>
 
-namespace station::rs485 {
+namespace station {
+namespace rs485 {
 
 std::uint16_t Rs485Protocol::crc16_modbus(const char* data, std::size_t len) {
     std::uint16_t crc = 0xFFFFU;
@@ -66,4 +67,5 @@ CommandType Rs485Protocol::parse_command_frame(const char* line, std::size_t len
     return CommandType::None;
 }
 
-}  // namespace station::rs485
+}  // namespace rs485
+}  // namespace station

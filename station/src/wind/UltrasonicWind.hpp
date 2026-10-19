@@ -4,7 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace station::wind {
+namespace station {
+namespace wind {
 
 struct TofQuad {
     // Fine zero-crossing timestamps from LM393 Comparator A (microseconds)
@@ -45,6 +46,7 @@ struct WindSample {
     float acoustic_temp_c{20.0F};
     float mast_tilt_deg{0.0F};
     float north_offset_deg{0.0F};
+    float crosswind_correction_pct{0.0F};
 };
 
 struct WmoWindSummary {
@@ -56,11 +58,13 @@ struct WmoWindSummary {
     float lull_m_s{0.0F};
     float mean_dir_deg{0.0F};
     float beaufort_scale{0.0F};
+    float turbulence_intensity_pct{0.0F};
+    float gust_factor{1.0F};
+    std::array<float, 16> rose_freq_pct{};
 };
 
 class UltrasonicWindSolver {
 public:
-    // AeroMet V1 upgraded geometry: 4 transducers at r=27 mm (separation D=54 mm), reflector H=48 mm
     static constexpr float kTransducerSeparationM = 0.054F;
     static constexpr float kReflectorGapM = 0.048F;
     static constexpr float kCarrierPeriodUs = 25.0F;  // 40 kHz ultrasonic period (25.0 us)
@@ -68,6 +72,10 @@ public:
     static constexpr float kMaxValidSpeedMs = 65.0F;
 
     static float resolve_cycle_slip(float zc_us, float env_us);
+    // Converts moist-air acoustic virtual temperature Tv (C) to true thermodynamic temperature T (C)
+    static float correct_acoustic_temp_for_humidity(float virtual_temp_c,
+                                                    float rh_percent,
+                                                    float pressure_hpa = 1013.25F);
     static WindSample solve(const TofQuad& tof,
                             const ImuCompassReading& orientation = {},
                             const ZeroWindCalibration& cal = {});
@@ -96,4 +104,5 @@ private:
     float last_dir_{0.0F};
 };
 
-}  // namespace station::wind
+}  // namespace wind
+}  // namespace station

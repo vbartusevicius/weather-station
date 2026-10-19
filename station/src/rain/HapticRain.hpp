@@ -2,7 +2,8 @@
 
 #include <cstdint>
 
-namespace station::rain {
+namespace station {
+namespace rain {
 
 enum class PrecipitationType : std::uint8_t {
     None = 0,
@@ -20,6 +21,7 @@ struct RainImpactEvent {
     std::uint16_t pulse_width_us{200};
     float imu_vibration_g{0.0F};
     float wind_speed_m_s{0.0F};      // Ultrasonic wind speed for oblique-impact kinetic energy normalization
+    float dome_temp_c{20.0F};        // PZT ceramic temperature sensitivity drift compensation (-0.18% / C)
 };
 
 struct RainMetrics {
@@ -33,6 +35,8 @@ struct RainMetrics {
     float total_mm{0.0F};
     std::uint32_t drop_count{0};
     std::uint32_t hail_hits{0};
+    float max_hail_diameter_mm{0.0F};
+    float hail_rate_mm_h{0.0F};
     std::uint32_t rejected_vibrations{0};
 };
 
@@ -44,6 +48,7 @@ public:
     static constexpr float kMaxMastShakeG = 0.18F;
     static constexpr float kNominalTerminalVelMs = 6.5F;
 
+    static float estimate_hail_diameter_mm(int net_mv, std::uint16_t pulse_width_us);
     bool process_impact(const RainImpactEvent& ev);
     void tick_minute();
     void reset_daily();
@@ -52,9 +57,11 @@ public:
 private:
     RainMetrics metrics_{};
     float window_minute_mm_{0.0F};
+    float window_minute_hail_mm_{0.0F};
     std::uint16_t dry_minutes_{0};
 };
 
 const char* precipitation_type_name(PrecipitationType type);
 
-}  // namespace station::rain
+}  // namespace rain
+}  // namespace station

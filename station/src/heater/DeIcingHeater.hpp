@@ -2,7 +2,8 @@
 
 #include <cstdint>
 
-namespace station::heater {
+namespace station {
+namespace heater {
 
 enum class HeaterState : std::uint8_t {
     Off = 0,
@@ -42,4 +43,5 @@ public:
     static HeaterControlOutput update(const HeaterSensorInput& in);
 };
 
-}  // namespace station::heater
+}  // namespace heater
+}  // namespace station

@@ -1,0 +1,5 @@
+CompileFlags:
+  Add:
+    - -std=gnu++17
+    - -I/Users/valentinas.bartusevicius/Projects/weather-station/station/src
+    - -I/Users/valentinas.bartusevicius/Projects/weather-station/station/.pio/libdeps/native/ArduinoJson/src

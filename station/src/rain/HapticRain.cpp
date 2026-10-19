@@ -1,9 +1,27 @@
-#include "rain/HapticRain.hpp"
+#include "HapticRain.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-namespace station::rain {
+namespace station {
+namespace rain {
+
+namespace {
+float clamp_f(float v, float lo, float hi) {
+    return std::min(hi, std::max(lo, v));
+}
+}  // namespace
+
+float HapticRainProcessor::estimate_hail_diameter_mm(int net_mv, std::uint16_t pulse_width_us) {
+    if (net_mv < 1400 || pulse_width_us > 140) {
+        return 0.0F;
+    }
+    // Hertzian ice-sphere impact scaling on 20 mm PZT diaphragm:
+    // 1400 mV -> ~5.2 mm graupel/pea hail; 2500 mV -> ~12.5 mm marble hail; 3300 mV -> ~18 mm hail
+    const float excess_v = static_cast<float>(net_mv - 1100) / 1000.0F;
+    const float pulse_factor = clamp_f(120.0F / static_cast<float>( std::max<std::uint16_t>(60, pulse_width_us) ), 0.85F, 1.35F);
+    return clamp_f(8.2F * std::pow(excess_v, 0.68F) * pulse_factor, 4.0F, 35.0F);
+}
 
 bool HapticRainProcessor::process_impact(const RainImpactEvent& ev) {
     metrics_.surface_wet = (ev.baseline_mv >= kWetSurfaceBaselineMv);
@@ -19,16 +37,25 @@ bool HapticRainProcessor::process_impact(const RainImpactEvent& ev) {
     }
 
     const bool is_hail = (net_mv >= 1400 && ev.pulse_width_us <= 140);
+    float hail_lwe_mm = 0.0F;
     if (is_hail) {
         ++metrics_.hail_hits;
+        const float diam_mm = estimate_hail_diameter_mm(net_mv, ev.pulse_width_us);
+        metrics_.max_hail_diameter_mm = std::max(metrics_.max_hail_diameter_mm, diam_mm);
+        // Converted Liquid-Water Equivalent (LWE) depth of an ice sphere (rho_ice = 0.917 g/cm3):
+        const float hail_water_vol_mm3 = 0.917F * 0.5235988F * diam_mm * diam_mm * diam_mm;
+        hail_lwe_mm = clamp_f(hail_water_vol_mm3 / kCollectionAreaMm2, 0.005F, 1.50F);
+        window_minute_hail_mm_ += hail_lwe_mm;
     }
 
-    // Normalize out horizontal wind kinetic-energy boost: E_total = E_vert * (1 + 0.5*(v_wind / v_term)^2)
-    const float wind_ratio = std::clamp(ev.wind_speed_m_s / kNominalTerminalVelMs, 0.0F, 5.0F);
+    // 1. Normalize out horizontal wind kinetic-energy boost: E_total = E_vert * (1 + 0.5*(v_wind / v_term)^2)
+    const float wind_ratio = clamp_f(ev.wind_speed_m_s / kNominalTerminalVelMs, 0.0F, 5.0F);
     const float wind_ke_factor = 1.0F + 0.5F * wind_ratio * wind_ratio;
-    const float norm_energy = (static_cast<float>(net_mv) / 1000.0F) / wind_ke_factor;
+    // 2. Compensate Murata 7BB-20-6L0 PZT capacitance/charge sensitivity thermal drift (-0.18% / C from 20 C):
+    const float temp_factor = clamp_f(1.0F + 0.0018F * (ev.dome_temp_c - 20.0F), 0.85F, 1.15F);
+    const float norm_energy = ((static_cast<float>(net_mv) / 1000.0F) / wind_ke_factor) / temp_factor;
     const float drop_volume_mm3 = 18.5F * std::pow(norm_energy, 1.35F);
-    const float depth_mm = std::clamp(drop_volume_mm3 / kCollectionAreaMm2, 0.0005F, 0.25F);
+    const float depth_mm = is_hail ? hail_lwe_mm : clamp_f(drop_volume_mm3 / kCollectionAreaMm2, 0.0005F, 0.25F);
 
     metrics_.is_raining = true;
     dry_minutes_ = 0;
@@ -40,6 +67,7 @@ bool HapticRainProcessor::process_impact(const RainImpactEvent& ev) {
     metrics_.total_mm += depth_mm;
 
     metrics_.rate_mm_h = std::max(metrics_.rate_mm_h, window_minute_mm_ * 60.0F);
+    metrics_.hail_rate_mm_h = std::max(metrics_.hail_rate_mm_h, window_minute_hail_mm_ * 60.0F);
     if (is_hail) {
         metrics_.state = PrecipitationType::Hail;
     } else if (metrics_.rate_mm_h >= 50.0F) {
@@ -58,21 +86,26 @@ bool HapticRainProcessor::process_impact(const RainImpactEvent& ev) {
 
 void HapticRainProcessor::tick_minute() {
     metrics_.rate_mm_h = 0.65F * (window_minute_mm_ * 60.0F) + 0.35F * metrics_.rate_mm_h;
+    metrics_.hail_rate_mm_h = 0.65F * (window_minute_hail_mm_ * 60.0F) + 0.35F * metrics_.hail_rate_mm_h;
     if (window_minute_mm_ < 1e-4F) {
         ++dry_minutes_;
         if (dry_minutes_ >= 15) {
             metrics_.is_raining = false;
             metrics_.state = PrecipitationType::None;
             metrics_.rate_mm_h = 0.0F;
+            metrics_.hail_rate_mm_h = 0.0F;
             metrics_.event_mm = 0.0F;
         }
     }
     window_minute_mm_ = 0.0F;
+    window_minute_hail_mm_ = 0.0F;
     metrics_.hourly_mm *= (59.0F / 60.0F);
 }
 
 void HapticRainProcessor::reset_daily() {
     metrics_.daily_mm = 0.0F;
+    metrics_.hail_hits = 0;
+    metrics_.max_hail_diameter_mm = 0.0F;
 }
 
 const char* precipitation_type_name(PrecipitationType type) {
@@ -95,4 +128,5 @@ const char* precipitation_type_name(PrecipitationType type) {
     return "Dry";
 }
 
-}  // namespace station::rain
+}  // namespace rain
+}  // namespace station

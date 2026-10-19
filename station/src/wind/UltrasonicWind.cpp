@@ -1,15 +1,20 @@
-#include "wind/UltrasonicWind.hpp"
+#include "UltrasonicWind.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-namespace station::wind {
+namespace station {
+namespace wind {
 
 namespace {
 constexpr float kPi = 3.14159265358979323846F;
 constexpr float kRadToDeg = 180.0F / kPi;
 constexpr float kDegToRad = kPi / 180.0F;
 constexpr float kGammaRd = 1.4F * 287.058F;  // gamma * R_d for dry air (m^2 / (s^2 * K))
+
+float clamp_f(float v, float lo, float hi) {
+    return std::min(hi, std::max(lo, v));
+}
 
 float wrap_360(float deg) {
     float r = std::fmod(deg, 360.0F);
@@ -21,10 +26,21 @@ float UltrasonicWindSolver::resolve_cycle_slip(float zc_us, float env_us) {
     if (env_us <= 0.0F) {
         return zc_us;
     }
-    // Lock the sub-10 ns zero-crossing timestamp zc_us onto the integer 25.0 us carrier cycle
-    // identified by the LM393 Comparator B envelope gate (env_us)
     const float k_cycles = std::round((env_us - zc_us) / kCarrierPeriodUs);
     return zc_us + k_cycles * kCarrierPeriodUs;
+}
+
+float UltrasonicWindSolver::correct_acoustic_temp_for_humidity(float virtual_temp_c,
+                                                               float rh_percent,
+                                                               float pressure_hpa) {
+    // Moist air has lower molar mass than dry air: Tv_K = T_K * (1 + 0.32 * e / P)
+    const float rh = clamp_f(rh_percent, 0.0F, 100.0F);
+    const float p_hpa = clamp_f(pressure_hpa, 500.0F, 1100.0F);
+    const float es_hpa = 6.112F * std::exp((17.67F * virtual_temp_c) / (virtual_temp_c + 243.5F));
+    const float e_hpa = (rh / 100.0F) * es_hpa;
+    const float tv_k = virtual_temp_c + 273.15F;
+    const float t_true_k = tv_k / (1.0F + 0.32F * (e_hpa / p_hpa));
+    return t_true_k - 273.15F;
 }
 
 float UltrasonicWindSolver::compute_mast_tilt_deg(const ImuCompassReading& imu) {
@@ -34,7 +50,7 @@ float UltrasonicWindSolver::compute_mast_tilt_deg(const ImuCompassReading& imu) 
     if (norm < 1e-3F) {
         return 0.0F;
     }
-    const float cos_tilt = std::clamp(std::fabs(imu.accel_z_g) / norm, 0.0F, 1.0F);
+    const float cos_tilt = clamp_f(std::fabs(imu.accel_z_g) / norm, 0.0F, 1.0F);
     return std::acos(cos_tilt) * kRadToDeg;
 }
 
@@ -47,8 +63,8 @@ float UltrasonicWindSolver::compute_north_heading_deg(const ImuCompassReading& i
     if (norm_a > 1e-3F) {
         const float ax = imu.accel_x_g / norm_a;
         const float ay = imu.accel_y_g / norm_a;
-        const float pitch = std::asin(std::clamp(-ax, -1.0F, 1.0F));
-        const float roll = std::asin(std::clamp(ay / std::max(0.1F, std::cos(pitch)), -1.0F, 1.0F));
+        const float pitch = std::asin(clamp_f(-ax, -1.0F, 1.0F));
+        const float roll = std::asin(clamp_f(ay / std::max(0.1F, std::cos(pitch)), -1.0F, 1.0F));
         const float cp = std::cos(pitch);
         const float sp = std::sin(pitch);
         const float cr = std::cos(roll);
@@ -87,9 +103,18 @@ WindSample UltrasonicWindSolver::solve(const TofQuad& tof,
     const float inv_ew = 1e6F / t_ew;
     const float inv_we = 1e6F / t_we;
 
-    // Differential inverse-ToF cancels speed of sound c:
-    const float flow_north = (l_eff / (2.0F * cos_alpha)) * (inv_sn - inv_ns);
-    const float flow_east = (l_eff / (2.0F * cos_alpha)) * (inv_we - inv_ew);
+    // 1. First-order reciprocal inverse-ToF flow components (c cancels out):
+    const float raw_flow_north = (l_eff / (2.0F * cos_alpha)) * (inv_sn - inv_ns);
+    const float raw_flow_east = (l_eff / (2.0F * cos_alpha)) * (inv_we - inv_ew);
+
+    // 2. Speed of sound & Second-Order Crosswind Acoustic Beam-Deflection (Mach^2) Correction:
+    const float c_raw = (l_eff * 0.25F) * (inv_ns + inv_sn + inv_ew + inv_we);
+    const float c2 = std::max(50000.0F, c_raw * c_raw);
+    const float mach_perp_ns = clamp_f((raw_flow_east * raw_flow_east) / c2, 0.0F, 0.05F);
+    const float mach_perp_ew = clamp_f((raw_flow_north * raw_flow_north) / c2, 0.0F, 0.05F);
+    const float flow_north = raw_flow_north / (1.0F - 0.5F * mach_perp_ns);
+    const float flow_east = raw_flow_east / (1.0F - 0.5F * mach_perp_ew);
+    const float c_mean = c_raw / std::sqrt(1.0F - 0.5F * (mach_perp_ns + mach_perp_ew));
 
     const float tilt_deg = compute_mast_tilt_deg(orientation);
     const float tilt_cos = std::max(0.7F, std::cos(tilt_deg * kDegToRad));
@@ -102,8 +127,6 @@ WindSample UltrasonicWindSolver::solve(const TofQuad& tof,
     const float raw_speed = std::sqrt(v_e * v_e + v_n * v_n);
     const float speed = (raw_speed < kMinDetectableSpeedMs) ? 0.0F : raw_speed;
     const float from_deg = (speed >= kMinDetectableSpeedMs) ? wrap_360(std::atan2(-v_e, -v_n) * kRadToDeg) : 0.0F;
-
-    const float c_mean = (l_eff * 0.25F) * (inv_ns + inv_sn + inv_ew + inv_we);
     const float t_virtual_c = (c_mean * c_mean) / kGammaRd - 273.15F;
 
     out.valid = (raw_speed <= kMaxValidSpeedMs);
@@ -115,6 +138,7 @@ WindSample UltrasonicWindSolver::solve(const TofQuad& tof,
     out.acoustic_temp_c = t_virtual_c;
     out.mast_tilt_deg = tilt_deg;
     out.north_offset_deg = north_offset;
+    out.crosswind_correction_pct = 50.0F * std::max(mach_perp_ns, mach_perp_ew);
     return out;
 }
 
@@ -151,17 +175,20 @@ WmoWindSummary WmoWindAggregator::summary() const {
     s.current_dir_deg = last_dir_;
 
     float sum_all = 0.0F;
+    float sum_sq_all = 0.0F;
     float sum_1m = 0.0F;
     std::size_t n_1m = std::min<std::size_t>(count_, 20);
     float gust = 0.0F;
-    float lull = ring_[0].speed;
+    float lull = ring_[(head_ + kWindowSize - 1) % kWindowSize].speed;
     float sin_sum = 0.0F;
     float cos_sum = 0.0F;
+    std::array<std::uint16_t, 16> sector_counts{};
 
     for (std::size_t i = 0; i < count_; ++i) {
         const std::size_t idx = (head_ + kWindowSize - 1 - i) % kWindowSize;
         const Entry& e = ring_[idx];
         sum_all += e.speed;
+        sum_sq_all += e.speed * e.speed;
         if (i < n_1m) {
             sum_1m += e.speed;
         }
@@ -171,14 +198,24 @@ WmoWindSummary WmoWindAggregator::summary() const {
         const float weight = std::max(0.1F, e.speed);
         sin_sum += weight * std::sin(rad);
         cos_sum += weight * std::cos(rad);
+        const std::size_t sec = static_cast<std::size_t>(std::fmod(e.dir_deg + 11.25F, 360.0F) / 22.5F) % 16U;
+        ++sector_counts[sec];
     }
 
+    const float n_f = static_cast<float>(count_);
     s.avg_1min_m_s = sum_1m / static_cast<float>(n_1m);
-    s.avg_10min_m_s = sum_all / static_cast<float>(count_);
+    s.avg_10min_m_s = sum_all / n_f;
     s.gust_3s_m_s = gust;
     s.lull_m_s = lull;
     s.mean_dir_deg = wrap_360(std::atan2(sin_sum, cos_sum) * kRadToDeg);
     s.beaufort_scale = static_cast<float>(UltrasonicWindSolver::beaufort_number(s.avg_1min_m_s));
+    const float variance = std::max(0.0F, (sum_sq_all / n_f) - (s.avg_10min_m_s * s.avg_10min_m_s));
+    const float sigma_v = std::sqrt(variance);
+    s.turbulence_intensity_pct = (s.avg_10min_m_s > 0.2F) ? std::min(100.0F, (sigma_v / s.avg_10min_m_s) * 100.0F) : 0.0F;
+    s.gust_factor = (s.avg_10min_m_s > 0.2F) ? (s.gust_3s_m_s / s.avg_10min_m_s) : 1.0F;
+    for (std::size_t k = 0; k < 16; ++k) {
+        s.rose_freq_pct[k] = (static_cast<float>(sector_counts[k]) * 100.0F) / n_f;
+    }
     return s;
 }
 
@@ -189,4 +226,5 @@ void WmoWindAggregator::reset() {
     last_dir_ = 0.0F;
 }
 
-}  // namespace station::wind
+}  // namespace wind
+}  // namespace station

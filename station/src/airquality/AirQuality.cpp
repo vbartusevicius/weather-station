@@ -1,11 +1,16 @@
-#include "airquality/AirQuality.hpp"
+#include "AirQuality.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-namespace station::airquality {
+namespace station {
+namespace airquality {
 
 namespace {
+float clamp_f(float v, float lo, float hi) {
+    return std::min(hi, std::max(lo, v));
+}
+
 struct Breakpoint {
     float c_low;
     float c_high;
@@ -19,7 +24,7 @@ std::uint16_t piecewise_aqi(float c, const Breakpoint* table, std::size_t n) {
         if (clamped <= table[k].c_high || k == n - 1) {
             const float c_lo = table[k].c_low;
             const float c_hi = table[k].c_high;
-            const float ratio = std::clamp((clamped - c_lo) / std::max(0.1F, c_hi - c_lo), 0.0F, 1.0F);
+            const float ratio = clamp_f((clamped - c_lo) / std::max(0.1F, c_hi - c_lo), 0.0F, 1.0F);
             const float val = static_cast<float>(table[k].i_low) +
                               ratio * static_cast<float>(table[k].i_high - table[k].i_low);
             return static_cast<std::uint16_t>(std::lround(val));
@@ -35,7 +40,7 @@ float AirQualityEvaluator::compensate_pm_hygroscopic_growth(float raw_pm_ug_m3, 
         return std::max(0.0F, raw_pm_ug_m3);
     }
     constexpr float kKappa = 0.35F;
-    const float aw = std::clamp(rh_percent / 100.0F, 0.70F, 0.94F);
+    const float aw = clamp_f(rh_percent / 100.0F, 0.70F, 0.94F);
     const float growth_factor = 1.0F + kKappa * (aw / (1.0F - aw));
     return std::max(0.0F, raw_pm_ug_m3 / growth_factor);
 }
@@ -46,7 +51,7 @@ std::uint16_t AirQualityEvaluator::compensate_co2_pressure_ppm(std::uint16_t raw
     }
     // SCD41 photoacoustic cell density scales with P_ambient / P_std (1013.25 hPa)
     const float corrected = static_cast<float>(raw_co2_ppm) * (1013.25F / pressure_hpa);
-    return static_cast<std::uint16_t>(std::clamp(std::lround(corrected), 350L, 10000L));
+    return static_cast<std::uint16_t>(std::min(10000L, std::max(350L, std::lround(corrected))));
 }
 
 std::uint16_t AirQualityEvaluator::compute_pm25_aqi(float pm25_ug_m3) {
@@ -161,4 +166,5 @@ const char* AirQualityEvaluator::level_name(AqiLevel lvl) {
     return "Good";
 }
 
-}  // namespace station::airquality
+}  // namespace airquality
+}  // namespace station

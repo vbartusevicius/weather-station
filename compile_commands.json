@@ -1,0 +1,37 @@
+[
+  {
+    "directory": "/Users/valentinas.bartusevicius/Projects/weather-station/station",
+    "command": "/usr/bin/clang++ -std=gnu++17 -I/Users/valentinas.bartusevicius/Projects/weather-station/station/src -c src/wind/UltrasonicWind.cpp",
+    "file": "/Users/valentinas.bartusevicius/Projects/weather-station/station/src/wind/UltrasonicWind.cpp"
+  },
+  {
+    "directory": "/Users/valentinas.bartusevicius/Projects/weather-station/station",
+    "command": "/usr/bin/clang++ -std=gnu++17 -I/Users/valentinas.bartusevicius/Projects/weather-station/station/src -c src/environment/MetCalculations.cpp",
+    "file": "/Users/valentinas.bartusevicius/Projects/weather-station/station/src/environment/MetCalculations.cpp"
+  },
+  {
+    "directory": "/Users/valentinas.bartusevicius/Projects/weather-station/station",
+    "command": "/usr/bin/clang++ -std=gnu++17 -I/Users/valentinas.bartusevicius/Projects/weather-station/station/src -c src/rain/HapticRain.cpp",
+    "file": "/Users/valentinas.bartusevicius/Projects/weather-station/station/src/rain/HapticRain.cpp"
+  },
+  {
+    "directory": "/Users/valentinas.bartusevicius/Projects/weather-station/station",
+    "command": "/usr/bin/clang++ -std=gnu++17 -I/Users/valentinas.bartusevicius/Projects/weather-station/station/src -c src/airquality/AirQuality.cpp",
+    "file": "/Users/valentinas.bartusevicius/Projects/weather-station/station/src/airquality/AirQuality.cpp"
+  },
+  {
+    "directory": "/Users/valentinas.bartusevicius/Projects/weather-station/station",
+    "command": "/usr/bin/clang++ -std=gnu++17 -I/Users/valentinas.bartusevicius/Projects/weather-station/station/src -c src/heater/DeIcingHeater.cpp",
+    "file": "/Users/valentinas.bartusevicius/Projects/weather-station/station/src/heater/DeIcingHeater.cpp"
+  },
+  {
+    "directory": "/Users/valentinas.bartusevicius/Projects/weather-station/station",
+    "command": "/usr/bin/clang++ -std=gnu++17 -I/Users/valentinas.bartusevicius/Projects/weather-station/station/src -c src/rs485/Rs485Protocol.cpp",
+    "file": "/Users/valentinas.bartusevicius/Projects/weather-station/station/src/rs485/Rs485Protocol.cpp"
+  },
+  {
+    "directory": "/Users/valentinas.bartusevicius/Projects/weather-station/station",
+    "command": "/usr/bin/clang++ -std=gnu++17 -I/Users/valentinas.bartusevicius/Projects/weather-station/station/src -c src/telemetry/HomeAssistantMqtt.cpp",
+    "file": "/Users/valentinas.bartusevicius/Projects/weather-station/station/src/telemetry/HomeAssistantMqtt.cpp"
+  }
+]

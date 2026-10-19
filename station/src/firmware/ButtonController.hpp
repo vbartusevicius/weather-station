@@ -2,7 +2,8 @@
 
 #include <cstdint>
 
-namespace station::firmware {
+namespace station {
+namespace firmware {
 
 enum class ButtonAction : std::uint8_t {
     None = 0,
@@ -17,7 +18,7 @@ public:
 
     constexpr ButtonController() = default;
 
-    [[nodiscard]] ButtonAction update(bool pressed_active_low, std::uint32_t now_ms) noexcept {
+    ButtonAction update(bool pressed_active_low, std::uint32_t now_ms) noexcept {
         if (pressed_active_low) {
             if (!is_pressed_) {
                 is_pressed_ = true;
@@ -51,4 +52,5 @@ private:
     std::uint32_t press_start_ms_{0};
 };
 
-}  // namespace station::firmware
+}  // namespace firmware
+}  // namespace station

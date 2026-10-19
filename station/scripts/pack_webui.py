@@ -46,16 +46,20 @@ def build_cpp_header() -> str:
         "",
         "#include <cstddef>",
         "",
-        "namespace station::firmware::web_assets {",
+        "namespace station {",
+        "namespace firmware {",
+        "namespace web_assets {",
         "",
     ]
     for route, _, path in FILES:
         ident = route.strip("/").replace(".", "_")
         content = path.read_text(encoding="utf-8")
-        lines.append(f'inline constexpr const char {ident}_data[] = R"WEBUI({content})WEBUI";')
-        lines.append(f"inline constexpr std::size_t {ident}_size = sizeof({ident}_data) - 1;")
+        lines.append(f'static constexpr const char {ident}_data[] = R"WEBUI({content})WEBUI";')
+        lines.append(f"static constexpr std::size_t {ident}_size = sizeof({ident}_data) - 1;")
         lines.append("")
-    lines.append("}")
+    lines.append("}  // namespace web_assets")
+    lines.append("}  // namespace firmware")
+    lines.append("}  // namespace station")
     lines.append("// clang-format on")
     lines.append("")
     return "\n".join(lines)

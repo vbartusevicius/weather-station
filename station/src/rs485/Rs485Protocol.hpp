@@ -4,9 +4,10 @@
 #include <cstdint>
 #include <string>
 
-#include "telemetry/HomeAssistantMqtt.hpp"
+#include "../telemetry/HomeAssistantMqtt.hpp"
 
-namespace station::rs485 {
+namespace station {
+namespace rs485 {
 
 enum class CommandType : std::uint8_t {
     None = 0,
@@ -27,4 +28,5 @@ public:
     static CommandType parse_command_frame(const char* line, std::size_t len);
 };
 
-}  // namespace station::rs485
+}  // namespace rs485
+}  // namespace station

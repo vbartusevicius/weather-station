@@ -1,228 +1,606 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AeroMet V1 — Roof Weather Station</title>
+  <title>AeroMet V1 — Weather Observatory</title>
   <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
+  <!-- COMPACT TOP BAR -->
   <header class="topbar">
     <div class="brand">
-      <span class="logo-dot"></span>
-      <div>
-        <h1>AeroMet V1</h1>
-        <span class="subtitle">Solid-State Ultrasonic &amp; Haptic Roof Weather Station</span>
+      <div class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="24" height="24">
+          <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-dasharray="4 2" />
+          <circle cx="16" cy="16" r="3.5" fill="currentColor" />
+          <path d="M16 2 L19 10 L16 8 L13 10 Z" fill="#ef4444" />
+        </svg>
       </div>
+      <span class="brand-title">AeroMet</span>
+      <span class="pill ok" id="pill-link"><span class="pulse-dot"></span>LIVE</span>
     </div>
-    <nav class="tabs">
-      <button class="tab active" data-tab="overview">Overview &amp; Wind</button>
-      <button class="tab" data-tab="airquality">Air Quality &amp; Storm</button>
-      <button class="tab" data-tab="diagnostics">Ultrasonic &amp; Rain DSP</button>
-      <button class="tab" data-tab="settings">Settings &amp; OTA</button>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="overview">Now</button>
+      <button class="tab" data-tab="trends">Trends</button>
+      <button class="tab" data-tab="twin">Station Twin</button>
+      <button class="tab" data-tab="settings">Setup</button>
     </nav>
-    <div class="status-pills">
-      <span class="pill ok" id="pill-link">LIVE WS</span>
-      <span class="pill" id="pill-vin">24.0 V</span>
-      <span class="pill" id="pill-heater">HEATER IDLE</span>
+
+    <div class="toolbar">
+      <select id="scenario-select" class="scenario-select" title="Live Weather Scenario">
+        <option value="breeze">☀ Spring Breeze</option>
+        <option value="storm">⛈ Squall &amp; Hail</option>
+        <option value="freeze">❄ Freezing Fog (-4 °C)</option>
+        <option value="heatwave">🔥 Heatwave (UV 10)</option>
+        <option value="plume">🌫 Urban Plume</option>
+      </select>
+      <button class="btn-chip" id="unit-toggle" title="Switch Units">Metric</button>
+      <button class="btn-chip" id="theme-toggle" title="Switch Theme">☀</button>
     </div>
   </header>
 
   <main class="container">
-    <!-- TAB 1: OVERVIEW & WIND ROSE -->
+    <!-- =========================================================
+         TAB 1: GLANCEABLE VISUAL INSTRUMENT DASHBOARD
+         ========================================================= -->
     <section class="panel active" id="tab-overview">
-      <div class="grid-3">
-        <!-- WIND ROSE CARD -->
-        <div class="card">
-          <div class="card-header">
-            <h2>Ultrasonic Wind &amp; Auto-North</h2>
-            <span class="badge" id="wind-beaufort">Beaufort 2 (Light Breeze)</span>
+      <!-- VISUAL SKY HERO BANNER -->
+      <div class="sky-hero" id="sky-hero">
+        <svg class="sky-fx" id="sky-fx" viewBox="0 0 900 130" preserveAspectRatio="none"></svg>
+        <div class="hero-left">
+          <div class="hero-wx-icon" id="hero-wx-icon"></div>
+          <div>
+            <div class="hero-temp-big" id="hero-temp">18.4°</div>
+            <div class="hero-cond" id="hero-cond">Fine Weather · Feels like 17.8°</div>
           </div>
-          <div class="wind-rose-wrap">
-            <svg viewBox="0 0 220 220" class="wind-rose">
-              <circle cx="110" cy="110" r="92" class="rose-ring" />
-              <circle cx="110" cy="110" r="64" class="rose-ring-inner" />
-              <line x1="110" y1="18" x2="110" y2="202" class="rose-axis" />
-              <line x1="18" y1="110" x2="202" y2="110" class="rose-axis" />
-              <text x="110" y="14" class="rose-dir north">N</text>
-              <text x="209" y="114" class="rose-dir">E</text>
-              <text x="110" y="216" class="rose-dir">S</text>
-              <text x="11" y="114" class="rose-dir">W</text>
-              <g id="wind-arrow" transform="rotate(215 110 110)">
-                <polygon points="110,24 102,52 110,46 118,52" class="arrow-head" />
-                <line x1="110" y1="44" x2="110" y2="150" class="arrow-shaft" />
+        </div>
+        <div class="hero-Chips">
+          <div class="h-chip"><span class="h-dot wind-dot"></span><span id="hc-wind">4.8 m/s SW</span></div>
+          <div class="h-chip"><span class="h-dot baro-dot"></span><span id="hc-baro">1016.8 hPa →</span></div>
+          <div class="h-chip"><span class="h-dot rain-dot"></span><span id="hc-rain">Dry · 2.4 mm</span></div>
+          <div class="h-chip"><span class="h-dot aqi-dot" id="hc-aqi-dot"></span><span id="hc-aqi">Air: Good (26)</span></div>
+        </div>
+      </div>
+
+      <!-- 6 VISUAL INSTRUMENT TILES (CLICK ANY TILE TO INSPECT DETAILS) -->
+      <div class="grid-3">
+        <!-- 1. WIND COMPASS & LABELED SPEED RANGE BAR -->
+        <article class="card clickable" data-inspect="wind">
+          <div class="card-header">
+            <span class="card-title"><span class="i-icon">🧭</span>WIND</span>
+            <span class="badge info" id="wind-beaufort">Gentle Breeze</span>
+          </div>
+
+          <div class="gauge-center">
+            <svg viewBox="0 0 230 230" class="wind-compass">
+              <!-- Clean 360° compass ring -->
+              <circle cx="115" cy="115" r="98" class="compass-track" />
+              <circle cx="115" cy="115" r="72" class="compass-inner" />
+              <!-- 36 degree tick marks -->
+              <g class="compass-ticks" id="compass-ticks"></g>
+              <!-- 16-sector wind direction history petals -->
+              <g id="rose-petals"></g>
+              <!-- Cardinal labels -->
+              <text x="115" y="13" class="c-dir north">N</text>
+              <text x="221" y="119" class="c-dir">E</text>
+              <text x="115" y="226" class="c-dir">S</text>
+              <text x="9" y="119" class="c-dir">W</text>
+              <!-- Live wind vector needle -->
+              <g id="wind-arrow" transform="rotate(215 115 115)">
+                <polygon points="115,19 106,47 115,40 124,47" class="arrow-head" />
+                <line x1="115" y1="39" x2="115" y2="162" class="arrow-shaft" />
+                <circle cx="115" cy="162" r="4" class="arrow-tail" />
               </g>
-              <circle cx="110" cy="110" r="32" class="rose-center" />
-              <text x="110" y="108" class="rose-speed" id="wind-speed">4.8</text>
-              <text x="110" y="123" class="rose-unit">m/s (215° SW)</text>
+              <circle cx="115" cy="115" r="36" class="compass-hub" />
+              <text x="115" y="113" class="hub-val" id="wind-speed">4.8</text>
+              <text x="115" y="128" class="hub-unit" id="wind-unit-dir">m/s · SW</text>
             </svg>
           </div>
-          <div class="metric-row">
-            <div><span class="lbl">1m Avg</span><strong id="wind-avg1m">4.4 m/s</strong></div>
-            <div><span class="lbl">10m Avg</span><strong id="wind-avg10m">4.1 m/s</strong></div>
-            <div><span class="lbl">3s Gust</span><strong class="accent" id="wind-gust">7.2 m/s</strong></div>
-            <div><span class="lbl">Lull</span><strong id="wind-lull">2.9 m/s</strong></div>
-          </div>
-          <div class="sub-footer">
-            <span>Auto-North Offset: <b id="wind-north">+14.2°</b></span>
-            <span>Mast Tilt: <b id="wind-tilt">0.4°</b></span>
-          </div>
-        </div>
 
-        <!-- TEMPERATURE, HUMIDITY, PRESSURE, UV -->
-        <div class="card">
-          <div class="card-header">
-            <h2>Thermo-Hygro, Baro &amp; Solar</h2>
-            <span class="badge ok">SHT45 + BMP581</span>
+          <!-- Self-explaining mini legend for the compass -->
+          <div class="compass-key">
+            <span><i class="key-arrow"></i>Live Wind Direction</span>
+            <span><i class="key-petal"></i>Past 1h Direction Spread</span>
           </div>
-          <div class="hero-temp">
-            <div>
-              <span class="big-val" id="env-temp">18.4 °C</span>
-              <span class="feels" id="env-feels">Feels like 17.8 °C</span>
-            </div>
-            <div class="rh-box">
-              <span class="big-rh" id="env-rh">62.5 %</span>
-              <span class="lbl">Relative Humidity</span>
-            </div>
-          </div>
-          <div class="metric-grid">
-            <div class="m-box"><span class="lbl">Dew Point</span><strong id="env-dew">11.1 °C</strong></div>
-            <div class="m-box"><span class="lbl">Wet Bulb</span><strong id="env-wet">14.2 °C</strong></div>
-            <div class="m-box"><span class="lbl">Sea-Level QNH</span><strong id="env-qnh">1016.8 hPa</strong></div>
-            <div class="m-box"><span class="lbl">Station Baro</span><strong id="env-baro">1009.4 hPa</strong></div>
-            <div class="m-box"><span class="lbl">Solar Irradiance</span><strong id="env-solar">642 W/m²</strong></div>
-            <div class="m-box"><span class="lbl">Illuminance</span><strong id="env-lux">81,250 lx</strong></div>
-          </div>
-          <div class="uv-bar-wrap">
-            <div class="uv-header">
-              <span>UV Index (LTR-390UV)</span>
-              <strong id="env-uv">5.4 (Moderate)</strong>
-            </div>
-            <div class="uv-track"><div class="uv-fill" id="uv-fill" style="width: 45%"></div></div>
-          </div>
-        </div>
 
-        <!-- HAPTIC RAIN & PRECIPITATION -->
-        <div class="card">
+          <!-- Clearly Labeled Min — 1m Avg — Peak Gust Speed Bar -->
+          <div class="range-bar-wrap">
+            <div class="range-labels">
+              <span class="rl-item"><i class="dot-min"></i>Min <b id="wind-lull">2.9</b></span>
+              <span class="rl-item"><i class="dot-avg"></i>1m Avg <b id="wind-avg1m">4.4</b></span>
+              <span class="rl-item"><i class="dot-gust"></i>Peak Gust <b class="warn-txt" id="wind-gust">7.2 m/s</b></span>
+            </div>
+            <div class="range-track">
+              <div class="range-span" id="wind-range-span" style="left:14%;width:22%"></div>
+              <div class="range-dot" id="wind-avg-dot" style="left:22%" title="1-Minute Average Speed"></div>
+              <div class="range-gust-pin" id="wind-gust-pin" style="left:36%" title="3-Second Peak Gust"></div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 2. TEMPERATURE & HUMIDITY (PLAIN-ENGLISH, LABELED PINS) -->
+        <article class="card clickable" data-inspect="temp">
           <div class="card-header">
-            <h2>Hybrid Haptic + Cap Rain</h2>
-            <span class="badge info" id="rain-state">Light Rain</span>
+            <span class="card-title"><span class="i-icon">🌡</span>TEMPERATURE &amp; HUMIDITY</span>
+            <span class="badge ok" id="comfort-badge">Comfortable</span>
           </div>
-          <div class="hero-temp">
-            <div>
-              <span class="big-val" id="rain-rate">1.8 mm/h</span>
-              <span class="feels">Instantaneous Rain Rate</span>
+
+          <div class="thermo-visual">
+            <div class="thermo-readouts">
+              <div>
+                <span class="big-num" id="env-temp">18.4°</span>
+                <span class="sub-lbl" id="env-feels">Feels like 17.8° outside</span>
+              </div>
+              <!-- Radial Humidity Ring -->
+              <div class="rh-ring-wrap">
+                <svg viewBox="0 0 88 88" class="rh-ring-svg">
+                  <circle cx="44" cy="44" r="35" class="ring-bg" />
+                  <circle cx="44" cy="44" r="35" class="ring-fg-cyan" id="rh-arc" stroke-dasharray="137 220" transform="rotate(-90 44 44)" />
+                  <text x="44" y="43" class="ring-val" id="env-rh">62%</text>
+                  <text x="44" y="56" class="ring-sub">Humidity</text>
+                </svg>
+              </div>
             </div>
-            <div class="rh-box">
-              <span class="big-rh" id="rain-daily">6.4 mm</span>
-              <span class="lbl">Daily Accumulation</span>
+
+            <!-- Thermometer Scale with Color-Matched Pin Key -->
+            <div class="spectrum-box">
+              <div class="pin-legend">
+                <span title="Temperature where moisture condenses into dew or fog"><i class="p-dot blue"></i>Dew Point <b id="env-dew">11.1°</b></span>
+                <span title="Measured air temperature"><i class="p-dot white"></i>Actual <b id="env-actual-sm">18.4°</b></span>
+                <span title="What it feels like on skin with wind & sun"><i class="p-dot amber"></i>Feels <b id="env-feels-sm">17.8°</b></span>
+              </div>
+              <div class="temp-spectrum-track">
+                <div class="dew-spread-bridge" id="dew-bridge" style="left:47%;width:13%"></div>
+                <div class="spec-pin dew-pin" id="pin-dew" style="left:47%"></div>
+                <div class="spec-pin temp-pin" id="pin-temp" style="left:60%"></div>
+                <div class="spec-pin feels-pin" id="pin-feels" style="left:59%"></div>
+              </div>
+              <div class="spectrum-scale">
+                <span>-15° Cold</span><span>0° Freeze</span><span>15° Mild</span><span>25° Warm</span><span>40° Hot</span>
+              </div>
             </div>
           </div>
-          <div class="metric-grid">
-            <div class="m-box"><span class="lbl">Event Rain</span><strong id="rain-event">2.1 mm</strong></div>
-            <div class="m-box"><span class="lbl">Hourly Rain</span><strong id="rain-hourly">1.4 mm</strong></div>
-            <div class="m-box"><span class="lbl">Total Rain</span><strong id="rain-total">142.8 mm</strong></div>
-            <div class="m-box"><span class="lbl">Raindrops</span><strong id="rain-drops">4,812</strong></div>
-            <div class="m-box"><span class="lbl">Hail Hits</span><strong id="rain-hail">0</strong></div>
-            <div class="m-box"><span class="lbl">Shake Rejected</span><strong id="rain-rejected">19</strong></div>
+
+          <!-- 2 Plain-English Human Indicators (No VPD/LCL/WBGT Jargon) -->
+          <div class="mini-bars-2">
+            <div class="mbar">
+              <div class="mbar-top"><span>Fog / Dew Risk</span><b id="fog-risk-lbl">Low (7.3° gap)</b></div>
+              <div class="mbar-track"><div class="mbar-fill cyan" id="lcl-fill" style="width:28%"></div></div>
+            </div>
+            <div class="mbar">
+              <div class="mbar-top"><span>Heat / Cold Stress</span><b id="stress-lbl">None</b></div>
+              <div class="mbar-track"><div class="mbar-fill green" id="vpd-fill" style="width:22%"></div></div>
+            </div>
           </div>
-          <div class="sub-footer">
-            <span>Capacitive Dome: <b class="ok-txt" id="rain-wet">WET (245 mV)</b></span>
-            <span>IMU Filter: <b>Active</b></span>
+        </article>
+
+        <!-- 3. BAROMETER (RATE OF CHANGE IN HPA/H + ARROW-DOWN / ARROW-UP 24H EXTREMES) -->
+        <article class="card clickable" data-inspect="baro">
+          <div class="card-header">
+            <span class="card-title"><span class="i-icon">⏲</span>BAROMETER &amp; FORECAST</span>
+            <span class="badge info" id="baro-trend-badge">Change: +0.1 hPa/h</span>
           </div>
-        </div>
+
+          <!-- Calm, Neutral Factual Barometric Forecast Row (No Alert Colors) -->
+          <div class="forecast-fact-row" id="baro-forecast-banner">
+            <span class="fb-kicker">Forecast</span>
+            <strong class="fb-text" id="env-zambretti">Fine Weather</strong>
+          </div>
+
+          <div class="baro-dial-wrap">
+            <svg viewBox="0 0 240 124" class="baro-dial">
+              <path d="M 24 110 A 96 96 0 0 1 216 110" fill="none" stroke="var(--border)" stroke-width="11" stroke-linecap="round" />
+              <path d="M 24 110 A 96 96 0 0 1 72 27" fill="none" stroke="#f59e0b" stroke-width="5" stroke-opacity="0.5" />
+              <path d="M 72 27 A 96 96 0 0 1 168 27" fill="none" stroke="#38bdf8" stroke-width="5" stroke-opacity="0.6" />
+              <path d="M 168 27 A 96 96 0 0 1 216 110" fill="none" stroke="#22c55e" stroke-width="5" stroke-opacity="0.6" />
+              <!-- 3h Ago Ghost Needle -->
+              <g id="baro-ghost-needle" transform="rotate(9 120 110)">
+                <line x1="120" y1="22" x2="120" y2="62" stroke="#94a3b8" stroke-width="2.2" stroke-dasharray="3 3" />
+              </g>
+              <!-- Current Pressure Needle -->
+              <g id="baro-needle" transform="rotate(11 120 110)">
+                <polygon points="120,14 114,32 126,32" fill="var(--accent)" />
+                <line x1="120" y1="28" x2="120" y2="110" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" />
+              </g>
+              <circle cx="120" cy="110" r="5.5" fill="var(--accent)" />
+              <text x="20" y="122" class="dial-lbl">980 Rain</text>
+              <text x="120" y="12" class="dial-lbl" text-anchor="middle">1010</text>
+              <text x="220" y="122" class="dial-lbl" text-anchor="end">Fair 1040</text>
+              <text x="120" y="84" class="baro-big" id="env-qnh">1016.8</text>
+              <text x="120" y="98" class="baro-unit" id="env-qnh-unit">hPa (Sea-Level)</text>
+            </svg>
+          </div>
+
+          <div class="compass-key">
+            <span><i class="key-solid-line"></i>Now</span>
+            <span><i class="key-dash-line"></i>3 Hours Ago (<b id="baro-3h-ago">1016.6</b>)</span>
+          </div>
+
+          <!-- 24h Sea-Level Pressure Chart with ↓ / ↑ Extremes -->
+          <div class="spark-clean">
+            <div class="spark-foot">
+              <span>24h Pressure</span>
+              <span id="baro-minmax">↓ 1015.4 · ↑ 1017.2 hPa</span>
+            </div>
+            <svg viewBox="0 0 320 48" class="spark-svg" id="spark-baro"></svg>
+          </div>
+        </article>
+
+        <!-- 4. PRECIPITATION (AUTO-SCALING Y-AXIS + THIS SHOWER IN TOP RIGHT) -->
+        <article class="card clickable" data-inspect="rain">
+          <div class="card-header">
+            <span class="card-title">PRECIPITATION</span>
+            <span class="badge info" id="rain-state">This Shower: 0.0 mm</span>
+          </div>
+
+          <div class="rain-visual-row">
+            <!-- Vertical Rain Collector Tube -->
+            <div class="rain-tube-wrap">
+              <div class="rain-tube">
+                <div class="rain-water" id="rain-water" style="height:18%"></div>
+                <div class="rain-ticks"><span></span><span></span><span></span><span></span></div>
+              </div>
+              <span class="tube-lbl" id="rain-daily">2.4 mm</span>
+              <span class="tube-sub">Today Total</span>
+            </div>
+
+            <div class="rain-right">
+              <div class="rain-hero-row">
+                <div class="rain-hero-num">
+                  <span class="big-num" id="rain-rate">0.0</span>
+                  <span class="sub-lbl" id="rain-rate-unit">mm/h · Dry</span>
+                </div>
+                <div class="phase-legend" title="Stacked liquid-equivalent precipitation rate (mm/h)">
+                  <span><i class="ph-dot rain-ph"></i>Rain</span>
+                  <span><i class="ph-dot hail-ph"></i>Hail</span>
+                </div>
+              </div>
+              <svg viewBox="0 0 320 76" class="spark-svg rain-chart-svg" id="spark-rain"></svg>
+              <!-- Visual Hailstone Size Disdrometer Strip (Proportional Circles) -->
+              <div class="hail-strip">
+                <div class="hail-info">
+                  <span class="hail-kicker">Hailstone Size</span>
+                  <strong id="rain-hail">None (0 hits)</strong>
+                </div>
+                <div class="hail-scale" id="hail-scale">
+                  <div class="hs-item" data-mm="5"><span class="hs-ball s5"></span><small>5mm</small></div>
+                  <div class="hs-item" data-mm="10"><span class="hs-ball s10"></span><small>10mm</small></div>
+                  <div class="hs-item" data-mm="15"><span class="hs-ball s15"></span><small>15mm</small></div>
+                  <div class="hs-item" data-mm="20"><span class="hs-ball s20"></span><small>20+</small></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 5. SOLAR, UV & CLOUD COVER (VECTOR HORIZON ICONS + SOLAR/UV CLOUD CORRELATION) -->
+        <article class="card clickable" data-inspect="solar">
+          <div class="card-header">
+            <span class="card-title"><span class="i-icon">☀</span>SUN, UV &amp; CLOUDS</span>
+            <span class="badge info" id="daylight-badge">Daylight 11h 36m</span>
+          </div>
+
+          <!-- Sun Horizon Arc with Vector Sunrise & Sunset Icons -->
+          <div class="sun-arc-wrap">
+            <svg viewBox="0 0 260 112" class="sun-arc-svg">
+              <defs>
+                <radialGradient id="sunOrbGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#facc15" stop-opacity="0.75" />
+                  <stop offset="100%" stop-color="#facc15" stop-opacity="0" />
+                </radialGradient>
+              </defs>
+              <line x1="18" y1="82" x2="242" y2="82" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="4 3" />
+              <path d="M 28 82 Q 130 -16 232 82" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-opacity="0.7" />
+              <circle cx="28" cy="82" r="3" fill="#f59e0b" />
+              <circle cx="232" cy="82" r="3" fill="#f97316" />
+              <g id="sun-orb" transform="translate(145, 25)">
+                <circle cx="0" cy="0" r="18" fill="url(#sunOrbGlow)" />
+                <circle cx="0" cy="0" r="7" fill="#facc15" />
+              </g>
+              <text x="130" y="58" class="sun-val" id="env-solar">642 W/m²</text>
+              <text x="130" y="72" class="sun-sub" id="env-lux">Brightness: 81,250 lx</text>
+              <!-- Clean Vector Sunrise Icon + Time -->
+              <g transform="translate(14, 91)">
+                <line x1="0" y1="10" x2="14" y2="10" stroke="#f59e0b" stroke-width="1.5" />
+                <path d="M 3 10 A 4 4 0 0 1 11 10" fill="none" stroke="#facc15" stroke-width="1.5" />
+                <polyline points="5,4 7,1.5 9,4" fill="none" stroke="#facc15" stroke-width="1.3" />
+                <text x="18" y="10" class="horizon-time" id="sun-rise">06:48</text>
+              </g>
+              <!-- Clean Vector Sunset Icon + Time -->
+              <g transform="translate(196, 91)">
+                <line x1="0" y1="10" x2="14" y2="10" stroke="#f97316" stroke-width="1.5" />
+                <path d="M 3 10 A 4 4 0 0 1 11 10" fill="none" stroke="#f97316" stroke-width="1.5" />
+                <polyline points="5,1.5 7,4 9,1.5" fill="none" stroke="#f97316" stroke-width="1.3" />
+                <text x="18" y="10" class="horizon-time" id="sun-set">18:24</text>
+              </g>
+            </svg>
+          </div>
+
+          <!-- Single Authoritative UV Index Rainbow Bar -->
+          <div class="uv-visual">
+            <div class="uv-top">
+              <span>UV Index <b class="accent" id="env-uv">5.4 · Moderate</b></span>
+              <span class="muted-xs" id="uv-advice">Sunscreen advised</span>
+            </div>
+            <div class="uv-rainbow-bar">
+              <div class="uv-dot" id="uv-dot" style="left:47%"></div>
+            </div>
+          </div>
+
+          <!-- Cloud Cover -->
+          <div class="mbar">
+            <div class="mbar-top">
+              <span>Cloud Cover</span>
+              <b id="cloud-cover-lbl">24% · Scattered</b>
+            </div>
+            <div class="mbar-track"><div class="mbar-fill cyan" id="cloud-cover-fill" style="width:24%"></div></div>
+          </div>
+        </article>
+
+        <!-- 6. AIR QUALITY & CALM LIGHTNING TIMELINE (NO ALERT BORDERS, SHOWS BOLT POWER CLASS) -->
+        <article class="card clickable" data-inspect="air">
+          <div class="card-header">
+            <span class="card-title"><span class="i-icon">🍃</span>AIR &amp; LIGHTNING</span>
+            <span class="badge info" id="aq-dom-badge">Main: PM2.5</span>
+          </div>
+
+          <!-- Top Half: AQI Ring + 3 Pollutant Bars -->
+          <div class="air-visual-row">
+            <div class="aqi-radar-stack">
+              <svg viewBox="0 0 92 92" class="aqi-ring-svg">
+                <circle cx="46" cy="46" r="38" class="ring-bg" />
+                <circle cx="46" cy="46" r="38" class="ring-fg-ok" id="aqi-arc" stroke-dasharray="40 239" transform="rotate(-90 46 46)" />
+                <text x="46" y="44" class="aqi-big" id="aq-aqi-big">26</text>
+                <text x="46" y="58" class="aqi-sub" id="aq-level-lbl">GOOD</text>
+              </svg>
+            </div>
+
+            <div class="bullet-stack">
+              <div class="b-row">
+                <div class="b-hdr"><span>Fine Dust (PM2.5)</span><b id="aq-pm25">6.2 µg/m³</b></div>
+                <div class="b-track"><div class="b-limit" style="left:42%"></div><div class="b-fill ok" id="b-pm25" style="width:18%"></div></div>
+              </div>
+              <div class="b-row">
+                <div class="b-hdr"><span>Coarse Dust (PM10)</span><b id="aq-pm10">12.8 µg/m³</b></div>
+                <div class="b-track"><div class="b-limit" style="left:50%"></div><div class="b-fill ok" id="b-pm10" style="width:14%"></div></div>
+              </div>
+              <div class="b-row">
+                <div class="b-hdr"><span>CO₂ / VOC</span><b id="aq-co2">419 ppm · VOC 98</b></div>
+                <div class="b-track"><div class="b-fill cyan" id="b-co2" style="width:24%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Half: Calm Neutral Lightning Timeline with Counts Over Bars -->
+          <div class="lightning-panel" id="lightning-panel">
+            <div class="lt-hdr">
+              <span class="lt-title">⚡ Lightning</span>
+              <strong class="lt-status" id="lt-dist">0 strikes · &gt;40 km</strong>
+            </div>
+            <svg viewBox="0 0 380 64" class="lt-timeline-svg" id="lt-timeline-svg"></svg>
+          </div>
+        </article>
       </div>
     </section>
 
-    <!-- TAB 2: AIR QUALITY & LIGHTNING -->
-    <section class="panel" id="tab-airquality">
+    <!-- =========================================================
+         TAB 2: VISUAL TRENDS (LAST HOUR / 24H) & POLAR WIND ROSE
+         ========================================================= -->
+    <section class="panel" id="tab-trends">
+      <div class="trends-bar">
+        <div class="range-btns">
+          <button class="btn-chip active" data-trange="1h">Last Hour</button>
+          <button class="btn-chip" data-trange="24h">Last 24 Hours</button>
+        </div>
+        <div class="trends-kpis">
+          <span class="t-kpi">Last Hour Rain: <b id="trend-rain-1h">0.4 mm</b></span>
+          <span class="t-kpi">Today Rain: <b id="trend-rain-day">2.4 mm</b></span>
+          <span class="t-kpi">This Month: <b id="trend-rain-month">145.2 mm</b></span>
+        </div>
+      </div>
+
       <div class="grid-2">
         <div class="card">
           <div class="card-header">
-            <h2>Outdoor Air Quality (SEN55 + SGP41 + SCD41)</h2>
-            <span class="badge ok" id="aq-badge">US AQI 28 · Good (EAQI 1)</span>
+            <span class="card-title" id="chart-temp-title">Temperature, Dew Point &amp; Feels-Like (Last Hour)</span>
+            <div class="legend-pills">
+              <span class="l-dot cyan">Temp</span>
+              <span class="l-dot green">Dew</span>
+              <span class="l-dot amber">Feels</span>
+            </div>
           </div>
-          <div class="metric-grid">
-            <div class="m-box"><span class="lbl">PM1.0 (Ultrafine)</span><strong id="aq-pm1">3.8 µg/m³</strong></div>
-            <div class="m-box"><span class="lbl">PM2.5 (Fine)</span><strong id="aq-pm25">6.4 µg/m³</strong></div>
-            <div class="m-box"><span class="lbl">PM4.0 (Respirable)</span><strong id="aq-pm4">8.1 µg/m³</strong></div>
-            <div class="m-box"><span class="lbl">PM10 (Coarse)</span><strong id="aq-pm10">13.2 µg/m³</strong></div>
-            <div class="m-box"><span class="lbl">VOC Index (SGP41)</span><strong id="aq-voc">98 (Normal)</strong></div>
-            <div class="m-box"><span class="lbl">NOx Index (SGP41)</span><strong id="aq-nox">2 (Clean Air)</strong></div>
-            <div class="m-box"><span class="lbl">True CO₂ (SCD41)</span><strong id="aq-co2">418 ppm</strong></div>
-            <div class="m-box"><span class="lbl">Dominant Pollutant</span><strong id="aq-dom">PM2.5</strong></div>
-          </div>
+          <svg viewBox="0 0 560 175" class="chart-svg" id="chart-temp"></svg>
         </div>
 
         <div class="card">
           <div class="card-header">
-            <h2>Franklin Lightning Detector (AS3935)</h2>
-            <span class="badge" id="lt-badge">Clear · No Storm Front</span>
+            <span class="card-title" id="chart-wind-title">Wind Speed &amp; Peak 3s Gusts (Last Hour)</span>
+            <div class="legend-pills">
+              <span class="l-dot amber">3s Gust</span>
+              <span class="l-dot cyan">10m Avg</span>
+            </div>
           </div>
-          <div class="metric-grid">
-            <div class="m-box"><span class="lbl">Storm Distance</span><strong id="lt-dist">-- km</strong></div>
-            <div class="m-box"><span class="lbl">Strike Count</span><strong id="lt-count">0</strong></div>
-            <div class="m-box"><span class="lbl">Last Strike Energy</span><strong id="lt-energy">0</strong></div>
-            <div class="m-box"><span class="lbl">500 kHz Tank Tuning</span><strong class="ok-txt">Calibrated (Q=18)</strong></div>
+          <svg viewBox="0 0 560 175" class="chart-svg" id="chart-wind"></svg>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title" id="chart-baro-title">Sea-Level Pressure &amp; Rain Rate (Last Hour)</span>
+            <span class="badge info" id="rose-dom-sector">Dominant: SW</span>
           </div>
+          <svg viewBox="0 0 560 175" class="chart-svg" id="chart-baro-rain"></svg>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🧭 16-Sector Wind Direction Distribution</span>
+            <span class="badge">Frequency %</span>
+          </div>
+          <div class="sector-bars" id="sector-bars-grid"></div>
         </div>
       </div>
     </section>
 
-    <!-- TAB 3: ULTRASONIC & RAIN DSP DIAGNOSTICS -->
-    <section class="panel" id="tab-diagnostics">
+    <!-- =========================================================
+         TAB 3: VISUAL STATION DIGITAL TWIN & PHYSICS CORRECTIONS
+         ========================================================= -->
+    <section class="panel" id="tab-twin">
       <div class="grid-2">
         <div class="card">
           <div class="card-header">
-            <h2>40 kHz Bidirectional Ultrasonic ToF Matrix</h2>
-            <span class="badge ok">CD4052 + TLV9062 + LM393</span>
+            <span class="card-title">🛰 AeroMet V1 Live Hardware Digital Twin</span>
+            <span class="badge ok" id="twin-vin-badge">24.1 V · Heater Standby</span>
           </div>
-          <div class="metric-grid">
-            <div class="m-box"><span class="lbl">North → South ToF</span><strong id="tof-ns">301.42 µs</strong></div>
-            <div class="m-box"><span class="lbl">South → North ToF</span><strong id="tof-sn">304.18 µs</strong></div>
-            <div class="m-box"><span class="lbl">East → West ToF</span><strong id="tof-ew">301.95 µs</strong></div>
-            <div class="m-box"><span class="lbl">West → East ToF</span><strong id="tof-we">303.65 µs</strong></div>
-            <div class="m-box"><span class="lbl">Speed of Sound (c)</span><strong id="tof-c">342.6 m/s</strong></div>
-            <div class="m-box"><span class="lbl">Acoustic Virtual Temp</span><strong id="tof-tv">18.7 °C</strong></div>
+          <div class="twin-wrap">
+            <svg viewBox="0 0 380 310" class="twin-svg">
+              <path d="M 162 34 A 28 28 0 0 1 218 34 Z" fill="rgba(56,189,248,0.18)" stroke="#38bdf8" stroke-width="1.8" />
+              <rect x="172" y="32" width="36" height="5" rx="2" fill="#22c55e" />
+              <text x="234" y="28" class="twin-lbl">Dome PCB (UV / Lux)</text>
+              <text x="234" y="40" class="twin-val" id="tw-dome">UV 5.4 · 642 W/m²</text>
+
+              <rect x="115" y="38" width="150" height="36" rx="8" fill="var(--card-inner)" stroke="var(--border)" stroke-width="2" />
+              <rect x="142" y="50" width="96" height="6" rx="2" fill="#22c55e" />
+              <polygon points="128,68 140,62 146,74 134,80" fill="#38bdf8" />
+              <polygon points="252,68 240,62 234,74 246,80" fill="#38bdf8" />
+              <polyline points="139,76 190,136 241,76" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4 3" />
+              <text x="274" y="54" class="twin-lbl">Crown (4× Piezo + 4× US)</text>
+              <text x="274" y="66" class="twin-val" id="tw-crown">c = 342.8 m/s</text>
+
+              <rect x="122" y="74" width="8" height="64" fill="var(--border)" />
+              <rect x="250" y="74" width="8" height="64" fill="var(--border)" />
+
+              <polygon points="115,152 190,136 265,152" fill="var(--card-inner)" stroke="#f59e0b" stroke-width="2" />
+              <rect x="164" y="152" width="52" height="5" rx="2" fill="#f59e0b" />
+              <text x="274" y="148" class="twin-lbl">Heated Reflector (25 Ω)</text>
+              <text x="274" y="160" class="twin-val" id="tw-heater">18.3 °C · 0.0 W</text>
+
+              <rect x="120" y="164" width="140" height="64" rx="6" fill="var(--card-inner)" stroke="var(--border)" stroke-dasharray="6 3" stroke-width="1.8" />
+              <rect x="184" y="168" width="12" height="56" rx="2" fill="#22c55e" />
+              <text x="274" y="192" class="twin-lbl">Probe Stem (SHT45/SCD41)</text>
+              <text x="274" y="204" class="twin-val" id="tw-probe">18.4 °C · 419 ppm CO₂</text>
+
+              <rect x="115" y="232" width="150" height="62" rx="8" fill="var(--card-inner)" stroke="var(--border)" stroke-width="2" />
+              <rect x="136" y="252" width="108" height="6" rx="2" fill="#22c55e" />
+              <rect x="180" y="278" width="20" height="16" fill="#38bdf8" opacity="0.35" />
+              <text x="274" y="256" class="twin-lbl">Main (ESP32-C6 + RS-485)</text>
+              <text x="274" y="268" class="twin-val" id="tw-main">-56 dBm · 24.1 V</text>
+            </svg>
           </div>
         </div>
 
         <div class="card">
           <div class="card-header">
-            <h2>12–32 V Power &amp; Constant-Wattage De-Icing Heater</h2>
-            <span class="badge" id="ht-state">Thermostatic Standby</span>
+            <span class="card-title">⚡ Live Physical Error Corrections (Raw → True)</span>
+            <span class="badge info">6 Active Loops</span>
           </div>
-          <div class="metric-grid">
-            <div class="m-box"><span class="lbl">Roof Supply (VIN_ADC)</span><strong id="ht-vin">24.12 V</strong></div>
-            <div class="m-box"><span class="lbl">Reflector Cone NTC</span><strong id="ht-temp">18.3 °C</strong></div>
-            <div class="m-box"><span class="lbl">PWM Duty (AO3400A)</span><strong id="ht-duty">0.0 %</strong></div>
-            <div class="m-box"><span class="lbl">Regulated Power</span><strong id="ht-power">0.00 W (Max 4.0 W)</strong></div>
+
+          <div class="corr-visual-list">
+            <div class="corr-item">
+              <div class="corr-top">
+                <span>☀ Solar Radiation Shield Heating (ΔT<sub>rad</sub>)</span>
+                <b class="accent" id="cv-solar">-0.28 °C</b>
+              </div>
+              <div class="corr-bar-bg"><div class="corr-bar-fg amber" id="cb-solar" style="width:14%"></div></div>
+            </div>
+
+            <div class="corr-item">
+              <div class="corr-top">
+                <span>💨 Bernoulli Wind Suction Baro Comp (ΔP<sub>dyn</sub>)</span>
+                <b class="accent" id="cv-bern">+0.04 hPa</b>
+              </div>
+              <div class="corr-bar-bg"><div class="corr-bar-fg cyan" id="cb-bern" style="width:8%"></div></div>
+            </div>
+
+            <div class="corr-item">
+              <div class="corr-top">
+                <span>🌫 κ-Köhler Fog Hygroscopic PM Strip</span>
+                <b class="accent" id="cv-fog">1.00× (Dry)</b>
+              </div>
+              <div class="corr-bar-bg"><div class="corr-bar-fg green" id="cb-fog" style="width:100%"></div></div>
+            </div>
+
+            <div class="corr-item">
+              <div class="corr-top">
+                <span>🔊 Ultrasonic Crosswind Mach² &amp; Moist T<sub>v</sub></span>
+                <b class="accent" id="cv-tof">314.8 / 319.1 µs</b>
+              </div>
+              <div class="corr-bar-bg"><div class="corr-bar-fg cyan" id="cb-tof" style="width:52%"></div></div>
+            </div>
+
+            <div class="corr-item">
+              <div class="corr-top">
+                <span>🔥 12–32 V Constant-Wattage De-Icing PWM</span>
+                <b class="accent" id="cv-heater">0.0 % (0.0 W / 4.0 W)</b>
+              </div>
+              <div class="corr-bar-bg"><div class="corr-bar-fg amber" id="cb-heater" style="width:2%"></div></div>
+            </div>
           </div>
+
+          <div class="code-box" id="rs485-frame">$AM,1231200,4.80,215.0,0.00,2.40,18.40,62.5,1016.80,5.4,26*4F2A</div>
         </div>
       </div>
     </section>
 
-    <!-- TAB 4: SETTINGS & OTA -->
+    <!-- =========================================================
+         TAB 4: CALIBRATION, MAINTENANCE & OTA
+         ========================================================= -->
     <section class="panel" id="tab-settings">
       <div class="grid-2">
         <div class="card">
-          <div class="card-header"><h2>Station Calibration &amp; MQTT Home Assistant</h2></div>
-          <div class="form-grid">
-            <label>Station Altitude (m MSL)<input type="number" value="65" /></label>
-            <label>Magnetic Declination (°)<input type="number" value="6.2" step="0.1" /></label>
-            <label>MQTT Broker URI<input type="text" value="mqtt://192.168.1.10:1883" /></label>
-            <label>HA Discovery Prefix<input type="text" value="homeassistant" /></label>
+          <div class="card-header">
+            <span class="card-title">⚙ Calibration &amp; Home Assistant MQTT</span>
+            <span class="badge ok" id="cfg-save-status">NVS Synced</span>
           </div>
-          <button class="btn-primary">Save &amp; Republish HA Discovery</button>
+          <div class="form-grid">
+            <label>Elevation (m MSL)<input type="number" id="cfg-alt" value="65.0" step="0.5" /></label>
+            <label>Mag Declination (°)<input type="number" id="cfg-decl" value="6.2" step="0.1" /></label>
+            <label>Zero-Wind Δt<sub>NS</sub> (µs)<input type="number" id="cfg-dt-ns" value="0.00" step="0.01" /></label>
+            <label>Zero-Wind Δt<sub>EW</sub> (µs)<input type="number" id="cfg-dt-ew" value="0.00" step="0.01" /></label>
+            <label>MQTT Broker<input type="text" id="cfg-mqtt" value="mqtt://192.168.1.10:1883" /></label>
+            <label>HA Prefix<input type="text" id="cfg-ha" value="homeassistant" /></label>
+          </div>
+          <div class="btn-row">
+            <button class="btn-primary" id="btn-save-cfg">Save Calibration</button>
+            <button class="btn-secondary" id="btn-zero-wind">Zero-Wind Trim</button>
+          </div>
         </div>
+
         <div class="card">
-          <div class="card-header"><h2>Dual Wireless OTA Update</h2></div>
-          <p class="muted">Upload <code>firmware.bin</code> (ESP32-C6 application) or <code>littlefs.bin</code> (Web UI assets).</p>
-          <button class="btn-primary">Select .bin Image for OTA</button>
+          <div class="card-header">
+            <span class="card-title">🚀 Maintenance &amp; Wireless OTA</span>
+            <span class="badge info" id="hdr-fw">fw 26.10.19</span>
+          </div>
+          <div class="btn-row">
+            <button class="btn-secondary" id="btn-reset-rain">Reset Daily Rain</button>
+            <button class="btn-secondary" id="btn-bakeout">SHT45 Bake-Out</button>
+            <button class="btn-secondary" id="btn-heat-test">Toggle 4W Heater</button>
+            <button class="btn-danger" id="btn-reboot">Reboot</button>
+          </div>
+          <div class="ota-box">
+            <div class="btn-row">
+              <input type="file" id="ota-file" accept=".bin" />
+              <button class="btn-primary" id="btn-ota-upload">Flash OTA (.bin)</button>
+            </div>
+            <span class="muted-xs" id="ota-status">Partition ota_0 · LittleFS mounted</span>
+          </div>
         </div>
       </div>
     </section>
   </main>
+
+  <!-- PROGRESSIVE DISCLOSURE DRAWER MODAL (OPENS WHEN ANY CARD IS CLICKED) -->
+  <div class="modal-backdrop" id="inspect-modal" style="display:none">
+    <div class="modal-card">
+      <div class="card-header">
+        <span class="card-title" id="modal-title">Sensor Detail</span>
+        <button class="btn-chip" id="modal-close">✕ Close</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
   <script src="/app.js"></script>
 </body>
 </html>

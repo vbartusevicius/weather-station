@@ -1,21 +1,24 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
 
-#include "airquality/AirQuality.hpp"
-#include "environment/MetCalculations.hpp"
-#include "heater/DeIcingHeater.hpp"
-#include "rain/HapticRain.hpp"
-#include "wind/UltrasonicWind.hpp"
+#include "../airquality/AirQuality.hpp"
+#include "../environment/MetCalculations.hpp"
+#include "../heater/DeIcingHeater.hpp"
+#include "../rain/HapticRain.hpp"
+#include "../wind/UltrasonicWind.hpp"
 
-namespace station::telemetry {
+namespace station {
+namespace telemetry {
 
 struct LightningMetrics {
     std::uint32_t strike_count{0};
     std::uint8_t closest_distance_km{0};
     std::uint32_t last_energy{0};
+    std::array<std::uint16_t, 12> timeline_60m{};  // 12 x 5-minute strike buckets (-60m .. Now)
 };
 
 struct WifiRfMetrics {
@@ -49,4 +52,5 @@ public:
                                                const char* device_class, const char* value_template);
 };
 
-}  // namespace station::telemetry
+}  // namespace telemetry
+}  // namespace station

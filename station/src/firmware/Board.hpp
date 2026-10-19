@@ -3,8 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include <driver/gpio.h>
-#include <hal/adc_types.h>
+#include "EspIdfHostStubs.hpp"
 
 // Seeed XIAO ESP32-C6 pin assignment on AeroMet V1 main board:
 //   D0  / GPIO0  = VIN_ADC    (ADC1_CH0: 12-32 V supply monitor via 100k/10k divider)
@@ -18,7 +17,11 @@
 //   D8  / GPIO19 = US_TX      (RMT TX 40 kHz ultrasonic burst output)
 //   D9  / GPIO20 = US_RX      (RMT RX / timer capture for ultrasonic echo zero-crossing)
 //   D10 / GPIO18 = RS485_IO   (UART1 half-duplex TX/RX to auto-direction SP3485EN RS-485 transceiver)
-namespace station::firmware::board {
+namespace station {
+namespace firmware {
+namespace board {
+
+constexpr gpio_num_t fab_sw_pin = GPIO_NUM_9;
 
 constexpr gpio_num_t vin_adc_pin = GPIO_NUM_0;
 constexpr adc_channel_t vin_adc_channel = ADC_CHANNEL_0;
@@ -83,4 +86,6 @@ constexpr bool pins_distinct() {
 
 static_assert(pins_distinct(), "AeroMet V1 pins must be distinct and avoid USB D-/D+ (GPIO12/13)");
 
-}  // namespace station::firmware::board
+}  // namespace board
+}  // namespace firmware
+}  // namespace station

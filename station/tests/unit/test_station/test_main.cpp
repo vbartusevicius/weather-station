@@ -1,15 +1,29 @@
-#include <cmath>
 #include <cstring>
+#if __has_include(<unity.h>)
 #include <unity.h>
+#else
+#include <cassert>
+#define UNITY_BEGIN() 0
+#define UNITY_END() 0
+#define RUN_TEST(fn) fn()
+#define TEST_ASSERT_TRUE(cond) assert(cond)
+#define TEST_ASSERT_FALSE(cond) assert(!(cond))
+#define TEST_ASSERT_NOT_NULL(ptr) assert((ptr) != nullptr)
+#define TEST_ASSERT_EQUAL(exp, act) assert((exp) == (act))
+#define TEST_ASSERT_EQUAL_UINT8(exp, act) assert((exp) == (act))
+#define TEST_ASSERT_EQUAL_UINT32(exp, act) assert((exp) == (act))
+#define TEST_ASSERT_EQUAL_STRING(exp, act) assert(std::strcmp((exp), (act)) == 0)
+#define TEST_ASSERT_FLOAT_WITHIN(delta, exp, act) assert(((act) - (exp)) <= (delta) && ((exp) - (act)) <= (delta))
+#endif
 
-#include "airquality/AirQuality.hpp"
-#include "environment/MetCalculations.hpp"
-#include "firmware/ButtonController.hpp"
-#include "heater/DeIcingHeater.hpp"
-#include "rain/HapticRain.hpp"
-#include "rs485/Rs485Protocol.hpp"
-#include "telemetry/HomeAssistantMqtt.hpp"
-#include "wind/UltrasonicWind.hpp"
+#include "../../../src/airquality/AirQuality.hpp"
+#include "../../../src/environment/MetCalculations.hpp"
+#include "../../../src/firmware/ButtonController.hpp"
+#include "../../../src/heater/DeIcingHeater.hpp"
+#include "../../../src/rain/HapticRain.hpp"
+#include "../../../src/rs485/Rs485Protocol.hpp"
+#include "../../../src/telemetry/HomeAssistantMqtt.hpp"
+#include "../../../src/wind/UltrasonicWind.hpp"
 
 using station::airquality::AirQualityEvaluator;
 using station::airquality::AirQualityInput;
@@ -109,6 +123,15 @@ void test_wmo_circular_wind_aggregation_across_north(void) {
     TEST_ASSERT_FLOAT_WITHIN(0.05F, 4.0F, sum.lull_m_s);
     // Circular mean of 355, 5, 358 deg must be near 0/360 deg, NOT 180 deg!
     TEST_ASSERT_TRUE(sum.mean_dir_deg > 355.0F || sum.mean_dir_deg < 5.0F);
+    TEST_ASSERT_TRUE(sum.turbulence_intensity_pct > 5.0F);
+    TEST_ASSERT_TRUE(sum.gust_factor > 1.1F);
+    // All 3 samples (355, 5, 358 deg) fall into sector 0 (North: 348.75..11.25 deg) => 100% in sector 0!
+    TEST_ASSERT_FLOAT_WITHIN(0.1F, 100.0F, sum.rose_freq_pct[0]);
+
+    // Moist air acoustic virtual temperature Tv -> T_true correction:
+    // At 30 C and 85% RH, moist air has higher sound speed so T_true < T_virtual by ~2.5 C
+    const float t_true = UltrasonicWindSolver::correct_acoustic_temp_for_humidity(30.0F, 85.0F, 1013.25F);
+    TEST_ASSERT_TRUE(t_true < 28.2F && t_true > 26.0F);
 }
 
 void test_haptic_rain_vibration_rejection_and_accumulation(void) {
@@ -127,10 +150,11 @@ void test_haptic_rain_vibration_rejection_and_accumulation(void) {
     TEST_ASSERT_TRUE(rain.metrics().daily_mm > 0.015F);
     TEST_ASSERT_EQUAL_UINT32(20, rain.metrics().drop_count);
 
-    // Sharp high-amplitude impact classified as Hail
+    // Sharp high-amplitude impact classified as Hail with estimated diameter (mm)
     TEST_ASSERT_TRUE(rain.process_impact(RainImpactEvent{1850, 180, 110, 0.04F}));
     TEST_ASSERT_EQUAL_UINT32(1, rain.metrics().hail_hits);
     TEST_ASSERT_EQUAL(PrecipitationType::Hail, rain.metrics().state);
+    TEST_ASSERT_TRUE(rain.metrics().max_hail_diameter_mm >= 5.0F && rain.metrics().max_hail_diameter_mm <= 15.0F);
 
     // 15 dry minutes clear active rain flag
     for (int m = 0; m < 16; ++m) {
@@ -142,9 +166,16 @@ void test_haptic_rain_vibration_rejection_and_accumulation(void) {
     // Wind-driven oblique rain impact normalization reduces wind-boosted drop volume
     HapticRainProcessor calm_rain;
     HapticRainProcessor windy_rain;
-    calm_rain.process_impact(RainImpactEvent{600, 206, 200, 0.01F, 0.0F});
-    windy_rain.process_impact(RainImpactEvent{600, 206, 200, 0.01F, 12.0F});
+    calm_rain.process_impact(RainImpactEvent{600, 206, 200, 0.01F, 0.0F, 20.0F});
+    windy_rain.process_impact(RainImpactEvent{600, 206, 200, 0.01F, 12.0F, 20.0F});
     TEST_ASSERT_TRUE(windy_rain.metrics().daily_mm < calm_rain.metrics().daily_mm);
+
+    // PZT thermal drift compensation: hot dome (+45 C) scales down thermally inflated piezo charge
+    HapticRainProcessor cold_dome;
+    HapticRainProcessor hot_dome;
+    cold_dome.process_impact(RainImpactEvent{600, 206, 200, 0.01F, 0.0F, 0.0F});
+    hot_dome.process_impact(RainImpactEvent{600, 206, 200, 0.01F, 0.0F, 45.0F});
+    TEST_ASSERT_TRUE(hot_dome.metrics().daily_mm < cold_dome.metrics().daily_mm);
 }
 
 void test_meteorological_calculations(void) {
@@ -176,6 +207,26 @@ void test_meteorological_calculations(void) {
     TEST_ASSERT_TRUE(MetCalculator::wind_chill_c(-5.0F, 8.0F) < -10.0F);
     // Heat index above 27 C
     TEST_ASSERT_TRUE(MetCalculator::heat_index_c(33.0F, 75.0F) > 40.0F);
+    // VPD, Cloud Base LCL, WBGT, Solar-UV Cloud Cover %, and Zambretti Barometric Forecaster
+    TEST_ASSERT_TRUE(d.vpd_kpa > 0.8F && d.vpd_kpa < 1.5F);
+    TEST_ASSERT_TRUE(d.cloud_base_m > 800.0F && d.cloud_base_m < 1400.0F);
+    TEST_ASSERT_TRUE(d.wbgt_c > d.wet_bulb_c);
+    TEST_ASSERT_TRUE(d.cloud_cover_pct > 25.0F && d.cloud_cover_pct < 90.0F);
+    // Clear sky (850 W/m2, UV 8.5) has lower cloud cover than overcast sky (120 W/m2, UV 1.8)
+    TEST_ASSERT_TRUE(MetCalculator::estimate_cloud_cover_pct(850.0F, 8.5F) <
+                     MetCalculator::estimate_cloud_cover_pct(120.0F, 1.8F));
+    // UV-degraded VEML7700 epoxy (reading 55k lx when UV-hardened LTR-390UV ALS reads 80k lx) recovers to 80k lx
+    const float ltr_lux = MetCalculator::lux_from_ltr390_als(400000U, 3.0F, 100.0F);
+    TEST_ASSERT_FLOAT_WITHIN(10.0F, 80000.0F, ltr_lux);
+    TEST_ASSERT_FLOAT_WITHIN(10.0F, 80000.0F, MetCalculator::fuse_uv_hardened_lux(55000.0F, ltr_lux));
+
+    station::environment::BarographTracker baro{};
+    baro.push_qnh(1018.0F);
+    baro.push_qnh(1014.2F);
+    TEST_ASSERT_FLOAT_WITHIN(0.05F, -3.8F, baro.delta_3h_hpa());
+    const auto trend = MetCalculator::classify_pressure_trend(baro.delta_3h_hpa());
+    TEST_ASSERT_EQUAL(station::environment::PressureTrend::FallingRapidly, trend);
+    TEST_ASSERT_EQUAL_STRING("Showery, Becoming Unsettled", MetCalculator::zambretti_forecast(1014.2F, trend, 190.0F));
 }
 
 void test_air_quality_multi_gas_and_pm_evaluation(void) {

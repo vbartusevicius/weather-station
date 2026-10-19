@@ -2,7 +2,8 @@
 
 #include <cstdint>
 
-namespace station::airquality {
+namespace station {
+namespace airquality {
 
 enum class AqiLevel : std::uint8_t {
     Good = 0,
@@ -51,4 +52,5 @@ public:
     static const char* level_name(AqiLevel lvl);
 };
 
-}  // namespace station::airquality
+}  // namespace airquality
+}  // namespace station
