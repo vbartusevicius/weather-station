@@ -29,7 +29,7 @@ frame:
   min_track: 0.12
   edge_clearance: 0.3
   silk_inside: true
-  fine_pitch_power_pads: [J1, U1, U2]
+  fine_pitch_power_pads: [J1, U1, U2, U3]
   raised_modules: []
   plane_layers: [In1.Cu]
   domains: [SELV-DOME]
@@ -41,7 +41,7 @@ frame:
   pours:
     - { net: GND, layers: [In1.Cu], region: { x0: 2.0, y0: 2.0, x1: 11.6, y1: 11.6 } }
   no_coat_keepouts:
-    - { x0: 2.2, y0: 3.2, x1: 11.4, y1: 10.4, layer: F.SilkS }
+    - { x0: 2.2, y0: 3.2, x1: 11.4, y1: 10.8, layer: F.SilkS }
   silk_labels:
     - { text: "CROWN", x: 6.8, y: 11.2, layer: B.SilkS }
 
@@ -49,14 +49,17 @@ heights:
   default: 1.2
   J1: 2.5
   U1: 0.8
-  U2: 3.0
+  U2: 0.8
+  U3: 1.4
 
 parts:
-  # --- Top (+y, F.Cu inside the hollow JGS1 Quartz Hemisphere): ONLY U1 (LTR-390UV) + U2 (VEML7700) for zero horizon shadowing! ---
-  U1:  { x: 4.6,   y: 6.8,   rot: 0,   block: uv_als, locked: true }
-  U2:  { x: 9.0,   y: 6.8,   rot: 90,  block: uv_als, locked: true }
+  # --- Top (+y, F.Cu inside the hollow JGS1 Quartz Hemisphere): Symmetric 3-sensor triad around (6.8, 6.8) ---
+  U1:  { x: 4.3,   y: 5.5,   rot: 0,   block: uv_als, locked: true }
+  U2:  { x: 9.3,   y: 5.5,   rot: 0,   block: uv_als, locked: true }
+  U3:  { x: 6.8,   y: 9.3,   rot: 0,   block: uv_als, locked: true }
 
-  # --- Bottom (-y, B.Cu, shaded underneath the PCB): 4-pin vertical B2B male header J1 dead-center at (6.8, 6.8) + C1, C2 ---
+  # --- Bottom (-y, B.Cu, shaded underneath the PCB): 4-pin vertical B2B male header J1 dead-center at (6.8, 6.8) + C1, C2, C3 ---
   J1:  { x: 6.8,   y: 6.8,   rot: 0,   side: back, block: int_crown, locked: true }
-  C1:  { x: 6.8,   y: 11.5,  rot: 0,   side: back, block: uv_als }
-  C2:  { x: 6.8,   y: 2.1,   rot: 0,   side: back, block: uv_als }
+  C1:  { x: 4.4,   y: 11.2,  rot: 0,   side: back, block: uv_als }
+  C2:  { x: 9.2,   y: 11.2,  rot: 0,   side: back, block: uv_als }
+  C3:  { x: 6.8,   y: 2.1,   rot: 0,   side: back, block: uv_als }

@@ -12,12 +12,18 @@
   description: 1x7 female header, 2.54 mm, 5.0 mm tall, soldered into main U3; XIAO
     stays detachable
   source: LCSC / Mouser
-- item: UV-A/UV-B Index sensor IC (hand-reflowed)
+- item: UV-A/UV-B Index & High-Noon ALS sensor IC (hand-reflowed)
   qty: 1
   part: Lite-On LTR-390UV-01 (LCSC C492374)
-  description: 2x2 mm 6-pin optical UV-A/UV-B + ALS sensor (dome U1) under the top
-    fused-silica UV window
+  description: 2x2 mm 6-pin optical UV-A/UV-B + 157k lux ALS sensor (dome U1) under
+    the top fused-silica UV window
   source: Digi-Key / Mouser / LCSC
+- item: Optional AlGaN True UV-B Sensor IC (DNP / optional hand-reflowed)
+  qty: 1
+  part: Genicom / GenUV GUVB-C31SM (2.0x2.3 mm 4-pin OLGA I2C 0x39)
+  description: Optional intrinsic wide-bandgap AlGaN UV-B (240-320 nm) digital I2C
+    sensor on pre-routed dome pads (dome U3)
+  source: GenUV / Digi-Key / Mouser (Optional DNP)
 - item: Franklin Lightning Sensor IC (hand-reflowed)
   qty: 1
   part: ScioSense AS3935-BQFT (LCSC C3178344)

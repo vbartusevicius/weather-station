@@ -1,4 +1,5 @@
 Designator,Value,Manufacturer part,Notes
 U3,XIAO ESP32C6,102010636,XIAO ESP32C6 Pre-Soldered on 2x 1x7 5.0 mm female socket strips
-U301,LTR-390UV-01,LTR-390UV-01,Direct UV-A/UV-B index sensor elevated inside hollow JGS1 hemisphere (I2C 0x53)
+U301,LTR-390UV-01,LTR-390UV-01,UV-A/B + 157k lux ALS sensor elevated inside hollow JGS1 hemisphere (I2C 0x53)
+U303,GUVB-C31SM,GUVB-C31SM,Optional AlGaN true UV-B (240-320 nm) digital I2C sensor footprint on dome PCB (I2C 0x39)
 U6,AS3935-BQFT,AS3935-BQFT,"ScioSense AS3935 Franklin lightning sensor IC (1-40 km range, I2C 0x03)"

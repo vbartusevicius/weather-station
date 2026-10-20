@@ -1,7 +1,7 @@
 ISO-10303-21;
 HEADER;
 FILE_DESCRIPTION(('KiCad electronic assembly'),'2;1');
-FILE_NAME('reflector.step','2026-10-18T21:11:26',('Pcbnew'),('Kicad'),
+FILE_NAME('reflector.step','2026-10-20T06:30:07',('Pcbnew'),('Kicad'),
   'Open CASCADE STEP processor 7.8','KiCad to STEP converter','Unknown'
   );
 FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));
@@ -74,8 +74,8 @@ SHAPE_REPRESENTATION_RELATIONSHIP() );
 #53 = PRODUCT_DEFINITION_SHAPE('','',#54);
 #54 = PRODUCT_DEFINITION('design','',#55,#58);
 #55 = PRODUCT_DEFINITION_FORMATION('','',#56);
-#56 = PRODUCT('Open CASCADE STEP translator 7.9 21',
-  'Open CASCADE STEP translator 7.9 21','',(#57));
+#56 = PRODUCT('Open CASCADE STEP translator 7.9 23',
+  'Open CASCADE STEP translator 7.9 23','',(#57));
 #57 = PRODUCT_CONTEXT('',#2,'mechanical');
 #58 = PRODUCT_DEFINITION_CONTEXT('part definition',#2,'design');
 #59 = ADVANCED_BREP_SHAPE_REPRESENTATION('',(#11,#60),#210);

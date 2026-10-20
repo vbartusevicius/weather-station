@@ -8,7 +8,7 @@
   (condition "A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('REFLECTOR-Power') || A.hasNetclass('DOME-Power') || A.hasNetclass('PROBE-Power')"))
 (rule power_neck_down_at_fine_pitch_pins
   (constraint track_width (min 0.15mm))
-  (condition "(A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('REFLECTOR-Power') || A.hasNetclass('DOME-Power') || A.hasNetclass('PROBE-Power')) && (A.intersectsCourtyard('J1') || A.intersectsCourtyard('U1') || A.intersectsCourtyard('U2'))"))
+  (condition "(A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('REFLECTOR-Power') || A.hasNetclass('DOME-Power') || A.hasNetclass('PROBE-Power')) && (A.intersectsCourtyard('J1') || A.intersectsCourtyard('U1') || A.intersectsCourtyard('U2') || A.intersectsCourtyard('U3'))"))
 (rule neck_down_at_fine_pitch_pins
   (constraint track_width (min 0.1mm))
-  (condition "A.intersectsCourtyard('J1') || A.intersectsCourtyard('U1') || A.intersectsCourtyard('U2')"))
+  (condition "A.intersectsCourtyard('J1') || A.intersectsCourtyard('U1') || A.intersectsCourtyard('U2') || A.intersectsCourtyard('U3')"))

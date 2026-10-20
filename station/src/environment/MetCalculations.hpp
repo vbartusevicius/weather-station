@@ -22,9 +22,12 @@ struct AtmosphereReading {
     float altitude_m{50.0F};
     float wind_speed_m_s{0.0F};
     float wind_dir_deg{180.0F};
-    float ambient_lux{0.0F};
-    std::uint32_t raw_als_counts{0};  // LTR-390UV-01 UV-immune ALS channel (REG 0x0D..0x0F, 0.01..157k lux)
-    std::uint32_t raw_uv_counts{0};
+    float ambient_lux{0.0F};          // Primary visible illuminance from TSL25911FN (0.00018..88k lx)
+    std::uint16_t tsl2591_ch0_full{0};// TSL25911FN Ch0 (Visible + Near-IR 400-1100 nm)
+    std::uint16_t tsl2591_ch1_nir{0}; // TSL25911FN Ch1 (Near-Infrared 700-1100 nm)
+    std::uint32_t raw_als_counts{0};  // LTR-390UV-01 ALS channel (covers 88k..157k lx bright noon sun)
+    std::uint32_t raw_uv_counts{0};   // LTR-390UV-01 UVS channel (300-350 nm)
+    std::uint16_t raw_guvb_counts{0}; // Optional GenUV GUVB-C31SM AlGaN UV-B channel (240-320 nm, 0 = not populated)
     float pressure_3h_delta_hpa{0.0F};
 };
 
@@ -67,9 +70,10 @@ public:
     static float feels_like_c(float temp_c, float rh_percent, float wind_m_s, float solar_w_m2);
     static float sea_level_pressure_hpa(float station_hpa, float temp_c, float altitude_m);
     static float lux_from_ltr390_als(std::uint32_t als_counts, float gain = 3.0F, float integration_ms = 100.0F);
-    static float fuse_uv_hardened_lux(float veml7700_lux, float ltr390_als_lux);
-    static float solar_irradiance_w_m2(float ambient_lux);
+    static float fuse_uv_hardened_lux(float tsl25911_lux, float ltr390_als_lux);
+    static float solar_irradiance_w_m2(float ambient_lux, std::uint16_t tsl2591_ch1_nir = 0);
     static float uv_index_from_ltr390(std::uint32_t uvs_counts, float gain_factor = 18.0F, float integration_factor = 1.0F);
+    static float fuse_uv_index(float ltr390_uvi, std::uint16_t guvb_c31sm_counts);
     static float absolute_humidity_g_m3(float temp_c, float rh_percent);
     static PressureTrend classify_pressure_trend(float delta_3h_hpa);
     static const char* pressure_trend_name(PressureTrend trend);
@@ -112,6 +116,34 @@ public:
 
 private:
     LongevityStatus status_{};
+};
+
+enum class Tsl2591Gain : std::uint8_t {
+    Low1x = 0x00,     // 1x gain (bright sunlight up to 88,000 lx)
+    Med25x = 0x10,    // 25x gain (overcast / indoor / shade)
+    High428x = 0x20,  // 428x gain (twilight / civil dusk)
+    Max9876x = 0x30,  // 9876x gain (188 uLux night sky / moonlight / starlight)
+};
+
+struct DomeOpticalCommand {
+    std::uint8_t ltr390_main_ctrl_reg{0x0A};  // 0x0A = UVS mode, 0x02 = ALS mode (alternates every 500 ms)
+    bool read_ltr390_uvs{false};              // True on odd 500 ms ticks after UVS integration completes
+    bool read_ltr390_als{false};              // True on even 500 ms ticks after ALS integration completes
+    Tsl2591Gain tsl2591_next_gain{Tsl2591Gain::Med25x};
+    bool tsl2591_gain_changed{false};
+};
+
+class DomeOpticalScheduler {
+public:
+    // Called every 500 ms (2 Hz): alternates U1 (LTR-390UV-01) between UVS and ALS mode
+    // and auto-ranges U2 (TSL25911FN) across 9 orders of magnitude (188 uLux .. 88,000 lx).
+    DomeOpticalCommand tick_500ms(std::uint16_t tsl_ch0_counts);
+    Tsl2591Gain current_gain() const { return gain_; }
+    static float gain_multiplier(Tsl2591Gain g);
+
+private:
+    bool in_uvs_phase_{true};
+    Tsl2591Gain gain_{Tsl2591Gain::Med25x};
 };
 
 }  // namespace environment

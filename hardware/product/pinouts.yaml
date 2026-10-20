@@ -1,2 +1,18 @@
 # Hand-fitted parts with no JLCPCB/EasyEDA footprint, keyed by manufacturer part number.
-{}
+GUVB-C31SM:
+  source: "https://download.mikroe.com/documents/datasheets/GUVB-C31SM-digital-uv-detector.pdf"
+  pads:
+    "1": [-0.55, -0.65]
+    "2": [0.55, -0.65]
+    "3": [0.55, 0.65]
+    "4": [-0.55, 0.65]
+  names:
+    "1": "GND"
+    "2": "SDA"
+    "3": "SCL"
+    "4": "VCC"
+  nets:
+    "1": "GND"
+    "2": "I2C_SDA"
+    "3": "I2C_SCL"
+    "4": "+3V3"

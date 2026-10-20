@@ -18,7 +18,7 @@ LABELLED = {
     "main": {"J1", "J2", "J3", "J4", "C1", "U3", "U7", "L2", "SW1", "SEN55_MOD"},
     "crown": {"J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "U2", "U5", "U6", "XD_N", "XD_S", "PIEZO_NE", "PIEZO_SW"},
     "reflector": {"J1", "R1", "R2", "R3", "R4", "TH1"},
-    "dome": {"J1", "U1", "U2"},
+    "dome": {"J1", "U1", "U2", "U3"},
     "probe": {"J1", "J2", "U1", "U2", "U3", "R1", "R2"},
 }
 

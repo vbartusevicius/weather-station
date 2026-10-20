@@ -126,11 +126,20 @@ def collect_assembly_parts(variant, spec):
     if "LTR-390UV-01" in hand_by_mpn:
         locs = ", ".join(hand_by_mpn["LTR-390UV-01"]["locs"])
         items.append({
-            "item": "UV-A/UV-B Index sensor IC (hand-reflowed)",
+            "item": "UV-A/UV-B Index & High-Noon ALS sensor IC (hand-reflowed)",
             "qty": len(hand_by_mpn["LTR-390UV-01"]["locs"]),
             "part": "Lite-On LTR-390UV-01 (LCSC C492374)",
-            "description": f"2x2 mm 6-pin optical UV-A/UV-B + ALS sensor ({locs}) under the top fused-silica UV window",
+            "description": f"2x2 mm 6-pin optical UV-A/UV-B + 157k lux ALS sensor ({locs}) under the top fused-silica UV window",
             "source": "Digi-Key / Mouser / LCSC",
+        })
+    if "GUVB-C31SM" in hand_by_mpn:
+        locs = ", ".join(hand_by_mpn["GUVB-C31SM"]["locs"])
+        items.append({
+            "item": "AlGaN True UV-B Sensor IC (hand-reflowed; optional DNP)",
+            "qty": len(hand_by_mpn["GUVB-C31SM"]["locs"]),
+            "part": "Genicom / GenUV GUVB-C31SM (2.0x2.3 mm 4-pin OLGA I2C 0x39)",
+            "description": f"Intrinsic wide-bandgap AlGaN UV-B (240-320 nm) digital I2C sensor on dome PCB ({locs}; can be left unpopulated if using U1 alone)",
+            "source": "GenUV / Digi-Key / Mouser",
         })
     if "AS3935-BQFT" in hand_by_mpn:
         locs = ", ".join(hand_by_mpn["AS3935-BQFT"]["locs"])

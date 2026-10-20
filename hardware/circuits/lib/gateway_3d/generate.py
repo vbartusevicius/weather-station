@@ -23,6 +23,8 @@ PARTS = {
     "Sensirion_SCD41_LGA-20": (10.1, 10.1, 6.5),
     "Vishay_VEML7700-TT": (6.8, 2.35, 3.0),
     "LiteOn_LTR-390UV-01": (2.0, 2.0, 0.7),
+    "AMS_TSL25911FN": (2.0, 2.4, 0.65),
+    "GenUV_GUVB-C31SM": (2.0, 2.3, 1.4),
     "ST_LIS2MDLTR_LGA-12": (2.0, 2.0, 0.7),
     "ST_LSM6DS3TR-C_LGA-14": (2.5, 3.0, 0.86),
     "ScioSense_AS3935_QFN-16": (4.0, 4.0, 0.9),

@@ -432,6 +432,57 @@
         "2": "2"
       }
     },
+    "C176812": {
+      "record": {
+        "componentModelEn": "TSL25911FN",
+        "componentBrandEn": "AMS",
+        "componentSpecificationEn": "DFN-6(2x2.2)",
+        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2211030200_Advanced-Monolithic-Systems-TSL25911FN_C176812.pdf",
+        "componentLibraryType": "expand",
+        "attributes": []
+      },
+      "footprint": "DFN-6_L2.4-W2.0-P0.65-BL",
+      "pads": [
+        [
+          "1",
+          -0.6500622000000885,
+          -0.79992220000001
+        ],
+        [
+          "2",
+          -7.620000003862515e-05,
+          -0.79992220000001
+        ],
+        [
+          "3",
+          0.6499098000000113,
+          -0.79992220000001
+        ],
+        [
+          "4",
+          0.6499098000000113,
+          0.8000237999999845
+        ],
+        [
+          "5",
+          -7.620000003862515e-05,
+          0.8000237999999845
+        ],
+        [
+          "6",
+          -0.6500622000000885,
+          0.8000237999999845
+        ]
+      ],
+      "pin_names": {
+        "1": "SCL",
+        "2": "INT",
+        "3": "GND",
+        "4": "NC",
+        "5": "VDD",
+        "6": "SDA"
+      }
+    },
     "C1850416": {
       "record": {
         "componentModelEn": "VEML7700-TT",
@@ -1868,51 +1919,6 @@
         "6": "SDA"
       }
     },
-    "C5360602": {
-      "record": {
-        "componentModelEn": "SHT45-AD1F-R2",
-        "componentBrandEn": "Sensirion",
-        "componentSpecificationEn": "DFN-4",
-        "dataManualUrl": "https://sensirion.com/media/documents/33FD6951/63E1087C/Datasheet_SHT4x_1.pdf",
-        "componentLibraryType": "expand",
-        "attributes": []
-      },
-      "footprint": "DFN-4_L1.5-W1.5-P0.8-TL-EP",
-      "pads": [
-        [
-          "1",
-          -0.6774179999999932,
-          0.40004999999999713
-        ],
-        [
-          "2",
-          -0.6774179999999932,
-          -0.40004999999999713
-        ],
-        [
-          "3",
-          0.6774179999999932,
-          -0.40004999999999713
-        ],
-        [
-          "4",
-          0.6774179999999932,
-          0.40004999999999713
-        ],
-        [
-          "5",
-          0.0,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "1": "SDA",
-        "2": "SCL",
-        "3": "VDD",
-        "4": "GND",
-        "5": "EP"
-      }
-    },
     "C5362283": {
       "record": {
         "componentModelEn": "BMP581",
@@ -2333,93 +2339,6 @@
       "pin_names": {
         "2": "2",
         "1": "1"
-      }
-    },
-    "C919695": {
-      "record": {
-        "componentModelEn": "LIS2MDLTR",
-        "componentBrandEn": "STMicroelectronics",
-        "componentSpecificationEn": "LGA-12(2x2)",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2111191730_STMicroelectronics-LIS2MDLTR_C919695.pdf",
-        "componentLibraryType": "expand",
-        "attributes": []
-      },
-      "footprint": "VLGA-12_L2.0-W2.0-P0.50-BL",
-      "pads": [
-        [
-          "12",
-          -0.749985799999955,
-          -0.2500122000000192
-        ],
-        [
-          "11",
-          -0.749985799999955,
-          0.24985979999994198
-        ],
-        [
-          "10",
-          -0.749985799999955,
-          0.749985799999955
-        ],
-        [
-          "9",
-          -0.24985979999994198,
-          0.749985799999955
-        ],
-        [
-          "8",
-          0.2500122000000192,
-          0.749985799999955
-        ],
-        [
-          "7",
-          0.7501382000000322,
-          0.749985799999955
-        ],
-        [
-          "6",
-          0.7501382000000322,
-          0.24985979999994198
-        ],
-        [
-          "5",
-          0.7501382000000322,
-          -0.2500122000000192
-        ],
-        [
-          "4",
-          0.7501382000000322,
-          -0.7501382000000322
-        ],
-        [
-          "3",
-          0.2500122000000192,
-          -0.7501382000000322
-        ],
-        [
-          "2",
-          -0.24985979999994198,
-          -0.7501382000000322
-        ],
-        [
-          "1",
-          -0.749985799999955,
-          -0.7501382000000322
-        ]
-      ],
-      "pin_names": {
-        "1": "SCL/SPC",
-        "2": "NC",
-        "3": "CS",
-        "4": "SDA/SDI/SDO",
-        "5": "C1",
-        "6": "GND",
-        "7": "INT/DRDY/SDO",
-        "8": "GND",
-        "9": "Vdd",
-        "10": "Vdd_IO",
-        "11": "NC",
-        "12": "NC"
       }
     },
     "C967633": {

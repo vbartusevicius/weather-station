@@ -10,7 +10,7 @@
 //   D1  / GPIO1  = NTC_SENSE  (ADC1_CH1: reflector 10k NTC thermistor + SW1 SERVICE button)
 //   D2  / GPIO2  = RAIN_ADC   (ADC1_CH2: hybrid piezo charge-amp & capacitive rain envelope)
 //   D3  / GPIO21 = HEAT_PWM   (LEDC PWM driving AO3400A reflector de-icing heater MOSFET)
-//   D4  / GPIO22 = I2C_SDA    (BMP581, LSM6DS3, AS3935, SEN55, SHT45, SGP41, SCD41, LTR390, VEML7700, LIS2MDL)
+//   D4  / GPIO22 = I2C_SDA    (BMP581, LSM6DS3, AS3935, SEN55, SHT45, SGP41, SCD41, LTR390, TSL25911, optional GUVB-C31SM, LIS2MDL)
 //   D5  / GPIO23 = I2C_SCL    (I2C clock, 400 kHz)
 //   D6  / GPIO16 = US_SEL_A   (CD4052 ultrasonic transducer mux select A)
 //   D7  / GPIO17 = US_SEL_B   (CD4052 ultrasonic transducer mux select B)
@@ -48,10 +48,11 @@ constexpr gpio_num_t rf_switch_power_pin = GPIO_NUM_3;
 constexpr gpio_num_t rf_antenna_select_pin = GPIO_NUM_14;
 constexpr std::int8_t wifi_max_tx_power_quarter_dbm = 82;  // 82 * 0.25 dBm = +20.5 dBm (112 mW max linear PA)
 
-// I2C 7-bit addresses of all onboard & probe/crown sensors
+// I2C 7-bit addresses of all onboard & probe/crown/dome sensors
 constexpr std::uint8_t i2c_addr_as3935 = 0x03;
-constexpr std::uint8_t i2c_addr_veml7700 = 0x10;
 constexpr std::uint8_t i2c_addr_lis2mdl = 0x1E;
+constexpr std::uint8_t i2c_addr_tsl25911 = 0x29;
+constexpr std::uint8_t i2c_addr_guvb_c31sm = 0x39;  // Optional AlGaN UV-B sensor on dome U3
 constexpr std::uint8_t i2c_addr_sht45 = 0x44;
 constexpr std::uint8_t i2c_addr_bmp581 = 0x47;
 constexpr std::uint8_t i2c_addr_ltr390 = 0x53;

@@ -215,10 +215,23 @@ void test_meteorological_calculations(void) {
     // Clear sky (850 W/m2, UV 8.5) has lower cloud cover than overcast sky (120 W/m2, UV 1.8)
     TEST_ASSERT_TRUE(MetCalculator::estimate_cloud_cover_pct(850.0F, 8.5F) <
                      MetCalculator::estimate_cloud_cover_pct(120.0F, 1.8F));
-    // UV-degraded VEML7700 epoxy (reading 55k lx when UV-hardened LTR-390UV ALS reads 80k lx) recovers to 80k lx
+    // TSL25911FN + LTR-390UV ALS handoff above 80k lx and GUVB-C31SM true UV-B fusion
     const float ltr_lux = MetCalculator::lux_from_ltr390_als(400000U, 3.0F, 100.0F);
     TEST_ASSERT_FLOAT_WITHIN(10.0F, 80000.0F, ltr_lux);
     TEST_ASSERT_FLOAT_WITHIN(10.0F, 80000.0F, MetCalculator::fuse_uv_hardened_lux(55000.0F, ltr_lux));
+    TEST_ASSERT_FLOAT_WITHIN(0.25F, 6.0F, MetCalculator::fuse_uv_index(5.0F, 2560U));
+
+    // DomeOpticalScheduler alternates LTR-390UV UVS/ALS every 500 ms and auto-ranges TSL25911FN gain
+    station::environment::DomeOpticalScheduler sched{};
+    const auto c1 = sched.tick_500ms(60000U);  // Saturated at Med25x -> steps down to Low1x
+    TEST_ASSERT_TRUE(c1.read_ltr390_uvs);
+    TEST_ASSERT_EQUAL_UINT8(0x02U, c1.ltr390_main_ctrl_reg);
+    TEST_ASSERT_TRUE(c1.tsl2591_gain_changed);
+    TEST_ASSERT_EQUAL(station::environment::Tsl2591Gain::Low1x, c1.tsl2591_next_gain);
+    const auto c2 = sched.tick_500ms(200U);    // Dark counts at Low1x -> steps up to Med25x
+    TEST_ASSERT_TRUE(c2.read_ltr390_als);
+    TEST_ASSERT_EQUAL_UINT8(0x0AU, c2.ltr390_main_ctrl_reg);
+    TEST_ASSERT_EQUAL(station::environment::Tsl2591Gain::Med25x, c2.tsl2591_next_gain);
 
     station::environment::BarographTracker baro{};
     baro.push_qnh(1018.0F);

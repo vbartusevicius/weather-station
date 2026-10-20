@@ -1,6 +1,7 @@
-"""V1 elevated 12.0 x 12.0 mm UV/Light Micro-PCB (`dome`, 4 layers, 1.2 mm)
-raised on a vertical 4-pin board-to-board riser (`crown J10 <-> dome J1`) at y = 195.2 mm
-so U1 (LTR-390UV-01) and U2 (VEML7700-TT) sit directly inside the hollow JGS1 Fused Silica
+"""V1 elevated Ø 13.6 mm 3-Sensor UV/Light/NIR Micro-PCB (`dome`, 4 layers, 1.2 mm)
+raised on a vertical 4-pin board-to-board riser (`crown J10 <-> dome J1`)
+so U1 (LTR-390UV-01), U2 (ams OSRAM TSL25911FN Vis+NIR+188uLux), and optional U3
+(GenUV GUVB-C31SM AlGaN UV-B) sit directly inside the hollow JGS1 Fused Silica
 Hemispherical Dome above the roof peak with a full 180-deg (0-deg horizon) sky view!"""
 
 from builtins import NC
@@ -14,7 +15,8 @@ from variants.v1.main import wire
 C0603 = "Capacitor_SMD:C_0603_1608Metric"
 B2B_HDR4 = "gateway_fp:HX_PZ2.54-1x4P-SMD"
 FP_LTR390 = "gateway_fp:LiteOn_LTR-390UV-01"
-FP_VEML7700 = "gateway_fp:Vishay_VEML7700-TT"
+FP_TSL25911 = "gateway_fp:AMS_TSL25911FN"
+FP_GUVB = "gateway_fp:GenUV_GUVB-C31SM"
 
 
 def cap(value, fields=None, footprint=C0603):
@@ -33,14 +35,15 @@ def build():
     block("int_crown")
     j1 = part("Connector_Generic", "Conn_01x04", "CROWN_RISER", B2B_HDR4,
               src(mpn="HX PZ2.54-1x4P TP-YQ", mfr="HCTL", lcsc="C41417361",
-                  source="4-pin 2.54 mm SMD riser receptor on bottom of 12x12 mm `dome` Micro-PCB"),
+                  source="4-pin 2.54 mm SMD riser receptor on bottom of Ø13.6 mm `dome` Micro-PCB"),
               ref="J1")
     wire(j1, DOME_B2B_LINK, nets)
 
     block("uv_als")
+    # U1: Lite-On LTR-390UV-01 (I2C 0x53) — UV-A/upper-UV-B + 157,000 lux high-noon ALS
     u1 = part("gateway", "LTR390UV", "LTR-390UV-01", FP_LTR390,
               src(mpn="LTR-390UV-01", mfr="Lite-On", hand=True, footprint_ref="C492374",
-                  source="Direct UV-A/UV-B index sensor elevated inside hollow JGS1 hemisphere (I2C 0x53)"),
+                  source="UV-A/B + 157k lux ALS sensor elevated inside hollow JGS1 hemisphere (I2C 0x53)"),
               ref="U1")
     u1["1"] += v3
     u1["2"] += gnd
@@ -52,17 +55,33 @@ def build():
     c1[1] += v3
     c1[2] += gnd
 
-    u2 = part("gateway", "VEML7700", "VEML7700-TT", FP_VEML7700,
-              src(mpn="VEML7700-TT", mfr="Vishay", lcsc="C1850416",
-                  source="High-accuracy ambient light / solar irradiance sensor elevated inside JGS1 hemisphere (I2C 0x10)"),
+    # U2: ams OSRAM TSL25911FN (LCSC C176812, I2C 0x29) — UV-rejection package, Visible + Near-IR (700-1100 nm) + 188 uLux night sky
+    u2 = part("gateway", "TSL25911", "TSL25911FN", FP_TSL25911,
+              src(mpn="TSL25911FN", mfr="ams OSRAM", lcsc="C176812",
+                  source="UV-rejection dual-diode Visible + Near-IR (700-1100 nm) & 188 uLux night-sky sensor (I2C 0x29)"),
               ref="U2")
-    u2["1"] += sda
-    u2["2"] += v3
+    u2["1"] += scl
+    u2["2"] += NC
     u2["3"] += gnd
-    u2["4"] += scl
-    c2 = cap("100n 50V", src(source="VEML7700 decoupling"))
+    u2["4"] += gnd
+    u2["5"] += v3
+    u2["6"] += sda
+    c2 = cap("100n 50V", src(source="TSL25911FN decoupling"))
     c2[1] += v3
     c2[2] += gnd
+
+    # U3: Optional GenUV GUVB-C31SM (I2C 0x39, DNP/hand-populated) — True AlGaN wide-bandgap UV-B (240-320 nm) sensor
+    u3 = part("gateway", "GUVB_C31SM", "GUVB-C31SM", FP_GUVB,
+              src(mpn="GUVB-C31SM", mfr="Genicom", hand=True,
+                  source="Optional AlGaN true UV-B (240-320 nm) digital I2C sensor footprint on dome PCB (I2C 0x39)"),
+              ref="U3")
+    u3["1"] += gnd
+    u3["2"] += sda
+    u3["3"] += scl
+    u3["4"] += v3
+    c3 = cap("100n 50V", src(source="Optional GUVB-C31SM decoupling"))
+    c3[1] += v3
+    c3[2] += gnd
 
 
 NET_CLASSES = {

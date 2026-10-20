@@ -40,6 +40,8 @@ MODELS_3D = {
     "Sensirion_SCD41_LGA-20": ("Sensirion_SCD41_LGA-20.step", 0),
     "Vishay_VEML7700-TT": ("Vishay_VEML7700-TT.step", 0),
     "LiteOn_LTR-390UV-01": ("LiteOn_LTR-390UV-01.step", 0),
+    "AMS_TSL25911FN": ("AMS_TSL25911FN.step", 0),
+    "GenUV_GUVB-C31SM": ("GenUV_GUVB-C31SM.step", 0),
     "ST_LIS2MDLTR_LGA-12": ("ST_LIS2MDLTR_LGA-12.step", 0),
     "ST_LSM6DS3TR-C_LGA-14": ("ST_LSM6DS3TR-C_LGA-14.step", 0),
     "ScioSense_AS3935_QFN-16": ("ScioSense_AS3935_QFN-16.step", 0),

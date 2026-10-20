@@ -1,2 +1,3 @@
 Designator,Value,Manufacturer part,Notes
-U1,LTR-390UV-01,LTR-390UV-01,Direct UV-A/UV-B index sensor elevated inside hollow JGS1 hemisphere (I2C 0x53)
+U1,LTR-390UV-01,LTR-390UV-01,UV-A/B + 157k lux ALS sensor elevated inside hollow JGS1 hemisphere (I2C 0x53)
+U3,GUVB-C31SM,GUVB-C31SM,Optional AlGaN true UV-B (240-320 nm) digital I2C sensor footprint on dome PCB (I2C 0x39)

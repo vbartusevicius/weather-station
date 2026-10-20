@@ -131,22 +131,26 @@ float MetCalculator::lux_from_ltr390_als(std::uint32_t als_counts, float gain, f
     return std::max(0.0F, (0.6F * static_cast<float>(als_counts)) / denom);
 }
 
-float MetCalculator::fuse_uv_hardened_lux(float veml7700_lux, float ltr390_als_lux) {
-    // VEML7700 uses clear epoxy molding compound which can photo-yellow over multi-year UV exposure
-    // under a JGS1 quartz dome, whereas LTR-390UV-01 uses a UV-stable optical window with a built-in
-    // 20-bit ALS channel (0.01..157k lx). If LTR-390 ALS is present and VEML7700 reads >12% lower
-    // due to epoxy UV aging, trust the UV-hardened LTR-390UV-01 ALS channel.
+float MetCalculator::fuse_uv_hardened_lux(float tsl25911_lux, float ltr390_als_lux) {
+    // TSL25911FN resolves down to 0.00018 lx (nighttime starlight/moonlight) up to 88,000 lx,
+    // while LTR-390UV-01's ALS channel covers high-noon sunlight up to 157,000 lx when TSL25911FN saturates.
     if (ltr390_als_lux <= 0.0F) {
-        return std::max(0.0F, veml7700_lux);
+        return std::max(0.0F, tsl25911_lux);
     }
-    if (veml7700_lux < 0.88F * ltr390_als_lux) {
+    if (tsl25911_lux >= 80000.0F || tsl25911_lux < 0.88F * ltr390_als_lux) {
         return ltr390_als_lux;
     }
-    return 0.5F * (veml7700_lux + ltr390_als_lux);
+    return 0.5F * (tsl25911_lux + ltr390_als_lux);
 }
 
-float MetCalculator::solar_irradiance_w_m2(float ambient_lux) {
-    return std::max(0.0F, ambient_lux * 0.0079F);
+float MetCalculator::solar_irradiance_w_m2(float ambient_lux, std::uint16_t tsl2591_ch1_nir) {
+    const float vis_w_m2 = std::max(0.0F, ambient_lux * 0.0079F);
+    if (tsl2591_ch1_nir == 0U) {
+        return vis_w_m2;
+    }
+    // Combine visible irradiance with TSL25911FN Ch1 Near-Infrared (700-1100 nm) thermal component
+    const float nir_w_m2 = static_cast<float>(tsl2591_ch1_nir) * 0.012F;
+    return 0.55F * vis_w_m2 + 0.45F * nir_w_m2;
 }
 
 float MetCalculator::uv_index_from_ltr390(std::uint32_t uvs_counts, float gain_factor, float integration_factor) {
@@ -155,6 +159,16 @@ float MetCalculator::uv_index_from_ltr390(std::uint32_t uvs_counts, float gain_f
         return 0.0F;
     }
     return clamp_f(static_cast<float>(uvs_counts) / sensitivity, 0.0F, 20.0F);
+}
+
+float MetCalculator::fuse_uv_index(float ltr390_uvi, std::uint16_t guvb_c31sm_counts) {
+    // If optional U3 (GenUV GUVB-C31SM AlGaN UV-B sensor at I2C 0x39) is populated (counts > 0),
+    // weight 80% true UV-B (240-320 nm) + 20% LTR-390UV (300-350 nm) per CIE erythemal action spectrum.
+    if (guvb_c31sm_counts == 0U) {
+        return ltr390_uvi;
+    }
+    const float guvb_uvi = clamp_f(static_cast<float>(guvb_c31sm_counts) / 410.0F, 0.0F, 20.0F);
+    return 0.80F * guvb_uvi + 0.20F * ltr390_uvi;
 }
 
 float MetCalculator::absolute_humidity_g_m3(float temp_c, float rh_percent) {
@@ -225,8 +239,9 @@ DerivedEnvironment MetCalculator::compute(const AtmosphereReading& in) {
     DerivedEnvironment out{};
     const float ltr_lux = (in.raw_als_counts > 0U) ? lux_from_ltr390_als(in.raw_als_counts) : 0.0F;
     const float true_lux = fuse_uv_hardened_lux(in.ambient_lux, ltr_lux);
-    out.solar_irradiance_w_m2 = solar_irradiance_w_m2(true_lux);
-    out.uv_index = uv_index_from_ltr390(in.raw_uv_counts);
+    out.solar_irradiance_w_m2 = solar_irradiance_w_m2(true_lux, in.tsl2591_ch1_nir);
+    const float ltr_uvi = uv_index_from_ltr390(in.raw_uv_counts);
+    out.uv_index = fuse_uv_index(ltr_uvi, in.raw_guvb_counts);
     out.cloud_cover_pct = estimate_cloud_cover_pct(out.solar_irradiance_w_m2, out.uv_index);
     out.solar_heating_offset_c = solar_radiation_heating_error_c(out.solar_irradiance_w_m2, in.wind_speed_m_s);
     out.compensated_temp_c = in.temperature_c - out.solar_heating_offset_c;
@@ -296,6 +311,51 @@ LongevityStatus EnvLongevityManager::tick_second(float ambient_temp_c, float rh_
         }
     }
     return status_;
+}
+
+float DomeOpticalScheduler::gain_multiplier(Tsl2591Gain g) {
+    switch (g) {
+        case Tsl2591Gain::Low1x:
+            return 1.0F;
+        case Tsl2591Gain::Med25x:
+            return 25.0F;
+        case Tsl2591Gain::High428x:
+            return 428.0F;
+        case Tsl2591Gain::Max9876x:
+            return 9876.0F;
+    }
+    return 25.0F;
+}
+
+DomeOpticalCommand DomeOpticalScheduler::tick_500ms(std::uint16_t tsl_ch0_counts) {
+    DomeOpticalCommand cmd{};
+    if (in_uvs_phase_) {
+        // UVS 100 ms integration just finished: read UVS_DATA (0x10..0x12) and switch U1 to ALS mode (0x02)
+        cmd.read_ltr390_uvs = true;
+        cmd.ltr390_main_ctrl_reg = 0x02U;
+        in_uvs_phase_ = false;
+    } else {
+        // ALS 100 ms integration just finished: read ALS_DATA (0x0D..0x0F) and switch U1 to UVS mode (0x0A)
+        cmd.read_ltr390_als = true;
+        cmd.ltr390_main_ctrl_reg = 0x0AU;
+        in_uvs_phase_ = true;
+    }
+
+    // Auto-range U2 (TSL25911FN) across 1x / 25x / 428x / 9876x so it never saturates in day and resolves 188 uLux at night
+    Tsl2591Gain next = gain_;
+    if (tsl_ch0_counts > 52000U) {
+        if (gain_ == Tsl2591Gain::Max9876x) next = Tsl2591Gain::High428x;
+        else if (gain_ == Tsl2591Gain::High428x) next = Tsl2591Gain::Med25x;
+        else if (gain_ == Tsl2591Gain::Med25x) next = Tsl2591Gain::Low1x;
+    } else if (tsl_ch0_counts < 450U) {
+        if (gain_ == Tsl2591Gain::Low1x) next = Tsl2591Gain::Med25x;
+        else if (gain_ == Tsl2591Gain::Med25x) next = Tsl2591Gain::High428x;
+        else if (gain_ == Tsl2591Gain::High428x) next = Tsl2591Gain::Max9876x;
+    }
+    cmd.tsl2591_gain_changed = (next != gain_);
+    cmd.tsl2591_next_gain = next;
+    gain_ = next;
+    return cmd;
 }
 
 }  // namespace environment

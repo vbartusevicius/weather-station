@@ -168,13 +168,10 @@ def transducer_pockets():
 
 
 def uv_window():
-    u1 = components("dome")["U1"]
-    u2 = components("dome")["U2"]
-    x1, _, z1 = board_point("dome", u1["x"], u1["y"])
-    x2, _, z2 = board_point("dome", u2["x"], u2["y"])
+    cx, _, cz = board_point("dome", 6.8, 6.8)
     return {
-        "x": round((x1 + x2) / 2.0, 3),
-        "z": round((z1 + z2) / 2.0, 3),
+        "x": round(cx, 3),
+        "z": round(cz, 3),
         "diameter": 18.0,
     }
 

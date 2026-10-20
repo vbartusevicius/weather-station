@@ -9,6 +9,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import jlc_parts as jp
 import pcbnew
 
 REPO = Path("/work")
@@ -77,14 +78,16 @@ def add_mouse_bite_holes(pcb: pcbnew.BOARD, coords: list[tuple[float, float]]) -
     pcb.Add(fp)
 
 
-def is_vertical_edge_at_x(drw: pcbnew.BOARD_ITEM, x_target: float) -> bool:
+def is_vertical_edge_at_x(drw: pcbnew.BOARD_ITEM, x_target: float, y_min: float = -1e6, y_max: float = 1e6) -> bool:
     if drw.GetLayer() != pcbnew.Edge_Cuts or not isinstance(drw, pcbnew.PCB_SHAPE):
         return False
     if drw.GetShape() != pcbnew.SHAPE_T_SEGMENT:
         return False
     sx = pcbnew.ToMM(drw.GetStart().x)
     ex = pcbnew.ToMM(drw.GetEnd().x)
-    return abs(sx - x_target) < 0.08 and abs(ex - x_target) < 0.08
+    sy = pcbnew.ToMM(drw.GetStart().y)
+    ey = pcbnew.ToMM(drw.GetEnd().y)
+    return abs(sx - x_target) < 0.08 and abs(ex - x_target) < 0.08 and min(sy, ey) >= y_min - 0.2 and max(sy, ey) <= y_max + 0.2
 
 
 def is_horizontal_edge_at_y(drw: pcbnew.BOARD_ITEM, y_target: float, x_min: float, x_max: float) -> bool:
@@ -97,6 +100,19 @@ def is_horizontal_edge_at_y(drw: pcbnew.BOARD_ITEM, y_target: float, x_min: floa
     sx = pcbnew.ToMM(drw.GetStart().x)
     ex = pcbnew.ToMM(drw.GetEnd().x)
     return abs(sy - y_target) < 0.08 and abs(ey - y_target) < 0.08 and min(sx, ex) >= x_min - 0.2 and max(sx, ex) <= x_max + 0.2
+
+
+def rotate_board_deg(brd: pcbnew.BOARD, deg: float) -> None:
+    center = pcbnew.VECTOR2I_MM(0, 0)
+    angle = pcbnew.EDA_ANGLE(deg, pcbnew.DEGREES_T)
+    for fp in brd.GetFootprints():
+        fp.Rotate(center, angle)
+    for trk in brd.GetTracks():
+        trk.Rotate(center, angle)
+    for zone in brd.Zones():
+        zone.Rotate(center, angle)
+    for drw in brd.GetDrawings():
+        drw.Rotate(center, angle)
 
 
 def board_edge_bounds(brd: pcbnew.BOARD) -> tuple[float, float, float, float]:
@@ -124,6 +140,9 @@ def build_panel(
     for bname in boards:
         bpath = REPO / "hardware/layout" / variant / bname / f"{bname}.kicad_pcb"
         brd = pcbnew.LoadBoard(str(bpath))
+        if bname == "probe":
+            # Rotate probe 90 deg so it is 50.0 x 14.0 mm and nests horizontally above crown!
+            rotate_board_deg(brd, -90.0)
         x0, y0, w, h = board_edge_bounds(brd)
         loaded[bname] = (brd, x0, y0, w, h)
 
@@ -149,10 +168,20 @@ def build_panel(
         src, bx0, by0, bw, bh = loaded[bname]
 
         if bname == "dome" and any(p[0] == "reflector" for p in placements):
-            # Stack the round `dome` PCB directly ABOVE `reflector` in the same column to shorten the panel by 15.7 mm!
+            # Stack the round `dome` PCB directly ABOVE `reflector` in the same column
             _, _, _, ref_x0, ref_y0, ref_w, _ref_h = next(p for p in placements if p[0] == "reflector")
             target_x0 = round(ref_x0 + (ref_w - bw) / 2.0, 4)
             target_y1 = round(ref_y0 - SLOT_W, 4)
+            dx = round(target_x0 - bx0, 4)
+            dy = round(target_y1 - (by0 + bh), 4)
+            target_y0 = round(by0 + dy, 4)
+            advance_right = False
+        elif bname == "probe" and any(p[0] == "crown" for p in placements):
+            # Place rotated 90-deg `probe` (50.0 x 14.0 mm) horizontally ABOVE `crown` and `SLOT_W` (2.0 mm) above `dome`!
+            _, _, _, cr_x0, _cr_y0, _cr_w, _cr_h = next(p for p in placements if p[0] == "crown")
+            dome_p = next((p for p in placements if p[0] == "dome"), None)
+            target_x0 = round(cr_x0, 4)
+            target_y1 = round(dome_p[4] - SLOT_W, 4) if dome_p else round(y0_0 + bh, 4)
             dx = round(target_x0 - bx0, 4)
             dy = round(target_y1 - (by0 + bh), 4)
             target_y0 = round(by0 + dy, 4)
@@ -219,20 +248,20 @@ def build_panel(
             combined_parts.append(cp)
 
     mb_coords: list[tuple[float, float]] = []
-    horiz_placements = [p for p in placements if p[0] != "dome"]
-    n = len(horiz_placements)
-    for i in range(n - 1):
-        _, _, _, lx0, ly0, lw, lh = horiz_placements[i]
+    # 1. Horizontal mouse-bite tabs along bottom row: main <-> crown <-> reflector
+    horiz_placements = [p for p in placements if p[0] in ("main", "crown", "reflector")]
+    for i in range(len(horiz_placements) - 1):
+        l_name, _, _, lx0, ly0, lw, lh = horiz_placements[i]
         _, _, _, rx0, ry0, _rw, rh = horiz_placements[i + 1]
         lx1 = round(lx0 + lw, 4)
         ly1 = round(ly0 + lh, 4)
         ry1 = round(ry0 + rh, 4)
         l_ys, r_ys = [], []
         for drw in list(panel.GetDrawings()):
-            if is_vertical_edge_at_x(drw, lx1):
+            if is_vertical_edge_at_x(drw, lx1, ly0, ly1):
                 l_ys.extend((round(pcbnew.ToMM(drw.GetStart().y), 4), round(pcbnew.ToMM(drw.GetEnd().y), 4)))
                 panel.Delete(drw)
-            elif is_vertical_edge_at_x(drw, rx0):
+            elif is_vertical_edge_at_x(drw, rx0, ry0, ry1):
                 r_ys.extend((round(pcbnew.ToMM(drw.GetStart().y), 4), round(pcbnew.ToMM(drw.GetEnd().y), 4)))
                 panel.Delete(drw)
         ly_s0, ly_s1 = (min(l_ys), max(l_ys)) if l_ys else (ly0, ly1)
@@ -241,23 +270,38 @@ def build_panel(
         ov_y1 = min(ly_s1, ry_s1)
         ov_h = ov_y1 - ov_y0
         hw = TAB_H / 2
-        if ov_h < 9.0:
-            tc = round((ov_y0 + ov_y1) / 2.0, 4)
-            add_edge_line(panel, lx1, ly_s0, lx1, tc - hw)
-            add_edge_line(panel, lx1, tc + hw, lx1, ly_s1)
-            add_edge_line(panel, rx0, ry_s0, rx0, tc - hw)
-            add_edge_line(panel, rx0, tc + hw, rx0, ry_s1)
-            t_centres = (tc,)
+        t1 = round(ov_y0 + ov_h * 0.28, 4)
+        t2 = round(ov_y0 + ov_h * 0.72, 4)
+        t_centres = (t1, t2)
+
+        # If left board is `main` and `probe` is above `crown`, also add a mouse-bite tab from `main` to `probe`!
+        probe_pl = next((p for p in placements if p[0] == "probe"), None)
+        if l_name == "main" and probe_pl:
+            _, _, _, px0, py0, _pw, ph = probe_pl
+            py1 = round(py0 + ph, 4)
+            for drw in list(panel.GetDrawings()):
+                if is_vertical_edge_at_x(drw, px0, py0, py1):
+                    panel.Delete(drw)
+            tp = round(py0 + ph / 2.0, 4)
+            add_edge_line(panel, lx1, ly_s0, lx1, tp - hw)
+            add_edge_line(panel, lx1, tp + hw, lx1, t1 - hw)
+            add_edge_line(panel, lx1, t1 + hw, lx1, t2 - hw)
+            add_edge_line(panel, lx1, t2 + hw, lx1, ly_s1)
+            add_edge_line(panel, px0, py0, px0, tp - hw)
+            add_edge_line(panel, px0, tp + hw, px0, py1)
+            add_edge_line(panel, lx1, tp - hw, px0, tp - hw)
+            add_edge_line(panel, lx1, tp + hw, px0, tp + hw)
+            for dy_h in HOLE_Y_OFFS:
+                mb_coords.append((lx1 + 0.15, tp + dy_h))
+                mb_coords.append((px0 - 0.15, tp + dy_h))
         else:
-            t1 = round(ov_y0 + ov_h * 0.28, 4)
-            t2 = round(ov_y0 + ov_h * 0.72, 4)
             add_edge_line(panel, lx1, ly_s0, lx1, t1 - hw)
             add_edge_line(panel, lx1, t1 + hw, lx1, t2 - hw)
             add_edge_line(panel, lx1, t2 + hw, lx1, ly_s1)
-            add_edge_line(panel, rx0, ry_s0, rx0, t1 - hw)
-            add_edge_line(panel, rx0, t1 + hw, rx0, t2 - hw)
-            add_edge_line(panel, rx0, t2 + hw, rx0, ry_s1)
-            t_centres = (t1, t2)
+
+        add_edge_line(panel, rx0, ry_s0, rx0, t1 - hw)
+        add_edge_line(panel, rx0, t1 + hw, rx0, t2 - hw)
+        add_edge_line(panel, rx0, t2 + hw, rx0, ry_s1)
 
         hole_off_x = 0.15
         for tc in t_centres:
@@ -267,9 +311,59 @@ def build_panel(
                 mb_coords.append((lx1 + hole_off_x, tc + dy_h))
                 mb_coords.append((rx0 - hole_off_x, tc + dy_h))
 
-    # Connect the round `dome` PCB vertically to the top edge of `reflector` via a mouse-bite breakaway tab!
+    # 2. Vertical mouse-bite tabs connecting `probe` (bottom edge) down to BOTH `crown` (top flat edge) AND `dome` (top flat chord)!
+    probe_pl = next((p for p in placements if p[0] == "probe"), None)
+    crown_pl = next((p for p in placements if p[0] == "crown"), None)
     dome_pl = next((p for p in placements if p[0] == "dome"), None)
     refl_pl = next((p for p in placements if p[0] == "reflector"), None)
+    if probe_pl and crown_pl and dome_pl:
+        _, _, _, px0, py0, pw, ph = probe_pl
+        _, _, _, cx0, cy0, cw, _ch = crown_pl
+        _, _, _, dx0, dy0, dw, dh = dome_pl
+        py1 = round(py0 + ph, 4)
+        top_xs, cr_xs, dm_top_xs = [], [], []
+        for drw in list(panel.GetDrawings()):
+            if is_horizontal_edge_at_y(drw, py1, px0, px0 + pw):
+                top_xs.extend((round(pcbnew.ToMM(drw.GetStart().x), 4), round(pcbnew.ToMM(drw.GetEnd().x), 4)))
+                panel.Delete(drw)
+            elif is_horizontal_edge_at_y(drw, cy0, cx0, cx0 + cw):
+                cr_xs.extend((round(pcbnew.ToMM(drw.GetStart().x), 4), round(pcbnew.ToMM(drw.GetEnd().x), 4)))
+                panel.Delete(drw)
+            elif is_horizontal_edge_at_y(drw, dy0, dx0, dx0 + dw):
+                dm_top_xs.extend((round(pcbnew.ToMM(drw.GetStart().x), 4), round(pcbnew.ToMM(drw.GetEnd().x), 4)))
+                panel.Delete(drw)
+        tx0, tx1 = (min(top_xs), max(top_xs)) if top_xs else (px0, px0 + pw)
+        bx0_c, bx1_c = (min(cr_xs), max(cr_xs)) if cr_xs else (cx0 + 7.0, cx0 + cw - 7.0)
+        bx0_d, bx1_d = (min(dm_top_xs), max(dm_top_xs)) if dm_top_xs else (dx0 + 4.6, dx0 + dw - 4.6)
+
+        xc_crown = round(cx0 + cw / 2.0, 4)
+        xc_dome = round(dx0 + dw / 2.0, 4)
+        hw = TAB_H / 2
+
+        # Split probe's bottom horizontal edge at BOTH xc_crown and xc_dome!
+        add_edge_line(panel, tx0, py1, xc_crown - hw, py1)
+        add_edge_line(panel, xc_crown + hw, py1, xc_dome - hw, py1)
+        add_edge_line(panel, xc_dome + hw, py1, tx1, py1)
+
+        # Tab 2A: probe <-> crown top flat edge
+        add_edge_line(panel, bx0_c, cy0, xc_crown - hw, cy0)
+        add_edge_line(panel, xc_crown + hw, cy0, bx1_c, cy0)
+        add_edge_line(panel, xc_crown - hw, py1, xc_crown - hw, cy0)
+        add_edge_line(panel, xc_crown + hw, py1, xc_crown + hw, cy0)
+        for dx_h in HOLE_Y_OFFS:
+            mb_coords.append((xc_crown + dx_h, py1 + 0.15))
+            mb_coords.append((xc_crown + dx_h, cy0 - 0.15))
+
+        # Tab 2B: probe <-> dome top flat chord (anchors probe's right tip to dome's top!)
+        add_edge_line(panel, bx0_d, dy0, xc_dome - hw, dy0)
+        add_edge_line(panel, xc_dome + hw, dy0, bx1_d, dy0)
+        add_edge_line(panel, xc_dome - hw, py1, xc_dome - hw, dy0)
+        add_edge_line(panel, xc_dome + hw, py1, xc_dome + hw, dy0)
+        for dx_h in HOLE_Y_OFFS:
+            mb_coords.append((xc_dome + dx_h, py1 + 0.15))
+            mb_coords.append((xc_dome + dx_h, dy0 - 0.15))
+
+    # 3. Vertical mouse-bite tab connecting `dome` (bottom chord) to the top edge of `reflector`
     if dome_pl and refl_pl:
         _, _, _, dx0, dy0, dw, dh = dome_pl
         _, _, _, rx0, ry0, rw, _rh = refl_pl
@@ -293,11 +387,11 @@ def build_panel(
         add_edge_line(panel, xc - hw, dy1, xc - hw, ry0)
         add_edge_line(panel, xc + hw, dy1, xc + hw, ry0)
         for dx_h in HOLE_Y_OFFS:
-            # Curve the upper mouse-bite holes along `dome`'s R=6.8 mm circle so snapping the tab leaves a round disc!
             y_arc = round(dy0 + dh / 2.0 + (6.65 ** 2 - dx_h ** 2) ** 0.5, 4)
             mb_coords.append((xc + dx_h, y_arc))
             mb_coords.append((xc + dx_h, ry0 - 0.15))
 
+    panel_checks = jp.check_board(panel, combined_parts)
     add_mouse_bite_holes(panel, mb_coords)
 
     panel_pcb_path = panel_dir / "panel.kicad_pcb"
@@ -351,21 +445,18 @@ def build_panel(
 
     cpl_rows = []
     check_rows = []
-    for bname, dx, dy, _, _, _, _ in placements:
-        for c in board_checks.get(bname, []):
-            if c.assembly != "jlc":
-                continue
-            pref = offset_ref(bname, c.ref)
-            fp = panel.FindFootprintByReference(pref)
-            layer = "Bottom" if fp.IsFlipped() else "Top"
-            kicad_rot = round(fp.GetOrientationDegrees()) % 360
-            px = c.placement.x + dx
-            py = c.placement.y - dy
-            cpl_rows.append([pref, f"{px:.3f}mm", f"{py:.3f}mm", layer, c.placement.rotation])
-            check_rows.append([
-                pref, c.lcsc, by_ref[pref]["mpn"], c.jlc_footprint, layer,
-                kicad_rot, c.placement.rotation, c.stock, c.library, "lands pin for pin",
-            ])
+    for c in panel_checks:
+        if c.assembly != "jlc":
+            continue
+        pref = c.ref
+        fp = panel.FindFootprintByReference(pref)
+        layer = "Bottom" if fp.IsFlipped() else "Top"
+        kicad_rot = round(fp.GetOrientationDegrees()) % 360
+        cpl_rows.append([pref, f"{c.placement.x:.3f}mm", f"{c.placement.y:.3f}mm", layer, c.placement.rotation])
+        check_rows.append([
+            pref, c.lcsc, by_ref[pref]["mpn"], c.jlc_footprint, layer,
+            kicad_rot, c.placement.rotation, c.stock, c.library, "lands pin for pin",
+        ])
 
     with open(panel_dir / "panel_cpl_jlc.csv", "w", newline="") as f:
         w = csv.writer(f)
