@@ -1,3 +1,7 @@
+// AeroMet Web UI: display-only. Every number shown here is computed by the station firmware
+// (src/core pipeline) and published in /api/state, /api/history and /api/history/minutes. The browser
+// only converts units, formats text and draws. JSON null (sensor missing / not computable) => "—".
+
 const COMPASS_16 = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
 const BEAUFORT_NAMES = [
   "Calm","Light Air","Light Breeze","Gentle Breeze","Moderate Breeze","Fresh Breeze",
@@ -5,35 +9,68 @@ const BEAUFORT_NAMES = [
 ];
 
 const UNIT_SYSTEMS = [
-  { id: "metric",   label: "Metric",   wMul: 1.0,     wUnit: "m/s",  tFn: c => c,            tUnit: "°", pMul: 1.0,     pUnit: "hPa", rMul: 1.0,     rUnit: "mm" },
-  { id: "imperial", label: "Imperial", wMul: 2.23694, wUnit: "mph",  tFn: c => c*1.8 + 32.0, tUnit: "°", pMul: 0.02953, pUnit: "inHg",rMul: 0.03937, rUnit: "in" },
-  { id: "nautical", label: "Knots",    wMul: 1.94384, wUnit: "kt",   tFn: c => c,            tUnit: "°", pMul: 1.0,     pUnit: "hPa", rMul: 1.0,     rUnit: "mm" },
+  { id: "metric",   label: "Metric",   wMul: 1.0,     wUnit: "m/s",  tFn: c => c,            tUnit: "°", pMul: 1.0,     pUnit: "hPa", rMul: 1.0,     rUnit: "mm", lMul: 1.0,    lUnit: "kg/m²", dMul: 1.0,      dUnit: "km", hMul: 1.0,     hUnit: "m" },
+  { id: "imperial", label: "Imperial", wMul: 2.23694, wUnit: "mph",  tFn: c => c*1.8 + 32.0, tUnit: "°", pMul: 0.02953, pUnit: "inHg",rMul: 0.03937, rUnit: "in", lMul: 0.2048, lUnit: "lb/ft²", dMul: 0.621371, dUnit: "mi", hMul: 3.28084, hUnit: "ft" },
+  { id: "nautical", label: "Knots",    wMul: 1.94384, wUnit: "kt",   tFn: c => c,            tUnit: "°", pMul: 1.0,     pUnit: "hPa", rMul: 1.0,     rUnit: "mm", lMul: 1.0,    lUnit: "kg/m²", dMul: 0.539957, dUnit: "nmi", hMul: 3.28084, hUnit: "ft" },
 ];
 
 let unitIdx = 0;
 let lastState = null;
-// 60 x 1-minute chart series from the station (/api/history/minutes); Home Assistant keeps its own history
-let minuteHist = null;
-let historyPoints = [];
-let trendRange = "1h";
+let minuteHist = null;      // /api/history/minutes: 60 x 1-minute chart series for the cards
+let trendTier = "minute";   // Trends tab: minute (1 h) | hour (24 h) | day (31 d)
+let trendData = null;       // /api/history?tier=...
+let rain31d = null;
+let stationCfg = null;
+let clockPushed = false;
 
-// Trends range buttons (Last Hour vs Last 24 Hours)
+const el = (id) => document.getElementById(id);
+const isNum = (v) => typeof v === "number" && Number.isFinite(v);
+// Format a nullable number: fv(v, decimals, suffix) => "12.3 suffix" or "—"
+function fv(v, dec = 1, suffix = "") {
+  return isNum(v) ? `${v.toFixed(dec)}${suffix}` : "—";
+}
+function setText(id, text) {
+  const node = el(id);
+  if (node) node.textContent = text;
+}
+function clampPct(v, lo, hi) {
+  if (!isNum(v)) return 0;
+  return Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100));
+}
+function degToCardinal(deg) {
+  return isNum(deg) ? COMPASS_16[Math.floor(((deg + 11.25) % 360) / 22.5)] : "—";
+}
+function hhmm(min) {
+  if (!isNum(min)) return "—";
+  const m = Math.round(min) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+const conv = {
+  t: (c) => (isNum(c) ? UNIT_SYSTEMS[unitIdx].tFn(c) : null),
+  w: (v) => (isNum(v) ? v * UNIT_SYSTEMS[unitIdx].wMul : null),
+  p: (v) => (isNum(v) ? v * UNIT_SYSTEMS[unitIdx].pMul : null),
+  r: (v) => (isNum(v) ? v * UNIT_SYSTEMS[unitIdx].rMul : null),
+  l: (v) => (isNum(v) ? v * UNIT_SYSTEMS[unitIdx].lMul : null),
+  d: (v) => (isNum(v) ? v * UNIT_SYSTEMS[unitIdx].dMul : null),
+  h: (v) => (isNum(v) ? v * UNIT_SYSTEMS[unitIdx].hMul : null),
+};
+const postJson = (url, body) =>
+  fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json());
+
+// ---------------------------------------------------------------------------------------------
+// Controls
+// ---------------------------------------------------------------------------------------------
 document.querySelectorAll("[data-trange]").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll("[data-trange]").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    trendRange = btn.dataset.trange;
-    const lbl = trendRange === "1h" ? "Last Hour" : "Last 24h";
-    document.getElementById("chart-temp-title").textContent = `Temperature, Dew Point & Feels-Like (${lbl})`;
-    document.getElementById("chart-wind-title").textContent = `Wind Speed & Peak 3s Gusts (${lbl})`;
-    document.getElementById("chart-baro-title").textContent = `Sea-Level Pressure (${lbl})`;
-    renderAllCharts();
+    trendTier = btn.dataset.trange;
+    loadTrends();
   });
 });
 
-// Draw 36 compass degree ticks once
 (function initCompassTicks() {
-  const g = document.getElementById("compass-ticks");
+  const g = el("compass-ticks");
   if (!g) return;
   let s = "";
   for (let d = 0; d < 360; d += 10) {
@@ -47,148 +84,124 @@ document.querySelectorAll("[data-trange]").forEach((btn) => {
   g.innerHTML = s;
 })();
 
-// Tab switching
-document.querySelectorAll(".tab").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
-    document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
-    btn.classList.add("active");
-    const target = document.getElementById("tab-" + btn.dataset.tab);
-    if (target) target.classList.add("active");
-    if (btn.dataset.tab === "trends") renderAllCharts();
-  });
-});
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
+  if (name === "trends") loadTrends();
+  if (name === "settings") loadConfig();
+}
+document.querySelectorAll(".tab").forEach((btn) => btn.addEventListener("click", () => showTab(btn.dataset.tab)));
+el("loc-banner-btn").addEventListener("click", () => showTab("settings"));
 
-// Unit switcher
-document.getElementById("unit-toggle").addEventListener("click", () => {
+el("unit-toggle").addEventListener("click", () => {
   unitIdx = (unitIdx + 1) % UNIT_SYSTEMS.length;
-  document.getElementById("unit-toggle").textContent = UNIT_SYSTEMS[unitIdx].label;
+  el("unit-toggle").textContent = UNIT_SYSTEMS[unitIdx].label;
   if (lastState) applyTelemetry(lastState);
-  renderSparkBaro();
-  renderAllCharts();
+  renderTrends();
 });
 
-// Theme switcher
-document.getElementById("theme-toggle").addEventListener("click", () => {
+el("theme-toggle").addEventListener("click", () => {
   const html = document.documentElement;
   const next = html.getAttribute("data-theme") === "light" ? "dark" : "light";
   html.setAttribute("data-theme", next);
-  document.getElementById("theme-toggle").textContent = next === "light" ? "☾" : "☀";
+  el("theme-toggle").textContent = next === "light" ? "☾" : "☀";
 });
 
-// Scenario selector: load 24h history first so low/high range matches the new scenario immediately
-document.getElementById("scenario-select").addEventListener("change", (ev) => {
-  fetch("/api/action", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "set_scenario", scenario: ev.target.value })
-  })
-    .then(() => fetch("/api/history").then(r => r.json()))
-    .then(arr => {
-      if (Array.isArray(arr) && arr.length > 1) {
-        historyPoints = arr;
-      }
-      return loadMinuteHistory();
-    })
+// Development server only (/api/config reports "simulated": true): pick a simulated scenario.
+el("scenario-select").addEventListener("change", (ev) => {
+  postJson("/api/action", { action: "set_scenario", scenario: ev.target.value })
+    .then(() => Promise.all([loadMinuteHistory(), loadRain31d(), loadTrends()]))
     .then(() => fetch("/api/state").then(r => r.json()))
-    .then((d) => {
-      applyTelemetry(d);
-      renderSparkBaro();
-      renderSparkRain();
-      renderAllCharts();
-    })
+    .then(applyTelemetry)
     .catch(() => {});
 });
 
-// Progressive disclosure: click any tile to inspect secondary technical metrics
 document.querySelectorAll(".card.clickable").forEach((card) => {
   card.addEventListener("click", () => {
-    if (!lastState) return;
-    openInspectModal(card.dataset.inspect, lastState);
+    if (lastState) openInspectModal(card.dataset.inspect, lastState);
   });
 });
-document.getElementById("modal-close").addEventListener("click", () => {
-  document.getElementById("inspect-modal").style.display = "none";
-});
-document.getElementById("inspect-modal").addEventListener("click", (ev) => {
+el("modal-close").addEventListener("click", () => { el("inspect-modal").style.display = "none"; });
+el("inspect-modal").addEventListener("click", (ev) => {
   if (ev.target.id === "inspect-modal") ev.target.style.display = "none";
 });
 
 function openInspectModal(kind, d) {
-  const modal = document.getElementById("inspect-modal");
-  const title = document.getElementById("modal-title");
-  const body = document.getElementById("modal-body");
+  const e = d.environment, w = d.wind, r = d.rain, s = d.solar, a = d.astronomy, q = d.air_quality, l = d.lightning;
+  let title = "";
   let rows = [];
   if (kind === "wind") {
-    title.textContent = "🧭 Ultrasonic Wind & Orientation Details";
+    title = "🧭 Ultrasonic Wind (WMO statistics)";
     rows = [
-      ["Instantaneous Speed", `${d.wind.speed_m_s.toFixed(2)} m/s (${d.wind.dir_deg.toFixed(1)}°)`],
-      ["1-Min / 10-Min Average", `${d.wind.avg_1m_m_s.toFixed(2)} / ${d.wind.avg_10m_m_s.toFixed(2)} m/s`],
-      ["3s Peak Gust / Lull", `${d.wind.gust_m_s.toFixed(2)} / ${d.wind.lull_m_s.toFixed(2)} m/s`],
-      ["Turbulence Intensity (TI)", `${(d.wind.turbulence_pct || 0).toFixed(1)} % (Gust Factor ${(d.wind.gust_factor || 1).toFixed(2)})`],
-      ["Speed of Sound (c)", `${d.wind.sound_m_s.toFixed(2)} m/s (Acoustic Temp ${d.wind.acoustic_temp_c.toFixed(2)} °C)`],
-      ["Auto-North / Mast Tilt", `+${d.wind.north_offset_deg.toFixed(1)}° / ${d.wind.tilt_deg.toFixed(2)}°`],
+      ["3-s wind / direction", `${fv(w.speed_m_s, 2, " m/s")} · ${fv(w.dir_deg, 0, "°")}`],
+      ["2-min / 10-min mean", `${fv(w.avg_2m_m_s, 2)} / ${fv(w.avg_10m_m_s, 2, " m/s")} @ ${fv(w.dir_10m_deg, 0, "°")}`],
+      ["Gust / lull (max / min 3-s mean, 10 min)", `${fv(w.gust_m_s, 2)} / ${fv(w.lull_m_s, 2, " m/s")}`],
+      ["Turbulence intensity", fv(w.turbulence_pct, 0, " %")],
+      ["Direction change 3 h", fv(w.dir_change_3h_deg, 0, "°")],
+      ["Speed of sound / sonic temperature", `${fv(w.sound_m_s, 1, " m/s")} / ${fv(w.acoustic_temp_c, 1, " °C")}`],
+      ["Mast tilt", fv(w.tilt_deg, 2, "°")],
     ];
   } else if (kind === "temp") {
-    title.textContent = "🌡 Temperature, Humidity & Comfort Physics";
+    title = "🌡 Temperature & Humidity";
     rows = [
-      ["Air Temperature (Compensated)", `${d.environment.temp_c.toFixed(2)} °C`],
-      ["Raw SHT45 / Solar Shield Offset", `${(d.environment.raw_temp_c || d.environment.temp_c).toFixed(2)} °C / -${(d.environment.solar_offset_c || 0).toFixed(2)} °C`],
-      ["Dew Point (Condensation Temp)", `${d.environment.dew_point_c.toFixed(2)} °C`],
-      ["Wet-Bulb Temp (Evaporative Floor)", `${d.environment.wet_bulb_c.toFixed(2)} °C`],
-      ["Outdoor WBGT (Heat-Stress Index)", `${(d.environment.wbgt_c || 16).toFixed(2)} °C`],
-      ["Vapor Pressure Deficit (Plant Drying)", `${(d.environment.vpd_kpa || 0.8).toFixed(2)} kPa`],
-      ["Estimated Cloud Base (LCL)", `${(d.environment.cloud_base_m || 900).toFixed(0)} m above ground`],
+      ["Air temperature (radiation-corrected)", fv(e.temp_c, 2, " °C")],
+      ["Shield solar-heating correction", fv(e.solar_offset_c, 2, " °C")],
+      ["Dew point / wet-bulb", `${fv(e.dew_point_c, 2)} / ${fv(e.wet_bulb_c, 2, " °C")}`],
+      ["Wind chill / heat index", `${fv(e.wind_chill_c, 1)} / ${fv(e.heat_index_c, 1, " °C")}`],
+      ["Absolute humidity / VPD", `${fv(e.abs_humidity_g_m3, 1, " g/m³")} / ${fv(e.vpd_kpa, 2, " kPa")}`],
+      ["Cloud base (LCL)", fv(e.cloud_base_m, 0, " m")],
+      ["24 h range / trend", `${fv(e.temp_min_24h_c, 1)} … ${fv(e.temp_max_24h_c, 1, " °C")} · ${fv(e.temp_trend_c_per_h, 1, " °C/h")}`],
     ];
   } else if (kind === "baro") {
-    title.textContent = "⏲ Barometric Pressure & Forecast";
+    title = "⏲ Barometer";
     rows = [
-      ["Sea-Level Pressure (QNH)", `${d.environment.qnh_hpa.toFixed(2)} hPa`],
-      ["Raw Station Pressure (QFE)", `${d.environment.pressure_hpa.toFixed(2)} hPa`],
-      ["Bernoulli Wind Suction Correction", `+${(d.environment.dyn_offset_hpa || 0).toFixed(2)} hPa`],
-      ["3-Hour Pressure Change", `${d.environment.pressure_trend} (${(d.environment.pressure_3h_delta_hpa || 0).toFixed(2)} hPa/3h)`],
-      ["Barometric Forecast", d.environment.forecast || "Fine Weather"],
+      ["Sea-level pressure (QNH)", fv(e.qnh_hpa, 2, " hPa")],
+      ["Station pressure (wind-compensated)", `${fv(e.pressure_hpa, 2, " hPa")} (port correction ${fv(e.pressure_wind_corr_hpa, 2, " hPa")})`],
+      ["3 h change = synoptic + solar tide", `${fv(e.pressure_3h_delta_hpa, 2)} = ${fv(e.synoptic_3h_delta_hpa, 2)} + ${fv(e.solar_tide_hpa, 2, " hPa")}`],
+      ["Trend / forecast", `${e.pressure_trend} · ${e.forecast}`],
+      ["Weather system / wind shift", `${e.front_type} · ${e.wind_shift}`],
+      ["Air density", fv(e.air_density_kg_m3, 3, " kg/m³")],
+      ["Pressure ripple (gusts / infrasound)", fv(e.pressure_ripple_pa, 2, " Pa")],
     ];
   } else if (kind === "rain") {
-    title.textContent = "🌧 4-Piezo Haptic Rain & Hail Telemetry";
+    title = "🌧 Piezo Rain & Hail";
     rows = [
-      ["Precipitation State", `${d.rain.state} (${d.rain.rate_mm_h.toFixed(2)} mm/h)`],
-      ["Today / Current Shower / Season", `${d.rain.daily_mm.toFixed(2)} / ${d.rain.event_mm.toFixed(2)} / ${d.rain.total_mm.toFixed(1)} mm`],
-      ["Raindrop Impacts / Hailstones", `${d.rain.drops.toLocaleString()} drops / ${d.rain.hail_hits} hailstones`],
-      ["Max Hailstone Diameter (PZT Impulse)", d.rain.hail_hits > 0 ? `Ø ${(d.rain.hail_diam_mm || 9.4).toFixed(1)} mm` : "0.0 mm (No hail)"],
-      ["IMU Wind-Shake Rejected", `${d.rain.rejected_shake} false vibrations ignored`],
-      ["Crown Surface State", d.rain.wet ? "WET (Water Film Present)" : "DRY"],
+      ["State / rate", `${r.state} · ${fv(r.rate_mm_h, 2, " mm/h")}`],
+      ["Last hour / today / this shower", `${fv(r.last_hour_mm, 2)} / ${fv(r.today_mm, 2)} / ${fv(r.event_mm, 2, " mm")}`],
+      ["Total since install", fv(r.total_mm, 1, " mm")],
+      ["Drops / hail hits / max hail", `${r.drops} / ${r.hail_hits} / ${fv(r.hail_diam_mm, 1, " mm")}`],
+      ["Mast-shake impacts rejected", String(r.rejected_shake)],
+      ["Surface", r.wet ? "Wet" : "Dry"],
     ];
   } else if (kind === "solar") {
-    title.textContent = d.environment.is_night ? "🌙 Night Sky Quality, Moon & NIR Cloud Telemetry" : "☀ 3-Band Solar Spectrum, UV-A/B & Cloud Correlation";
+    title = a.is_night ? "🌙 Night Sky & Moon" : "☀ Solar Radiation & UV";
     rows = [
-      ["Total Solar Irradiance", `${d.environment.solar_w_m2.toFixed(1)} W/m²`],
-      ["Visible / Near-Infrared (NIR)", `${(d.environment.visible_w_m2 || 0).toFixed(1)} W/m² / ${(d.environment.nir_w_m2 || 0).toFixed(1)} W/m²`],
-      ["UV-A (315–400 nm) / UV-B (280–315 nm)", `${(d.environment.uva_w_m2 || 0).toFixed(2)} W/m² / ${(d.environment.uvb_w_m2 || 0).toFixed(2)} W/m²`],
-      ["Ambient Illuminance (TSL25911 + LTR390)", d.environment.lux < 1.0 ? `${(d.environment.lux * 1000).toFixed(2)} mlx (${d.environment.lux.toFixed(5)} lx)` : `${Math.round(d.environment.lux).toLocaleString()} lx`],
-      ["Sky Quality (SQM) / Bortle Class", `${(d.environment.sqm || 21.4).toFixed(2)} mag/arcsec² · Bortle ${d.environment.bortle || 2}`],
-      ["Estimated Cloud Cover", `${(d.environment.cloud_cover_pct || 0).toFixed(0)} %`],
+      ["Global irradiance / clear-sky", `${fv(s.irradiance_w_m2, 0)} / ${fv(s.clear_sky_w_m2, 0, " W/m²")}`],
+      ["Visible / near-infrared", `${fv(s.visible_w_m2, 0)} / ${fv(s.nir_w_m2, 0, " W/m²")}`],
+      ["UV index (fused) / source", `${fv(s.uv_index, 1)} · ${s.uv_source}`],
+      ["UV index GUVB-C31SM (UV-B) / LTR-390", `${fv(s.uv_index_guvb, 1)} / ${fv(s.uv_index_ltr, 1)}`],
+      ["UV-A / UV-B (estimated from UVI)", `${fv(s.uva_w_m2, 1)} / ${fv(s.uvb_w_m2, 2, " W/m²")}`],
+      ["Illuminance", isNum(s.lux) ? (s.lux < 1 ? `${(s.lux * 1000).toFixed(2)} mlx` : `${Math.round(s.lux).toLocaleString()} lx`) : "—"],
+      ["Sun altitude / azimuth", `${fv(a.sun_alt_deg, 1, "°")} / ${fv(a.sun_az_deg, 0, "°")}`],
+      ["Moon", `${fv(a.moon_illum_pct, 0, " %")} · ${a.moon_phase} · age ${fv(a.moon_age_days, 1, " d")}`],
+      ["Sky quality / Bortle (estimate)", `${fv(s.sqm, 2, " mag/arcsec²")} · ${fv(s.bortle, 0)}`],
     ];
   } else {
-    title.textContent = "🍃 Multi-Gas Air Quality & Lightning Detector";
-    const pwrClass = d.lightning.energy > 35000 ? "Strong Cloud-to-Ground (CG)" : (d.lightning.energy > 0 ? "In-Cloud (IC)" : "None");
+    title = "🍃 Air Quality & Lightning";
     rows = [
-      ["US EPA AQI / EU EAQI", `${d.air_quality.aqi} (${d.air_quality.level}) / EAQI ${d.air_quality.eaqi}`],
-      ["Primary Pollutant", d.air_quality.dominant],
-      ["PM2.5 (Fog-Corrected / Raw)", `${(d.air_quality.dry_pm2_5 || d.air_quality.pm2_5).toFixed(1)} / ${d.air_quality.pm2_5.toFixed(1)} µg/m³`],
-      ["PM1.0 / PM4.0 / PM10", `${d.air_quality.pm1_0.toFixed(1)} / ${d.air_quality.pm4_0.toFixed(1)} / ${d.air_quality.pm10.toFixed(1)} µg/m³`],
-      ["True CO₂ (Pressure-Compensated)", `${d.air_quality.comp_co2_ppm || d.air_quality.co2_ppm} ppm`],
-      ["VOC Index / NOx Index", `${d.air_quality.voc_index} / ${d.air_quality.nox_index}`],
-      ["Lightning Strikes / Closest", `${d.lightning.strikes} strikes / ${d.lightning.distance_km} km`],
-      ["Peak Discharge Power (AS3935)", `${pwrClass} (${d.lightning.energy.toLocaleString()})`],
+      ["US AQI (NowCast PM) / EU EAQI band", `${fv(q.aqi, 0)} ${q.level} / ${fv(q.eaqi, 0)}`],
+      ["PM2.5 dry / raw (humidity correction)", `${fv(q.pm2_5, 1)} / ${fv(q.pm2_5_raw, 1, " µg/m³")}`],
+      ["PM1.0 / PM4.0 / PM10", `${fv(q.pm1_0, 1)} / ${fv(q.pm4_0, 1)} / ${fv(q.pm10, 1, " µg/m³")}`],
+      ["CO₂ (SCD41, pressure-compensated in sensor)", fv(q.co2_ppm, 0, " ppm")],
+      ["VOC / NOx index (relative to this site's last ~24 h)", `${fv(q.voc_index, 0)} / ${fv(q.nox_index, 0)} · ${q.gas_source}${q.gas_learning ? " (learning)" : ""}`],
+      ["SEN55 cross-check VOC / NOx", `${fv(q.voc_index_sen55, 0)} / ${fv(q.nox_index_sen55, 0)}`],
+      ["Lightning: last hour / today / total", `${l.strikes_1h} / ${l.strikes_today} / ${l.strikes_total}`],
+      ["Distance (method) / closest 1 h", `${fv(l.distance_km, 2, " km")} (${l.method}) / ${fv(l.closest_1h_km, 1, " km")}`],
     ];
   }
-  body.innerHTML = rows.map(([k, v]) => `<div class="m-kv"><span class="sub-lbl">${k}</span><b>${v}</b></div>`).join("");
-  modal.style.display = "flex";
-}
-
-function degToCardinal(deg) {
-  return COMPASS_16[Math.floor(((deg + 11.25) % 360) / 22.5)];
+  el("modal-title").textContent = title;
+  el("modal-body").innerHTML = rows.map(([k, v]) => `<div class="m-kv"><span class="sub-lbl">${k}</span><b>${v}</b></div>`).join("");
+  el("inspect-modal").style.display = "flex";
 }
 
 function renderSkyHeroVisual(d) {
@@ -207,7 +220,7 @@ function renderSkyHeroVisual(d) {
       drops += `<line x1="${x}" y1="${y}" x2="${x - 8}" y2="${y + 22}" stroke="#38bdf8" stroke-width="1.5" stroke-opacity="0.5"/>`;
     }
     fx.innerHTML = drops;
-  } else if (d.environment.temp_c <= 0.5) {
+  } else if (d.environment.temp_c !== null && d.environment.temp_c <= 0.5) {
     hero.style.background = "linear-gradient(125deg, #082f49 0%, #0369a1 60%, #0c192c 100%)";
     icon.innerHTML = `<svg viewBox="0 0 56 56" width="54" height="54"><circle cx="28" cy="28" r="14" fill="none" stroke="#7dd3fc" stroke-width="3" stroke-dasharray="4 4"/><line x1="28" y1="8" x2="28" y2="48" stroke="#e0f2fe" stroke-width="2.5"/><line x1="8" y1="28" x2="48" y2="28" stroke="#e0f2fe" stroke-width="2.5"/></svg>`;
     fx.innerHTML = `<circle cx="760" cy="40" r="65" fill="#38bdf8" fill-opacity="0.12"/>`;
@@ -249,17 +262,6 @@ function renderRosePetals(roseArr) {
   }
 }
 
-function renderSparkBaro() {
-  const minMaxEl = document.getElementById("baro-minmax");
-  if (!minMaxEl || historyPoints.length < 2) return;
-  const u = UNIT_SYSTEMS[unitIdx];
-  const recent = historyPoints.slice(-24);
-  const vals = recent.map(p => p.qnh * u.pMul);
-  const minV = Math.min(...vals), maxV = Math.max(...vals);
-  const dec = u.pUnit === "inHg" ? 2 : 0;
-  minMaxEl.textContent = `24h: ${minV.toFixed(dec)}–${maxV.toFixed(dec)} ${u.pUnit}`;
-}
-
 // Shared frame for all card charts (Rain, Lightning, Seismic): identical geometry, grid & axis labels.
 // The Y axis sits just right of the widest tick label, so that label starts at x=0 (flush with the
 // chart title above) and every gridline is attached to the axis like a conventional chart.
@@ -296,49 +298,32 @@ function minuteBarGeom(frame) {
   return { xStart, w, bw: Math.max(1.5, w - 1.0) };
 }
 
-// Modified Mercalli Intensity from peak ground acceleration (Wald et al. 1999 PGA bands)
-function mmiFromPgaMg(mg) {
-  if (mg < 1.7) return "MMI I";
-  if (mg < 14) return "MMI II–III";
-  if (mg < 39) return "MMI IV";
-  if (mg < 92) return "MMI V";
-  if (mg < 180) return "MMI VI";
-  return "MMI VII+";
-}
 
 function renderWaveAndSeismic(d) {
-  const seisSvg = document.getElementById("spark-seismic");
-  if (seisSvg && d) {
-    const s = d.seismic || { ground_pga_mg: 0.4, wind_sway_mg: 0.8, gyro_mdps: 8.2, dominant_hz: 18.0, source: "Quiet Foundation", mmi: "Quiet · MMI I", tilt_deg: 0.38 };
-    // Convert acceleration (mg) & dominant frequency (Hz) to standard DIN 4150 / Raspberry Shake Peak Particle Velocity PPV (mm/s)
-    // and Peak Ground Acceleration (cm/s^2 = Gal, where 1 mg = 0.981 cm/s^2)
-    const pgaGal = s.ground_pga_mg * 0.981;
-    const freqHz = Math.max(1.0, s.dominant_hz);
-    const ppvMmS = Math.max(0.05, (pgaGal * 10.0) / (2.0 * Math.PI * freqHz));
-    const maxAxisV = ppvMmS >= 1.0 ? 3.0 : 0.5;
+  const svg = el("spark-seismic");
+  const z = d.seismic;
+  if (!svg || !z) return;
+  const ppv = z.ppv_mm_s;
+  const maxAxisV = isNum(ppv) && ppv >= 1.0 ? 3.0 : 0.5;
+  setText("seismic-badge", z.mmi);
+  el("seismic-badge").className = z.mmi === "MMI I" || z.mmi === "—" ? "badge ok" : "badge warn";
+  setText("seis-pga-big", fv(ppv, 2));
+  setText("seis-freq-sub", isNum(z.dominant_hz) ? `Dominant ${z.dominant_hz.toFixed(0)} Hz · ${z.source}` : "—");
+  setText("seis-ground-lbl", fv(z.pga_cm_s2, 1, " cm/s²"));
+  el("seis-ground-fill").style.width = `${clampPct(z.pga_cm_s2, 0, 8.0).toFixed(0)}%`;
+  setText("seis-freq-lbl", isNum(ppv) ? `Peak ±${ppv.toFixed(2)} mm/s` : "—");
 
-    document.getElementById("seismic-badge").textContent = mmiFromPgaMg(s.ground_pga_mg);
-    document.getElementById("seismic-badge").className = s.ground_pga_mg >= 2.0 ? "badge warn" : "badge ok";
-    document.getElementById("seis-pga-big").textContent = ppvMmS.toFixed(2);
-    const srcLbl = (!s.source || s.source === "Quiet Foundation") ? "Ambient" : s.source;
-    document.getElementById("seis-freq-sub").textContent = `Dominant ${freqHz.toFixed(0)} Hz · ${srcLbl}`;
-    document.getElementById("seis-ground-lbl").textContent = `${pgaGal.toFixed(1)} cm/s²`;
-    document.getElementById("seis-ground-fill").style.width = `${clampPct(pgaGal, 0, 8.0).toFixed(0)}%`;
-    document.getElementById("seis-freq-lbl").textContent = `Peak ±${ppvMmS.toFixed(2)} mm/s`;
-
-    // 60-minute peak-velocity envelope: one mirrored ±PPV bar per minute.
-    // A raw 18–24 Hz waveform is unreadable over 60 min, so seismic/vibration monitors plot per-interval peaks.
-    const frame = chartFrame([`+${maxAxisV.toFixed(1)}`, "0", `-${maxAxisV.toFixed(1)}`], ["-60m", "-30m", "Now"], true);
-    const { xStart, w, bw } = minuteBarGeom(frame);
-    const halfH = CH.yMid - CH.yTop;
-    const peaks = minuteSeries(minuteHist && minuteHist.ppv_mm_s, ppvMmS);
-    const col = s.ground_pga_mg >= 1.5 ? "#f59e0b" : "#22c55e";
-    seisSvg.innerHTML = frame.html + peaks.map((v, i) => {
-      const h = Math.max(1.0, Math.min(1.0, v / maxAxisV) * halfH);
-      const x = xStart + i * w;
-      return `<rect x="${x.toFixed(1)}" y="${(CH.yMid - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${(2 * h).toFixed(1)}" rx="0.8" fill="${col}" fill-opacity="${i === MINUTE_BINS - 1 ? 1.0 : 0.75}"/>`;
-    }).join("");
-  }
+  // 60-minute peak-velocity envelope: one mirrored ±PPV bar per minute.
+  const frame = chartFrame([`+${maxAxisV.toFixed(1)}`, "0", `-${maxAxisV.toFixed(1)}`], ["-60m", "-30m", "Now"], true);
+  const { xStart, w, bw } = minuteBarGeom(frame);
+  const halfH = CH.yMid - CH.yTop;
+  const peaks = minuteSeries(minuteHist && minuteHist.ppv_mm_s, isNum(ppv) ? ppv : undefined);
+  const col = z.source !== "Ambient" && z.source !== "—" ? "#f59e0b" : "#22c55e";
+  svg.innerHTML = frame.html + peaks.map((v, i) => {
+    const h = Math.max(1.0, Math.min(1.0, v / maxAxisV) * halfH);
+    const x = xStart + i * w;
+    return `<rect x="${x.toFixed(1)}" y="${(CH.yMid - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${(2 * h).toFixed(1)}" rx="0.8" fill="${col}" fill-opacity="${i === MINUTE_BINS - 1 ? 1.0 : 0.75}"/>`;
+  }).join("");
 }
 
 function niceCeiling(val, minFloor) {
@@ -386,9 +371,8 @@ function renderSparkRain() {
 }
 
 function renderLightningTimeline(d) {
-  const svg = document.getElementById("lt-timeline-svg");
+  const svg = el("lt-timeline-svg");
   if (!svg) return;
-
   const bins = minuteSeries(minuteHist && minuteHist.strikes);
   const peakStrikes = Math.max(...bins);
   const maxB = Math.max(2, Math.ceil(peakStrikes * 1.15));
@@ -397,46 +381,42 @@ function renderLightningTimeline(d) {
   const { xStart, w, bw } = minuteBarGeom(frame);
   const yTop = CH.yTop;
   const yBot = CH.yBot;
-  document.getElementById("lt-peak-lbl").textContent = `Peak ${peakStrikes}`;
-
-  let html = frame.html;
-
-  html += bins.map((cnt, i) => {
+  setText("lt-peak-lbl", `Peak ${peakStrikes}`);
+  svg.innerHTML = frame.html + bins.map((cnt, i) => {
     const h = cnt > 0 ? Math.max(5.0, (cnt / maxB) * (yBot - yTop)) : 3.0;
     const x = xStart + i * w;
     const col = cnt >= 3 ? "#f59e0b" : (cnt > 0 ? "#38bdf8" : "rgba(142,162,198,0.38)");
     return `<rect x="${x.toFixed(1)}" y="${(yBot - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="0.8" fill="${col}"/>`;
   }).join("");
-  svg.innerHTML = html;
 
-  const strikes = d.lightning ? d.lightning.strikes : 0;
-  document.getElementById("lt-lock-badge").textContent = `${strikes} ${strikes === 1 ? "Strike" : "Strikes"}`;
-  document.getElementById("lt-lock-badge").className = strikes > 0 ? "badge warn" : "badge ok";
-  if (strikes > 0) {
-    if (d.environment && d.environment.thunder_locked && d.environment.thunder_dist_km > 0) {
-      const tDelay = d.environment.thunder_delay_s || 16.9;
-      const distKm = d.environment.thunder_dist_km;
-      document.getElementById("lt-dist-big").textContent = distKm.toFixed(2);
-      document.getElementById("lt-dist-unit").textContent = "km";
-      document.getElementById("lt-thunder-sub").textContent = `Δt ${tDelay.toFixed(1)} s`;
-    } else {
-      document.getElementById("lt-dist-big").textContent = `~${d.lightning.distance_km}`;
-      document.getElementById("lt-dist-unit").textContent = "km";
-      document.getElementById("lt-thunder-sub").textContent = "Δt — s";
-    }
+  const l = d.lightning;
+  const u = UNIT_SYSTEMS[unitIdx];
+  setText("lt-lock-badge", `${l.strikes_1h} ${l.strikes_1h === 1 ? "Strike" : "Strikes"} / h`);
+  el("lt-lock-badge").className = l.strikes_1h > 0 ? "badge warn" : "badge ok";
+  if (isNum(l.distance_km)) {
+    const dist = conv.d(l.distance_km);
+    setText("lt-dist-big", l.method === "acoustic" ? dist.toFixed(2) : `~${dist.toFixed(0)}`);
+    setText("lt-dist-unit", u.dUnit);
+    const age = isNum(l.last_strike_age_s) ? (l.last_strike_age_s < 120 ? `${l.last_strike_age_s.toFixed(0)} s ago` : `${(l.last_strike_age_s / 60).toFixed(0)} min ago`) : "";
+    setText("lt-thunder-sub", isNum(l.thunder_delay_s) ? `Δt ${l.thunder_delay_s.toFixed(1)} s · ${age}` : `RF estimate · ${age}`);
   } else {
-    document.getElementById("lt-dist-big").textContent = ">40";
-    document.getElementById("lt-dist-unit").textContent = "km";
-    document.getElementById("lt-thunder-sub").textContent = "Δt — s";
+    setText("lt-dist-big", ">40");
+    setText("lt-dist-unit", u.dUnit === "km" ? "km" : u.dUnit);
+    setText("lt-thunder-sub", "Δt — s");
   }
 }
 
+// Trends tab: tier history from /api/history (null slots break the line).
 function renderLineChart(svgId, seriesList, yUnit) {
-  const svg = document.getElementById(svgId);
-  if (!svg || historyPoints.length < 2) return;
-  let allVals = [];
-  seriesList.forEach(s => { allVals = allVals.concat(s.values); });
-  const minV = Math.min(...allVals), maxV = Math.max(...allVals);
+  const svg = el(svgId);
+  if (!svg) return;
+  const all = [];
+  seriesList.forEach(s => s.values.forEach(v => { if (isNum(v)) all.push(v); }));
+  if (all.length < 2) {
+    svg.innerHTML = `<text x="280" y="92" fill="#8ea2c6" font-size="11" text-anchor="middle">No history yet</text>`;
+    return;
+  }
+  const minV = Math.min(...all), maxV = Math.max(...all);
   const span = Math.max(1.0, maxV - minV);
   let html = "";
   for (let g = 0; g <= 3; g++) {
@@ -446,383 +426,386 @@ function renderLineChart(svgId, seriesList, yUnit) {
     html += `<text x="38" y="${y + 4}" fill="#8ea2c6" font-size="9.5" text-anchor="end">${val.toFixed(1)}${yUnit}</text>`;
   }
   seriesList.forEach(s => {
-    const pts = s.values.map((v, i) => {
-      const x = 44 + (i / (s.values.length - 1)) * 502;
+    const n = s.values.length;
+    let seg = [];
+    const flush = () => {
+      if (seg.length > 1) {
+        html += `<polyline fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" ${s.dash ? `stroke-dasharray="${s.dash}"` : ""} points="${seg.join(" ")}"/>`;
+      }
+      seg = [];
+    };
+    s.values.forEach((v, i) => {
+      if (!isNum(v)) { flush(); return; }
+      const x = 44 + (i / Math.max(1, n - 1)) * 502;
       const y = 154 - ((v - minV) / span) * 136;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
-    if (s.fill) html += `<polygon fill="${s.fill}" points="44,154 ${pts} 546,154"/>`;
-    html += `<polyline fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" ${s.dash ? `stroke-dasharray="${s.dash}"` : ""} points="${pts}"/>`;
+      seg.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    });
+    flush();
   });
+  const lbl = { minute: ["-60 min", "-30 min", "Now"], hour: ["-24 h", "-12 h", "Now"], day: ["-31 d", "-15 d", "Today"] }[trendTier];
+  html += `<text x="44" y="172" fill="#8ea2c6" font-size="9.5">${lbl[0]}</text><text x="296" y="172" fill="#8ea2c6" font-size="9.5" text-anchor="middle">${lbl[1]}</text><text x="546" y="172" fill="#8ea2c6" font-size="9.5" text-anchor="end">${lbl[2]}</text>`;
   svg.innerHTML = html;
 }
 
-function renderAllCharts() {
-  if (historyPoints.length < 2) return;
+function renderTrends() {
+  if (!trendData || !trendData.series) return;
   const u = UNIT_SYSTEMS[unitIdx];
-  const pts = trendRange === "1h" ? historyPoints.slice(-16) : historyPoints;
+  const S = trendData.series;
+  const arr = (key, f = "v") => (S[key] && S[key][f]) ? S[key][f] : [];
+  const lbl = { minute: "Last Hour", hour: "Last 24 h", day: "Last 31 Days" }[trendTier];
+  setText("chart-temp-title", `Temperature & Dew Point (${lbl})`);
+  setText("chart-wind-title", `Wind Mean & Gust (${lbl})`);
+  setText("chart-baro-title", `Sea-Level Pressure (${lbl})`);
   renderLineChart("chart-temp", [
-    { values: pts.map(p => u.tFn(p.temp)), color: "#38bdf8", fill: "rgba(56,189,248,0.12)", width: 2.3 },
-    { values: pts.map(p => u.tFn(p.dew)),  color: "#22c55e", dash: "5 3", width: 1.8 },
-    { values: pts.map(p => u.tFn(p.feels)),color: "#f59e0b", dash: "2 3", width: 1.6 }
+    { values: arr("temp_c").map(conv.t), color: "#38bdf8", width: 2.3 },
+    { values: arr("dew_point_c").map(conv.t), color: "#22c55e", dash: "5 3", width: 1.8 },
   ], u.tUnit);
   renderLineChart("chart-wind", [
-    { values: pts.map(p => p.gust * u.wMul), color: "#f59e0b", width: 2.0 },
-    { values: pts.map(p => p.wind * u.wMul), color: "#38bdf8", fill: "rgba(56,189,248,0.14)", width: 2.3 }
+    { values: arr("wind_m_s", "max").map(conv.w), color: "#f59e0b", width: 2.0 },
+    { values: arr("wind_m_s").map(conv.w), color: "#38bdf8", width: 2.3 },
   ], "");
-  renderLineChart("chart-baro-rain", [
-    { values: pts.map(p => p.qnh * u.pMul), color: "#a855f7", fill: "rgba(168,85,247,0.12)", width: 2.3 }
-  ], "");
-}
-
-function clampPct(v, lo, hi) {
-  return Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100));
+  renderLineChart("chart-baro-rain", [{ values: arr("qnh_hpa").map(conv.p), color: "#a855f7", width: 2.3 }], "");
 }
 
 function applyTelemetry(d) {
   if (!d || !d.wind) return;
   lastState = d;
   const u = UNIT_SYSTEMS[unitIdx];
-  const pDec = u.pUnit === "inHg" ? 2 : 1;
+  const e = d.environment, w = d.wind, r = d.rain, s = d.solar, a = d.astronomy, q = d.air_quality;
+  const pDec = u.pUnit === "inHg" ? 2 : 0;
   const rDec = u.rUnit === "in" ? 2 : 1;
-  const cardDir = degToCardinal(d.wind.dir_deg);
+  const wDec = 1;
 
-  // Sky Hero
-  renderSkyHeroVisual(d);
-  document.getElementById("hero-temp").textContent = `${u.tFn(d.environment.temp_c).toFixed(1)}°`;
-  document.getElementById("hero-cond").textContent =
-    `${d.environment.forecast || "Fine Weather"} · Feels like ${u.tFn(d.environment.feels_like_c).toFixed(1)}°`;
-  document.getElementById("hc-wind").textContent =
-    `${(d.wind.speed_m_s * u.wMul).toFixed(1)} ${u.wUnit} ${cardDir}`;
-  const d3h = d.environment.pressure_3h_delta_hpa || 0;
-  const arrowP = d3h < -1 ? "↓" : (d3h > 1 ? "↑" : "→");
-  document.getElementById("hc-baro").textContent =
-    `${(d.environment.qnh_hpa * u.pMul).toFixed(pDec)} ${u.pUnit} ${arrowP}`;
-  document.getElementById("hc-rain").textContent =
-    `${d.rain.state} · ${(d.rain.daily_mm * u.rMul).toFixed(rDec)} ${u.rUnit}`;
-  document.getElementById("hc-aqi").textContent = `Air: ${d.air_quality.level} (${d.air_quality.aqi})`;
-  document.getElementById("hc-aqi-dot").style.background =
-    d.air_quality.aqi <= 50 ? "#22c55e" : (d.air_quality.aqi <= 100 ? "#f59e0b" : "#ef4444");
-
-  // 1. Wind Compass & Labeled Speed Bar (No Bft jargon)
-  const bft = Math.min(12, Math.max(0, Math.round(d.wind.beaufort || 0)));
-  document.getElementById("wind-beaufort").textContent = BEAUFORT_NAMES[bft];
-  document.getElementById("wind-speed").textContent = (d.wind.speed_m_s * u.wMul).toFixed(1);
-  document.getElementById("wind-unit-dir").textContent = `${u.wUnit} · ${cardDir}`;
-  document.getElementById("wind-arrow").setAttribute("transform", `rotate(${d.wind.dir_deg} 115 115)`);
-  document.getElementById("wind-lull").textContent = (d.wind.lull_m_s * u.wMul).toFixed(1);
-  document.getElementById("wind-gust").textContent = `${(d.wind.gust_m_s * u.wMul).toFixed(1)} ${u.wUnit}`;
-  const wDelta1h = (d.wind.speed_m_s - d.wind.avg_10m_m_s) * u.wMul;
-  const wArrow = wDelta1h > 0.2 ? "↗ +" : (wDelta1h < -0.2 ? "↘ " : "→ +");
-  document.getElementById("wind-trend-lbl").textContent = `${wArrow}${wDelta1h.toFixed(1)} ${u.wUnit}/h`;
-  const maxScaleW = Math.max(12, d.wind.gust_m_s * 1.28);
-  const lullP = clampPct(d.wind.lull_m_s, 0, maxScaleW);
-  const avgP = clampPct(d.wind.speed_m_s, 0, maxScaleW);
-  const gustP = clampPct(d.wind.gust_m_s, 0, maxScaleW);
-  document.getElementById("wind-range-span").style.left = `${lullP.toFixed(0)}%`;
-  document.getElementById("wind-range-span").style.width = `${Math.max(6, gustP - lullP).toFixed(0)}%`;
-  document.getElementById("wind-avg-dot").style.left = `${avgP.toFixed(0)}%`;
-
-  // Dynamic Surface Wind Load (Last 1h Min — 1h Trend — 1h Max): q = 0.0625 * v^2 (kg/m²)
-  const wlMul = unitIdx === 1 ? 0.2048 : 1.0;
-  const wlUnit = unitIdx === 1 ? "lb/ft²" : "kg/m²";
-  const wlDec = unitIdx === 1 ? 2 : 1;
-  const recent1h = historyPoints.slice(-30);
-  const minV1h = recent1h.length > 1 ? Math.min(d.wind.lull_m_s, ...recent1h.map(p => p.wind * 0.65)) : d.wind.lull_m_s;
-  const maxG1h = recent1h.length > 1 ? Math.max(d.wind.gust_m_s, ...recent1h.map(p => p.gust)) : d.wind.gust_m_s;
-  const wlMin = 0.0625 * minV1h * minV1h * wlMul;
-  const wlNow = 0.0625 * d.wind.speed_m_s * d.wind.speed_m_s * wlMul;
-  const wlAvg10 = 0.0625 * d.wind.avg_10m_m_s * d.wind.avg_10m_m_s * wlMul;
-  const wlMax = 0.0625 * maxG1h * maxG1h * wlMul;
-  const wlCeil = Math.max(4.0 * wlMul, wlMax * 1.25);
-  document.getElementById("wload-min").textContent = wlMin.toFixed(wlDec);
-  document.getElementById("wload-trend-lbl").textContent = wlNow.toFixed(wlDec);
-  document.getElementById("wload-max").textContent = `${wlMax.toFixed(wlDec)} ${wlUnit}`;
-  const wlMinP = clampPct(wlMin, 0, wlCeil);
-  const wlMaxP = clampPct(wlMax, 0, wlCeil);
-  document.getElementById("wload-span").style.left = `${wlMinP.toFixed(0)}%`;
-  document.getElementById("wload-span").style.width = `${Math.max(6, wlMaxP - wlMinP).toFixed(0)}%`;
-  document.getElementById("wload-now-dot").style.left = `${clampPct(wlNow, 0, wlCeil).toFixed(0)}%`;
-  if (d.wind.rose) renderRosePetals(d.wind.rose);
-
-  // 2. Thermal & Humidity (Single 24h Range Bar + 3-Column Dew / Wet-Bulb / Abs Humidity Row)
-  const curT = u.tFn(d.environment.temp_c);
-  const feelsT = u.tFn(d.environment.feels_like_c);
-  const dewT = u.tFn(d.environment.dew_point_c);
-  const wetT = u.tFn(d.environment.wet_bulb_c !== undefined ? d.environment.wet_bulb_c : (d.environment.temp_c * 0.65 + d.environment.dew_point_c * 0.35));
-
-  document.getElementById("env-temp").textContent = `${curT.toFixed(1)}°`;
-  document.getElementById("env-feels").textContent = `Feels like ${feelsT.toFixed(1)}° outside`;
-  document.getElementById("env-rh").textContent = `${Math.round(d.environment.humidity_rh)}%`;
-  const rhCirc = (d.environment.humidity_rh / 100) * 220;
-  document.getElementById("rh-arc").setAttribute("stroke-dasharray", `${rhCirc.toFixed(0)} 220`);
-
-  const tHistC = historyPoints.length > 1 ? historyPoints.map(p => p.temp) : [d.environment.temp_c - 2.4, d.environment.temp_c + 1.2];
-  const minTC = Math.min(...tHistC, d.environment.temp_c - 1.8);
-  const maxTC = Math.max(...tHistC, d.environment.temp_c + 1.2);
-  const prev1hTC = tHistC.length > 6 ? tHistC[tHistC.length - 6] : d.environment.temp_c - 0.6;
-  const tRate1h = u.tFn(d.environment.temp_c) - u.tFn(prev1hTC);
-  const tTrendStr = tRate1h > 0.15 ? `↗ +${tRate1h.toFixed(1)}°/h · Warming` : (tRate1h < -0.15 ? `↘ ${tRate1h.toFixed(1)}°/h · Cooling` : `→ ${tRate1h >= 0 ? "+" : ""}${tRate1h.toFixed(1)}°/h · Steady`);
-  document.getElementById("temp-min-lbl").textContent = `${u.tFn(minTC).toFixed(1)}°`;
-  document.getElementById("temp-trend-lbl").textContent = tTrendStr;
-  document.getElementById("temp-max-lbl").textContent = `${u.tFn(maxTC).toFixed(1)}°`;
-  const winLo = minTC - 3.5;
-  const winHi = maxTC + 3.5;
-  const pMinT = clampPct(minTC, winLo, winHi);
-  const pMaxT = clampPct(maxTC, winLo, winHi);
-  const pNowT = clampPct(d.environment.temp_c, winLo, winHi);
-  document.getElementById("t24-bridge").style.left = `${pMinT.toFixed(1)}%`;
-  document.getElementById("t24-bridge").style.width = `${Math.max(8, pMaxT - pMinT).toFixed(1)}%`;
-  document.getElementById("pin-temp").style.left = `${pNowT.toFixed(1)}%`;
-
-  // 3-Column Single Row: Dew Point, Wet-Bulb, Absolute Humidity
-  document.getElementById("env-dew").textContent = `${dewT.toFixed(1)}°`;
-  const dewSpread = Math.max(0, d.environment.temp_c - d.environment.dew_point_c);
-  const dewSpreadDisp = Math.abs(curT - dewT);
-  document.getElementById("fog-risk-lbl").textContent =
-    dewSpread <= 2.0 ? `Fog risk (${dewSpreadDisp.toFixed(1)}°)` : `${dewSpreadDisp.toFixed(1)}° gap`;
-
-  document.getElementById("env-wetbulb").textContent = `${wetT.toFixed(1)}°`;
-  const wbC = d.environment.wet_bulb_c !== undefined ? d.environment.wet_bulb_c : 14.0;
-  document.getElementById("wetbulb-sub").textContent =
-    wbC <= 0.5 ? "Snow (< 0.5°)" : (wbC >= 24.0 ? "Heat limit" : "Rain phase");
-
-  const esHpa = 6.112 * Math.exp((17.67 * d.environment.temp_c) / (d.environment.temp_c + 243.5));
-  const eHpa = esHpa * (d.environment.humidity_rh / 100.0);
-  const absHum = (216.7 * eHpa) / (d.environment.temp_c + 273.15);
-  document.getElementById("abs-hum-lbl").textContent = `${absHum.toFixed(1)} g/m³`;
-  const muggyTxt = absHum >= 16.5 ? "Humid air" : (absHum >= 9.0 ? "Pleasant" : "Crisp air");
-  document.getElementById("abs-hum-sub").textContent = muggyTxt;
-
-  const tC = d.environment.temp_c;
-  document.getElementById("comfort-badge").textContent =
-    d.environment.frost_risk ? "Frost Warning" : (tC > 30 ? "Heat Stress" : (absHum > 16.5 ? "Humid" : "Comfortable"));
-  document.getElementById("comfort-badge").className =
-    d.environment.frost_risk || tC > 30 ? "badge warn" : "badge ok";
-
-  // 3. Barometer & Enriched Sager Forecast Box (No Extra Boxes Below Gauge)
-  const pIntDec = u.pUnit === "inHg" ? 2 : 0;
-  const qnhAngle = Math.max(-88, Math.min(88, ((d.environment.qnh_hpa - 1010) / 30) * 90));
-  const qnh3hAgo = d.environment.qnh_hpa - d3h;
-  const ghostAngle = Math.max(-88, Math.min(88, ((qnh3hAgo - 1010) / 30) * 90));
-  document.getElementById("baro-needle").setAttribute("transform", `rotate(${qnhAngle.toFixed(1)} 120 110)`);
-  document.getElementById("baro-ghost-needle").setAttribute("transform", `rotate(${ghostAngle.toFixed(1)} 120 110)`);
-  document.getElementById("env-qnh").textContent = (d.environment.qnh_hpa * u.pMul).toFixed(pIntDec);
-  document.getElementById("env-qnh-unit").textContent = u.pUnit;
-
-  const fcast = d.environment.forecast || "Fine Weather";
-  document.getElementById("env-zambretti").textContent = fcast;
-  const rainProb = d.environment.rain_prob_pct !== undefined ? d.environment.rain_prob_pct : 12;
-  document.getElementById("baro-rain-prob").textContent = `Rain Chance ${rainProb}%`;
-  document.getElementById("baro-rain-prob-fill").style.width = `${rainProb}%`;
-  const frontType = d.environment.front_type || "Steady Air Mass";
-  const windShift = d.environment.wind_shift || "Steady Bearing";
-  document.getElementById("baro-front-lbl").textContent = `${frontType} · ${windShift}`;
-
-  const synD3h = d.environment.synoptic_3h_delta_hpa !== undefined ? d.environment.synoptic_3h_delta_hpa : d3h;
-  const windOut = synD3h <= -2.5 ? `Gales / Squalls (${cardDir})` : (synD3h <= -0.8 ? `Freshening (${cardDir})` : (synD3h >= 1.2 ? "Brisk, Then Easing" : `Light / Steady (${cardDir})`));
-  const tempOut = synD3h <= -2.0 ? "Cooling w/ Rain" : (synD3h >= 1.2 ? "Cooler & Clearing" : "Steady & Fair");
-  document.getElementById("baro-outlook-lbl").textContent = `12h Outlook: ${windOut} · ${tempOut}`;
-  const rate1h = (synD3h / 3.0) * u.pMul;
-  const sign1h = rate1h >= 0 ? "+" : "";
-  const rateDec = u.pUnit === "inHg" ? 3 : 1;
-  document.getElementById("baro-trend-badge").textContent =
-    `Change: ${sign1h}${rate1h.toFixed(rateDec)} ${u.pUnit}/h`;
-
-  // 4. Precipitation (This Shower in top right + Meaningful state next to mm/h + Hailstone Ø mm)
-  const showerDepth = (d.rain.event_mm || 0.0) * u.rMul;
-  document.getElementById("rain-state").textContent = `This Shower: ${showerDepth.toFixed(rDec)} ${u.rUnit}`;
-  document.getElementById("rain-state").className = d.rain.raining ? "badge info" : "badge ok";
-  document.getElementById("rain-rate").textContent = (d.rain.rate_mm_h * u.rMul).toFixed(rDec);
-  document.getElementById("rain-rate-unit").textContent = `${u.rUnit}/h · ${d.rain.state}`;
-  document.getElementById("rain-daily").textContent = `${(d.rain.daily_mm * u.rMul).toFixed(rDec)} ${u.rUnit}`;
-  document.getElementById("rain-water").style.height = `${Math.max(6, clampPct(d.rain.daily_mm, 0, 35)).toFixed(0)}%`;
-  const hailDiam = d.rain.hail_hits > 0 ? (d.rain.hail_diam_mm || 9.4) : 0.0;
-
-  // Update Trends tab KPIs (Last Hour, Today, This Month)
-  const r1hEl = document.getElementById("trend-rain-1h");
-  if (r1hEl) {
-    r1hEl.textContent = `${((d.rain.hourly_mm || 0) * u.rMul).toFixed(rDec)} ${u.rUnit}`;
-    document.getElementById("trend-rain-day").textContent = `${(d.rain.daily_mm * u.rMul).toFixed(rDec)} ${u.rUnit}`;
-    document.getElementById("trend-rain-month").textContent = `${((d.rain.total_mm || 145.2) * u.rMul).toFixed(rDec)} ${u.rUnit}`;
+  // Browser clock fallback when the station has no internet time (SNTP) yet.
+  if (d.clock_valid === false && !clockPushed) {
+    clockPushed = true;
+    postJson("/api/action", { action: "set_time", unix: Math.floor(Date.now() / 1000) }).catch(() => {});
   }
-  document.getElementById("rain-hail").textContent =
-    d.rain.hail_hits > 0 ? `${d.rain.hail_hits} hits · Max Ø ${hailDiam.toFixed(1)} mm` : "0 hits · Max Ø 0.0 mm";
-  document.querySelectorAll("#hail-scale .hs-item").forEach((el) => {
-    const mm = parseFloat(el.dataset.mm);
-    const active = hailDiam > 0 && Math.abs(hailDiam - mm) <= 3.5;
-    el.className = active ? "hs-item active" : "hs-item";
+  el("loc-banner").style.display = d.location_set ? "none" : "flex";
+  setText("hdr-fw", `fw ${d.fw}`);
+
+  // ---- Hero ----
+  renderSkyHeroVisual(d);
+  setText("hero-temp", isNum(e.temp_c) ? `${conv.t(e.temp_c).toFixed(1)}°` : "—");
+  setText("hero-cond", `${e.forecast} · Feels like ${fv(conv.t(e.feels_like_c), 1, "°")}`);
+  setText("hc-wind", isNum(w.avg_2m_m_s) ? `${conv.w(w.avg_2m_m_s).toFixed(wDec)} ${u.wUnit} ${degToCardinal(w.dir_10m_deg)}` : "—");
+  const d3h = e.pressure_3h_delta_hpa;
+  const arrowP = !isNum(d3h) ? "" : (d3h < -1 ? "↓" : (d3h > 1 ? "↑" : "→"));
+  setText("hc-baro", isNum(e.qnh_hpa) ? `${conv.p(e.qnh_hpa).toFixed(pDec)} ${u.pUnit} ${arrowP}` : "—");
+  setText("hc-rain", `${r.state} · ${conv.r(r.today_mm).toFixed(rDec)} ${u.rUnit}`);
+  setText("hc-aqi", `Air: ${q.level} (${fv(q.aqi, 0)})`);
+  el("hc-aqi-dot").style.background = !isNum(q.aqi) ? "#64748b" : (q.aqi <= 50 ? "#22c55e" : (q.aqi <= 100 ? "#f59e0b" : "#ef4444"));
+
+  // ---- 1. Wind ----
+  const bft = isNum(w.beaufort) ? Math.min(12, Math.max(0, Math.round(w.beaufort))) : null;
+  setText("wind-beaufort", bft === null ? "—" : BEAUFORT_NAMES[bft]);
+  setText("wind-speed", fv(conv.w(w.speed_m_s), 1));
+  setText("wind-unit-dir", `${u.wUnit} · ${isNum(w.dir_deg) ? degToCardinal(w.dir_deg) : "Calm"}`);
+  const arrowDir = isNum(w.dir_deg) ? w.dir_deg : (isNum(w.dir_10m_deg) ? w.dir_10m_deg : 0);
+  el("wind-arrow").setAttribute("transform", `rotate(${arrowDir} 115 115)`);
+  setText("wind-lull", fv(conv.w(w.lull_m_s), 1));
+  setText("wind-gust", isNum(w.gust_m_s) ? `${conv.w(w.gust_m_s).toFixed(1)} ${u.wUnit}` : "—");
+  const tr = conv.w(w.trend_m_s_per_h);
+  setText("wind-trend-lbl", isNum(tr) ? `${tr > 0.2 ? "↗ +" : (tr < -0.2 ? "↘ " : "→ ")}${tr.toFixed(1)} ${u.wUnit}/h` : "—");
+  const scaleW = Math.max(12, (w.gust_m_s || 0) * 1.28);
+  const lullP = clampPct(w.lull_m_s, 0, scaleW);
+  const gustP = clampPct(w.gust_m_s, 0, scaleW);
+  el("wind-range-span").style.left = `${lullP.toFixed(0)}%`;
+  el("wind-range-span").style.width = `${Math.max(6, gustP - lullP).toFixed(0)}%`;
+  el("wind-avg-dot").style.left = `${clampPct(w.speed_m_s, 0, scaleW).toFixed(0)}%`;
+  const ldDec = unitIdx === 1 ? 2 : 1;
+  setText("wload-min", fv(conv.l(w.load_min_1h_kg_m2), ldDec));
+  setText("wload-trend-lbl", fv(conv.l(w.load_kg_m2), ldDec));
+  setText("wload-max", isNum(w.load_max_1h_kg_m2) ? `${conv.l(w.load_max_1h_kg_m2).toFixed(ldDec)} ${u.lUnit}` : "—");
+  const ldCeil = Math.max(4.0, (w.load_max_1h_kg_m2 || 0) * 1.25);
+  const ldMinP = clampPct(w.load_min_1h_kg_m2, 0, ldCeil);
+  const ldMaxP = clampPct(w.load_max_1h_kg_m2, 0, ldCeil);
+  el("wload-span").style.left = `${ldMinP.toFixed(0)}%`;
+  el("wload-span").style.width = `${Math.max(6, ldMaxP - ldMinP).toFixed(0)}%`;
+  el("wload-now-dot").style.left = `${clampPct(w.load_kg_m2, 0, ldCeil).toFixed(0)}%`;
+  if (Array.isArray(w.rose)) renderRosePetals(w.rose);
+
+  // ---- 2. Temperature & humidity ----
+  setText("env-temp", isNum(e.temp_c) ? `${conv.t(e.temp_c).toFixed(1)}°` : "—");
+  setText("env-feels", `Feels like ${fv(conv.t(e.feels_like_c), 1, "°")} outside`);
+  setText("env-rh", fv(e.humidity_rh, 0, "%"));
+  el("rh-arc").setAttribute("stroke-dasharray", `${((e.humidity_rh || 0) / 100 * 220).toFixed(0)} 220`);
+  setText("temp-min-lbl", fv(conv.t(e.temp_min_24h_c), 1, "°"));
+  setText("temp-max-lbl", fv(conv.t(e.temp_max_24h_c), 1, "°"));
+  const tt = isNum(e.temp_trend_c_per_h) ? e.temp_trend_c_per_h * (unitIdx === 1 ? 1.8 : 1.0) : null;
+  setText("temp-trend-lbl", !isNum(tt) ? "—" : (tt > 0.15 ? `↗ +${tt.toFixed(1)}°/h · Warming` : (tt < -0.15 ? `↘ ${tt.toFixed(1)}°/h · Cooling` : `→ ${tt.toFixed(1)}°/h · Steady`)));
+  if (isNum(e.temp_min_24h_c) && isNum(e.temp_max_24h_c) && isNum(e.temp_c)) {
+    const lo = e.temp_min_24h_c - 3.5, hi = e.temp_max_24h_c + 3.5;
+    const pMin = clampPct(e.temp_min_24h_c, lo, hi), pMax = clampPct(e.temp_max_24h_c, lo, hi);
+    el("t24-bridge").style.left = `${pMin.toFixed(1)}%`;
+    el("t24-bridge").style.width = `${Math.max(8, pMax - pMin).toFixed(1)}%`;
+    el("pin-temp").style.left = `${clampPct(e.temp_c, lo, hi).toFixed(1)}%`;
+  }
+  setText("env-dew", fv(conv.t(e.dew_point_c), 1, "°"));
+  const spread = isNum(e.temp_c) && isNum(e.dew_point_c) ? e.temp_c - e.dew_point_c : null;
+  const spreadDisp = isNum(spread) ? spread * (unitIdx === 1 ? 1.8 : 1.0) : null;
+  setText("fog-risk-lbl", !isNum(spread) ? "—" : (spread <= 2.0 ? `Fog risk (${spreadDisp.toFixed(1)}°)` : `${spreadDisp.toFixed(1)}° gap`));
+  setText("env-wetbulb", fv(conv.t(e.wet_bulb_c), 1, "°"));
+  setText("wetbulb-sub", !isNum(e.wet_bulb_c) ? "—" : (e.wet_bulb_c <= 0.5 ? "Snow (< 0.5°)" : (e.wet_bulb_c >= 24.0 ? "Heat limit" : "Rain phase")));
+  setText("abs-hum-lbl", fv(e.abs_humidity_g_m3, 1, " g/m³"));
+  setText("abs-hum-sub", !isNum(e.abs_humidity_g_m3) ? "—" : (e.abs_humidity_g_m3 >= 16.5 ? "Humid air" : (e.abs_humidity_g_m3 >= 9.0 ? "Pleasant" : "Crisp air")));
+  setText("comfort-badge", e.comfort);
+  el("comfort-badge").className = ["Heat Stress", "Cold Stress", "Frost Risk", "Freezing"].includes(e.comfort) ? "badge warn" : "badge ok";
+
+  // ---- 3. Barometer ----
+  const needle = (hpa) => Math.max(-88, Math.min(88, ((hpa - 1010) / 30) * 90));
+  if (isNum(e.qnh_hpa)) {
+    el("baro-needle").setAttribute("transform", `rotate(${needle(e.qnh_hpa).toFixed(1)} 120 110)`);
+    el("baro-ghost-needle").setAttribute("transform", `rotate(${needle(e.qnh_hpa - (isNum(d3h) ? d3h : 0)).toFixed(1)} 120 110)`);
+    el("baro-ghost-needle").style.display = isNum(d3h) ? "" : "none";
+  }
+  setText("env-qnh", fv(conv.p(e.qnh_hpa), pDec));
+  setText("env-qnh-unit", u.pUnit);
+  setText("env-zambretti", e.forecast);
+  setText("baro-rain-prob", `Rain Chance ${fv(e.rain_prob_pct, 0, "%")}`);
+  el("baro-rain-prob-fill").style.width = `${isNum(e.rain_prob_pct) ? e.rain_prob_pct : 0}%`;
+  setText("baro-front-lbl", `${e.front_type} · Wind ${e.wind_shift}`);
+  setText("baro-minmax", isNum(e.qnh_min_24h_hpa) ? `24h: ${conv.p(e.qnh_min_24h_hpa).toFixed(pDec)}–${conv.p(e.qnh_max_24h_hpa).toFixed(pDec)} ${u.pUnit}` : "24h: —");
+  setText("baro-outlook-lbl", isNum(e.synoptic_3h_delta_hpa)
+    ? `3h: ${e.synoptic_3h_delta_hpa >= 0 ? "+" : ""}${conv.p(e.synoptic_3h_delta_hpa).toFixed(u.pUnit === "inHg" ? 3 : 1)} ${u.pUnit} weather` + (isNum(e.solar_tide_hpa) ? ` (tide ${e.solar_tide_hpa >= 0 ? "+" : ""}${conv.p(e.solar_tide_hpa).toFixed(u.pUnit === "inHg" ? 3 : 1)} removed)` : "")
+    : "3h tendency available after 3 h of data");
+  const rate1h = isNum(e.synoptic_3h_delta_hpa) ? conv.p(e.synoptic_3h_delta_hpa / 3.0) : null;
+  setText("baro-trend-badge", isNum(rate1h) ? `Change: ${rate1h >= 0 ? "+" : ""}${rate1h.toFixed(u.pUnit === "inHg" ? 3 : 1)} ${u.pUnit}/h` : "Change: —");
+
+  // ---- 4. Precipitation ----
+  setText("rain-state", `This Shower: ${conv.r(r.event_mm).toFixed(rDec)} ${u.rUnit}`);
+  el("rain-state").className = r.raining ? "badge info" : "badge ok";
+  setText("rain-rate", r.sensor_ok ? conv.r(r.rate_mm_h).toFixed(rDec) : "—");
+  setText("rain-rate-unit", `${u.rUnit}/h · ${r.state}`);
+  setText("rain-daily", `${conv.r(r.today_mm).toFixed(rDec)} ${u.rUnit}`);
+  el("rain-water").style.height = `${Math.max(6, clampPct(r.today_mm, 0, 35)).toFixed(0)}%`;
+  setText("trend-rain-1h", `${conv.r(r.last_hour_mm).toFixed(rDec)} ${u.rUnit}`);
+  setText("trend-rain-day", `${conv.r(r.today_mm).toFixed(rDec)} ${u.rUnit}`);
+  setText("trend-rain-month", isNum(rain31d) ? `${conv.r(rain31d).toFixed(rDec)} ${u.rUnit}` : "—");
+  const hail = r.hail_hits > 0 ? r.hail_diam_mm : 0;
+  setText("rain-hail", r.hail_hits > 0 ? `${r.hail_hits} hits · Max Ø ${hail.toFixed(1)} mm` : "0 hits · Max Ø 0.0 mm");
+  document.querySelectorAll("#hail-scale .hs-item").forEach((item) => {
+    const mm = parseFloat(item.dataset.mm);
+    item.className = hail > 0 && Math.abs(hail - mm) <= 3.5 ? "hs-item active" : "hs-item";
   });
 
-  // 5. Solar & UV Index (Card 5) + 6. Sky, Clouds & Moon (Card 6)
-  const isNight = Boolean(d.environment.is_night);
-  const uvi = d.environment.uv_index;
-  const cloudPct = d.environment.cloud_cover_pct !== undefined ? d.environment.cloud_cover_pct : 20;
-  document.getElementById("cloud-cover-lbl").textContent = `${Math.round(cloudPct)}%`;
-  const moonIllum = (d.astronomy && d.astronomy.moon_illum_pct !== undefined) ? d.astronomy.moon_illum_pct : 74;
-  const moonPhase = (d.astronomy && d.astronomy.moon_phase) ? d.astronomy.moon_phase : "Waxing Gibbous";
-  document.getElementById("sky-moon-sub").textContent = `Moon ${moonIllum}% Illuminated · ${moonPhase}`;
-  document.getElementById("sun-window").textContent = "06:48–18:24";
-  document.getElementById("moon-window").textContent = `14:15–02:40 · ${moonIllum}%`;
-  document.getElementById("sky24-sun-dot").style.left = isNight ? "12%" : "58%";
-  document.getElementById("sky24-moon-dot").style.left = isNight ? "82%" : "66%";
-
-  const cBaseM = d.environment.cloud_base_m || Math.max(80, (d.environment.temp_c - d.environment.dew_point_c) * 125);
-  const cBaseStr = unitIdx === 1 ? `${Math.round(cBaseM * 3.28084).toLocaleString()} ft` : `${Math.round(cBaseM)} m`;
-  document.getElementById("sky-base-badge").textContent = `Cloud Base: ${cBaseStr}`;
-  const cloudDesc = cloudPct >= 80 ? (d.rain.raining ? "Heavy Wet Cloud" : "Overcast") : (cloudPct >= 50 ? "Broken Clouds" : (cloudPct >= 20 ? "Scattered" : "Clear Sky"));
-  document.getElementById("sky-cond-big").textContent = `Clouds · ${cloudDesc}`;
-
-  // Stargazing box only shown when it's dark / after sunset!
-  const sgBox = document.getElementById("stargazing-box");
-  if (isNight) {
-    sgBox.style.display = "block";
-    const bortle = d.environment.bortle || 2;
-    const sqm = d.environment.sqm || 21.4;
-    const bDesc = bortle <= 2 ? `Bortle ${bortle} · Milky Way` : `Bortle ${bortle} · Night Sky`;
-    document.getElementById("sky-bortle-val").textContent = bDesc;
-    document.getElementById("sky-sqm-val").textContent = `SQM ${sqm.toFixed(1)} mag/arcsec²`;
-    document.getElementById("bortle-dot").style.left = `${clampPct(bortle, 1, 9).toFixed(0)}%`;
+  // ---- 5. Solar & UV ----
+  const night = Boolean(a.is_night);
+  setText("daylight-badge", isNum(s.burn_time_min) ? `Burn ~${s.burn_time_min.toFixed(0)} min` : "No Burn Risk");
+  el("daylight-badge").className = isNum(s.uv_index) && s.uv_index >= 6 ? "badge warn" : "badge ok";
+  if (night && isNum(s.lux)) {
+    const mlx = s.lux * 1000.0;
+    setText("env-solar", mlx < 10 ? mlx.toFixed(2) : mlx.toFixed(0));
+    setText("env-solar-unit", "mlx (Night)");
+    setText("env-lux", `Night Illuminance (${s.lux.toFixed(4)} lx)`);
   } else {
-    sgBox.style.display = "none";
+    setText("env-solar", fv(s.irradiance_w_m2, 0));
+    setText("env-solar-unit", "W/m²");
+    setText("env-lux", isNum(s.lux) ? `Brightness: ${Math.round(s.lux).toLocaleString()} lx` : "Brightness: —");
+  }
+  const uvi = s.uv_index;
+  const uvCat = !isNum(uvi) ? "—" : (uvi >= 11 ? "Extreme" : (uvi >= 8 ? "Very High" : (uvi >= 6 ? "High" : (uvi >= 3 ? "Moderate" : "Low"))));
+  el("uv-left-lbl").innerHTML = `UV Index <b class="accent">${fv(uvi, 1)} · ${uvCat}</b>`;
+  setText("uv-sub-row", `UVA ${fv(s.uva_w_m2, 1)} · UVB ${fv(s.uvb_w_m2, 1, " W/m²")}`);
+  el("uv-dot").style.left = `${clampPct(uvi, 0, 11.5).toFixed(0)}%`;
+  const uvW = (s.uva_w_m2 || 0) + (s.uvb_w_m2 || 0), visW = s.visible_w_m2 || 0, nirW = s.nir_w_m2 || 0;
+  const sumW = Math.max(1.0, uvW + visW + nirW);
+  setText("sp-uv", uvW.toFixed(0));
+  setText("sp-vis", visW.toFixed(0));
+  setText("sp-nir", `${nirW.toFixed(0)} W/m²`);
+  el("bar-sp-uv").style.width = `${Math.max(uvW > 0 ? 5 : 0, (uvW / sumW) * 100).toFixed(0)}%`;
+  el("bar-sp-vis").style.width = `${((visW / sumW) * 100).toFixed(0)}%`;
+  el("bar-sp-nir").style.width = `${((nirW / sumW) * 100).toFixed(0)}%`;
+
+  // ---- 6. Sky, clouds & moon ----
+  const cc = s.cloud_cover_pct;
+  setText("cloud-cover-lbl", fv(cc, 0, "%"));
+  const ccDesc = !isNum(cc) ? (night ? "No estimate at night" : "No estimate (low sun)")
+    : (cc >= 80 ? (r.raining ? "Heavy Wet Cloud" : "Overcast") : (cc >= 50 ? "Broken Clouds" : (cc >= 20 ? "Scattered" : "Clear Sky")));
+  setText("sky-cond-big", isNum(cc) ? `Clouds · ${ccDesc}` : ccDesc);
+  setText("sky-base-badge", isNum(e.cloud_base_m) ? `Cloud Base: ${Math.round(conv.h(e.cloud_base_m)).toLocaleString()} ${u.hUnit}` : "Cloud Base: —");
+  setText("sky-moon-sub", isNum(a.moon_illum_pct) ? `Moon ${a.moon_illum_pct.toFixed(0)}% Illuminated · ${a.moon_phase}` : "Moon — (set the station location)");
+  setText("sun-window", `${hhmm(a.sunrise_min)}–${hhmm(a.sunset_min)}`);
+  setText("moon-window", `${hhmm(a.moonrise_min)}–${hhmm(a.moonset_min)} · ${fv(a.moon_illum_pct, 0, "%")}`);
+  const span = (rise, set, node) => {
+    if (!isNum(rise) || !isNum(set)) { node.style.display = "none"; return; }
+    node.style.display = "";
+    const l = rise / 1440 * 100, rr = set / 1440 * 100;
+    node.style.left = `${(set >= rise ? l : 0).toFixed(1)}%`;
+    node.style.width = `${(set >= rise ? rr - l : rr).toFixed(1)}%`;
+  };
+  span(a.sunrise_min, a.sunset_min, el("sky24-sun-span"));
+  span(a.moonrise_min, a.moonset_min, el("sky24-moon-span"));
+  const nowMin = isNum(d.unix_s) ? (((d.unix_s + d.utc_offset_s) % 86400) / 60) : null;
+  const nowPct = isNum(nowMin) ? `${(nowMin / 1440 * 100).toFixed(1)}%` : "50%";
+  el("sky24-sun-dot").style.left = nowPct;
+  el("sky24-moon-dot").style.left = nowPct;
+  el("sky24-sun-dot").style.opacity = isNum(a.sun_alt_deg) && a.sun_alt_deg > 0 ? "1" : "0.25";
+  el("sky24-moon-dot").style.opacity = isNum(a.moon_alt_deg) && a.moon_alt_deg > 0 ? "1" : "0.25";
+  const sg = el("stargazing-box");
+  if (night && isNum(s.sqm)) {
+    sg.style.display = "block";
+    setText("sky-bortle-val", `Bortle ${s.bortle} · ${s.bortle <= 3 ? "Milky Way" : (s.bortle <= 6 ? "Night Sky" : "Bright Sky")}`);
+    setText("sky-sqm-val", `SQM ${s.sqm.toFixed(1)} mag/arcsec² (est.)`);
+    el("bortle-dot").style.left = `${clampPct(s.bortle, 1, 9).toFixed(0)}%`;
+  } else {
+    sg.style.display = "none";
   }
 
-  const burnMin = d.environment.burn_time_min || 0;
-  document.getElementById("daylight-badge").textContent =
-    burnMin > 0 ? `Burn ~${burnMin} min` : "No Burn Risk";
-  document.getElementById("daylight-badge").className = uvi >= 6 ? "badge warn" : "badge ok";
+  // ---- 7. Air quality ----
+  const aqi = q.aqi;
+  setText("aq-dom-badge", `Main: ${q.dominant}`);
+  el("aq-dom-badge").className = !isNum(aqi) || aqi <= 50 ? "badge ok" : (aqi <= 100 ? "badge warn" : "badge danger");
+  setText("aq-aqi-big", fv(aqi, 0));
+  setText("aq-level-lbl", q.level.toUpperCase());
+  const aqiArc = el("aqi-arc");
+  aqiArc.setAttribute("stroke-dasharray", `${Math.min(239, ((aqi || 0) / 200) * 239).toFixed(0)} 239`);
+  aqiArc.setAttribute("class", !isNum(aqi) || aqi <= 50 ? "ring-fg-ok" : "ring-fg-cyan");
+  const bar = (valId, barId, v, max, limit, dec = 1, suffix = "") => {
+    setText(valId, fv(v, dec, suffix));
+    el(barId).style.width = `${clampPct(v, 0, max).toFixed(0)}%`;
+    el(barId).className = `b-fill ${!isNum(v) || v <= limit ? "ok" : "warn"}`;
+  };
+  bar("aq-pm1", "b-pm1", q.pm1_0, 25, 10);
+  bar("aq-pm25", "b-pm25", q.pm2_5, 35, 15);
+  bar("aq-pm4", "b-pm4", q.pm4_0, 50, 25);
+  bar("aq-pm10", "b-pm10", q.pm10, 90, 45);
+  bar("aq-bio", "b-bio", q.coarse, 45, 20);
+  setText("aq-co2", fv(q.co2_ppm, 0, " ppm"));
+  el("b-co2").style.width = `${clampPct(q.co2_ppm, 380, 1600).toFixed(0)}%`;
+  el("b-co2").className = `b-fill ${!isNum(q.co2_ppm) || q.co2_ppm <= 1000 ? "cyan" : "warn"}`;
+  bar("aq-voc", "b-voc", q.voc_index, 300, 150, 0, " idx");
+  bar("aq-nox", "b-nox", q.nox_index, 80, 20, 0, " idx");
 
-  if (isNight) {
-    const mlx = d.environment.lux * 1000.0;
-    document.getElementById("env-solar").textContent = mlx < 10 ? mlx.toFixed(2) : mlx.toFixed(0);
-    document.getElementById("env-solar-unit").textContent = "mlx (Night)";
-    document.getElementById("env-lux").textContent = `Night Illuminance (${d.environment.lux.toFixed(4)} lx)`;
-  } else {
-    document.getElementById("env-solar").textContent = d.environment.solar_w_m2.toFixed(0);
-    document.getElementById("env-solar-unit").textContent = "W/m²";
-    document.getElementById("env-lux").textContent = `Brightness: ${Math.round(d.environment.lux).toLocaleString()} lx`;
-  }
-
-  const uvCat = uvi >= 8 ? "Very High" : (uvi >= 6 ? "High" : (uvi >= 3 ? "Moderate" : "Low"));
-  const uvaW = d.environment.uva_w_m2 !== undefined ? d.environment.uva_w_m2 : uvi * 4.8;
-  const uvbW = d.environment.uvb_w_m2 !== undefined ? d.environment.uvb_w_m2 : uvi * 0.32;
-  document.getElementById("uv-left-lbl").innerHTML = `UV Index <b class="accent">${uvi.toFixed(1)} · ${uvCat}</b>`;
-  document.getElementById("uv-sub-row").textContent = `UVA ${uvaW.toFixed(1)} · UVB ${uvbW.toFixed(1)} W/m²`;
-  document.getElementById("uv-dot").style.left = `${clampPct(uvi, 0, 11.5).toFixed(0)}%`;
-
-  const uvTot = uvaW + uvbW;
-  const visW = d.environment.visible_w_m2 !== undefined ? d.environment.visible_w_m2 : d.environment.solar_w_m2 * 0.45;
-  const nirW = d.environment.nir_w_m2 !== undefined ? d.environment.nir_w_m2 : d.environment.solar_w_m2 * 0.50;
-  const sumW = Math.max(1.0, uvTot + visW + nirW);
-  document.getElementById("sp-uv").textContent = uvTot.toFixed(0);
-  document.getElementById("sp-vis").textContent = visW.toFixed(0);
-  document.getElementById("sp-nir").textContent = `${nirW.toFixed(0)} W/m²`;
-  document.getElementById("bar-sp-uv").style.width = `${Math.max(5, (uvTot / sumW) * 100).toFixed(0)}%`;
-  document.getElementById("bar-sp-vis").style.width = `${((visW / sumW) * 100).toFixed(0)}%`;
-  document.getElementById("bar-sp-nir").style.width = `${((nirW / sumW) * 100).toFixed(0)}%`;
-
-  // 7. Air Quality & Particles (Grouped Particles vs Separated Gases with Health Thresholds)
-  const aqi = d.air_quality.aqi;
-  document.getElementById("aq-dom-badge").textContent = `Main: ${d.air_quality.dominant}`;
-  document.getElementById("aq-dom-badge").className = aqi <= 50 ? "badge ok" : (aqi <= 100 ? "badge warn" : "badge danger");
-  document.getElementById("aq-aqi-big").textContent = aqi;
-  document.getElementById("aq-level-lbl").textContent = d.air_quality.level.toUpperCase();
-  const aqiCirc = Math.min(239, (aqi / 200) * 239);
-  const aqiArcEl = document.getElementById("aqi-arc");
-  aqiArcEl.setAttribute("stroke-dasharray", `${aqiCirc.toFixed(0)} 239`);
-  aqiArcEl.setAttribute("class", aqi <= 50 ? "ring-fg-ok" : "ring-fg-cyan");
-
-  const dryPm25 = d.air_quality.dry_pm2_5 !== undefined ? d.air_quality.dry_pm2_5 : d.air_quality.pm2_5;
-  const dryPm10 = d.air_quality.dry_pm10 !== undefined ? d.air_quality.dry_pm10 : d.air_quality.pm10;
-  const pm1Val = d.air_quality.pm1_0 !== undefined ? d.air_quality.pm1_0 : dryPm25 * 0.6;
-  const pm4Val = d.air_quality.pm4_0 !== undefined ? d.air_quality.pm4_0 : dryPm25 * 1.3;
-  const coarseBio = Math.max(0.4, dryPm10 - dryPm25);
-  const compCo2 = d.air_quality.comp_co2_ppm || d.air_quality.co2_ppm;
-  const vocVal = d.air_quality.voc_index || 100;
-  const noxVal = d.air_quality.nox_index || 1;
-
-  document.getElementById("aq-pm1").textContent = `${pm1Val.toFixed(1)}`;
-  document.getElementById("b-pm1").style.width = `${clampPct(pm1Val, 0, 25).toFixed(0)}%`;
-  document.getElementById("b-pm1").className = `b-fill ${pm1Val <= 10 ? "ok" : "warn"}`;
-  document.getElementById("aq-pm25").textContent = `${dryPm25.toFixed(1)}`;
-  document.getElementById("b-pm25").style.width = `${clampPct(dryPm25, 0, 35).toFixed(0)}%`;
-  document.getElementById("b-pm25").className = `b-fill ${dryPm25 <= 15 ? "ok" : "warn"}`;
-  document.getElementById("aq-pm4").textContent = `${pm4Val.toFixed(1)}`;
-  document.getElementById("b-pm4").style.width = `${clampPct(pm4Val, 0, 50).toFixed(0)}%`;
-  document.getElementById("b-pm4").className = `b-fill ${pm4Val <= 25 ? "ok" : "warn"}`;
-  document.getElementById("aq-pm10").textContent = `${dryPm10.toFixed(1)}`;
-  document.getElementById("b-pm10").style.width = `${clampPct(dryPm10, 0, 90).toFixed(0)}%`;
-  document.getElementById("b-pm10").className = `b-fill ${dryPm10 <= 45 ? "ok" : "warn"}`;
-  document.getElementById("aq-bio").textContent = `${coarseBio.toFixed(1)}`;
-  document.getElementById("b-bio").style.width = `${clampPct(coarseBio, 0, 45).toFixed(0)}%`;
-  document.getElementById("b-bio").className = `b-fill ${coarseBio < 20 ? "ok" : "warn"}`;
-
-  document.getElementById("aq-co2").textContent = `${compCo2} ppm`;
-  document.getElementById("b-co2").style.width = `${clampPct(compCo2, 380, 1600).toFixed(0)}%`;
-  document.getElementById("b-co2").className = `b-fill ${compCo2 <= 1000 ? "cyan" : "warn"}`;
-  document.getElementById("aq-voc").textContent = `${vocVal} idx`;
-  document.getElementById("b-voc").style.width = `${clampPct(vocVal, 0, 300).toFixed(0)}%`;
-  document.getElementById("b-voc").className = `b-fill ${vocVal <= 150 ? "ok" : "warn"}`;
-  document.getElementById("aq-nox").textContent = `${noxVal} idx`;
-  document.getElementById("b-nox").style.width = `${clampPct(noxVal, 0, 80).toFixed(0)}%`;
-  document.getElementById("b-nox").className = `b-fill ${noxVal <= 20 ? "ok" : "warn"}`;
-
-  renderSparkBaro();
   renderSparkRain();
   renderLightningTimeline(d);
   renderWaveAndSeismic(d);
 
-  // Tab 3: Station Digital Twin & Visual Error-Correction Bars
-  document.getElementById("twin-vin-badge").textContent =
-    `${d.heater.vin_v.toFixed(1)} V · ${d.heater.state === 1 ? "DE-ICING 4.0 W" : "Heater Standby"}`;
-  document.getElementById("tw-dome").textContent = `UV ${uvi.toFixed(1)} · ${d.environment.solar_w_m2.toFixed(0)} W/m²`;
-  document.getElementById("tw-crown").textContent = `c = ${d.wind.sound_m_s.toFixed(1)} m/s`;
-  document.getElementById("tw-heater").textContent = `${d.heater.reflector_c.toFixed(1)} °C · ${d.heater.power_w.toFixed(1)} W`;
-  document.getElementById("tw-probe").textContent = `${d.environment.temp_c.toFixed(1)} °C · ${compCo2} ppm CO₂`;
-  document.getElementById("tw-main").textContent = `${d.wifi.rssi_dbm} dBm · ${d.heater.vin_v.toFixed(1)} V`;
-
-  const dtSol = d.environment.solar_offset_c || 0;
-  const dpBern = d.environment.dyn_offset_hpa || 0;
-  const pmRat = d.air_quality.pm2_5 > 0.1 ? (dryPm25 / d.air_quality.pm2_5) : 1.0;
-  document.getElementById("cv-solar").textContent = `-${dtSol.toFixed(2)} °C`;
-  document.getElementById("cb-solar").style.width = `${clampPct(dtSol, 0, 1.5).toFixed(0)}%`;
-  document.getElementById("cv-bern").textContent = `+${dpBern.toFixed(2)} hPa`;
-  document.getElementById("cb-bern").style.width = `${clampPct(dpBern, 0, 1.0).toFixed(0)}%`;
-  document.getElementById("cv-fog").textContent = `${pmRat.toFixed(2)}× (Dry ${dryPm25.toFixed(1)} vs Raw ${d.air_quality.pm2_5.toFixed(1)})`;
-  document.getElementById("cb-fog").style.width = `${(pmRat * 100).toFixed(0)}%`;
-  if (d.tof) {
-    document.getElementById("cv-tof").textContent = `${d.tof.ns.toFixed(1)} / ${d.tof.sn.toFixed(1)} µs`;
-  }
-  document.getElementById("cv-heater").textContent = `${d.heater.duty_pct.toFixed(1)} % (${d.heater.power_w.toFixed(1)} W / 4.0 W)`;
-  document.getElementById("cb-heater").style.width = `${Math.max(2, d.heater.duty_pct).toFixed(0)}%`;
-  if (d.rs485_frame) document.getElementById("rs485-frame").textContent = d.rs485_frame;
+  // ---- Station twin ----
+  const h = d.heater;
+  setText("twin-vin-badge", `${fv(h.vin_v, 1, " V")} · ${h.state === 1 ? `DE-ICING ${h.power_w.toFixed(1)} W` : "Heater Standby"}`);
+  setText("tw-dome", `UV ${fv(uvi, 1)} · ${fv(s.irradiance_w_m2, 0, " W/m²")}`);
+  setText("tw-crown", `c = ${fv(w.sound_m_s, 1, " m/s")}`);
+  setText("tw-heater", `${fv(h.reflector_c, 1, " °C")} · ${h.power_w.toFixed(1)} W`);
+  setText("tw-probe", `${fv(e.temp_c, 1, " °C")} · ${fv(q.co2_ppm, 0, " ppm CO₂")}`);
+  setText("tw-main", `${d.wifi.rssi_dbm} dBm · ${fv(h.vin_v, 1, " V")}`);
+  setText("cv-solar", isNum(e.solar_offset_c) ? `-${e.solar_offset_c.toFixed(2)} °C` : "—");
+  el("cb-solar").style.width = `${clampPct(e.solar_offset_c, 0, 1.5).toFixed(0)}%`;
+  setText("cv-bern", isNum(e.pressure_wind_corr_hpa) ? `+${e.pressure_wind_corr_hpa.toFixed(2)} hPa` : "—");
+  el("cb-bern").style.width = `${clampPct(e.pressure_wind_corr_hpa, 0, 1.0).toFixed(0)}%`;
+  const pmRat = isNum(q.pm2_5) && isNum(q.pm2_5_raw) && q.pm2_5_raw > 0.1 ? q.pm2_5 / q.pm2_5_raw : null;
+  setText("cv-fog", isNum(pmRat) ? `${pmRat.toFixed(2)}× (Dry ${q.pm2_5.toFixed(1)} vs Raw ${q.pm2_5_raw.toFixed(1)})` : "—");
+  el("cb-fog").style.width = `${((pmRat || 1) * 100).toFixed(0)}%`;
+  setText("cv-tof", isNum(w.sound_m_s) ? `${w.sound_m_s.toFixed(1)} m/s → ${fv(w.acoustic_temp_c, 1, " °C")}` : "—");
+  el("cb-tof").style.width = `${clampPct(w.sound_m_s, 320, 360).toFixed(0)}%`;
+  setText("cv-heater", `${h.duty_pct.toFixed(1)} % (${h.power_w.toFixed(1)} W / 4.0 W)`);
+  el("cb-heater").style.width = `${Math.max(2, h.duty_pct).toFixed(0)}%`;
 }
 
-// Settings & Maintenance actions
-document.getElementById("btn-save-cfg").addEventListener("click", () => {
-  const payload = {
-    altitude_m: parseFloat(document.getElementById("cfg-alt").value),
-    declination_deg: parseFloat(document.getElementById("cfg-decl").value),
-    dt_ns_offset_us: parseFloat(document.getElementById("cfg-dt-ns").value),
-    dt_ew_offset_us: parseFloat(document.getElementById("cfg-dt-ew").value),
-    mqtt_uri: document.getElementById("cfg-mqtt").value,
-    ha_prefix: document.getElementById("cfg-ha").value,
+// ---------------------------------------------------------------------------------------------
+// Setup tab
+// ---------------------------------------------------------------------------------------------
+// Browser time zone -> POSIX TZ for the station (EU / US DST rules, otherwise fixed offset).
+function browserPosixTz() {
+  const year = new Date().getFullYear();
+  const jan = -new Date(year, 0, 1).getTimezoneOffset();   // minutes east of UTC
+  const jul = -new Date(year, 6, 1).getTimezoneOffset();
+  const std = Math.min(jan, jul), dst = Math.max(jan, jul);
+  const fmt = (m) => {
+    const sign = m > 0 ? "-" : "+";  // POSIX: positive = west of UTC
+    const a = Math.abs(m);
+    return `${sign}${Math.floor(a / 60)}${a % 60 ? ":" + String(a % 60).padStart(2, "0") : ""}`;
   };
-  fetch("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
-    .then(() => { document.getElementById("cfg-save-status").textContent = "Saved ✓"; })
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  if (std === dst) return `STD${fmt(std)}`;
+  if (zone.startsWith("Europe/")) {
+    const startH = 1 + std / 60, endH = 1 + dst / 60;  // EU: switch at 01:00 UTC
+    return `STD${fmt(std)}DST,M3.5.0/${startH},M10.5.0/${endH}`;
+  }
+  if (zone.startsWith("America/")) return `STD${fmt(std)}DST,M3.2.0,M11.1.0`;
+  return `STD${fmt(std)}DST`;
+}
+
+function loadConfig() {
+  return fetch("/api/config").then(r => r.json()).then(c => {
+    stationCfg = c;
+    el("scenario-select").style.display = c.simulated ? "" : "none";
+    if (c.simulated && c.scenario) el("scenario-select").value = c.scenario;
+    const set = (id, v) => { if (el(id) && v !== undefined && v !== null) el(id).value = v; };
+    set("cfg-lat", c.location_set ? c.latitude : "");
+    set("cfg-lon", c.location_set ? c.longitude : "");
+    set("cfg-alt", c.altitude_m);
+    set("cfg-tz", c.tz || browserPosixTz());
+    set("cfg-decl", c.declination_deg);
+    set("cfg-dt-ns", c.dt_ns_offset_us);
+    set("cfg-dt-ew", c.dt_ew_offset_us);
+    set("cfg-us-delay", c.us_delay_us);
+    set("cfg-pcoef", c.pressure_wind_coef);
+    set("cfg-rain-gain", c.rain_gain);
+    set("cfg-tuncap", c.as3935_tun_cap);
+    set("cfg-ssid", c.wifi_ssid);
+    set("cfg-mqtt", c.mqtt_uri);
+    set("cfg-ha", c.ha_prefix);
+    setText("loc-status", c.location_set ? `${(+c.latitude).toFixed(4)}, ${(+c.longitude).toFixed(4)}` : "Not set");
+    setText("net-status", lastState && lastState.wifi ? (lastState.wifi.connected ? `${lastState.wifi.ip} · ${lastState.wifi.rssi_dbm} dBm` : (lastState.wifi.ap_mode ? "Setup AP 192.168.4.1" : "Offline")) : "—");
+  }).catch(() => {});
+}
+
+el("btn-geolocate").addEventListener("click", () => {
+  if (!navigator.geolocation) {
+    setText("geo-status", "This browser has no location service: enter latitude / longitude manually.");
+    return;
+  }
+  setText("geo-status", "Asking the browser for this device's location…");
+  navigator.geolocation.getCurrentPosition((pos) => {
+    el("cfg-lat").value = pos.coords.latitude.toFixed(4);
+    el("cfg-lon").value = pos.coords.longitude.toFixed(4);
+    if (isNum(pos.coords.altitude)) el("cfg-alt").value = pos.coords.altitude.toFixed(0);
+    el("cfg-tz").value = browserPosixTz();
+    setText("geo-status", `Location found (±${pos.coords.accuracy.toFixed(0)} m). Check the elevation, then save.`);
+  }, (err) => {
+    setText("geo-status", `Location unavailable (${err.message}). Browsers allow it only over HTTPS or localhost: enter it manually.`);
+  }, { enableHighAccuracy: true, timeout: 15000 });
+});
+
+el("btn-save-loc").addEventListener("click", () => {
+  const lat = parseFloat(el("cfg-lat").value), lon = parseFloat(el("cfg-lon").value);
+  if (!isNum(lat) || !isNum(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+    setText("geo-status", "Enter a valid latitude (-90…90) and longitude (-180…180).");
+    return;
+  }
+  postJson("/api/config", { latitude: lat, longitude: lon, altitude_m: parseFloat(el("cfg-alt").value) || 0, tz: el("cfg-tz").value || browserPosixTz() })
+    .then(() => { setText("geo-status", "Location saved ✓"); loadConfig(); })
+    .catch(() => setText("geo-status", "Saving failed"));
+});
+
+el("btn-save-net").addEventListener("click", () => {
+  const body = { mqtt_uri: el("cfg-mqtt").value, ha_prefix: el("cfg-ha").value };
+  if (el("cfg-ssid").value) { body.wifi_ssid = el("cfg-ssid").value; body.wifi_pass = el("cfg-pass").value; }
+  postJson("/api/config", body)
+    .then((res) => setText("net-status", res.reboot_required ? "Saved: reboot to apply" : "Saved ✓"))
     .catch(() => {});
 });
 
-["btn-reset-rain", "btn-bakeout", "btn-heat-test", "btn-zero-wind", "btn-reboot"].forEach((id) => {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.addEventListener("click", () => {
-    fetch("/api/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: id }) })
-      .then(() => { document.getElementById("ota-status").textContent = `Executed ${id} ✓`; })
-      .catch(() => {});
-  });
+el("btn-save-cfg").addEventListener("click", () => {
+  const num = (id) => parseFloat(el(id).value);
+  postJson("/api/config", {
+    declination_deg: num("cfg-decl"), dt_ns_offset_us: num("cfg-dt-ns"), dt_ew_offset_us: num("cfg-dt-ew"),
+    us_delay_us: num("cfg-us-delay"), pressure_wind_coef: num("cfg-pcoef"), rain_gain: num("cfg-rain-gain"),
+    as3935_tun_cap: parseInt(el("cfg-tuncap").value, 10),
+  }).then(() => setText("cfg-save-status", "Saved ✓")).catch(() => {});
 });
 
+el("btn-reset-rain").addEventListener("click", () => {
+  postJson("/api/action", { action: "reset_rain" }).then(() => setText("ota-status", "Today's rain reset ✓")).catch(() => {});
+});
+el("btn-reboot").addEventListener("click", () => {
+  if (confirm("Reboot the station? History is saved first.")) postJson("/api/action", { action: "reboot" }).catch(() => {});
+});
+
+// ---------------------------------------------------------------------------------------------
+// Data loading
+// ---------------------------------------------------------------------------------------------
 function loadMinuteHistory() {
   return fetch("/api/history/minutes").then(r => r.json()).then(m => {
     if (m && Array.isArray(m.rain_mm_h)) {
@@ -832,14 +815,17 @@ function loadMinuteHistory() {
   }).catch(() => {});
 }
 
-function loadHistory() {
-  return fetch("/api/history").then(r => r.json()).then(arr => {
-    if (Array.isArray(arr) && arr.length > 1) {
-      historyPoints = arr;
-      renderSparkBaro();
-      renderSparkRain();
-      renderAllCharts();
-    }
+function loadTrends() {
+  return fetch(`/api/history?tier=${trendTier}&metrics=temp_c,dew_point_c,wind_m_s,qnh_hpa`).then(r => r.json()).then(h => {
+    trendData = h;
+    renderTrends();
+  }).catch(() => {});
+}
+
+function loadRain31d() {
+  return fetch("/api/history?tier=day&metrics=rain_mm").then(r => r.json()).then(h => {
+    const v = h.series && h.series.rain_mm ? h.series.rain_mm.v : [];
+    rain31d = v.reduce((acc, x) => acc + (isNum(x) ? x : 0), 0);
   }).catch(() => {});
 }
 
@@ -849,32 +835,18 @@ function connectWs() {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${proto}//${location.host}/ws`);
     ws.onmessage = (ev) => {
-      try {
-        const d = JSON.parse(ev.data);
-        applyTelemetry(d);
-        if (historyPoints.length > 1) {
-          historyPoints[historyPoints.length - 1] = {
-            temp: d.environment.temp_c,
-            dew: d.environment.dew_point_c,
-            feels: d.environment.feels_like_c,
-            wind: d.wind.avg_10m_m_s,
-            gust: d.wind.gust_m_s,
-            qnh: d.environment.qnh_hpa,
-            rain_rate: d.rain.rate_mm_h,
-            hail_lwe_rate: d.rain.hail_hits > 0 ? d.rain.rate_mm_h * 0.28 : 0.0,
-          };
-          renderSparkBaro();
-          renderSparkRain();
-        }
-      } catch (_) {}
+      try { applyTelemetry(JSON.parse(ev.data)); } catch (_) {}
     };
     ws.onclose = () => setTimeout(connectWs, 2500);
   } catch (_) {}
 }
 
-loadHistory().then(() => {
-  fetch("/api/state").then(r => r.json()).then(applyTelemetry).catch(() => {});
-  loadMinuteHistory();
-  setInterval(loadMinuteHistory, 15000);
-  connectWs();
-});
+loadConfig()
+  .then(() => Promise.all([loadMinuteHistory(), loadRain31d()]))
+  .then(() => fetch("/api/state").then(r => r.json()).then(applyTelemetry))
+  .catch(() => {})
+  .then(() => {
+    setInterval(loadMinuteHistory, 15000);
+    setInterval(loadRain31d, 300000);
+    connectWs();
+  });

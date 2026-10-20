@@ -100,11 +100,60 @@ std::uint16_t AirQualityEvaluator::compute_voc_subindex(std::uint16_t voc_index)
     return piecewise_aqi(static_cast<float>(voc_index), kVocTable, sizeof(kVocTable) / sizeof(kVocTable[0]));
 }
 
+bool AirQualityEvaluator::nowcast(const float* hourly, const bool* present, std::size_t n, float& out) {
+    const std::size_t hours = std::min<std::size_t>(n, 12);
+    int recent = 0;
+    for (std::size_t i = 0; i < std::min<std::size_t>(hours, 3); ++i) {
+        recent += present[i] ? 1 : 0;
+    }
+    if (recent < 2) {
+        return false;
+    }
+    float c_min = 1e9F;
+    float c_max = -1e9F;
+    for (std::size_t i = 0; i < hours; ++i) {
+        if (present[i]) {
+            c_min = std::min(c_min, hourly[i]);
+            c_max = std::max(c_max, hourly[i]);
+        }
+    }
+    const float w_raw = (c_max > 0.0F) ? c_min / c_max : 1.0F;
+    const float w = std::max(0.5F, w_raw);
+    float num = 0.0F;
+    float den = 0.0F;
+    float wk = 1.0F;
+    for (std::size_t i = 0; i < hours; ++i) {
+        if (present[i]) {
+            num += wk * hourly[i];
+            den += wk;
+        }
+        wk *= w;
+    }
+    if (den <= 0.0F) {
+        return false;
+    }
+    out = num / den;
+    return true;
+}
+
+std::uint8_t AirQualityEvaluator::eaqi_band(float pm25, float pm10) {
+    static constexpr float kPm25[5] = {10.0F, 20.0F, 25.0F, 50.0F, 75.0F};
+    static constexpr float kPm10[5] = {20.0F, 40.0F, 50.0F, 100.0F, 150.0F};
+    auto band = [](float c, const float* t) {
+        std::uint8_t b = 1;
+        for (int i = 0; i < 5 && c > t[i]; ++i) {
+            ++b;
+        }
+        return b;
+    };
+    return std::max(band(pm25, kPm25), band(pm10, kPm10));
+}
+
 AirQualityReport AirQualityEvaluator::evaluate(const AirQualityInput& in) {
     AirQualityReport out{};
     out.dry_pm2_5_ug_m3 = compensate_pm_hygroscopic_growth(in.pm2_5_ug_m3, in.relative_humidity_rh);
     out.dry_pm10_ug_m3 = compensate_pm_hygroscopic_growth(in.pm10_ug_m3, in.relative_humidity_rh);
-    out.pressure_comp_co2_ppm = compensate_co2_pressure_ppm(in.co2_ppm, in.pressure_hpa);
+    out.pressure_comp_co2_ppm = in.co2_ppm;  // SCD41 compensates in-sensor (ambient pressure is sent to it)
 
     out.aqi_pm25 = compute_pm25_aqi(out.dry_pm2_5_ug_m3);
     out.aqi_pm10 = compute_pm10_aqi(out.dry_pm10_ug_m3);
@@ -117,35 +166,18 @@ AirQualityReport AirQualityEvaluator::evaluate(const AirQualityInput& in) {
         out.us_epa_aqi = out.aqi_pm10;
         out.dominant_pollutant = "PM10";
     }
-    if (out.aqi_nox > out.us_epa_aqi) {
-        out.us_epa_aqi = out.aqi_nox;
-        out.dominant_pollutant = "NOx";
-    }
-    if (out.aqi_voc > out.us_epa_aqi) {
-        out.us_epa_aqi = out.aqi_voc;
-        out.dominant_pollutant = "VOC";
-    }
-
-    if (out.us_epa_aqi <= 50) {
-        out.level = AqiLevel::Good;
-        out.eu_eaqi = 1;
-    } else if (out.us_epa_aqi <= 100) {
-        out.level = AqiLevel::Moderate;
-        out.eu_eaqi = 2;
-    } else if (out.us_epa_aqi <= 150) {
-        out.level = AqiLevel::UnhealthySensitive;
-        out.eu_eaqi = 3;
-    } else if (out.us_epa_aqi <= 200) {
-        out.level = AqiLevel::Unhealthy;
-        out.eu_eaqi = 4;
-    } else if (out.us_epa_aqi <= 300) {
-        out.level = AqiLevel::VeryUnhealthy;
-        out.eu_eaqi = 5;
-    } else {
-        out.level = AqiLevel::Hazardous;
-        out.eu_eaqi = 6;
-    }
+    out.level = level_for_aqi(out.us_epa_aqi);
+    out.eu_eaqi = eaqi_band(out.dry_pm2_5_ug_m3, out.dry_pm10_ug_m3);
     return out;
+}
+
+AqiLevel AirQualityEvaluator::level_for_aqi(std::uint16_t aqi) {
+    if (aqi <= 50) return AqiLevel::Good;
+    if (aqi <= 100) return AqiLevel::Moderate;
+    if (aqi <= 150) return AqiLevel::UnhealthySensitive;
+    if (aqi <= 200) return AqiLevel::Unhealthy;
+    if (aqi <= 300) return AqiLevel::VeryUnhealthy;
+    return AqiLevel::Hazardous;
 }
 
 const char* AirQualityEvaluator::level_name(AqiLevel lvl) {

@@ -21,28 +21,38 @@ std::uint16_t Rs485Protocol::crc16_modbus(const char* data, std::size_t len) {
     return crc;
 }
 
-std::string Rs485Protocol::encode_telemetry_frame(const telemetry::StationSnapshot& s) {
-    char payload[256];
-    const int n = std::snprintf(
-        payload, sizeof(payload),
-        "$AM,%lu,%.2f,%.1f,%.2f,%.2f,%.2f,%.1f,%.2f,%.1f,%u",
-        static_cast<unsigned long>(s.uptime_s),
-        static_cast<double>(s.wind.current_speed_m_s),
-        static_cast<double>(s.wind.current_dir_deg),
-        static_cast<double>(s.rain.rate_mm_h),
-        static_cast<double>(s.rain.daily_mm),
-        static_cast<double>(s.atmo.compensated_temp_c),
-        static_cast<double>(s.atmo_raw.humidity_rh),
-        static_cast<double>(s.atmo.sea_level_pressure_hpa),
-        static_cast<double>(s.atmo.uv_index),
-        static_cast<unsigned>(s.aq.us_epa_aqi));
-    if (n <= 0) {
-        return {};
+namespace {
+void field(std::string& out, const core::Value<float>& v, const char* fmt) {
+    out += ',';
+    if (v.ok) {
+        char buf[24];
+        std::snprintf(buf, sizeof(buf), fmt, static_cast<double>(v.v));
+        out += buf;
     }
-    const std::uint16_t crc = crc16_modbus(payload, static_cast<std::size_t>(n));
-    char frame[280];
-    std::snprintf(frame, sizeof(frame), "%s*%04X\r\n", payload, static_cast<unsigned>(crc));
-    return std::string(frame);
+}
+}  // namespace
+
+std::string Rs485Protocol::encode_telemetry_frame(const core::DerivedState& d) {
+    char head[24];
+    std::snprintf(head, sizeof(head), "$AM,%lu", static_cast<unsigned long>(d.uptime_s));
+    std::string payload = head;
+    field(payload, d.wind.avg_2m_m_s, "%.2f");
+    field(payload, d.wind.dir_10m_deg, "%.1f");
+    core::Value<float> rate;
+    rate.set(d.rain.rate_mm_h);
+    core::Value<float> day;
+    day.set(d.rain.today_mm);
+    field(payload, rate, "%.2f");
+    field(payload, day, "%.2f");
+    field(payload, d.thermo.temp_c, "%.2f");
+    field(payload, d.thermo.rh_pct, "%.1f");
+    field(payload, d.baro.qnh_hpa, "%.2f");
+    field(payload, d.solar.uv_index, "%.1f");
+    field(payload, d.air.aqi, "%.0f");
+    const std::uint16_t crc = crc16_modbus(payload.c_str(), payload.size());
+    char tail[12];
+    std::snprintf(tail, sizeof(tail), "*%04X\r\n", static_cast<unsigned>(crc));
+    return payload + tail;
 }
 
 CommandType Rs485Protocol::parse_command_frame(const char* line, std::size_t len) {

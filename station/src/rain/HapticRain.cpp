@@ -23,17 +23,17 @@ float HapticRainProcessor::estimate_hail_diameter_mm(int net_mv, std::uint16_t p
     return clamp_f(8.2F * std::pow(excess_v, 0.68F) * pulse_factor, 4.0F, 35.0F);
 }
 
-bool HapticRainProcessor::process_impact(const RainImpactEvent& ev) {
+float HapticRainProcessor::process_impact(const RainImpactEvent& ev, float gain) {
     metrics_.surface_wet = (ev.baseline_mv >= kWetSurfaceBaselineMv);
 
     const int net_mv = static_cast<int>(ev.peak_mv) - static_cast<int>(ev.baseline_mv);
     if (net_mv < static_cast<int>(kDropThresholdMv)) {
-        return false;
+        return 0.0F;
     }
 
     if (ev.imu_vibration_g > kMaxMastShakeG && (!metrics_.surface_wet || ev.pulse_width_us > 850)) {
         ++metrics_.rejected_vibrations;
-        return false;
+        return 0.0F;
     }
 
     const bool is_hail = (net_mv >= 1400 && ev.pulse_width_us <= 140);
@@ -45,7 +45,7 @@ bool HapticRainProcessor::process_impact(const RainImpactEvent& ev) {
         // Converted Liquid-Water Equivalent (LWE) depth of an ice sphere (rho_ice = 0.917 g/cm3):
         const float hail_water_vol_mm3 = 0.917F * 0.5235988F * diam_mm * diam_mm * diam_mm;
         hail_lwe_mm = clamp_f(hail_water_vol_mm3 / kCollectionAreaMm2, 0.005F, 1.50F);
-        window_minute_hail_mm_ += hail_lwe_mm;
+        sec_hail_mm_ += hail_lwe_mm;
     }
 
     // 1. Normalize out horizontal wind kinetic-energy boost: E_total = E_vert * (1 + 0.5*(v_wind / v_term)^2)
@@ -55,20 +55,46 @@ bool HapticRainProcessor::process_impact(const RainImpactEvent& ev) {
     const float temp_factor = clamp_f(1.0F + 0.0018F * (ev.dome_temp_c - 20.0F), 0.85F, 1.15F);
     const float norm_energy = ((static_cast<float>(net_mv) / 1000.0F) / wind_ke_factor) / temp_factor;
     const float drop_volume_mm3 = 18.5F * std::pow(norm_energy, 1.35F);
-    const float depth_mm = is_hail ? hail_lwe_mm : clamp_f(drop_volume_mm3 / kCollectionAreaMm2, 0.0005F, 0.25F);
+    const float depth_mm = gain * (is_hail ? hail_lwe_mm : clamp_f(drop_volume_mm3 / kCollectionAreaMm2, 0.0005F, 0.25F));
 
-    metrics_.is_raining = true;
-    dry_minutes_ = 0;
     ++metrics_.drop_count;
-    window_minute_mm_ += depth_mm;
+    sec_mm_ += depth_mm;
     metrics_.event_mm += depth_mm;
-    metrics_.hourly_mm += depth_mm;
     metrics_.daily_mm += depth_mm;
     metrics_.total_mm += depth_mm;
+    return depth_mm;
+}
 
-    metrics_.rate_mm_h = std::max(metrics_.rate_mm_h, window_minute_mm_ * 60.0F);
-    metrics_.hail_rate_mm_h = std::max(metrics_.hail_rate_mm_h, window_minute_hail_mm_ * 60.0F);
-    if (is_hail) {
+float HapticRainProcessor::tick_second() {
+    const float closed_mm = sec_mm_;
+    last_hail_mm_ = sec_hail_mm_;
+    ring_mm_[head_] = sec_mm_;
+    ring_hail_[head_] = sec_hail_mm_;
+    head_ = static_cast<std::uint8_t>((head_ + 1) % 60);
+    sec_mm_ = 0.0F;
+    sec_hail_mm_ = 0.0F;
+
+    float sum = 0.0F;
+    float hail = 0.0F;
+    for (int i = 0; i < 60; ++i) {
+        sum += ring_mm_[i];
+        hail += ring_hail_[i];
+    }
+    metrics_.rate_mm_h = sum * 60.0F;
+    metrics_.hail_rate_mm_h = hail * 60.0F;
+
+    if (closed_mm > 0.0F) {
+        dry_seconds_ = 0;
+        metrics_.is_raining = true;
+    } else if (dry_seconds_ < 65535U) {
+        ++dry_seconds_;
+    }
+    if (dry_seconds_ >= kDryMinutesToEndEvent * 60U) {
+        metrics_.is_raining = false;
+        metrics_.event_mm = 0.0F;
+    }
+
+    if (metrics_.hail_rate_mm_h > 0.0F) {
         metrics_.state = PrecipitationType::Hail;
     } else if (metrics_.rate_mm_h >= 50.0F) {
         metrics_.state = PrecipitationType::ViolentRain;
@@ -78,34 +104,12 @@ bool HapticRainProcessor::process_impact(const RainImpactEvent& ev) {
         metrics_.state = PrecipitationType::ModerateRain;
     } else if (metrics_.rate_mm_h >= 0.5F) {
         metrics_.state = PrecipitationType::LightRain;
-    } else {
+    } else if (metrics_.rate_mm_h > 0.0F) {
         metrics_.state = PrecipitationType::Drizzle;
+    } else {
+        metrics_.state = PrecipitationType::None;
     }
-    return true;
-}
-
-void HapticRainProcessor::tick_minute() {
-    metrics_.rate_mm_h = 0.65F * (window_minute_mm_ * 60.0F) + 0.35F * metrics_.rate_mm_h;
-    metrics_.hail_rate_mm_h = 0.65F * (window_minute_hail_mm_ * 60.0F) + 0.35F * metrics_.hail_rate_mm_h;
-    if (window_minute_mm_ < 1e-4F) {
-        ++dry_minutes_;
-        if (dry_minutes_ >= 15) {
-            metrics_.is_raining = false;
-            metrics_.state = PrecipitationType::None;
-            metrics_.rate_mm_h = 0.0F;
-            metrics_.hail_rate_mm_h = 0.0F;
-            metrics_.event_mm = 0.0F;
-        }
-    }
-    window_minute_mm_ = 0.0F;
-    window_minute_hail_mm_ = 0.0F;
-    metrics_.hourly_mm *= (59.0F / 60.0F);
-}
-
-void HapticRainProcessor::reset_daily() {
-    metrics_.daily_mm = 0.0F;
-    metrics_.hail_hits = 0;
-    metrics_.max_hail_diameter_mm = 0.0F;
+    return closed_mm;
 }
 
 const char* precipitation_type_name(PrecipitationType type) {

@@ -154,76 +154,95 @@ std::uint8_t UltrasonicWindSolver::beaufort_number(float speed_m_s) {
     return 12;
 }
 
-void WmoWindAggregator::push_sample(float speed_m_s, float direction_deg) {
-    const float clamped = std::max(0.0F, speed_m_s);
-    const float dir = wrap_360(direction_deg);
-    ring_[head_] = Entry{clamped, dir};
+float wind_from_deg(float v_east_m_s, float v_north_m_s) {
+    return wrap_360(std::atan2(-v_east_m_s, -v_north_m_s) * kRadToDeg);
+}
+
+void WmoWindAggregator::push_second(bool valid, float v_east_m_s, float v_north_m_s, float speed_mean_m_s) {
+    Entry e{};
+    e.valid = valid;
+    if (valid) {
+        e.u = v_east_m_s;
+        e.v = v_north_m_s;
+        e.speed = std::max(0.0F, speed_mean_m_s);
+    }
+    ring_[head_] = e;
     head_ = (head_ + 1) % kWindowSize;
     if (count_ < kWindowSize) {
         ++count_;
     }
-    last_speed_ = clamped;
-    last_dir_ = dir;
+    // 3-s running mean ending at this second (requires all 3 seconds present).
+    if (count_ >= 3 && back(0).valid && back(1).valid && back(2).valid) {
+        Entry& cur = ring_[(head_ + kWindowSize - 1) % kWindowSize];
+        cur.s3 = (back(0).speed + back(1).speed + back(2).speed) / 3.0F;
+        cur.s3_valid = true;
+    }
 }
 
 WmoWindSummary WmoWindAggregator::summary() const {
     WmoWindSummary s{};
-    if (count_ == 0) {
+    if (count_ == 0 || !back(0).s3_valid) {
         return s;
     }
-    s.current_speed_m_s = last_speed_;
-    s.current_dir_deg = last_dir_;
-
-    float sum_all = 0.0F;
-    float sum_sq_all = 0.0F;
-    float sum_1m = 0.0F;
-    std::size_t n_1m = std::min<std::size_t>(count_, 20);
-    float gust = 0.0F;
-    float lull = ring_[(head_ + kWindowSize - 1) % kWindowSize].speed;
-    float sin_sum = 0.0F;
-    float cos_sum = 0.0F;
-    std::array<std::uint16_t, 16> sector_counts{};
-
-    for (std::size_t i = 0; i < count_; ++i) {
-        const std::size_t idx = (head_ + kWindowSize - 1 - i) % kWindowSize;
-        const Entry& e = ring_[idx];
-        sum_all += e.speed;
-        sum_sq_all += e.speed * e.speed;
-        if (i < n_1m) {
-            sum_1m += e.speed;
-        }
-        gust = std::max(gust, e.speed);
-        lull = std::min(lull, e.speed);
-        const float rad = e.dir_deg * kDegToRad;
-        const float weight = std::max(0.1F, e.speed);
-        sin_sum += weight * std::sin(rad);
-        cos_sum += weight * std::cos(rad);
-        const std::size_t sec = static_cast<std::size_t>(std::fmod(e.dir_deg + 11.25F, 360.0F) / 22.5F) % 16U;
-        ++sector_counts[sec];
+    s.valid = true;
+    s.speed_3s_m_s = back(0).s3;
+    float u3 = 0.0F;
+    float v3 = 0.0F;
+    for (std::size_t i = 0; i < 3; ++i) {
+        u3 += back(i).u;
+        v3 += back(i).v;
     }
+    s.dir_3s_deg = wind_from_deg(u3, v3);
 
-    const float n_f = static_cast<float>(count_);
-    s.avg_1min_m_s = sum_1m / static_cast<float>(n_1m);
-    s.avg_10min_m_s = sum_all / n_f;
-    s.gust_3s_m_s = gust;
+    float sum10 = 0.0F, sq10 = 0.0F, sum2 = 0.0F, su = 0.0F, sv = 0.0F;
+    std::uint16_t n10 = 0, n2 = 0, n_dir = 0;
+    float gust = 0.0F;
+    float lull = s.speed_3s_m_s;
+    std::array<std::uint16_t, 16> sectors{};
+    for (std::size_t i = 0; i < count_; ++i) {
+        const Entry& e = back(i);
+        if (!e.valid) {
+            continue;
+        }
+        sum10 += e.speed;
+        sq10 += e.speed * e.speed;
+        ++n10;
+        if (i < 120) {
+            sum2 += e.speed;
+            ++n2;
+        }
+        su += e.u;
+        sv += e.v;
+        if (e.s3_valid) {
+            gust = std::max(gust, e.s3);
+            lull = std::min(lull, e.s3);
+        }
+        if (e.speed >= kCalmMs) {
+            const float d = wind_from_deg(e.u, e.v);
+            ++sectors[static_cast<std::size_t>(std::fmod(d + 11.25F, 360.0F) / 22.5F) % 16U];
+            ++n_dir;
+        }
+    }
+    s.seconds = n10;
+    s.avg_10m_m_s = sum10 / static_cast<float>(n10);
+    s.avg_2m_m_s = (n2 > 0) ? sum2 / static_cast<float>(n2) : s.avg_10m_m_s;
+    s.gust_m_s = gust;
     s.lull_m_s = lull;
-    s.mean_dir_deg = wrap_360(std::atan2(sin_sum, cos_sum) * kRadToDeg);
-    s.beaufort_scale = static_cast<float>(UltrasonicWindSolver::beaufort_number(s.avg_1min_m_s));
-    const float variance = std::max(0.0F, (sum_sq_all / n_f) - (s.avg_10min_m_s * s.avg_10min_m_s));
-    const float sigma_v = std::sqrt(variance);
-    s.turbulence_intensity_pct = (s.avg_10min_m_s > 0.2F) ? std::min(100.0F, (sigma_v / s.avg_10min_m_s) * 100.0F) : 0.0F;
-    s.gust_factor = (s.avg_10min_m_s > 0.2F) ? (s.gust_3s_m_s / s.avg_10min_m_s) : 1.0F;
+    s.dir_valid = s.avg_10m_m_s >= kCalmMs && (std::fabs(su) + std::fabs(sv)) > 1e-3F;
+    s.dir_10m_deg = s.dir_valid ? wind_from_deg(su, sv) : 0.0F;
+    s.beaufort_scale = static_cast<float>(UltrasonicWindSolver::beaufort_number(s.avg_10m_m_s));
+    const float var = std::max(0.0F, sq10 / static_cast<float>(n10) - s.avg_10m_m_s * s.avg_10m_m_s);
+    s.turbulence_intensity_pct = (s.avg_10m_m_s > 0.5F) ? std::min(100.0F, 100.0F * std::sqrt(var) / s.avg_10m_m_s) : 0.0F;
     for (std::size_t k = 0; k < 16; ++k) {
-        s.rose_freq_pct[k] = (static_cast<float>(sector_counts[k]) * 100.0F) / n_f;
+        s.rose_freq_pct[k] = (n_dir > 0) ? 100.0F * static_cast<float>(sectors[k]) / static_cast<float>(n_dir) : 0.0F;
     }
     return s;
 }
 
 void WmoWindAggregator::reset() {
+    ring_ = {};
     head_ = 0;
     count_ = 0;
-    last_speed_ = 0.0F;
-    last_dir_ = 0.0F;
 }
 
 }  // namespace wind

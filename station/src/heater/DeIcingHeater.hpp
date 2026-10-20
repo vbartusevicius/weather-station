@@ -41,6 +41,7 @@ public:
     static float decode_supply_voltage_v(std::uint16_t vin_adc_mv);
     static float decode_ntc_temperature_c(std::uint16_t ntc_adc_mv);
     static HeaterControlOutput update(const HeaterSensorInput& in);
+    static HeaterControlOutput control(float vin_v, float reflector_c, float ambient_c, bool icing);
 };
 
 }  // namespace heater

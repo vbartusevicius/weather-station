@@ -1,6 +1,6 @@
 """V1 elevated Ø 13.6 mm 3-Sensor UV/Light/NIR Micro-PCB (`dome`, 4 layers, 1.2 mm)
 raised on a vertical 4-pin board-to-board riser (`crown J10 <-> dome J1`)
-so U1 (LTR-390UV-01), U2 (ams OSRAM TSL25911FN Vis+NIR+188uLux), and optional U3
+so U1 (LTR-390UV-01), U2 (ams OSRAM TSL25911FN Vis+NIR+188uLux), and U3
 (GenUV GUVB-C31SM AlGaN UV-B) sit directly inside the hollow JGS1 Fused Silica
 Hemispherical Dome above the roof peak with a full 180-deg (0-deg horizon) sky view!"""
 
@@ -70,16 +70,17 @@ def build():
     c2[1] += v3
     c2[2] += gnd
 
-    # U3: Optional GenUV GUVB-C31SM (I2C 0x39, DNP/hand-populated) — True AlGaN wide-bandgap UV-B (240-320 nm) sensor
+    # U3: GenUV GUVB-C31SM (I2C 0x39, hand-populated, fitted by default) — True AlGaN wide-bandgap UV-B (240-320 nm) sensor
     u3 = part("gateway", "GUVB_C31SM", "GUVB-C31SM", FP_GUVB,
               src(mpn="GUVB-C31SM", mfr="Genicom", hand=True,
-                  source="Optional AlGaN true UV-B (240-320 nm) digital I2C sensor footprint on dome PCB (I2C 0x39)"),
+                  source="AlGaN true UV-B (240-320 nm) digital I2C sensor on dome PCB (I2C 0x39)"),
               ref="U3")
     u3["1"] += gnd
     u3["2"] += sda
     u3["3"] += scl
     u3["4"] += v3
-    c3 = cap("100n 50V", src(source="Optional GUVB-C31SM decoupling"))
+    # Datasheet application circuit: C_VCC = 1 uF placed next to pin 4
+    c3 = cap("1u 50V", src(source="GUVB-C31SM VCC decoupling (1 uF per datasheet Table 5.1)"))
     c3[1] += v3
     c3[2] += gnd
 

@@ -135,10 +135,10 @@ def collect_assembly_parts(variant, spec):
     if "GUVB-C31SM" in hand_by_mpn:
         locs = ", ".join(hand_by_mpn["GUVB-C31SM"]["locs"])
         items.append({
-            "item": "AlGaN True UV-B Sensor IC (hand-reflowed; optional DNP)",
+            "item": "AlGaN True UV-B Sensor IC (hand-reflowed)",
             "qty": len(hand_by_mpn["GUVB-C31SM"]["locs"]),
             "part": "Genicom / GenUV GUVB-C31SM (2.0x2.3 mm 4-pin OLGA I2C 0x39)",
-            "description": f"Intrinsic wide-bandgap AlGaN UV-B (240-320 nm) digital I2C sensor on dome PCB ({locs}; can be left unpopulated if using U1 alone)",
+            "description": f"Intrinsic wide-bandgap AlGaN UV-B (240-320 nm) digital I2C sensor on dome PCB ({locs}); primary UV-index source, fused 80/20 with U1",
             "source": "GenUV / Digi-Key / Mouser",
         })
     if "AS3935-BQFT" in hand_by_mpn:

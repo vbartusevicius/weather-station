@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-#include "../telemetry/HomeAssistantMqtt.hpp"
+#include "../core/DerivedState.hpp"
 
 namespace station {
 namespace rs485 {
@@ -22,9 +22,9 @@ public:
     static constexpr std::uint32_t kDefaultBaudRate = 115200;
 
     static std::uint16_t crc16_modbus(const char* data, std::size_t len);
-    // Formats a deterministic NMEA/MODBUS-CRC16 telemetry frame:
-    //   $AM,<uptime_s>,<wind_ms>,<wind_dir>,<rain_mm_h>,<rain_day_mm>,<temp_c>,<rh>,<qnh_hpa>,<uv>,<aqi>*<CRC16>\r\n
-    static std::string encode_telemetry_frame(const telemetry::StationSnapshot& snap);
+    // Formats a deterministic NMEA/MODBUS-CRC16 telemetry frame (empty field = no valid value):
+    //   $AM,<uptime_s>,<wind_2m_ms>,<wind_dir_10m>,<rain_mm_h>,<rain_day_mm>,<temp_c>,<rh>,<qnh_hpa>,<uv>,<aqi>*<CRC16>\r\n
+    static std::string encode_telemetry_frame(const core::DerivedState& d);
     static CommandType parse_command_frame(const char* line, std::size_t len);
 };
 

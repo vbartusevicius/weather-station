@@ -1,0 +1,36 @@
+#pragma once
+
+#include <cstdint>
+
+namespace station {
+namespace core {
+
+// User / installation configuration (persisted in NVS by the firmware, edited from the Web UI).
+struct StationConfig {
+    // Location: required for astronomy, clear-sky cloud cover, solar tide and night detection.
+    bool location_set{false};
+    double latitude_deg{0.0};
+    double longitude_deg{0.0};
+    float altitude_m{0.0F};
+    char tz_posix[48]{"UTC0"};  // e.g. "EET-2EEST,M3.5.0/3,M10.5.0/4"
+
+    // Sensor installation / calibration
+    float declination_deg{0.0F};          // magnetic declination added to the compass heading
+    float dt_ns_offset_us{0.0F};          // ultrasonic zero-wind residual N-S
+    float dt_ew_offset_us{0.0F};          // ultrasonic zero-wind residual E-W
+    float us_delay_us{0.0F};              // transducer + AFE group delay subtracted from every ToF
+    float pressure_wind_coef{0.22F};      // fraction of dynamic pressure q seen by the barometer port
+    float rain_gain{1.0F};                // tipping-cup cross calibration of the piezo rain estimate
+    std::uint8_t as3935_tun_cap{0};       // AS3935 antenna tuning capacitor (0..15, 8 pF steps)
+    float guvb_counts_per_uvi{0.0F};      // GUVB-C31SM field calibration; 0 = use the factory NVM B_Scale
+    bool as3935_indoor{false};
+
+    // Networking
+    char wifi_ssid[33]{""};
+    char wifi_pass[65]{""};
+    char mqtt_uri[64]{""};
+    char ha_prefix[32]{"homeassistant"};
+};
+
+}  // namespace core
+}  // namespace station

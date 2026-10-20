@@ -29,11 +29,17 @@ float DeIcingHeaterController::decode_ntc_temperature_c(std::uint16_t ntc_adc_mv
 }
 
 HeaterControlOutput DeIcingHeaterController::update(const HeaterSensorInput& in) {
-    HeaterControlOutput out{};
-    out.supply_voltage_v = decode_supply_voltage_v(in.vin_adc_mv);
-    out.service_button_pressed = (in.ntc_adc_mv < kServiceBtnThresholdMv);
-    out.reflector_temp_c = out.service_button_pressed ? in.ambient_temp_c : decode_ntc_temperature_c(in.ntc_adc_mv);
+    const bool button = (in.ntc_adc_mv < kServiceBtnThresholdMv);
+    const float reflector_c = button ? in.ambient_temp_c : decode_ntc_temperature_c(in.ntc_adc_mv);
+    HeaterControlOutput out = control(decode_supply_voltage_v(in.vin_adc_mv), reflector_c, in.ambient_temp_c, in.icing_suspected);
+    out.service_button_pressed = button;
+    return out;
+}
 
+HeaterControlOutput DeIcingHeaterController::control(float vin_v, float reflector_c, float ambient_c, bool icing) {
+    HeaterControlOutput out{};
+    out.supply_voltage_v = vin_v;
+    out.reflector_temp_c = reflector_c;
     if (out.supply_voltage_v < kMinSupplyV) {
         out.state = HeaterState::UndervoltageLockout;
         return out;
@@ -43,8 +49,7 @@ HeaterControlOutput DeIcingHeaterController::update(const HeaterSensorInput& in)
         return out;
     }
 
-    const bool need_heat = (in.ambient_temp_c <= kFreezeTriggerTempC || in.icing_suspected) &&
-                           (out.reflector_temp_c < kReflectorTargetTempC);
+    const bool need_heat = (ambient_c <= kFreezeTriggerTempC || icing) && (out.reflector_temp_c < kReflectorTargetTempC);
     if (!need_heat) {
         out.state = HeaterState::Off;
         return out;

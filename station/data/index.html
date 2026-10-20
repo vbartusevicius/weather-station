@@ -29,7 +29,7 @@
     </nav>
 
     <div class="toolbar">
-      <select id="scenario-select" class="scenario-select" title="Live Weather Scenario">
+      <select id="scenario-select" class="scenario-select" title="Simulated scenario (development server only)" style="display:none">
         <option value="breeze">☀ Spring Breeze (Day)</option>
         <option value="storm">⛈ Squall &amp; Hail</option>
         <option value="freeze">❄ Freezing Fog (-4 °C)</option>
@@ -49,6 +49,10 @@
          TAB 1: GLANCEABLE VISUAL INSTRUMENT DASHBOARD
          ========================================================= -->
     <section class="panel active" id="tab-overview">
+      <div class="loc-banner" id="loc-banner" style="display:none">
+        <span>📍 Station location is not set: sunrise, moon, cloud cover and the solar-tide pressure correction need it.</span>
+        <button class="btn-primary" id="loc-banner-btn">Set location</button>
+      </div>
       <!-- VISUAL SKY HERO BANNER -->
       <div class="sky-hero" id="sky-hero">
         <svg class="sky-fx" id="sky-fx" viewBox="0 0 900 130" preserveAspectRatio="none"></svg>
@@ -528,24 +532,24 @@
     <section class="panel" id="tab-trends">
       <div class="trends-bar">
         <div class="range-btns">
-          <button class="btn-chip active" data-trange="1h">Last Hour</button>
-          <button class="btn-chip" data-trange="24h">Last 24 Hours</button>
+          <button class="btn-chip active" data-trange="minute">Last Hour</button>
+          <button class="btn-chip" data-trange="hour">Last 24 Hours</button>
+          <button class="btn-chip" data-trange="day">Last 31 Days</button>
         </div>
         <div class="trends-kpis">
           <span class="t-kpi">Last Hour Rain: <b id="trend-rain-1h">0.4 mm</b></span>
           <span class="t-kpi">Today Rain: <b id="trend-rain-day">2.4 mm</b></span>
-          <span class="t-kpi">This Month: <b id="trend-rain-month">145.2 mm</b></span>
+          <span class="t-kpi">Last 31 Days: <b id="trend-rain-month">—</b></span>
         </div>
       </div>
 
       <div class="grid-2">
         <div class="card">
           <div class="card-header">
-            <span class="card-title" id="chart-temp-title">Temperature, Dew Point &amp; Feels-Like (Last Hour)</span>
+            <span class="card-title" id="chart-temp-title">Temperature &amp; Dew Point (Last Hour)</span>
             <div class="legend-pills">
               <span class="l-dot cyan">Temp</span>
               <span class="l-dot green">Dew</span>
-              <span class="l-dot amber">Feels</span>
             </div>
           </div>
           <svg viewBox="0 0 560 175" class="chart-svg" id="chart-temp"></svg>
@@ -555,8 +559,8 @@
           <div class="card-header">
             <span class="card-title" id="chart-wind-title">Wind Speed &amp; Peak 3s Gusts (Last Hour)</span>
             <div class="legend-pills">
-              <span class="l-dot amber">3s Gust</span>
-              <span class="l-dot cyan">10m Avg</span>
+              <span class="l-dot amber">Gust</span>
+              <span class="l-dot cyan">Mean</span>
             </div>
           </div>
           <svg viewBox="0 0 560 175" class="chart-svg" id="chart-wind"></svg>
@@ -564,7 +568,7 @@
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title" id="chart-baro-title">Sea-Level Pressure &amp; Rain Rate (Last Hour)</span>
+            <span class="card-title" id="chart-baro-title">Sea-Level Pressure (Last Hour)</span>
             <span class="badge info" id="rose-dom-sector">Dominant: SW</span>
           </div>
           <svg viewBox="0 0 560 175" class="chart-svg" id="chart-baro-rain"></svg>
@@ -660,8 +664,8 @@
 
             <div class="corr-item">
               <div class="corr-top">
-                <span>🔊 Ultrasonic Crosswind Mach² &amp; Moist T<sub>v</sub></span>
-                <b class="accent" id="cv-tof">314.8 / 319.1 µs</b>
+                <span>🔊 Ultrasonic speed of sound → humidity-corrected sonic temperature</span>
+                <b class="accent" id="cv-tof">—</b>
               </div>
               <div class="corr-bar-bg"><div class="corr-bar-fg cyan" id="cb-tof" style="width:52%"></div></div>
             </div>
@@ -675,7 +679,6 @@
             </div>
           </div>
 
-          <div class="code-box" id="rs485-frame">$AM,1231200,4.80,215.0,0.00,2.40,18.40,62.5,1016.80,5.4,26*4F2A</div>
         </div>
       </div>
     </section>
@@ -687,41 +690,67 @@
       <div class="grid-2">
         <div class="card">
           <div class="card-header">
-            <span class="card-title">⚙ Calibration &amp; Home Assistant MQTT</span>
-            <span class="badge ok" id="cfg-save-status">NVS Synced</span>
+            <span class="card-title">📍 Location &amp; Time</span>
+            <span class="badge info" id="loc-status">—</span>
           </div>
           <div class="form-grid">
-            <label>Elevation (m MSL)<input type="number" id="cfg-alt" value="65.0" step="0.5" /></label>
-            <label>Mag Declination (°)<input type="number" id="cfg-decl" value="6.2" step="0.1" /></label>
-            <label>Zero-Wind Δt<sub>NS</sub> (µs)<input type="number" id="cfg-dt-ns" value="0.00" step="0.01" /></label>
-            <label>Zero-Wind Δt<sub>EW</sub> (µs)<input type="number" id="cfg-dt-ew" value="0.00" step="0.01" /></label>
-            <label>MQTT Broker<input type="text" id="cfg-mqtt" value="mqtt://192.168.1.10:1883" /></label>
-            <label>HA Prefix<input type="text" id="cfg-ha" value="homeassistant" /></label>
+            <label>Latitude (°)<input type="number" id="cfg-lat" step="0.0001" min="-90" max="90" /></label>
+            <label>Longitude (°)<input type="number" id="cfg-lon" step="0.0001" min="-180" max="180" /></label>
+            <label>Elevation (m MSL)<input type="number" id="cfg-alt" step="0.5" /></label>
+            <label>Time zone (POSIX)<input type="text" id="cfg-tz" /></label>
           </div>
           <div class="btn-row">
-            <button class="btn-primary" id="btn-save-cfg">Save Calibration</button>
-            <button class="btn-secondary" id="btn-zero-wind">Zero-Wind Trim</button>
+            <button class="btn-secondary" id="btn-geolocate">Use this device's location</button>
+            <button class="btn-primary" id="btn-save-loc">Save location</button>
+          </div>
+          <span class="muted-xs" id="geo-status">Location is used for sun/moon positions, clear-sky cloud cover and the barometric solar-tide correction.</span>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📶 Network &amp; Home Assistant</span>
+            <span class="badge info" id="net-status">—</span>
+          </div>
+          <div class="form-grid">
+            <label>Wi-Fi SSID<input type="text" id="cfg-ssid" autocomplete="off" /></label>
+            <label>Wi-Fi password<input type="password" id="cfg-pass" autocomplete="new-password" placeholder="unchanged" /></label>
+            <label>MQTT broker URI<input type="text" id="cfg-mqtt" placeholder="mqtt://192.168.1.10:1883" /></label>
+            <label>HA discovery prefix<input type="text" id="cfg-ha" /></label>
+          </div>
+          <div class="btn-row">
+            <button class="btn-primary" id="btn-save-net">Save network</button>
           </div>
         </div>
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">🚀 Maintenance &amp; Wireless OTA</span>
-            <span class="badge info" id="hdr-fw">fw 26.10.19</span>
+            <span class="card-title">⚙ Sensor Calibration</span>
+            <span class="badge ok" id="cfg-save-status">—</span>
+          </div>
+          <div class="form-grid">
+            <label>Magnetic declination (°)<input type="number" id="cfg-decl" step="0.1" /></label>
+            <label>Zero-wind Δt<sub>NS</sub> (µs)<input type="number" id="cfg-dt-ns" step="0.01" /></label>
+            <label>Zero-wind Δt<sub>EW</sub> (µs)<input type="number" id="cfg-dt-ew" step="0.01" /></label>
+            <label>Ultrasonic AFE delay (µs)<input type="number" id="cfg-us-delay" step="0.1" /></label>
+            <label>Barometer port coefficient<input type="number" id="cfg-pcoef" step="0.01" /></label>
+            <label>Rain gain<input type="number" id="cfg-rain-gain" step="0.01" /></label>
+            <label>AS3935 tuning cap (0–15)<input type="number" id="cfg-tuncap" step="1" min="0" max="15" /></label>
           </div>
           <div class="btn-row">
-            <button class="btn-secondary" id="btn-reset-rain">Reset Daily Rain</button>
-            <button class="btn-secondary" id="btn-bakeout">SHT45 Bake-Out</button>
-            <button class="btn-secondary" id="btn-heat-test">Toggle 4W Heater</button>
+            <button class="btn-primary" id="btn-save-cfg">Save calibration</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🛠 Maintenance</span>
+            <span class="badge info" id="hdr-fw">fw —</span>
+          </div>
+          <div class="btn-row">
+            <button class="btn-secondary" id="btn-reset-rain">Reset today's rain</button>
             <button class="btn-danger" id="btn-reboot">Reboot</button>
           </div>
-          <div class="ota-box">
-            <div class="btn-row">
-              <input type="file" id="ota-file" accept=".bin" />
-              <button class="btn-primary" id="btn-ota-upload">Flash OTA (.bin)</button>
-            </div>
-            <span class="muted-xs" id="ota-status">Partition ota_0 · LittleFS mounted</span>
-          </div>
+          <span class="muted-xs" id="ota-status">Hour and day history is saved to flash every hour and before a reboot.</span>
         </div>
       </div>
     </section>

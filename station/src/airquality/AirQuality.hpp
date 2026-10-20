@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 namespace station {
@@ -48,7 +49,14 @@ public:
     static std::uint16_t compute_pm10_aqi(float pm10_ug_m3);
     static std::uint16_t compute_nox_subindex(std::uint16_t nox_index);
     static std::uint16_t compute_voc_subindex(std::uint16_t voc_index);
+    // US EPA NowCast concentration from hourly means, hourly[0] = most recent hour (n <= 12).
+    // Returns false when fewer than 2 of the 3 most recent hours exist (EPA rule).
+    static bool nowcast(const float* hourly, const bool* present, std::size_t n, float& out);
+    // European Air Quality Index band (1 Good .. 6 Extremely poor) from 24-h PM means (EEA 2021 bands).
+    static std::uint8_t eaqi_band(float pm25_24h_ug_m3, float pm10_24h_ug_m3);
+    // US EPA AQI from PM only (VOC / NOx indices are relative Sensirion indices, not EPA pollutants).
     static AirQualityReport evaluate(const AirQualityInput& in);
+    static AqiLevel level_for_aqi(std::uint16_t aqi);
     static const char* level_name(AqiLevel lvl);
 };
 
