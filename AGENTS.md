@@ -28,3 +28,5 @@ Design and build a solid-state, cylindrical rooftop weather and air-quality stat
 - Full hardware + CAD + release + test pipeline: `python3 hardware/scripts/build.py`
 - Firmware native unit tests: `docker compose --profile lint run --rm -T cpp-lint "pio test -d station -e native"`
 - Lint (Python & C++): `docker compose --profile lint run --rm lint check .`
+- Web UI mock server: `python3 station/scripts/mock_webui_server.py` (serves `station/data/` on `http://127.0.0.1:8765`; switch scenarios via `POST /api/action {"action":"set_scenario","scenario":"<name>"}` with keys `breeze`, `storm`, `freeze`, `heatwave`, `plume`, `train`, `night_dark`, `night_moon`; unknown keys silently fall back to `breeze`). Repack firmware assets after UI edits: `python3 station/scripts/pack_webui.py`.
+- Web UI runtime smoke test: `node` is not installed locally. Run `station/data/app.js` with macOS JXA (`osascript -l JavaScript`) using a stub `document`/`fetch` harness and feed `/api/state` JSON into `applyTelemetry(d)` for each scenario. `applyTelemetry` errors are swallowed by `.catch(() => {})` in the browser, so a throw shows up as cards that silently stop updating.

@@ -139,6 +139,12 @@ esp_err_t handle_api_history(httpd_req_t* req) {
     return httpd_resp_send(req, json.c_str(), static_cast<ssize_t>(json.size()));
 }
 
+esp_err_t handle_api_history_minutes(httpd_req_t* req) {
+    const std::string json = station::telemetry::TelemetryFormatter::build_minute_history_json(g_snapshot);
+    httpd_resp_set_type(req, "application/json");
+    return httpd_resp_send(req, json.c_str(), static_cast<ssize_t>(json.size()));
+}
+
 esp_err_t handle_api_config_get(httpd_req_t* req) {
     JsonDocument doc;
     doc["altitude_m"] = g_config.altitude_m;
@@ -226,6 +232,7 @@ void start_web_server() {
         const httpd_uri_t u_js = {"/app.js", HTTP_GET, handle_js, nullptr, false, false, nullptr};
         const httpd_uri_t u_api = {"/api/state", HTTP_GET, handle_api_state, nullptr, false, false, nullptr};
         const httpd_uri_t u_hist = {"/api/history", HTTP_GET, handle_api_history, nullptr, false, false, nullptr};
+        const httpd_uri_t u_min = {"/api/history/minutes", HTTP_GET, handle_api_history_minutes, nullptr, false, false, nullptr};
         const httpd_uri_t u_cfg = {"/api/config", HTTP_GET, handle_api_config_get, nullptr, false, false, nullptr};
         const httpd_uri_t u_act = {"/api/action", HTTP_POST, handle_api_action_post, nullptr, false, false, nullptr};
         const httpd_uri_t u_ws = {"/ws", HTTP_GET, handle_ws, nullptr, true, false, nullptr};
@@ -234,6 +241,7 @@ void start_web_server() {
         httpd_register_uri_handler(g_http_server, &u_js);
         httpd_register_uri_handler(g_http_server, &u_api);
         httpd_register_uri_handler(g_http_server, &u_hist);
+        httpd_register_uri_handler(g_http_server, &u_min);
         httpd_register_uri_handler(g_http_server, &u_cfg);
         httpd_register_uri_handler(g_http_server, &u_act);
         httpd_register_uri_handler(g_http_server, &u_ws);
@@ -310,6 +318,8 @@ extern "C" void app_main(void) {
     start_web_server();
 
     std::uint32_t last_baro_slot_s = 0;
+    std::uint32_t last_minute = 0;
+    std::uint32_t last_strike_count = 0;
     while (true) {
         const std::uint32_t now_ms = static_cast<std::uint32_t>(esp_timer_get_time() / 1000ULL);
         const bool btn_pressed = (gpio_get_level(station::firmware::board::fab_sw_pin) == 0);
@@ -343,6 +353,21 @@ extern "C" void app_main(void) {
         if ((g_snapshot.uptime_s % 120U) == 0U || g_history_count == 0U) {
             push_history_point(g_snapshot);
         }
+        // 60 x 1-minute chart series (peak rain/hail rate, strikes per minute)
+        auto& h60 = g_snapshot.history_60m;
+        const std::uint32_t minute = g_snapshot.uptime_s / 60U;
+        if (minute != last_minute) {
+            h60.rain_mm_h.roll();
+            h60.hail_mm_h.roll();
+            h60.ppv_mm_s.roll();
+            g_snapshot.lightning.timeline_60m.roll();
+            last_minute = minute;
+        }
+        h60.rain_mm_h.update_max(g_snapshot.rain.rate_mm_h);
+        h60.hail_mm_h.update_max(g_snapshot.rain.hail_rate_mm_h);
+        g_snapshot.lightning.timeline_60m.add(
+            static_cast<std::uint16_t>(g_snapshot.lightning.strike_count - last_strike_count));
+        last_strike_count = g_snapshot.lightning.strike_count;
         broadcast_ws_state();
         poll_and_publish_rs485();
         vTaskDelay(pdMS_TO_TICKS(1000));

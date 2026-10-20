@@ -112,7 +112,7 @@ body {
 .rain-dot { background: #60a5fa; }
 .aqi-dot { background: #22c55e; }
 
-/* CARDS & GRID */
+/* CARDS & 3x3 (3+3+3) SYMMETRIC BENTO GRID */
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 @media (max-width: 1120px) { .grid-3 { grid-template-columns: repeat(2, 1fr); } }
@@ -120,8 +120,8 @@ body {
 
 .card {
   background: var(--card); border: 1px solid var(--border);
-  border-radius: 16px; padding: 15px 17px;
-  box-shadow: var(--shadow); display: flex; flex-direction: column; justify-content: space-between; gap: 10px;
+  border-radius: 16px; padding: 13px 16px;
+  box-shadow: var(--shadow); display: flex; flex-direction: column; justify-content: space-between; gap: 8px;
   transition: transform 0.15s ease, border-color 0.15s ease;
 }
 .card.clickable { cursor: pointer; }
@@ -141,7 +141,7 @@ body {
 
 /* 1. WIND COMPASS & ZERO-FOOTPRINT CORNER KEY */
 .gauge-aside-row { position: relative; display: flex; justify-content: center; align-items: center; }
-.wind-compass { width: 214px; height: 214px; }
+.wind-compass { width: 178px; height: 178px; }
 .compass-track { fill: var(--card-inner); stroke: var(--border); stroke-width: 4; }
 .compass-inner { fill: none; stroke: var(--border); stroke-dasharray: 3 3; stroke-width: 1; }
 .c-dir { fill: var(--muted); font-size: 10.5px; font-weight: 800; text-anchor: middle; }
@@ -191,6 +191,22 @@ body {
   box-shadow: 0 0 7px rgba(255,255,255,0.9); z-index: 2; transition: left 0.3s;
 }
 
+/* DUAL-LANE WIND BAR (SPEED UPPER LANE + LOAD LOWER LANE, SAME GRAMMAR AS SUN/MOON) */
+.range-labels-bottom { margin: 7px 0 0; font-size: 10px; }
+.lane-key { display: inline-block; width: 9px; height: 4px; border-radius: 99px; }
+.lane-key.speed { background: #38bdf8; }
+.lane-key.load { background: #a78bfa; }
+.dual-track { position: relative; height: 16px; border-radius: 8px; background: var(--border); }
+.dual-span { position: absolute; height: 5.5px; border-radius: 99px; transition: left 0.3s, width 0.3s; }
+.dual-span.speed { top: 1.5px; background: linear-gradient(90deg, rgba(56,189,248,0.45), #38bdf8); }
+.dual-span.load { bottom: 1.5px; background: linear-gradient(90deg, rgba(167,139,250,0.45), #a78bfa); }
+.dual-dot {
+  position: absolute; width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid #091120; transform: translateX(-50%); z-index: 2; transition: left 0.3s;
+}
+.dual-dot.speed { top: -1.5px; background: #e0f2fe; box-shadow: 0 0 6px #38bdf8; }
+.dual-dot.load { bottom: -1.5px; background: #ede9fe; box-shadow: 0 0 6px #a78bfa; }
+
 /* 2. THERMAL SPECTRUM & HUMIDITY RING */
 .thermo-visual { display: flex; flex-direction: column; gap: 10px; }
 .thermo-readouts { display: flex; justify-content: space-between; align-items: center; padding: 0 2px; }
@@ -204,6 +220,10 @@ body {
 .ring-sub { fill: var(--muted); font-size: 8px; font-weight: 700; text-anchor: middle; }
 
 .spectrum-box { background: var(--card-inner); padding: 9px 11px; border-radius: 11px; }
+.spectrum-box.compact { padding: 6px 10px; }
+.spectrum-box.compact .uv-top { margin-bottom: 4px; font-size: 10px; }
+.spectrum-box.compact .uv-rainbow-bar { height: 6px; }
+.spectrum-box.compact .spectrum-scale { margin-top: 3px; font-size: 8.5px; }
 .today-range-box { background: var(--card-inner); padding: 9px 12px; border-radius: 11px; }
 .today-range-hdr { display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; color: var(--muted); margin-bottom: 7px; }
 .today-range-hdr b { color: var(--text); font-weight: 800; }
@@ -221,12 +241,16 @@ body {
 .thermo-bento-2x2 {
   display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
 }
+.thermo-bento-3 {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px;
+}
 .tb-cell {
-  background: var(--card-inner); padding: 8px 11px; border-radius: 10px;
+  background: var(--card-inner); padding: 7px 9px; border-radius: 10px;
   display: flex; flex-direction: column; gap: 2px;
 }
 .tb-kicker { font-size: 9.5px; color: var(--muted); font-weight: 700; }
 .tb-val { font-size: 16px; font-weight: 800; color: var(--text); line-height: 1.15; }
+.tb-val-sm { font-size: 12.5px; font-weight: 800; color: var(--text); line-height: 1.2; }
 .tb-sub { font-size: 9.5px; color: var(--muted); font-weight: 600; }
 .spectrum-scale { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-top: 6px; }
 
@@ -263,15 +287,20 @@ body {
 .dial-lbl { fill: var(--muted); font-size: 8.5px; font-weight: 700; }
 .baro-big { fill: var(--text); font-size: 21px; font-weight: 800; text-anchor: middle; }
 .baro-unit { fill: var(--muted); font-size: 8.5px; font-weight: 600; text-anchor: middle; }
-.spark-clean { padding: 0; }
+/* Unified card chart block (Rain, Lightning, Seismic): title row + fixed-aspect SVG, never stretched */
+.spark-clean { padding: 0; flex: 0 0 auto; }
 .spark-svg { width: 100%; height: auto; display: block; }
-.spark-foot { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-bottom: 3px; font-weight: 600; }
+.spark-foot { display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; color: var(--muted); margin-bottom: 3px; font-weight: 600; }
 
-/* 4. RAIN CYLINDER (HEIGHT-AWARE FLEX STRETCH) */
-.rain-visual-row { flex: 1; display: flex; align-items: stretch; gap: 15px; }
-.rain-tube-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; align-self: stretch; }
+/* Vertical distribution: first block pinned top, last block pinned bottom, free space shared between */
+.grid-3 > .card > :first-child { margin-top: 0; }
+.grid-3 > .card > :last-child { margin-bottom: 0; }
+
+/* 4. RAIN CYLINDER (COMPACT HEIGHT-AWARE FLEX STRETCH) */
+.rain-visual-row { flex: 1; display: flex; align-items: stretch; gap: 14px; }
+.rain-tube-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; align-self: stretch; }
 .rain-tube {
-  position: relative; width: 42px; flex: 1; min-height: 120px; border-radius: 10px 10px 16px 16px;
+  position: relative; width: 38px; flex: 1; min-height: 92px; border-radius: 10px 10px 16px 16px;
   background: var(--card-inner); border: 2px solid var(--border); overflow: hidden;
   display: flex; align-items: flex-end;
 }
@@ -294,7 +323,7 @@ body {
 .ph-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 .ph-dot.rain-ph { background: #38bdf8; }
 .ph-dot.hail-ph { background: #c084fc; }
-.rain-chart-svg { width: 100%; flex: 1; min-height: 76px; height: auto; display: block; }
+
 
 /* VISUAL HAILSTONE DISDROMETER STRIP */
 .hail-strip {
@@ -355,52 +384,58 @@ body {
 
 .hz-icon-lbl { display: inline-flex; align-items: center; gap: 4px; }
 .hz-svg { display: inline-block; vertical-align: middle; }
+.sky24-box { padding: 10px 12px; }
 .sky24-track {
-  position: relative; height: 12px; border-radius: 6px;
-  background: var(--border); margin: 5px 0 3px;
+  position: relative; height: 16px; border-radius: 8px;
+  background: var(--border); margin: 8px 0 6px;
 }
 .sky24-sun-span {
-  position: absolute; top: 1px; height: 4.5px; border-radius: 99px;
+  position: absolute; top: 1.5px; height: 5.5px; border-radius: 99px;
   background: linear-gradient(90deg, #f59e0b, #facc15, #f97316);
 }
 .sky24-moon-span {
-  position: absolute; bottom: 1px; height: 4.5px; border-radius: 99px;
+  position: absolute; bottom: 1.5px; height: 5.5px; border-radius: 99px;
   background: linear-gradient(90deg, #38bdf8, #818cf8);
 }
 .sky24-dot {
-  position: absolute; width: 11px; height: 11px; border-radius: 50%;
+  position: absolute; width: 12px; height: 12px; border-radius: 50%;
   transform: translateX(-50%); transition: left 0.3s; z-index: 2;
 }
 .sky24-dot.sun {
-  top: -2px; background: #facc15; border: 2px solid #091120; box-shadow: 0 0 6px #facc15;
+  top: -1.5px; background: #facc15; border: 2px solid #091120; box-shadow: 0 0 6px #facc15;
 }
 .sky24-dot.moon {
-  bottom: -2px; background: #93c5fd; border: 2px solid #091120; box-shadow: 0 0 6px #60a5fa;
+  bottom: -1.5px; background: #93c5fd; border: 2px solid #091120; box-shadow: 0 0 6px #60a5fa;
 }
 
-/* 6. AIR QUALITY & DEDICATED LIGHTNING TIMELINE */
-.air-visual-row { display: flex; align-items: center; gap: 12px; }
+/* 7. AIR QUALITY & NARROW HEALTH-THRESHOLD BARS */
+.air-visual-row { display: flex; align-items: center; gap: 11px; }
 .aqi-radar-stack { display: flex; flex-direction: column; align-items: center; }
-.aqi-ring-svg { width: 88px; height: 88px; }
+.aqi-ring-svg { width: 82px; height: 82px; }
 .aqi-big { fill: var(--text); font-size: 21px; font-weight: 800; text-anchor: middle; }
 .aqi-sub { fill: var(--ok); font-size: 8px; font-weight: 800; text-anchor: middle; }
 
-.bullet-stack { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.aq-grid-2x3 {
-  flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 5px 7px;
-}
-.b-row { background: var(--card-inner); padding: 5px 8px; border-radius: 8px; }
+.bullet-stack { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.aq-gases-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.b-row { background: var(--card-inner); padding: 4px 8px; border-radius: 7px; }
 .b-hdr { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--muted); margin-bottom: 3px; white-space: nowrap; }
 .b-hdr b { color: var(--text); font-weight: 700; }
-.b-track { position: relative; height: 5px; border-radius: 99px; background: var(--border); }
+.b-track { position: relative; height: 4px; border-radius: 99px; background: var(--border); }
 .b-fill { height: 100%; border-radius: 99px; transition: width 0.3s; }
 .b-fill.ok { background: var(--ok); }
 .b-fill.cyan { background: var(--accent); }
 .b-fill.warn { background: var(--warn); }
 .b-fill.danger { background: var(--danger); }
-.b-limit { position: absolute; top: -2px; width: 2px; height: 9px; background: var(--text); opacity: 0.65; }
+.b-limit { position: absolute; top: -2px; width: 2px; height: 8px; background: var(--text); opacity: 0.7; }
 
-.lightning-panel { padding: 0; }
+/* Dense bullet-graph list (Few / Tufte): label | bar + health tick | right-aligned value, no per-row boxes */
+.aq-list { flex: 1; display: flex; flex-direction: column; gap: 3px; background: var(--card-inner); border-radius: 10px; padding: 6px 10px; }
+.card > .aq-list { flex: 0 0 auto; }
+.aq-group-hdr { display: flex; justify-content: space-between; font-size: 9px; font-weight: 800; color: var(--muted); letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 1px; }
+.aq-row { display: grid; grid-template-columns: 44px 1fr 58px; align-items: center; gap: 8px; height: 15px; }
+.aq-lbl { font-size: 10px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+.aq-val { font-size: 10.5px; color: var(--text); font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 .lt-hdr { display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; margin-bottom: 3px; }
 .lt-title { color: var(--muted); font-weight: 700; }
 .lt-status { font-size: 11px; color: var(--text); }

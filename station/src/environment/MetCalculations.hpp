@@ -109,6 +109,8 @@ public:
     static float microbarom_gravity_wave_pa(float bmp581_fifo_rms_pa, float wind_m_s);
     static float moist_air_density_kg_m3(float static_pressure_hpa, float temp_c, float rh_percent);
     static float thunder_exact_distance_km(float thunder_delay_s, float measured_sound_m_s, float wind_m_s = 0.0F);
+    static float isolate_ground_vibration_mg(float raw_imu_pga_mg, float wind_m_s, float gust_m_s);
+    static const char* classify_vibration_source(float ground_pga_mg, float dominant_freq_hz, float wind_sway_mg);
     static const char* sager_front_type(float sea_level_hpa, float synoptic_3h_delta_hpa, float wind_dir_3h_delta_deg, float cloud_cover_pct);
     static std::uint8_t sager_rain_probability_pct(float sea_level_hpa, float synoptic_3h_delta_hpa, float wind_dir_3h_delta_deg, float cloud_cover_pct, bool raining);
     static DerivedEnvironment compute(const AtmosphereReading& in);

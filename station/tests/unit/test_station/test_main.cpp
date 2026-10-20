@@ -230,6 +230,10 @@ void test_meteorological_calculations(void) {
     TEST_ASSERT_FLOAT_WITHIN(0.05F, 1.20F, MetCalculator::moist_air_density_kg_m3(1013.25F, 20.0F, 50.0F));
     // 16.8 s thunder delay at c = 344.0 m/s -> 5.78 km exact acoustic distance
     TEST_ASSERT_FLOAT_WITHIN(0.15F, 5.78F, MetCalculator::thunder_exact_distance_km(16.8F, 344.0F, 0.0F));
+    // LSM6DS3 6-axis IMU: 5.2 mg at 24 Hz in calm wind -> Heavy Truck / Train
+    const float g_pga = MetCalculator::isolate_ground_vibration_mg(5.2F, 2.0F, 3.0F);
+    TEST_ASSERT_TRUE(g_pga > 4.0F);
+    TEST_ASSERT_EQUAL_STRING("Heavy Truck / Train", MetCalculator::classify_vibration_source(g_pga, 24.0F, 0.4F));
     // TSL25911FN + LTR-390UV ALS handoff above 80k lx and GUVB-C31SM true UV-B fusion
     const float ltr_lux = MetCalculator::lux_from_ltr390_als(400000U, 3.0F, 100.0F);
     TEST_ASSERT_FLOAT_WITHIN(10.0F, 80000.0F, ltr_lux);
@@ -316,6 +320,35 @@ void test_telemetry_and_ha_discovery_json(void) {
     TEST_ASSERT_NOT_NULL(std::strstr(state.c_str(), "\"external_ufl\":true"));
     TEST_ASSERT_TRUE(TelemetryFormatter::select_external_ufl_antenna(-55, -72));
     TEST_ASSERT_FALSE(TelemetryFormatter::select_external_ufl_antenna(-88, -62));
+
+    // 60 x 1-minute chart series: live bin keeps the per-minute peak, roll() shifts oldest out
+    station::telemetry::MinuteSeries<float> rain{};
+    rain.update_max(2.0F);
+    rain.update_max(5.5F);
+    rain.update_max(3.0F);
+    TEST_ASSERT_EQUAL_FLOAT(5.5F, rain.bins[59]);
+    rain.roll();
+    TEST_ASSERT_EQUAL_FLOAT(5.5F, rain.bins[58]);
+    TEST_ASSERT_EQUAL_FLOAT(0.0F, rain.bins[59]);
+    station::telemetry::MinuteSeries<std::uint16_t> strikes{};
+    strikes.add(2);
+    strikes.add(1);
+    TEST_ASSERT_EQUAL_UINT16(3, strikes.bins[59]);
+
+    // Minute series go only to the Web UI endpoint; the HA/WebSocket state stays current-value only
+    snap.history_60m.rain_mm_h = rain;
+    const std::string state60 = TelemetryFormatter::build_state_json(snap, "26.10.16");
+    TEST_ASSERT_NULL(std::strstr(state60.c_str(), "_60m"));
+    const std::string minutes = TelemetryFormatter::build_minute_history_json(snap);
+    TEST_ASSERT_NOT_NULL(std::strstr(minutes.c_str(), "\"rain_mm_h\":["));
+    TEST_ASSERT_NOT_NULL(std::strstr(minutes.c_str(), "\"ppv_mm_s\":["));
+    const char* tl = std::strstr(minutes.c_str(), "\"strikes\":[");
+    TEST_ASSERT_NOT_NULL(tl);
+    int commas = 0;
+    for (const char* c = tl; *c != ']'; ++c) {
+        commas += (*c == ',') ? 1 : 0;
+    }
+    TEST_ASSERT_EQUAL_INT(59, commas);
 }
 
 void test_longevity_sht45_bakeout_and_scd41_extreme_cold_guard(void) {

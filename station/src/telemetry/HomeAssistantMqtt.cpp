@@ -9,6 +9,29 @@ bool TelemetryFormatter::select_external_ufl_antenna(std::int8_t ufl_rssi_dbm, s
     return (static_cast<int>(internal_rssi_dbm) - static_cast<int>(ufl_rssi_dbm)) <= 8;
 }
 
+std::string TelemetryFormatter::build_minute_history_json(const StationSnapshot& s) {
+    JsonDocument doc;
+    JsonArray rain = doc["rain_mm_h"].to<JsonArray>();
+    for (float v : s.history_60m.rain_mm_h.bins) {
+        rain.add(v);
+    }
+    JsonArray hail = doc["hail_mm_h"].to<JsonArray>();
+    for (float v : s.history_60m.hail_mm_h.bins) {
+        hail.add(v);
+    }
+    JsonArray strikes = doc["strikes"].to<JsonArray>();
+    for (std::uint16_t v : s.lightning.timeline_60m.bins) {
+        strikes.add(v);
+    }
+    JsonArray ppv = doc["ppv_mm_s"].to<JsonArray>();
+    for (float v : s.history_60m.ppv_mm_s.bins) {
+        ppv.add(v);
+    }
+    std::string out;
+    serializeJson(doc, out);
+    return out;
+}
+
 std::string TelemetryFormatter::build_state_json(const StationSnapshot& s, const char* fw_version) {
     JsonDocument doc;
     doc["fw"] = fw_version;
@@ -119,10 +142,6 @@ std::string TelemetryFormatter::build_state_json(const StationSnapshot& s, const
     lt["strikes"] = s.lightning.strike_count;
     lt["distance_km"] = s.lightning.closest_distance_km;
     lt["energy"] = s.lightning.last_energy;
-    JsonArray tl = lt["timeline_60m"].to<JsonArray>();
-    for (std::uint16_t cnt : s.lightning.timeline_60m) {
-        tl.add(cnt);
-    }
 
     JsonObject ht = doc["heater"].to<JsonObject>();
     ht["state"] = static_cast<unsigned>(s.heater.state);

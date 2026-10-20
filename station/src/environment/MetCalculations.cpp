@@ -288,6 +288,30 @@ float MetCalculator::thunder_exact_distance_km(float thunder_delay_s, float meas
     return (c_eff * thunder_delay_s) * 0.001F;
 }
 
+float MetCalculator::isolate_ground_vibration_mg(float raw_imu_pga_mg, float wind_m_s, float gust_m_s) {
+    // Subtract wind-load cantilever sway of the roof mast (proportional to dynamic gust pressure v_gust^2)
+    // from LSM6DS3TR-C 3-axis accelerometer PGA (mg) to isolate true ground-borne vibration (trucks, trains, seismic).
+    const float v_eff = std::max(wind_m_s, gust_m_s);
+    const float wind_sway_mg = 0.045F * v_eff * v_eff;
+    return clamp_f(std::max(0.20F, raw_imu_pga_mg - wind_sway_mg), 0.20F, 2000.0F);
+}
+
+const char* MetCalculator::classify_vibration_source(float ground_pga_mg, float dominant_freq_hz, float wind_sway_mg) {
+    if (ground_pga_mg >= 12.0F && dominant_freq_hz >= 0.5F && dominant_freq_hz <= 10.0F) {
+        return "Seismic Tremor (MMI III+)";
+    }
+    if (ground_pga_mg >= 1.5F && dominant_freq_hz >= 10.0F && dominant_freq_hz <= 55.0F) {
+        return "Heavy Truck / Train";
+    }
+    if (ground_pga_mg >= 1.5F && dominant_freq_hz < 10.0F) {
+        return "Minor Tremor (MMI II)";
+    }
+    if (wind_sway_mg >= 2.0F) {
+        return "Wind Mast Sway";
+    }
+    return "Quiet Foundation";
+}
+
 const char* MetCalculator::sager_front_type(
     float sea_level_hpa, float synoptic_3h_delta_hpa, float wind_dir_3h_delta_deg, float cloud_cover_pct) {
     if (synoptic_3h_delta_hpa <= -2.5F && wind_dir_3h_delta_deg < -10.0F) {

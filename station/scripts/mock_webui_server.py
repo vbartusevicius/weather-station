@@ -201,6 +201,35 @@ SCENARIOS = {
         "night_cloud": 68.0,
         "nir_skyglow_mlx": 42.5,
     },
+    "train": {
+        "wind_ms": 2.2,
+        "wind_dir": 180.0,
+        "gust_ms": 3.1,
+        "temp_c": 19.2,
+        "rh": 56.0,
+        "baro_hpa": 1014.6,
+        "delta3h": 0.2,
+        "lux": 64000.0,
+        "uv": 4.6,
+        "rain_rate": 0.0,
+        "rain_daily": 0.0,
+        "rain_state": "Dry",
+        "raining": False,
+        "wet": False,
+        "hail": 0,
+        "pm25": 9.4,
+        "pm10": 24.0,
+        "voc": 112,
+        "nox": 14,
+        "co2": 422,
+        "strikes": 0,
+        "dist_km": 0,
+        "ground_pga_mg": 5.4,
+        "dominant_hz": 24.0,
+        "gyro_mdps": 86.0,
+        "vib_source": "Heavy Truck / Train",
+        "mmi_label": "MMI II · 24 Hz Traffic",
+    },
 }
 
 
@@ -478,7 +507,15 @@ def compute_snapshot() -> dict:
             "strikes": sc["strikes"],
             "distance_km": sc["dist_km"],
             "energy": 48200 if sc["strikes"] > 0 else 0,
-            "timeline_60m": [0, 0, 1, 0, 2, 1, 3, 2, 4, 3, 2, 1] if sc["strikes"] > 0 else [0] * 12,
+        },
+        "seismic": {
+            "ground_pga_mg": float(sc.get("ground_pga_mg", 0.35 + 0.08 * abs(wave))),
+            "wind_sway_mg": round(0.045 * (gust_ms ** 2), 2),
+            "gyro_mdps": float(sc.get("gyro_mdps", round(6.0 + 2.8 * wind_ms, 1))),
+            "dominant_hz": float(sc.get("dominant_hz", 3.4 if wind_ms > 12 else 18.0)),
+            "source": sc.get("vib_source", "Wind Mast Sway" if wind_ms > 12 else "Quiet Foundation"),
+            "mmi": sc.get("mmi_label", "Wind Sway" if wind_ms > 12 else "Quiet · MMI I"),
+            "tilt_deg": 0.38 if wind_ms < 12 else 1.42,
         },
         "astronomy": {
             "sunrise": "20:15" if is_night else "06:48",
@@ -497,6 +534,35 @@ def compute_snapshot() -> dict:
             "power_w": power_w,
         },
     }
+
+
+def minute_series(sc: dict) -> dict[str, list]:
+    """60 x 1-minute chart series (index 0 = -59 min, index 59 = current minute)."""
+    rain, hail, strikes, ppv = [], [], [], []
+    pga_gal = float(sc.get("ground_pga_mg", 0.4)) * 0.981
+    freq_hz = max(1.0, float(sc.get("dominant_hz", 18.0)))
+    ppv_now = max(0.05, (pga_gal * 10.0) / (2.0 * math.pi * freq_hz))
+    eventful = float(sc.get("ground_pga_mg", 0.0)) >= 1.5
+    for m in range(60):
+        age = 59 - m
+        if sc["raining"]:
+            rr = sc["rain_rate"] * (0.35 + 0.65 * (0.5 + 0.5 * math.cos(age * 0.07)))
+            hl = rr * 0.28 if (sc["hail"] > 0 and age <= 15) else 0.0
+        else:
+            rr = 1.6 * math.sin(((age - 30) / 15.0) * math.pi) if 30 <= age <= 45 else 0.0
+            hl = 0.0
+        rain.append(round(max(0.0, rr), 2))
+        hail.append(round(max(0.0, hl), 2))
+        if sc["strikes"] > 0:
+            strikes.append(max(0, round(2.2 * math.sin(m / 59.0 * math.pi) ** 2 + 1.2 * math.sin(m * 1.3))))
+        else:
+            strikes.append(0)
+        if eventful and m % 14 in (3, 4):
+            ppv.append(round(ppv_now * (0.8 + 0.2 * abs(math.sin(m))), 3))
+        else:
+            ppv.append(round(ppv_now * (0.18 if eventful else 0.55) * (0.7 + 0.3 * abs(math.sin(m * 1.7))), 3))
+    ppv[-1] = round(ppv_now, 3)
+    return {"rain": rain, "hail": hail, "strikes": strikes, "ppv": ppv}
 
 
 def build_history() -> list[dict]:
@@ -592,6 +658,9 @@ class Handler(BaseHTTPRequestHandler):
             self._send_file("app.js", "application/javascript; charset=utf-8")
         elif self.path == "/api/state":
             self._send_json(compute_snapshot())
+        elif self.path == "/api/history/minutes":
+            ms = minute_series(SCENARIOS.get(STATE.scenario, SCENARIOS["breeze"]))
+            self._send_json({"rain_mm_h": ms["rain"], "hail_mm_h": ms["hail"], "strikes": ms["strikes"], "ppv_mm_s": ms["ppv"]})
         elif self.path == "/api/history":
             self._send_json(build_history())
         elif self.path == "/api/config":

@@ -35,6 +35,7 @@
         <option value="freeze">❄ Freezing Fog (-4 °C)</option>
         <option value="heatwave">🔥 Heatwave (UV 10.2)</option>
         <option value="plume">🌫 Urban Plume</option>
+        <option value="train">🚛 Freight Train &amp; Tremor (24 Hz)</option>
         <option value="night_dark">🌙 Clear Starry Night (Bortle 2)</option>
         <option value="night_moon">🌕 Full Moon &amp; Night Clouds</option>
       </select>
@@ -107,34 +108,28 @@
             </div>
           </div>
 
-          <!-- Unified Range-Capsule Bar 1: Wind Speed (Min — 1h Trend — Gust) -->
+          <!-- Dual-Lane Bar: Wind Speed (Upper Lane) & Surface Wind Load (Lower Lane), like Sun/Moon -->
           <div class="range-bar-wrap">
             <div class="range-labels">
-              <span class="rl-item">Min <b id="wind-lull">2.9</b></span>
+              <span class="rl-item"><i class="lane-key speed"></i>Min <b id="wind-lull">2.9</b></span>
               <span class="rl-item" id="wind-trend-lbl">↗ +0.6 m/s/h</span>
               <span class="rl-item">Gust <b id="wind-gust">7.2 m/s</b></span>
             </div>
-            <div class="range-track">
-              <div class="range-span" id="wind-range-span" style="left:14%;width:32%"></div>
-              <div class="range-dot" id="wind-avg-dot" style="left:26%" title="Current Wind Speed"></div>
+            <div class="dual-track">
+              <div class="dual-span speed" id="wind-range-span" style="left:14%;width:32%"></div>
+              <div class="dual-span load" id="wload-span" style="left:8%;width:38%"></div>
+              <div class="dual-dot speed" id="wind-avg-dot" style="left:26%" title="Current Wind Speed"></div>
+              <div class="dual-dot load" id="wload-now-dot" style="left:22%" title="Current Surface Wind Load"></div>
             </div>
-          </div>
-
-          <!-- Unified Range-Capsule Bar 2: Surface Wind Load (Min — 1h Trend — 1h Max) -->
-          <div class="range-bar-wrap">
-            <div class="range-labels">
-              <span class="rl-item">Load Min <b id="wload-min">0.5</b></span>
-              <span class="rl-item" id="wload-trend-lbl">↗ +0.3 kg/m²/h</span>
-              <span class="rl-item">1h Max <b id="wload-max">3.2 kg/m²</b></span>
-            </div>
-            <div class="range-track">
-              <div class="range-span" id="wload-span" style="left:8%;width:38%"></div>
-              <div class="range-dot" id="wload-now-dot" style="left:22%" title="Current Surface Wind Load"></div>
+            <div class="range-labels range-labels-bottom">
+              <span class="rl-item"><i class="lane-key load"></i>Load <b id="wload-min">0.5</b></span>
+              <span class="rl-item">Now <b id="wload-trend-lbl">1.4</b></span>
+              <span class="rl-item">Peak <b id="wload-max">3.2 kg/m²</b></span>
             </div>
           </div>
         </article>
 
-        <!-- 2. TEMPERATURE & HUMIDITY (UNIFIED RANGE-CAPSULE BAR + 2x2 MICRO-CLIMATE GRID) -->
+        <!-- 2. TEMPERATURE & HUMIDITY (SINGLE 24H BAR + 3-COLUMN DEW / WET-BULB / ABS HUMIDITY ROW) -->
         <article class="card clickable" data-inspect="temp">
           <div class="card-header">
             <span class="card-title"><span class="i-icon">🌡</span>TEMPERATURE &amp; HUMIDITY</span>
@@ -157,7 +152,7 @@
             </div>
           </div>
 
-          <!-- Unified Range-Capsule Bar 3: 24h Temperature (Low — 1h Trend — High) -->
+          <!-- Unified Range-Capsule Bar: 24h Temperature (Low — 1h Trend — High) -->
           <div class="range-bar-wrap">
             <div class="range-labels">
               <span class="rl-item">24h Low <b id="temp-min-lbl">14.2°</b></span>
@@ -170,49 +165,31 @@
             </div>
           </div>
 
-          <!-- 2x2 Micro-Climate Bento Grid (Feels Like · Dew Point · Wet-Bulb · Absolute Moisture) -->
-          <div class="thermo-bento-2x2">
-            <div class="tb-cell">
-              <span class="tb-kicker">Feels Like</span>
-              <strong class="tb-val" id="env-feels-sm">17.8°</strong>
-              <small class="tb-sub" id="feels-delta-lbl">-0.6° wind chill</small>
-            </div>
+          <!-- 3-Column Single-Row Micro-Climate Strip (Dew Point · Wet-Bulb · Absolute Humidity) -->
+          <div class="thermo-bento-3">
             <div class="tb-cell">
               <span class="tb-kicker">Dew Point</span>
-              <strong class="tb-val" id="env-dew">11.1°</strong>
-              <small class="tb-sub" id="fog-risk-lbl">Low fog risk (7.3° gap)</small>
+              <strong class="tb-val-sm" id="env-dew">11.1°</strong>
+              <small class="tb-sub" id="fog-risk-lbl">7.3° gap</small>
             </div>
             <div class="tb-cell">
               <span class="tb-kicker">Wet-Bulb</span>
-              <strong class="tb-val" id="env-wetbulb">14.4°</strong>
-              <small class="tb-sub" id="wetbulb-sub">Rain phase (&gt; 0.5°)</small>
+              <strong class="tb-val-sm" id="env-wetbulb">14.4°</strong>
+              <small class="tb-sub" id="wetbulb-sub">Rain phase</small>
             </div>
             <div class="tb-cell">
-              <span class="tb-kicker">Absolute Humidity</span>
-              <strong class="tb-val" id="abs-hum-lbl">9.8 g/m³</strong>
-              <small class="tb-sub" id="abs-hum-sub">Crisp air · Fast dry</small>
+              <span class="tb-kicker">Abs. Humidity</span>
+              <strong class="tb-val-sm" id="abs-hum-lbl">9.8 g/m³</strong>
+              <small class="tb-sub" id="abs-hum-sub">Crisp air</small>
             </div>
           </div>
         </article>
 
-        <!-- 3. BAROMETER (4-SENSOR SAGER FORECAST + RAIN PROBABILITY + MICROBAROM GRAVITY WAVES) -->
+        <!-- 3. BAROMETER & SAGER 12–24H PREDICTION (NO EXTRA BOXES BELOW GAUGE) -->
         <article class="card clickable" data-inspect="baro">
           <div class="card-header">
             <span class="card-title"><span class="i-icon">⏲</span>BAROMETER &amp; FORECAST</span>
             <span class="badge info" id="baro-trend-badge">Change: +0.1 hPa/h</span>
-          </div>
-
-          <!-- 4-Sensor Sager Forecast Box (Pressure + Wind Shift + Cloud Cover + Rain Chance %) -->
-          <div class="sager-forecast-box" id="baro-forecast-banner">
-            <div class="sager-top">
-              <strong class="fb-text" id="env-zambretti">Fine Weather</strong>
-              <span class="rain-prob-pill" id="baro-rain-prob">Rain Chance 12%</span>
-            </div>
-            <div class="sager-sub">
-              <span id="baro-front-lbl">High-Pressure Ridge · Wind Steady</span>
-              <span id="baro-wave-lbl" title="BMP581 50 Hz Microbarom Gravity-Wave RMS">Wave 0.08 Pa · Calm</span>
-            </div>
-            <div class="mbar-track"><div class="mbar-fill cyan" id="baro-rain-prob-fill" style="width:12%"></div></div>
           </div>
 
           <div class="gauge-aside-row">
@@ -245,24 +222,20 @@
             </div>
           </div>
 
-          <!-- Cross-Domain Acoustic & Air-Mass Physics + 240 Hz Microbarom/Thunder Seismograph -->
-          <div class="mini-bars-2">
-            <div class="mbar">
-              <div class="mbar-top"><span>Air Density</span><b id="baro-density">1.208 kg/m³</b></div>
-              <div class="mbar-track"><div class="mbar-fill cyan" id="baro-density-fill" style="width:52%"></div></div>
+          <!-- Enriched Sager 12–24h Prediction Box (System + Wind Shift + Outlook + Rain Probability %) -->
+          <div class="sager-forecast-box" id="baro-forecast-banner">
+            <div class="sager-top">
+              <strong class="fb-text" id="env-zambretti">Fine Weather</strong>
+              <span class="rain-prob-pill" id="baro-rain-prob">Rain Chance 12%</span>
             </div>
-            <div class="mbar">
-              <div class="mbar-top"><span>Sound Speed</span><b id="baro-sound">343.1 m/s</b></div>
-              <div class="mbar-track"><div class="mbar-fill green" id="baro-sound-fill" style="width:58%"></div></div>
+            <div class="sager-sub">
+              <span id="baro-front-lbl">High-Pressure Ridge · Wind Steady</span>
+              <span id="baro-minmax">24h: 1015–1017 hPa</span>
             </div>
-          </div>
-
-          <div class="spark-clean">
-            <div class="spark-foot">
-              <span id="seismo-title">Pressure Wave (240 Hz)</span>
-              <span id="baro-minmax">↓ 1015 · ↑ 1017 hPa</span>
+            <div class="sager-sub">
+              <span id="baro-outlook-lbl">12h Outlook: Light / Steady Breeze · Steady &amp; Fair</span>
             </div>
-            <svg viewBox="0 0 320 52" class="spark-svg" id="spark-baro"></svg>
+            <div class="mbar-track"><div class="mbar-fill cyan" id="baro-rain-prob-fill" style="width:12%"></div></div>
           </div>
         </article>
 
@@ -285,22 +258,25 @@
             </div>
 
             <div class="rain-right">
-              <div class="rain-hero-row">
-                <div class="rain-hero-num">
-                  <span class="big-num" id="rain-rate">0.0</span>
-                  <span class="sub-lbl" id="rain-rate-unit">mm/h · Dry</span>
-                </div>
-                <div class="phase-legend" title="Stacked liquid-equivalent precipitation rate (mm/h)">
-                  <span><i class="ph-dot rain-ph"></i>Rain</span>
-                  <span><i class="ph-dot hail-ph"></i>Hail</span>
-                </div>
+              <div class="rain-hero-num">
+                <span class="big-num" id="rain-rate">0.0</span>
+                <span class="sub-lbl" id="rain-rate-unit">mm/h · Dry</span>
               </div>
-              <svg viewBox="0 0 320 106" class="spark-svg rain-chart-svg" id="spark-rain"></svg>
-              <!-- Visual Hailstone Size Disdrometer Strip (Proportional Circles) -->
+              <div class="spark-clean">
+                <div class="spark-foot">
+                  <span>Precipitation Rate (mm/h)</span>
+                  <span class="phase-legend" title="Stacked liquid-equivalent precipitation rate (mm/h)">
+                    <span><i class="ph-dot rain-ph"></i>Rain</span>
+                    <span><i class="ph-dot hail-ph"></i>Hail</span>
+                  </span>
+                </div>
+                <svg viewBox="0 0 320 76" class="spark-svg" id="spark-rain"></svg>
+              </div>
+              <!-- Visual Hailstone Size & Impact Energy Strip (Proportional Circles) -->
               <div class="hail-strip">
                 <div class="hail-info">
-                  <span class="hail-kicker">Hailstone Size</span>
-                  <strong id="rain-hail">None (0 hits)</strong>
+                  <span class="hail-kicker">Hailstone Size &amp; Impact</span>
+                  <strong id="rain-hail">0 hits · Max Ø 0.0 mm</strong>
                 </div>
                 <div class="hail-scale" id="hail-scale">
                   <div class="hs-item" data-mm="5"><span class="hs-ball s5"></span><small>5mm</small></div>
@@ -313,37 +289,28 @@
           </div>
         </article>
 
-        <!-- 5. SOLAR, UV & CLOUD COVER (DAY) / NIGHT SKY, MOON & BORTLE (NIGHT) -->
+        <!-- 5. SOLAR & UV RADIATION (DEDICATED CARD: IRRADIANCE, LUX, UV INDEX, BURN TIME & VIS/IR HEAT) -->
         <article class="card clickable" data-inspect="solar">
           <div class="card-header">
-            <span class="card-title" id="solar-card-title">SUN, UV &amp; CLOUDS</span>
+            <span class="card-title"><span class="i-icon">☀</span>SOLAR &amp; UV INDEX</span>
             <span class="badge info" id="daylight-badge">Burn ~37 min</span>
           </div>
 
-          <!-- Hero Row: Big Irradiance/Brightness Inline Like Precipitation Hero + Cloud Cover Ring -->
           <div class="thermo-readouts">
             <div>
               <div class="rain-hero-num">
                 <span class="big-num" id="env-solar">642</span>
                 <span class="sub-lbl" id="env-solar-unit">W/m²</span>
               </div>
-              <span class="sub-lbl" id="env-lux">81,250 lx · Scattered Sky</span>
-            </div>
-            <div class="rh-ring-wrap">
-              <svg viewBox="0 0 88 88" class="rh-ring-svg">
-                <circle cx="44" cy="44" r="35" class="ring-bg" />
-                <circle cx="44" cy="44" r="35" class="ring-fg-cyan" id="cloud-arc" stroke-dasharray="53 220" transform="rotate(-90 44 44)" />
-                <text x="44" y="43" class="ring-val" id="cloud-cover-lbl">24%</text>
-                <text x="44" y="56" class="ring-sub">Clouds</text>
-              </svg>
+              <span class="sub-lbl" id="env-lux">Brightness: 81,250 lx</span>
             </div>
           </div>
 
-          <!-- Center Scale: UV Index Rainbow Bar (Day) <-> Bortle Sky Darkness Scale (Night) -->
+          <!-- UV Index Rainbow Bar -->
           <div class="spectrum-box">
             <div class="uv-top">
               <span id="uv-left-lbl">UV Index <b class="accent" id="env-uv">5.4 · Moderate</b></span>
-              <span class="muted-xs" id="uv-sub-row"></span>
+              <span class="muted-xs" id="uv-sub-row">UVA 25.9 · UVB 1.8 W/m²</span>
             </div>
             <div class="uv-rainbow-bar" id="uv-or-bortle-bar">
               <div class="uv-dot" id="uv-dot" style="left:47%"></div>
@@ -353,16 +320,62 @@
             </div>
           </div>
 
-          <!-- Bottom Full-Width Unified 24h Sun & Moon Bar (Shows Both Sun & Moon Rise/Set + Live Positions) -->
+          <!-- Bottom Stacked Horizontal UV — Visible — IR Power Bar -->
           <div class="mbar">
+            <div class="mbar-top" id="spec-split-lbls">
+              <span><i class="sp-dot uv"></i>UV <b id="sp-uv">28</b></span>
+              <span><i class="sp-dot vis"></i>Visible <b id="sp-vis">292</b></span>
+              <span><i class="sp-dot nir"></i>IR Heat <b id="sp-nir">322 W/m²</b></span>
+            </div>
+            <div class="spec-split-bar">
+              <div class="sp-seg uv" id="bar-sp-uv" style="width:6%"></div>
+              <div class="sp-seg vis" id="bar-sp-vis" style="width:45%"></div>
+              <div class="sp-seg nir" id="bar-sp-nir" style="width:49%"></div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 6. SKY, CLOUDS & SUN / MOON (CLOUD % AS HERO, CLOUD BASE IN TOP RIGHT, STARGAZING AT NIGHT) -->
+        <article class="card clickable" data-inspect="solar">
+          <div class="card-header">
+            <span class="card-title"><span class="i-icon">☁</span>SKY, CLOUDS &amp; MOON</span>
+            <span class="badge info" id="sky-base-badge">Cloud Base: 910 m</span>
+          </div>
+
+          <div class="thermo-readouts">
+            <div>
+              <div class="rain-hero-num">
+                <span class="big-num" id="cloud-cover-lbl">24%</span>
+                <span class="sub-lbl" id="sky-cond-big">Clouds · Scattered</span>
+              </div>
+              <span class="sub-lbl" id="sky-moon-sub">Moon 74% Illuminated · Waxing Gibbous</span>
+            </div>
+          </div>
+
+          <!-- Night Sky Darkness / Stargazing Scale (Visible After Sunset / Dark Mode Scenarios) -->
+          <div class="spectrum-box compact" id="stargazing-box" style="display:none">
+            <div class="uv-top">
+              <span id="bortle-left-lbl">Stargazing <b class="accent" id="sky-bortle-val">Bortle 2 · Milky Way</b></span>
+              <span class="muted-xs" id="sky-sqm-val">SQM 21.4 mag/arcsec²</span>
+            </div>
+            <div class="uv-rainbow-bar bortle-mode">
+              <div class="uv-dot" id="bortle-dot" style="left:18%"></div>
+            </div>
+            <div class="spectrum-scale">
+              <span>1 Dark</span><span>3 Rural</span><span>5 Suburb</span><span>7 Bright</span><span>9 City</span>
+            </div>
+          </div>
+
+          <!-- Spacious 24h Sun & Moon Dual-Lane Horizon Bar -->
+          <div class="mbar sky24-box">
             <div class="mbar-top">
               <span class="hz-icon-lbl" title="Sunrise & Sunset">
-                <svg viewBox="0 0 16 12" width="14" height="11" class="hz-svg"><line x1="1" y1="10" x2="15" y2="10" stroke="#f59e0b" stroke-width="1.5"/><path d="M 4 10 A 4 4 0 0 1 12 10" fill="none" stroke="#facc15" stroke-width="1.5"/><polyline points="6,4 8,1.5 10,4" fill="none" stroke="#facc15" stroke-width="1.4"/></svg>
-                <b id="sun-window">06:48–18:24</b>
+                <svg viewBox="0 0 16 12" width="15" height="12" class="hz-svg"><line x1="1" y1="10" x2="15" y2="10" stroke="#f59e0b" stroke-width="1.5"/><path d="M 4 10 A 4 4 0 0 1 12 10" fill="none" stroke="#facc15" stroke-width="1.5"/><polyline points="6,4 8,1.5 10,4" fill="none" stroke="#facc15" stroke-width="1.4"/></svg>
+                <span>Sun <b id="sun-window">06:48–18:24</b></span>
               </span>
               <span class="hz-icon-lbl" title="Moonrise, Moonset & Illumination">
-                <svg viewBox="0 0 14 14" width="12" height="12" class="hz-svg"><path d="M 10.5 9.8 A 4.8 4.8 0 0 1 5.2 2.2 A 5.0 5.0 0 1 0 11.8 8.8 Z" fill="#93c5fd"/></svg>
-                <b id="moon-window">14:15–02:40 · 74%</b>
+                <svg viewBox="0 0 14 14" width="13" height="13" class="hz-svg"><path d="M 10.5 9.8 A 4.8 4.8 0 0 1 5.2 2.2 A 5.0 5.0 0 1 0 11.8 8.8 Z" fill="#93c5fd"/></svg>
+                <span>Moon <b id="moon-window">14:15–02:40 · 74%</b></span>
               </span>
             </div>
             <div class="sky24-track">
@@ -377,14 +390,14 @@
           </div>
         </article>
 
-        <!-- 6. AIR QUALITY & CALM LIGHTNING TIMELINE (NO ALERT BORDERS, SHOWS BOLT POWER CLASS) -->
+        <!-- 7. AIR QUALITY & PARTICLES (COMPACT NARROW BARS, EXPLICIT IDX UNITS, WHO HEALTH THRESHOLDS) -->
         <article class="card clickable" data-inspect="air">
           <div class="card-header">
-            <span class="card-title">AIR &amp; LIGHTNING</span>
+            <span class="card-title"><span class="i-icon">🍃</span>AIR QUALITY &amp; PARTICLES</span>
             <span class="badge info" id="aq-dom-badge">Main: PM2.5</span>
           </div>
 
-          <!-- Top Half: AQI Ring + 3 Pollutant Bars -->
+          <!-- Top Section: AQI Ring + Primary Regulated Particulates (PM2.5, PM10, Pollen/Bio) -->
           <div class="air-visual-row">
             <div class="aqi-radar-stack">
               <svg viewBox="0 0 92 92" class="aqi-ring-svg">
@@ -395,41 +408,115 @@
               </svg>
             </div>
 
-            <div class="aq-grid-2x3">
-              <div class="b-row">
-                <div class="b-hdr"><span>PM1.0</span><b id="aq-pm1">3.7 µg/m³</b></div>
-                <div class="b-track"><div class="b-fill ok" id="b-pm1" style="width:15%"></div></div>
+            <!-- Dense Bullet-Graph List (Label | Bar with Health Tick | Value), Grouped: Particles -->
+            <div class="aq-list">
+              <div class="aq-group-hdr"><span>Particles</span><span>µg/m³</span></div>
+              <div class="aq-row">
+                <span class="aq-lbl">PM1.0</span>
+                <div class="b-track" title="Tick = 10 µg/m³"><div class="b-limit" style="left:40%"></div><div class="b-fill ok" id="b-pm1" style="width:15%"></div></div>
+                <b class="aq-val" id="aq-pm1">3.7</b>
               </div>
-              <div class="b-row">
-                <div class="b-hdr"><span>PM2.5</span><b id="aq-pm25">6.2 µg/m³</b></div>
-                <div class="b-track"><div class="b-limit" style="left:42%"></div><div class="b-fill ok" id="b-pm25" style="width:18%"></div></div>
+              <div class="aq-row">
+                <span class="aq-lbl">PM2.5</span>
+                <div class="b-track" title="Tick = WHO 24h limit (15 µg/m³)"><div class="b-limit" style="left:43%"></div><div class="b-fill ok" id="b-pm25" style="width:18%"></div></div>
+                <b class="aq-val" id="aq-pm25">6.2</b>
               </div>
-              <div class="b-row">
-                <div class="b-hdr"><span>PM4.0</span><b id="aq-pm4">8.1 µg/m³</b></div>
-                <div class="b-track"><div class="b-fill ok" id="b-pm4" style="width:16%"></div></div>
+              <div class="aq-row">
+                <span class="aq-lbl">PM4.0</span>
+                <div class="b-track" title="Tick = 25 µg/m³"><div class="b-limit" style="left:50%"></div><div class="b-fill ok" id="b-pm4" style="width:16%"></div></div>
+                <b class="aq-val" id="aq-pm4">8.1</b>
               </div>
-              <div class="b-row">
-                <div class="b-hdr"><span>PM10</span><b id="aq-pm10">12.8 µg/m³</b></div>
-                <div class="b-track"><div class="b-limit" style="left:50%"></div><div class="b-fill ok" id="b-pm10" style="width:14%"></div></div>
+              <div class="aq-row">
+                <span class="aq-lbl">PM10</span>
+                <div class="b-track" title="Tick = WHO 24h limit (45 µg/m³)"><div class="b-limit" style="left:50%"></div><div class="b-fill ok" id="b-pm10" style="width:14%"></div></div>
+                <b class="aq-val" id="aq-pm10">12.8</b>
               </div>
-              <div class="b-row">
-                <div class="b-hdr"><span>Pollen / Bio</span><b id="aq-bio">6.6 · Low</b></div>
-                <div class="b-track"><div class="b-fill ok" id="b-bio" style="width:15%"></div></div>
-              </div>
-              <div class="b-row">
-                <div class="b-hdr"><span>CO₂ · VOC · NOx</span><b id="aq-co2">418 · 98 · 2</b></div>
-                <div class="b-track"><div class="b-fill cyan" id="b-co2" style="width:24%"></div></div>
+              <div class="aq-row">
+                <span class="aq-lbl">Pollen</span>
+                <div class="b-track" title="Tick = 20 µg/m³ coarse bio-aerosol"><div class="b-limit" style="left:44%"></div><div class="b-fill ok" id="b-bio" style="width:15%"></div></div>
+                <b class="aq-val" id="aq-bio">6.6</b>
               </div>
             </div>
           </div>
 
-          <!-- Bottom Half: Calm Neutral Lightning Timeline (Same Bar Style as Precipitation) -->
-          <div class="lightning-panel" id="lightning-panel">
-            <div class="lt-hdr">
-              <span class="lt-title">Lightning</span>
-              <strong class="lt-status" id="lt-dist">0 strikes · &gt;40 km</strong>
+          <!-- Dense Bullet-Graph List, Grouped: Gases -->
+          <div class="aq-list">
+            <div class="aq-group-hdr"><span>Gases</span></div>
+            <div class="aq-row">
+              <span class="aq-lbl">CO₂</span>
+              <div class="b-track" title="Tick = 1000 ppm"><div class="b-limit" style="left:52%"></div><div class="b-fill cyan" id="b-co2" style="width:18%"></div></div>
+              <b class="aq-val" id="aq-co2">418 ppm</b>
             </div>
-            <svg viewBox="0 0 320 76" class="spark-svg rain-chart-svg" id="lt-timeline-svg"></svg>
+            <div class="aq-row">
+              <span class="aq-lbl">VOC</span>
+              <div class="b-track" title="Sensirion VOC Index (100 = avg, tick = 150)"><div class="b-limit" style="left:50%"></div><div class="b-fill ok" id="b-voc" style="width:33%"></div></div>
+              <b class="aq-val" id="aq-voc">98 idx</b>
+            </div>
+            <div class="aq-row">
+              <span class="aq-lbl">NOx</span>
+              <div class="b-track" title="Sensirion NOx Index (1 = clean, tick = 20)"><div class="b-limit" style="left:25%"></div><div class="b-fill ok" id="b-nox" style="width:5%"></div></div>
+              <b class="aq-val" id="aq-nox">2 idx</b>
+            </div>
+          </div>
+        </article>
+
+        <!-- 8. LIGHTNING (DISTANCE HERO, STRIKES IN TOP RIGHT, STORM TRACKER STRIP & 60M BAR GRAPH) -->
+        <article class="card clickable" data-inspect="air">
+          <div class="card-header">
+            <span class="card-title"><span class="i-icon">⚡</span>LIGHTNING</span>
+            <span class="badge ok" id="lt-lock-badge">0 Strikes</span>
+          </div>
+
+          <div class="thermo-readouts">
+            <div>
+              <div class="rain-hero-num">
+                <span class="big-num" id="lt-dist-big">&gt;40</span>
+                <span class="sub-lbl" id="lt-dist-unit">km</span>
+              </div>
+              <span class="sub-lbl" id="lt-thunder-sub">Δt — s</span>
+            </div>
+          </div>
+
+          <!-- Full-Width Lightning Strikes Bar Graph (Zero Left Gap) -->
+          <div class="spark-clean" id="lightning-panel">
+            <div class="spark-foot">
+              <span>Lightning Strikes</span>
+              <span id="lt-peak-lbl">Peak 0</span>
+            </div>
+            <svg viewBox="0 0 320 76" class="spark-svg" id="lt-timeline-svg"></svg>
+          </div>
+        </article>
+
+        <!-- 9. SEISMIC & VIBRATION (STANDARD PPV IN MM/S, AMPLITUDE & FREQUENCY HZ, LABELED X/Y VELOCITY CHART) -->
+        <article class="card clickable" data-inspect="wind">
+          <div class="card-header">
+            <span class="card-title"><span class="i-icon">〰</span>SEISMIC &amp; VIBRATION</span>
+            <span class="badge ok" id="seismic-badge">Quiet · MMI I</span>
+          </div>
+
+          <div class="thermo-readouts">
+            <div>
+              <div class="rain-hero-num">
+                <span class="big-num" id="seis-pga-big">0.12</span>
+                <span class="sub-lbl">mm/s</span>
+              </div>
+              <span class="sub-lbl" id="seis-freq-sub">Dominant 18 Hz</span>
+            </div>
+          </div>
+
+          <!-- Peak Acceleration Amplitude (cm/s²) -->
+          <div class="mbar">
+            <div class="mbar-top"><span>Peak Acceleration</span><b id="seis-ground-lbl">0.4 cm/s²</b></div>
+            <div class="mbar-track"><div class="mbar-fill cyan" id="seis-ground-fill" style="width:8%"></div></div>
+          </div>
+
+          <!-- Ground Vibration Velocity Chart (mm/s) with Numeric Y-Axis & Time X-Axis -->
+          <div class="spark-clean">
+            <div class="spark-foot">
+              <span id="seis-wave-title">Ground Vibration Velocity (mm/s)</span>
+              <span id="seis-freq-lbl">18 Hz</span>
+            </div>
+            <svg viewBox="0 0 320 76" class="spark-svg" id="spark-seismic"></svg>
           </div>
         </article>
       </div>
