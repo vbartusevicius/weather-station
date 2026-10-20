@@ -277,6 +277,23 @@ def stl_part_views(stl_map, crown_inside_items=(), pagoda_inside_items=()):
         render(name, [(solid, STL_COLOURS[name], 1.0)], cam, focal=(cx, cy, cz), zoom=1.18)
 
 
+def lock_triangle_inlays(y_base, y_tip, half_w=1.35, depth=0.38):
+    """Build thin dark-slate visual inlays inside the engraved ▲ / ▼ lock-alignment triangles so they
+    stand out crisply under VTK's headlight without needing shadow-mapping."""
+    pts = [(-half_w, y_base), (half_w, y_base), (0.0, y_tip)] if y_tip > y_base else [(-half_w, y_base), (0.0, y_tip), (half_w, y_base)]
+    tri = (
+        cq.Workplane("XY", origin=(0, 0, -(be.OUTER_R - depth + 0.04)))
+        .polyline(pts)
+        .close()
+        .extrude(-0.20)
+    )
+    all_tris = None
+    for deg in (0, 90, 180, 270):
+        t = tri.rotate((0, 0, 0), (0, 1, 0), deg)
+        all_tris = t if all_tris is None else all_tris.union(t)
+    return all_tris
+
+
 def shifted(items, dy):
     return [(s.translate((0, dy, 0)), rgb, op) for s, rgb, op in items]
 
@@ -360,6 +377,16 @@ def main():
     boards = [(s, c, 1.0) for s, c, _ in plates]
     inside = boards + parts + [(b2b_riser, GOLD, 1.0), (uv_retainer_nut, BRASS, 1.0), (uv_lens, GLASS_UV, 0.28)]
 
+    MARKER_INK = (0.14, 0.18, 0.24)
+    tri_markers = [
+        (lock_triangle_inlays(61.9, 64.3), MARKER_INK, 1.0),
+        (lock_triangle_inlays(70.1, 67.7), MARKER_INK, 1.0),
+        (lock_triangle_inlays(115.7, 118.1), MARKER_INK, 1.0),
+        (lock_triangle_inlays(123.9, 121.5), MARKER_INK, 1.0),
+        (lock_triangle_inlays(181.6, 184.0), MARKER_INK, 1.0),
+        (lock_triangle_inlays(189.4, 187.0), MARKER_INK, 1.0),
+    ]
+
     exterior = [
         (base, STL_COLOURS["base"], 1.0),
         (mast_clamp, STL_COLOURS["mast_clamp"], 1.0),
@@ -371,7 +398,7 @@ def main():
         (struts, STL_COLOURS["struts"], 1.0),
         (crown_base, STL_COLOURS["crown_base"], 1.0),
         (crown, STL_COLOURS["crown"], 1.0),
-    ] + inside
+    ] + tri_markers + inside
 
     render("iso", exterior, (260, 175, 260), focal=(0, 102, 0), zoom=1.12)
     render("inside", [

@@ -164,6 +164,24 @@ def cut_internal_bayonet_y(body, y0, r_minor=44.18, r_slot=45.40, n_lugs=8):
     return body
 
 
+def cut_lock_triangles_y(body, y_base, y_tip, half_w=1.45, depth=0.45):
+    """Engrave 4 cardinal lock-alignment triangles (at 0, 90, 180, 270 deg around `r = OUTER_R`):
+      - `y_tip > y_base`: Triangle-UP (▲) on the lower part's top edge pointing up at the seam
+      - `y_tip < y_base`: Triangle-DOWN (▼) on the upper part's bottom edge pointing down at the seam
+    When the two mating parts are twisted into their locked bayonet detent, ▲ and ▼ align tip-to-tip!"""
+    # Always wind the 3 vertices counter-clockwise in XY so OpenCascade's face normal is strictly +Z!
+    pts = [(-half_w, y_base), (half_w, y_base), (0.0, y_tip)] if y_tip > y_base else [(-half_w, y_base), (0.0, y_tip), (half_w, y_base)]
+    tri_cutter = (
+        cq.Workplane("XY", origin=(0, 0, -(OUTER_R - depth)))
+        .polyline(pts)
+        .close()
+        .extrude(-2.5)
+    )
+    for deg in (0, 90, 180, 270):
+        body = body.cut(tri_cutter.rotate((0, 0, 0), (0, 1, 0), deg))
+    return body
+
+
 def build_base():
     """Part 1: Rear Mast Cradle (y=0..34, z>=-1) with Solid Flat Clamping Ears (for nut + washer)
     + Sealed Lower Electronics Bell Housing (y=34..70.2) with Single Center IP68 M12/PG7 Cable-Gland Bulkhead,
@@ -186,6 +204,7 @@ def build_base():
     oring_groove = ring_cone_y(65.2, 66.4, 43.9, OUTER_R - 0.8, 43.9, OUTER_R - 0.8)
     body = body.union(bay_outer).cut(oring_groove)
     body = add_external_bayonet_y(body, 66.4, r_root=44.0, r_lug=45.15, n_lugs=8)
+    body = cut_lock_triangles_y(body, y_base=61.9, y_tip=64.3)
 
     # 3. Cut internal electronics cavity (y = 34.5..70.2, radius = 42.6 mm)
     cavity = cone_y(34.5, 70.2, 42.6, 42.6)
@@ -478,6 +497,7 @@ def build_pagoda():
                .cut(top_oring_groove)
                .union(top_spigot))
     top_cap = add_external_bayonet_y(top_cap, 120.1, r_root=44.0, r_lug=45.15, n_lugs=8)
+    top_cap = cut_lock_triangles_y(top_cap, y_base=115.7, y_tip=118.1)
     body = body.union(top_cap)
 
     for deg in (45, 135, 225, 315):
@@ -501,6 +521,7 @@ def build_pagoda():
                 vent_slit = box(gx + off - 0.6, gx + off + 0.6, 114.8, 120.2, gz - 3.5, gz + 3.5)
             body = body.cut(vent_slit)
 
+    body = cut_lock_triangles_y(body, y_base=70.1, y_tip=67.7)
     return body
 
 
@@ -517,6 +538,7 @@ def build_wind_tunnel():
     deck_plate = cone_y(124.48, 126.5, OUTER_R, OUTER_R)
     reflector_cone = cone_y(126.5, 130.0, OUTER_R, 6.0)
     body = outer_skirt.union(deck_plate).union(reflector_cone)
+    body = cut_lock_triangles_y(body, y_base=123.9, y_tip=121.5)
 
     for st in ef.strut_centres():
         sx, sz = st["x"], st["z"]
@@ -620,6 +642,7 @@ def build_crown_base():
     oring_groove = ring_cone_y(184.8, 186.0, 43.9, OUTER_R - 0.8, 43.9, OUTER_R - 0.8)
     body = shroud.union(crown_drip).cut(oring_groove)
     body = add_external_bayonet_y(body, 186.0, r_root=44.0, r_lug=45.15, n_lugs=8)
+    body = cut_lock_triangles_y(body, y_base=181.6, y_tip=184.0)
 
     cavity = cone_y(175.8, 190.2, 42.5, 42.5)
     body = body.cut(cavity)
@@ -695,6 +718,7 @@ def build_crown():
     dome_apex = cone_y(196.4, 198.0, 14.0, 9.0)
     dome = dome_rim.union(dome_diaphragm).union(dome_apex)
     body = skirt.union(dome)
+    body = cut_lock_triangles_y(body, y_base=189.4, y_tip=187.0)
 
     cavity = (
         cone_y(190.2, 190.6, 44.18, 42.5)
