@@ -29,6 +29,13 @@ struct AtmosphereReading {
     std::uint32_t raw_uv_counts{0};   // LTR-390UV-01 UVS channel (300-350 nm)
     std::uint16_t raw_guvb_counts{0}; // Optional GenUV GUVB-C31SM AlGaN UV-B channel (240-320 nm, 0 = not populated)
     float pressure_3h_delta_hpa{0.0F};
+    float wind_dir_3h_delta_deg{0.0F};// + = clockwise veering (clearing), - = counter-clockwise backing (deteriorating)
+    std::uint8_t local_hour{12};      // Local solar hour (0..23) for semidiurnal atmospheric tide removal
+    float bmp581_fifo_rms_pa{0.09F};  // 50 Hz BMP581 FIFO sub-Hz pressure ripple RMS (Pa)
+    float thunder_delay_s{0.0F};      // Time delta (s) from AS3935 EM flash interrupt to BMP581/Piezo acoustic shockwave (0 = none)
+    float thunder_peak_pa{0.0F};      // Peak N-wave acoustic overpressure (Pa) captured by BMP581 at 240 Hz
+    float measured_sound_m_s{343.0F}; // Live speed of sound (m/s) measured by the 40 kHz ultrasonic anemometer
+    bool raining{false};
 };
 
 struct DerivedEnvironment {
@@ -46,10 +53,28 @@ struct DerivedEnvironment {
     float dynamic_pressure_offset_hpa{0.0F};
     float sea_level_pressure_hpa{1013.25F};
     float pressure_3h_delta_hpa{0.0F};
+    float synoptic_3h_delta_hpa{0.0F};
+    float solar_tide_offset_hpa{0.0F};
+    float microbarom_wave_pa{0.08F};
+    float air_density_kg_m3{1.225F};
+    float thunder_distance_km{0.0F};
+    bool thunder_acoustic_locked{false};
+    std::uint8_t rain_prob_pct{10};
     PressureTrend pressure_trend{PressureTrend::Steady};
     const char* zambretti_forecast{"Settled Fine"};
+    const char* front_type{"Steady Air Mass"};
+    const char* wind_shift{"Steady Bearing"};
     float solar_irradiance_w_m2{0.0F};
+    float visible_w_m2{0.0F};
+    float nir_w_m2{0.0F};
+    float uva_w_m2{0.0F};
+    float uvb_w_m2{0.0F};
     float uv_index{0.0F};
+    std::uint16_t burn_time_min{0};
+    bool vitamin_d_active{false};
+    bool is_night{false};
+    float sqm_mag_arcsec2{21.5F};
+    std::uint8_t bortle_class{2};
     float cloud_cover_pct{0.0F};
     float absolute_humidity_g_m3{8.6F};
     bool frost_risk{false};
@@ -65,6 +90,8 @@ public:
     static float vapor_pressure_deficit_kpa(float temp_c, float rh_percent);
     static float cloud_base_lcl_m(float temp_c, float dew_point_c);
     static float estimate_cloud_cover_pct(float solar_w_m2, float uv_index, float clear_sky_ref_w_m2 = 850.0F);
+    static float sky_quality_mpsas(float ambient_lux);
+    static std::uint8_t bortle_class_from_sqm(float sqm_mpsas);
     static float wind_chill_c(float temp_c, float wind_m_s);
     static float heat_index_c(float temp_c, float rh_percent);
     static float feels_like_c(float temp_c, float rh_percent, float wind_m_s, float solar_w_m2);
@@ -78,6 +105,12 @@ public:
     static PressureTrend classify_pressure_trend(float delta_3h_hpa);
     static const char* pressure_trend_name(PressureTrend trend);
     static const char* zambretti_forecast(float qnh_hpa, PressureTrend trend, float wind_dir_deg = 180.0F);
+    static float diurnal_solar_tide_3h_delta_hpa(std::uint8_t local_hour, float solar_w_m2);
+    static float microbarom_gravity_wave_pa(float bmp581_fifo_rms_pa, float wind_m_s);
+    static float moist_air_density_kg_m3(float static_pressure_hpa, float temp_c, float rh_percent);
+    static float thunder_exact_distance_km(float thunder_delay_s, float measured_sound_m_s, float wind_m_s = 0.0F);
+    static const char* sager_front_type(float sea_level_hpa, float synoptic_3h_delta_hpa, float wind_dir_3h_delta_deg, float cloud_cover_pct);
+    static std::uint8_t sager_rain_probability_pct(float sea_level_hpa, float synoptic_3h_delta_hpa, float wind_dir_3h_delta_deg, float cloud_cover_pct, bool raining);
     static DerivedEnvironment compute(const AtmosphereReading& in);
 };
 

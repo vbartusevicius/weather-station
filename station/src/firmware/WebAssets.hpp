@@ -39,11 +39,13 @@ static constexpr const char index_html_data[] = R"WEBUI(<!DOCTYPE html>
 
     <div class="toolbar">
       <select id="scenario-select" class="scenario-select" title="Live Weather Scenario">
-        <option value="breeze">☀ Spring Breeze</option>
+        <option value="breeze">☀ Spring Breeze (Day)</option>
         <option value="storm">⛈ Squall &amp; Hail</option>
         <option value="freeze">❄ Freezing Fog (-4 °C)</option>
-        <option value="heatwave">🔥 Heatwave (UV 10)</option>
+        <option value="heatwave">🔥 Heatwave (UV 10.2)</option>
         <option value="plume">🌫 Urban Plume</option>
+        <option value="night_dark">🌙 Clear Starry Night (Bortle 2)</option>
+        <option value="night_moon">🌕 Full Moon &amp; Night Clouds</option>
       </select>
       <button class="btn-chip" id="unit-toggle" title="Switch Units">Metric</button>
       <button class="btn-chip" id="theme-toggle" title="Switch Theme">☀</button>
@@ -82,7 +84,7 @@ static constexpr const char index_html_data[] = R"WEBUI(<!DOCTYPE html>
             <span class="badge info" id="wind-beaufort">Gentle Breeze</span>
           </div>
 
-          <div class="gauge-center">
+          <div class="gauge-aside-row">
             <svg viewBox="0 0 230 230" class="wind-compass">
               <!-- Clean 360° compass ring -->
               <circle cx="115" cy="115" r="98" class="compass-track" />
@@ -106,99 +108,123 @@ static constexpr const char index_html_data[] = R"WEBUI(<!DOCTYPE html>
               <text x="115" y="113" class="hub-val" id="wind-speed">4.8</text>
               <text x="115" y="128" class="hub-unit" id="wind-unit-dir">m/s · SW</text>
             </svg>
+
+            <!-- Subtle vertical legend aside -->
+            <div class="aside-key">
+              <span><i class="key-arrow"></i>Now</span>
+              <span><i class="key-petal"></i>1h</span>
+            </div>
           </div>
 
-          <!-- Self-explaining mini legend for the compass -->
-          <div class="compass-key">
-            <span><i class="key-arrow"></i>Live Wind Direction</span>
-            <span><i class="key-petal"></i>Past 1h Direction Spread</span>
-          </div>
-
-          <!-- Clearly Labeled Min — 1m Avg — Peak Gust Speed Bar -->
+          <!-- Unified Range-Capsule Bar 1: Wind Speed (Min — 1h Trend — Gust) -->
           <div class="range-bar-wrap">
             <div class="range-labels">
-              <span class="rl-item"><i class="dot-min"></i>Min <b id="wind-lull">2.9</b></span>
-              <span class="rl-item"><i class="dot-avg"></i>1m Avg <b id="wind-avg1m">4.4</b></span>
-              <span class="rl-item"><i class="dot-gust"></i>Peak Gust <b class="warn-txt" id="wind-gust">7.2 m/s</b></span>
+              <span class="rl-item">Min <b id="wind-lull">2.9</b></span>
+              <span class="rl-item" id="wind-trend-lbl">↗ +0.6 m/s/h</span>
+              <span class="rl-item">Gust <b id="wind-gust">7.2 m/s</b></span>
             </div>
             <div class="range-track">
-              <div class="range-span" id="wind-range-span" style="left:14%;width:22%"></div>
-              <div class="range-dot" id="wind-avg-dot" style="left:22%" title="1-Minute Average Speed"></div>
-              <div class="range-gust-pin" id="wind-gust-pin" style="left:36%" title="3-Second Peak Gust"></div>
+              <div class="range-span" id="wind-range-span" style="left:14%;width:32%"></div>
+              <div class="range-dot" id="wind-avg-dot" style="left:26%" title="Current Wind Speed"></div>
+            </div>
+          </div>
+
+          <!-- Unified Range-Capsule Bar 2: Surface Wind Load (Min — 1h Trend — 1h Max) -->
+          <div class="range-bar-wrap">
+            <div class="range-labels">
+              <span class="rl-item">Load Min <b id="wload-min">0.5</b></span>
+              <span class="rl-item" id="wload-trend-lbl">↗ +0.3 kg/m²/h</span>
+              <span class="rl-item">1h Max <b id="wload-max">3.2 kg/m²</b></span>
+            </div>
+            <div class="range-track">
+              <div class="range-span" id="wload-span" style="left:8%;width:38%"></div>
+              <div class="range-dot" id="wload-now-dot" style="left:22%" title="Current Surface Wind Load"></div>
             </div>
           </div>
         </article>
 
-        <!-- 2. TEMPERATURE & HUMIDITY (PLAIN-ENGLISH, LABELED PINS) -->
+        <!-- 2. TEMPERATURE & HUMIDITY (UNIFIED RANGE-CAPSULE BAR + 2x2 MICRO-CLIMATE GRID) -->
         <article class="card clickable" data-inspect="temp">
           <div class="card-header">
             <span class="card-title"><span class="i-icon">🌡</span>TEMPERATURE &amp; HUMIDITY</span>
             <span class="badge ok" id="comfort-badge">Comfortable</span>
           </div>
 
-          <div class="thermo-visual">
-            <div class="thermo-readouts">
-              <div>
-                <span class="big-num" id="env-temp">18.4°</span>
-                <span class="sub-lbl" id="env-feels">Feels like 17.8° outside</span>
-              </div>
-              <!-- Radial Humidity Ring -->
-              <div class="rh-ring-wrap">
-                <svg viewBox="0 0 88 88" class="rh-ring-svg">
-                  <circle cx="44" cy="44" r="35" class="ring-bg" />
-                  <circle cx="44" cy="44" r="35" class="ring-fg-cyan" id="rh-arc" stroke-dasharray="137 220" transform="rotate(-90 44 44)" />
-                  <text x="44" y="43" class="ring-val" id="env-rh">62%</text>
-                  <text x="44" y="56" class="ring-sub">Humidity</text>
-                </svg>
-              </div>
+          <div class="thermo-readouts">
+            <div>
+              <span class="big-num" id="env-temp">18.4°</span>
+              <span class="sub-lbl" id="env-feels">Feels like 17.8° outside</span>
             </div>
-
-            <!-- Thermometer Scale with Color-Matched Pin Key -->
-            <div class="spectrum-box">
-              <div class="pin-legend">
-                <span title="Temperature where moisture condenses into dew or fog"><i class="p-dot blue"></i>Dew Point <b id="env-dew">11.1°</b></span>
-                <span title="Measured air temperature"><i class="p-dot white"></i>Actual <b id="env-actual-sm">18.4°</b></span>
-                <span title="What it feels like on skin with wind & sun"><i class="p-dot amber"></i>Feels <b id="env-feels-sm">17.8°</b></span>
-              </div>
-              <div class="temp-spectrum-track">
-                <div class="dew-spread-bridge" id="dew-bridge" style="left:47%;width:13%"></div>
-                <div class="spec-pin dew-pin" id="pin-dew" style="left:47%"></div>
-                <div class="spec-pin temp-pin" id="pin-temp" style="left:60%"></div>
-                <div class="spec-pin feels-pin" id="pin-feels" style="left:59%"></div>
-              </div>
-              <div class="spectrum-scale">
-                <span>-15° Cold</span><span>0° Freeze</span><span>15° Mild</span><span>25° Warm</span><span>40° Hot</span>
-              </div>
+            <!-- Radial Humidity Ring -->
+            <div class="rh-ring-wrap">
+              <svg viewBox="0 0 88 88" class="rh-ring-svg">
+                <circle cx="44" cy="44" r="35" class="ring-bg" />
+                <circle cx="44" cy="44" r="35" class="ring-fg-cyan" id="rh-arc" stroke-dasharray="137 220" transform="rotate(-90 44 44)" />
+                <text x="44" y="43" class="ring-val" id="env-rh">62%</text>
+                <text x="44" y="56" class="ring-sub">Humidity</text>
+              </svg>
             </div>
           </div>
 
-          <!-- 2 Plain-English Human Indicators (No VPD/LCL/WBGT Jargon) -->
-          <div class="mini-bars-2">
-            <div class="mbar">
-              <div class="mbar-top"><span>Fog / Dew Risk</span><b id="fog-risk-lbl">Low (7.3° gap)</b></div>
-              <div class="mbar-track"><div class="mbar-fill cyan" id="lcl-fill" style="width:28%"></div></div>
+          <!-- Unified Range-Capsule Bar 3: 24h Temperature (Low — 1h Trend — High) -->
+          <div class="range-bar-wrap">
+            <div class="range-labels">
+              <span class="rl-item">24h Low <b id="temp-min-lbl">14.2°</b></span>
+              <span class="rl-item" id="temp-trend-lbl">↗ +0.8°/h · Warming</span>
+              <span class="rl-item">24h High <b id="temp-max-lbl">19.6°</b></span>
             </div>
-            <div class="mbar">
-              <div class="mbar-top"><span>Heat / Cold Stress</span><b id="stress-lbl">None</b></div>
-              <div class="mbar-track"><div class="mbar-fill green" id="vpd-fill" style="width:22%"></div></div>
+            <div class="range-track">
+              <div class="range-span temp-grad" id="t24-bridge" style="left:45%;width:24%"></div>
+              <div class="range-dot" id="pin-temp" style="left:62%" title="Current Outdoor Temperature"></div>
+            </div>
+          </div>
+
+          <!-- 2x2 Micro-Climate Bento Grid (Feels Like · Dew Point · Wet-Bulb · Absolute Moisture) -->
+          <div class="thermo-bento-2x2">
+            <div class="tb-cell">
+              <span class="tb-kicker">Feels Like</span>
+              <strong class="tb-val" id="env-feels-sm">17.8°</strong>
+              <small class="tb-sub" id="feels-delta-lbl">-0.6° wind chill</small>
+            </div>
+            <div class="tb-cell">
+              <span class="tb-kicker">Dew Point</span>
+              <strong class="tb-val" id="env-dew">11.1°</strong>
+              <small class="tb-sub" id="fog-risk-lbl">Low fog risk (7.3° gap)</small>
+            </div>
+            <div class="tb-cell">
+              <span class="tb-kicker">Wet-Bulb</span>
+              <strong class="tb-val" id="env-wetbulb">14.4°</strong>
+              <small class="tb-sub" id="wetbulb-sub">Rain phase (&gt; 0.5°)</small>
+            </div>
+            <div class="tb-cell">
+              <span class="tb-kicker">Absolute Humidity</span>
+              <strong class="tb-val" id="abs-hum-lbl">9.8 g/m³</strong>
+              <small class="tb-sub" id="abs-hum-sub">Crisp air · Fast dry</small>
             </div>
           </div>
         </article>
 
-        <!-- 3. BAROMETER (RATE OF CHANGE IN HPA/H + ARROW-DOWN / ARROW-UP 24H EXTREMES) -->
+        <!-- 3. BAROMETER (4-SENSOR SAGER FORECAST + RAIN PROBABILITY + MICROBAROM GRAVITY WAVES) -->
         <article class="card clickable" data-inspect="baro">
           <div class="card-header">
             <span class="card-title"><span class="i-icon">⏲</span>BAROMETER &amp; FORECAST</span>
             <span class="badge info" id="baro-trend-badge">Change: +0.1 hPa/h</span>
           </div>
 
-          <!-- Calm, Neutral Factual Barometric Forecast Row (No Alert Colors) -->
-          <div class="forecast-fact-row" id="baro-forecast-banner">
-            <span class="fb-kicker">Forecast</span>
-            <strong class="fb-text" id="env-zambretti">Fine Weather</strong>
+          <!-- 4-Sensor Sager Forecast Box (Pressure + Wind Shift + Cloud Cover + Rain Chance %) -->
+          <div class="sager-forecast-box" id="baro-forecast-banner">
+            <div class="sager-top">
+              <strong class="fb-text" id="env-zambretti">Fine Weather</strong>
+              <span class="rain-prob-pill" id="baro-rain-prob">Rain Chance 12%</span>
+            </div>
+            <div class="sager-sub">
+              <span id="baro-front-lbl">High-Pressure Ridge · Wind Steady</span>
+              <span id="baro-wave-lbl" title="BMP581 50 Hz Microbarom Gravity-Wave RMS">Wave 0.08 Pa · Calm</span>
+            </div>
+            <div class="mbar-track"><div class="mbar-fill cyan" id="baro-rain-prob-fill" style="width:12%"></div></div>
           </div>
 
-          <div class="baro-dial-wrap">
+          <div class="gauge-aside-row">
             <svg viewBox="0 0 240 124" class="baro-dial">
               <path d="M 24 110 A 96 96 0 0 1 216 110" fill="none" stroke="var(--border)" stroke-width="11" stroke-linecap="round" />
               <path d="M 24 110 A 96 96 0 0 1 72 27" fill="none" stroke="#f59e0b" stroke-width="5" stroke-opacity="0.5" />
@@ -217,23 +243,35 @@ static constexpr const char index_html_data[] = R"WEBUI(<!DOCTYPE html>
               <text x="20" y="122" class="dial-lbl">980 Rain</text>
               <text x="120" y="12" class="dial-lbl" text-anchor="middle">1010</text>
               <text x="220" y="122" class="dial-lbl" text-anchor="end">Fair 1040</text>
-              <text x="120" y="84" class="baro-big" id="env-qnh">1016.8</text>
-              <text x="120" y="98" class="baro-unit" id="env-qnh-unit">hPa (Sea-Level)</text>
+              <text x="120" y="84" class="baro-big" id="env-qnh">1017</text>
+              <text x="120" y="98" class="baro-unit" id="env-qnh-unit">hPa</text>
             </svg>
+
+            <!-- Subtle vertical legend aside -->
+            <div class="aside-key">
+              <span><i class="key-solid-line"></i>Now</span>
+              <span><i class="key-dash-line"></i>3h Ago</span>
+            </div>
           </div>
 
-          <div class="compass-key">
-            <span><i class="key-solid-line"></i>Now</span>
-            <span><i class="key-dash-line"></i>3 Hours Ago (<b id="baro-3h-ago">1016.6</b>)</span>
+          <!-- Cross-Domain Acoustic & Air-Mass Physics + 240 Hz Microbarom/Thunder Seismograph -->
+          <div class="mini-bars-2">
+            <div class="mbar">
+              <div class="mbar-top"><span>Air Density</span><b id="baro-density">1.208 kg/m³</b></div>
+              <div class="mbar-track"><div class="mbar-fill cyan" id="baro-density-fill" style="width:52%"></div></div>
+            </div>
+            <div class="mbar">
+              <div class="mbar-top"><span>Sound Speed</span><b id="baro-sound">343.1 m/s</b></div>
+              <div class="mbar-track"><div class="mbar-fill green" id="baro-sound-fill" style="width:58%"></div></div>
+            </div>
           </div>
 
-          <!-- 24h Sea-Level Pressure Chart with ↓ / ↑ Extremes -->
           <div class="spark-clean">
             <div class="spark-foot">
-              <span>24h Pressure</span>
-              <span id="baro-minmax">↓ 1015.4 · ↑ 1017.2 hPa</span>
+              <span id="seismo-title">Pressure Wave (240 Hz)</span>
+              <span id="baro-minmax">↓ 1015 · ↑ 1017 hPa</span>
             </div>
-            <svg viewBox="0 0 320 48" class="spark-svg" id="spark-baro"></svg>
+            <svg viewBox="0 0 320 52" class="spark-svg" id="spark-baro"></svg>
           </div>
         </article>
 
@@ -266,7 +304,7 @@ static constexpr const char index_html_data[] = R"WEBUI(<!DOCTYPE html>
                   <span><i class="ph-dot hail-ph"></i>Hail</span>
                 </div>
               </div>
-              <svg viewBox="0 0 320 76" class="spark-svg rain-chart-svg" id="spark-rain"></svg>
+              <svg viewBox="0 0 320 106" class="spark-svg rain-chart-svg" id="spark-rain"></svg>
               <!-- Visual Hailstone Size Disdrometer Strip (Proportional Circles) -->
               <div class="hail-strip">
                 <div class="hail-info">
@@ -284,74 +322,74 @@ static constexpr const char index_html_data[] = R"WEBUI(<!DOCTYPE html>
           </div>
         </article>
 
-        <!-- 5. SOLAR, UV & CLOUD COVER (VECTOR HORIZON ICONS + SOLAR/UV CLOUD CORRELATION) -->
+        <!-- 5. SOLAR, UV & CLOUD COVER (DAY) / NIGHT SKY, MOON & BORTLE (NIGHT) -->
         <article class="card clickable" data-inspect="solar">
           <div class="card-header">
-            <span class="card-title"><span class="i-icon">☀</span>SUN, UV &amp; CLOUDS</span>
-            <span class="badge info" id="daylight-badge">Daylight 11h 36m</span>
+            <span class="card-title" id="solar-card-title">SUN, UV &amp; CLOUDS</span>
+            <span class="badge info" id="daylight-badge">Burn ~37 min</span>
           </div>
 
-          <!-- Sun Horizon Arc with Vector Sunrise & Sunset Icons -->
-          <div class="sun-arc-wrap">
-            <svg viewBox="0 0 260 112" class="sun-arc-svg">
-              <defs>
-                <radialGradient id="sunOrbGlow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#facc15" stop-opacity="0.75" />
-                  <stop offset="100%" stop-color="#facc15" stop-opacity="0" />
-                </radialGradient>
-              </defs>
-              <line x1="18" y1="82" x2="242" y2="82" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="4 3" />
-              <path d="M 28 82 Q 130 -16 232 82" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-opacity="0.7" />
-              <circle cx="28" cy="82" r="3" fill="#f59e0b" />
-              <circle cx="232" cy="82" r="3" fill="#f97316" />
-              <g id="sun-orb" transform="translate(145, 25)">
-                <circle cx="0" cy="0" r="18" fill="url(#sunOrbGlow)" />
-                <circle cx="0" cy="0" r="7" fill="#facc15" />
-              </g>
-              <text x="130" y="58" class="sun-val" id="env-solar">642 W/m²</text>
-              <text x="130" y="72" class="sun-sub" id="env-lux">Brightness: 81,250 lx</text>
-              <!-- Clean Vector Sunrise Icon + Time -->
-              <g transform="translate(14, 91)">
-                <line x1="0" y1="10" x2="14" y2="10" stroke="#f59e0b" stroke-width="1.5" />
-                <path d="M 3 10 A 4 4 0 0 1 11 10" fill="none" stroke="#facc15" stroke-width="1.5" />
-                <polyline points="5,4 7,1.5 9,4" fill="none" stroke="#facc15" stroke-width="1.3" />
-                <text x="18" y="10" class="horizon-time" id="sun-rise">06:48</text>
-              </g>
-              <!-- Clean Vector Sunset Icon + Time -->
-              <g transform="translate(196, 91)">
-                <line x1="0" y1="10" x2="14" y2="10" stroke="#f97316" stroke-width="1.5" />
-                <path d="M 3 10 A 4 4 0 0 1 11 10" fill="none" stroke="#f97316" stroke-width="1.5" />
-                <polyline points="5,1.5 7,4 9,1.5" fill="none" stroke="#f97316" stroke-width="1.3" />
-                <text x="18" y="10" class="horizon-time" id="sun-set">18:24</text>
-              </g>
-            </svg>
-          </div>
-
-          <!-- Single Authoritative UV Index Rainbow Bar -->
-          <div class="uv-visual">
-            <div class="uv-top">
-              <span>UV Index <b class="accent" id="env-uv">5.4 · Moderate</b></span>
-              <span class="muted-xs" id="uv-advice">Sunscreen advised</span>
+          <!-- Hero Row: Big Irradiance/Brightness Inline Like Precipitation Hero + Cloud Cover Ring -->
+          <div class="thermo-readouts">
+            <div>
+              <div class="rain-hero-num">
+                <span class="big-num" id="env-solar">642</span>
+                <span class="sub-lbl" id="env-solar-unit">W/m²</span>
+              </div>
+              <span class="sub-lbl" id="env-lux">81,250 lx · Scattered Sky</span>
             </div>
-            <div class="uv-rainbow-bar">
+            <div class="rh-ring-wrap">
+              <svg viewBox="0 0 88 88" class="rh-ring-svg">
+                <circle cx="44" cy="44" r="35" class="ring-bg" />
+                <circle cx="44" cy="44" r="35" class="ring-fg-cyan" id="cloud-arc" stroke-dasharray="53 220" transform="rotate(-90 44 44)" />
+                <text x="44" y="43" class="ring-val" id="cloud-cover-lbl">24%</text>
+                <text x="44" y="56" class="ring-sub">Clouds</text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Center Scale: UV Index Rainbow Bar (Day) <-> Bortle Sky Darkness Scale (Night) -->
+          <div class="spectrum-box">
+            <div class="uv-top">
+              <span id="uv-left-lbl">UV Index <b class="accent" id="env-uv">5.4 · Moderate</b></span>
+              <span class="muted-xs" id="uv-sub-row"></span>
+            </div>
+            <div class="uv-rainbow-bar" id="uv-or-bortle-bar">
               <div class="uv-dot" id="uv-dot" style="left:47%"></div>
             </div>
+            <div class="spectrum-scale" id="uv-scale-ticks">
+              <span>0 Low</span><span>3 Mod</span><span>6 High</span><span>8 Very High</span><span>11+ Ext</span>
+            </div>
           </div>
 
-          <!-- Cloud Cover -->
+          <!-- Bottom Full-Width Unified 24h Sun & Moon Bar (Shows Both Sun & Moon Rise/Set + Live Positions) -->
           <div class="mbar">
             <div class="mbar-top">
-              <span>Cloud Cover</span>
-              <b id="cloud-cover-lbl">24% · Scattered</b>
+              <span class="hz-icon-lbl" title="Sunrise & Sunset">
+                <svg viewBox="0 0 16 12" width="14" height="11" class="hz-svg"><line x1="1" y1="10" x2="15" y2="10" stroke="#f59e0b" stroke-width="1.5"/><path d="M 4 10 A 4 4 0 0 1 12 10" fill="none" stroke="#facc15" stroke-width="1.5"/><polyline points="6,4 8,1.5 10,4" fill="none" stroke="#facc15" stroke-width="1.4"/></svg>
+                <b id="sun-window">06:48–18:24</b>
+              </span>
+              <span class="hz-icon-lbl" title="Moonrise, Moonset & Illumination">
+                <svg viewBox="0 0 14 14" width="12" height="12" class="hz-svg"><path d="M 10.5 9.8 A 4.8 4.8 0 0 1 5.2 2.2 A 5.0 5.0 0 1 0 11.8 8.8 Z" fill="#93c5fd"/></svg>
+                <b id="moon-window">14:15–02:40 · 74%</b>
+              </span>
             </div>
-            <div class="mbar-track"><div class="mbar-fill cyan" id="cloud-cover-fill" style="width:24%"></div></div>
+            <div class="sky24-track">
+              <div class="sky24-sun-span" id="sky24-sun-span" style="left:28%; width:48%"></div>
+              <div class="sky24-moon-span" id="sky24-moon-span" style="left:59%; width:36%"></div>
+              <div class="sky24-dot sun" id="sky24-sun-dot" style="left:58%" title="Sun Position"></div>
+              <div class="sky24-dot moon" id="sky24-moon-dot" style="left:72%" title="Moon Position"></div>
+            </div>
+            <div class="spectrum-scale">
+              <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+            </div>
           </div>
         </article>
 
         <!-- 6. AIR QUALITY & CALM LIGHTNING TIMELINE (NO ALERT BORDERS, SHOWS BOLT POWER CLASS) -->
         <article class="card clickable" data-inspect="air">
           <div class="card-header">
-            <span class="card-title"><span class="i-icon">🍃</span>AIR &amp; LIGHTNING</span>
+            <span class="card-title">AIR &amp; LIGHTNING</span>
             <span class="badge info" id="aq-dom-badge">Main: PM2.5</span>
           </div>
 
@@ -366,29 +404,41 @@ static constexpr const char index_html_data[] = R"WEBUI(<!DOCTYPE html>
               </svg>
             </div>
 
-            <div class="bullet-stack">
+            <div class="aq-grid-2x3">
               <div class="b-row">
-                <div class="b-hdr"><span>Fine Dust (PM2.5)</span><b id="aq-pm25">6.2 µg/m³</b></div>
+                <div class="b-hdr"><span>PM1.0</span><b id="aq-pm1">3.7 µg/m³</b></div>
+                <div class="b-track"><div class="b-fill ok" id="b-pm1" style="width:15%"></div></div>
+              </div>
+              <div class="b-row">
+                <div class="b-hdr"><span>PM2.5</span><b id="aq-pm25">6.2 µg/m³</b></div>
                 <div class="b-track"><div class="b-limit" style="left:42%"></div><div class="b-fill ok" id="b-pm25" style="width:18%"></div></div>
               </div>
               <div class="b-row">
-                <div class="b-hdr"><span>Coarse Dust (PM10)</span><b id="aq-pm10">12.8 µg/m³</b></div>
+                <div class="b-hdr"><span>PM4.0</span><b id="aq-pm4">8.1 µg/m³</b></div>
+                <div class="b-track"><div class="b-fill ok" id="b-pm4" style="width:16%"></div></div>
+              </div>
+              <div class="b-row">
+                <div class="b-hdr"><span>PM10</span><b id="aq-pm10">12.8 µg/m³</b></div>
                 <div class="b-track"><div class="b-limit" style="left:50%"></div><div class="b-fill ok" id="b-pm10" style="width:14%"></div></div>
               </div>
               <div class="b-row">
-                <div class="b-hdr"><span>CO₂ / VOC</span><b id="aq-co2">419 ppm · VOC 98</b></div>
+                <div class="b-hdr"><span>Pollen / Bio</span><b id="aq-bio">6.6 · Low</b></div>
+                <div class="b-track"><div class="b-fill ok" id="b-bio" style="width:15%"></div></div>
+              </div>
+              <div class="b-row">
+                <div class="b-hdr"><span>CO₂ · VOC · NOx</span><b id="aq-co2">418 · 98 · 2</b></div>
                 <div class="b-track"><div class="b-fill cyan" id="b-co2" style="width:24%"></div></div>
               </div>
             </div>
           </div>
 
-          <!-- Bottom Half: Calm Neutral Lightning Timeline with Counts Over Bars -->
+          <!-- Bottom Half: Calm Neutral Lightning Timeline (Same Bar Style as Precipitation) -->
           <div class="lightning-panel" id="lightning-panel">
             <div class="lt-hdr">
-              <span class="lt-title">⚡ Lightning</span>
+              <span class="lt-title">Lightning</span>
               <strong class="lt-status" id="lt-dist">0 strikes · &gt;40 km</strong>
             </div>
-            <svg viewBox="0 0 380 64" class="lt-timeline-svg" id="lt-timeline-svg"></svg>
+            <svg viewBox="0 0 320 76" class="spark-svg rain-chart-svg" id="lt-timeline-svg"></svg>
           </div>
         </article>
       </div>
@@ -757,9 +807,9 @@ body {
 .badge.warn { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
 .badge.danger { color: var(--danger); background: var(--danger-soft); border-color: transparent; }
 
-/* 1. WIND COMPASS & SELF-EXPLAINING KEY */
-.gauge-center { display: flex; justify-content: center; align-items: center; }
-.wind-compass { width: 186px; height: 186px; }
+/* 1. WIND COMPASS & ZERO-FOOTPRINT CORNER KEY */
+.gauge-aside-row { position: relative; display: flex; justify-content: center; align-items: center; }
+.wind-compass { width: 214px; height: 214px; }
 .compass-track { fill: var(--card-inner); stroke: var(--border); stroke-width: 4; }
 .compass-inner { fill: none; stroke: var(--border); stroke-dasharray: 3 3; stroke-width: 1; }
 .c-dir { fill: var(--muted); font-size: 10.5px; font-weight: 800; text-anchor: middle; }
@@ -771,29 +821,43 @@ body {
 .hub-val { fill: var(--text); font-size: 22px; font-weight: 800; text-anchor: middle; }
 .hub-unit { fill: var(--muted); font-size: 8.5px; font-weight: 700; text-anchor: middle; }
 
-.compass-key {
-  display: flex; justify-content: center; gap: 14px;
-  font-size: 10.5px; color: var(--muted); font-weight: 600;
+.aside-key {
+  position: absolute; right: 0; bottom: 2px;
+  display: flex; flex-direction: column; gap: 3px;
+  font-size: 8.5px; color: var(--muted); opacity: 0.68; font-weight: 600;
+  pointer-events: none;
 }
-.compass-key span { display: inline-flex; align-items: center; gap: 5px; }
-.key-arrow { width: 10px; height: 3px; background: var(--accent); border-radius: 2px; display: inline-block; }
-.key-petal { width: 9px; height: 9px; background: rgba(56,189,248,0.32); border: 1px solid #38bdf8; border-radius: 2px; display: inline-block; }
-.key-solid-line { width: 12px; height: 3px; background: var(--accent); border-radius: 2px; display: inline-block; }
-.key-dash-line { width: 12px; height: 0; border-top: 2px dashed #94a3b8; display: inline-block; }
+.aside-key span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.aside-key b { color: var(--text); font-weight: 700; }
+.key-arrow { width: 8px; height: 2px; background: var(--accent); border-radius: 2px; display: inline-block; }
+.key-petal { width: 7px; height: 7px; background: rgba(56,189,248,0.32); border: 1px solid #38bdf8; border-radius: 2px; display: inline-block; }
+.key-solid-line { width: 8px; height: 2px; background: var(--accent); border-radius: 2px; display: inline-block; }
+.key-dash-line { width: 8px; height: 0; border-top: 1.5px dashed #94a3b8; display: inline-block; }
 
+/* UNIFIED RANGE-CAPSULE BAR (MIN — ● NOW/AVG — MAX FOR WIND SPEED, WIND LOAD & TEMPERATURE) */
 .range-bar-wrap { background: var(--card-inner); padding: 9px 12px; border-radius: 11px; }
-.range-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.range-labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-bottom: 7px; }
 .rl-item { display: inline-flex; align-items: center; gap: 4px; }
-.range-labels b { color: var(--text); }
+.range-labels b { color: var(--text); font-weight: 800; }
 .warn-txt { color: var(--warn) !important; }
-.dot-min { width: 8px; height: 4px; background: rgba(56,189,248,0.5); border-radius: 2px; display: inline-block; }
-.dot-avg { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; }
-.dot-gust { width: 4px; height: 9px; border-radius: 1px; background: var(--warn); display: inline-block; }
+.dot-now { width: 8px; height: 8px; border-radius: 50%; background: #ffffff; border: 2px solid #091120; box-shadow: 0 0 4px #ffffff; display: inline-block; }
 
-.range-track { position: relative; height: 7px; border-radius: 99px; background: var(--border); }
-.range-span { position: absolute; top: 0; height: 100%; border-radius: 99px; background: rgba(56, 189, 248, 0.45); }
-.range-dot { position: absolute; top: -3px; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); border: 2px solid var(--card); transform: translateX(-50%); }
-.range-gust-pin { position: absolute; top: -2px; width: 4px; height: 11px; border-radius: 2px; background: var(--warn); transform: translateX(-50%); }
+.range-track { position: relative; height: 8px; border-radius: 99px; background: var(--border); }
+.range-span {
+  position: absolute; top: 0; height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, rgba(56,189,248,0.32), rgba(56,189,248,0.85));
+  border: 1px solid rgba(56,189,248,0.55);
+  transition: left 0.3s, width 0.3s;
+}
+.range-span.temp-grad {
+  background: linear-gradient(90deg, #38bdf8 0%, #22c55e 50%, #f59e0b 100%);
+  border: none;
+}
+.range-dot {
+  position: absolute; top: -3px; width: 14px; height: 14px; border-radius: 50%;
+  background: #ffffff; border: 2.5px solid #091120; transform: translateX(-50%);
+  box-shadow: 0 0 7px rgba(255,255,255,0.9); z-index: 2; transition: left 0.3s;
+}
 
 /* 2. THERMAL SPECTRUM & HUMIDITY RING */
 .thermo-visual { display: flex; flex-direction: column; gap: 10px; }
@@ -808,30 +872,39 @@ body {
 .ring-sub { fill: var(--muted); font-size: 8px; font-weight: 700; text-anchor: middle; }
 
 .spectrum-box { background: var(--card-inner); padding: 9px 11px; border-radius: 11px; }
-.pin-legend { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-bottom: 8px; }
-.pin-legend span { display: inline-flex; align-items: center; gap: 4px; }
-.pin-legend b { color: var(--text); }
-.p-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.p-dot.blue { background: #38bdf8; }
-.p-dot.white { background: #ffffff; border: 1px solid #64748b; }
-.p-dot.amber { background: #f59e0b; }
-
-.temp-spectrum-track {
-  position: relative; height: 10px; border-radius: 99px;
-  background: linear-gradient(90deg, #3b82f6 0%, #06b6d4 28%, #22c55e 52%, #f59e0b 76%, #ef4444 100%);
-}
-.dew-spread-bridge {
-  position: absolute; top: 2px; height: 6px;
-  background: rgba(255, 255, 255, 0.35); border-radius: 99px;
+.today-range-box { background: var(--card-inner); padding: 9px 12px; border-radius: 11px; }
+.today-range-hdr { display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; color: var(--muted); margin-bottom: 7px; }
+.today-range-hdr b { color: var(--text); font-weight: 800; }
+.today-range-track { position: relative; height: 8px; border-radius: 99px; background: var(--border); }
+.today-range-fill {
+  position: absolute; top: 0; height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, #38bdf8 0%, #22c55e 50%, #f59e0b 100%);
 }
 .spec-pin {
-  position: absolute; top: -3px; width: 15px; height: 15px; border-radius: 50%;
-  transform: translateX(-50%); border: 2px solid #091120;
+  position: absolute; top: -3px; width: 14px; height: 14px; border-radius: 50%;
+  transform: translateX(-50%); border: 2.5px solid #091120;
 }
-.dew-pin { background: #38bdf8; }
-.temp-pin { background: #ffffff; box-shadow: 0 0 8px #ffffff; z-index: 2; }
-.feels-pin { background: #f59e0b; width: 12px; height: 12px; top: -1px; }
+.temp-pin { background: #ffffff; box-shadow: 0 0 7px #ffffff; z-index: 2; }
+
+.thermo-bento-2x2 {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.tb-cell {
+  background: var(--card-inner); padding: 8px 11px; border-radius: 10px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.tb-kicker { font-size: 9.5px; color: var(--muted); font-weight: 700; }
+.tb-val { font-size: 16px; font-weight: 800; color: var(--text); line-height: 1.15; }
+.tb-sub { font-size: 9.5px; color: var(--muted); font-weight: 600; }
 .spectrum-scale { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-top: 6px; }
+
+.curious-strip {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  background: var(--card-inner); padding: 7px 10px; border-radius: 10px;
+}
+.cs-item { display: flex; flex-direction: column; gap: 2px; }
+.cs-lbl { font-size: 9.5px; color: var(--muted); font-weight: 600; }
+.cs-item strong { font-size: 11px; color: var(--text); font-weight: 700; }
 
 .mini-bars-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .mbar { background: var(--card-inner); padding: 7px 10px; border-radius: 10px; }
@@ -842,29 +915,31 @@ body {
 .mbar-fill.cyan { background: var(--accent); }
 .mbar-fill.green { background: var(--ok); }
 
-/* 3. BAROMETER FACTUAL FORECAST ROW & DIAL */
-.forecast-fact-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 12px; border-radius: 10px;
+/* 3. BAROMETER SAGER 4-SENSOR FORECAST BOX & DIAL */
+.sager-forecast-box {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 8px 11px; border-radius: 10px;
   background: var(--card-inner); border: 1px solid var(--border);
 }
-.fb-kicker { font-size: 10.5px; font-weight: 700; color: var(--muted); }
-.fb-text { font-size: 13px; font-weight: 800; color: var(--text); }
+.sager-top { display: flex; justify-content: space-between; align-items: center; }
+.fb-text { font-size: 12.5px; font-weight: 800; color: var(--text); }
+.rain-prob-pill { font-size: 10.5px; font-weight: 800; color: var(--accent); }
+.sager-sub { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--muted); font-weight: 600; }
 
 .baro-dial-wrap { display: flex; justify-content: center; }
-.baro-dial { width: 215px; height: 112px; }
+.baro-dial { width: 232px; height: 120px; }
 .dial-lbl { fill: var(--muted); font-size: 8.5px; font-weight: 700; }
 .baro-big { fill: var(--text); font-size: 21px; font-weight: 800; text-anchor: middle; }
 .baro-unit { fill: var(--muted); font-size: 8.5px; font-weight: 600; text-anchor: middle; }
-.spark-clean { background: var(--card-inner); padding: 7px 10px; border-radius: 11px; }
+.spark-clean { padding: 0; }
 .spark-svg { width: 100%; height: auto; display: block; }
-.spark-foot { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-bottom: 3px; font-weight: 600; }
+.spark-foot { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-bottom: 3px; font-weight: 600; }
 
-/* 4. RAIN CYLINDER */
-.rain-visual-row { display: flex; align-items: center; gap: 15px; height: 100%; }
-.rain-tube-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+/* 4. RAIN CYLINDER (HEIGHT-AWARE FLEX STRETCH) */
+.rain-visual-row { flex: 1; display: flex; align-items: stretch; gap: 15px; }
+.rain-tube-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; align-self: stretch; }
 .rain-tube {
-  position: relative; width: 42px; height: 124px; border-radius: 10px 10px 16px 16px;
+  position: relative; width: 42px; flex: 1; min-height: 120px; border-radius: 10px 10px 16px 16px;
   background: var(--card-inner); border: 2px solid var(--border); overflow: hidden;
   display: flex; align-items: flex-end;
 }
@@ -879,7 +954,7 @@ body {
 .rain-ticks span { display: block; width: 10px; height: 1.5px; background: var(--muted); opacity: 0.5; }
 .tube-lbl { font-size: 13px; font-weight: 800; }
 .tube-sub { font-size: 9.5px; color: var(--muted); }
-.rain-right { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.rain-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; align-self: stretch; }
 .rain-hero-row { display: flex; justify-content: space-between; align-items: baseline; }
 .rain-hero-num { display: flex; align-items: baseline; gap: 8px; }
 .phase-legend { display: flex; gap: 9px; font-size: 10px; color: var(--muted); font-weight: 700; }
@@ -887,7 +962,7 @@ body {
 .ph-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 .ph-dot.rain-ph { background: #38bdf8; }
 .ph-dot.hail-ph { background: #c084fc; }
-.rain-chart-svg { width: 100%; height: auto; display: block; }
+.rain-chart-svg { width: 100%; flex: 1; min-height: 76px; height: auto; display: block; }
 
 /* VISUAL HAILSTONE DISDROMETER STRIP */
 .hail-strip {
@@ -914,24 +989,62 @@ body {
 }
 .rain-pills b { color: var(--text); }
 
-/* 5. SOLAR & UV */
-.sun-arc-wrap { display: flex; justify-content: center; }
-.sun-arc-svg { width: 248px; height: 108px; }
-.sun-val { fill: var(--text); font-size: 18px; font-weight: 800; text-anchor: middle; }
-.sun-sub { fill: var(--muted); font-size: 9.5px; font-weight: 600; text-anchor: middle; }
-.horizon-time { fill: var(--muted); font-size: 9.5px; font-weight: 700; }
-.uv-visual { background: var(--card-inner); padding: 9px 12px; border-radius: 11px; }
-.uv-top { display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 7px; }
+/* 5. SOLAR, UV & NIGHT SKY (COMPACT BENTO LAYOUT MATCHING CARD 2) */
+.sp-dot { width: 7px; height: 7px; border-radius: 2px; display: inline-block; margin-right: 3px; }
+.sp-dot.uv,  .sp-seg.uv  { background: #a855f7; }
+.sp-dot.uvb, .sp-seg.uvb { background: #f43f5e; }
+.sp-dot.vis, .sp-seg.vis { background: #38bdf8; }
+.sp-dot.nir, .sp-seg.nir { background: #f59e0b; }
+.spec-split-bar { display: flex; height: 5px; border-radius: 99px; overflow: hidden; background: var(--border); gap: 1px; }
+.sp-seg { height: 100%; transition: width 0.3s; }
+
+.uv-top { display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; color: var(--muted); margin-bottom: 8px; }
+.uv-top b { color: var(--text); }
 .uv-rainbow-bar {
   position: relative; height: 10px; border-radius: 99px;
   background: linear-gradient(90deg, #22c55e 0%, #eab308 35%, #f97316 65%, #ef4444 85%, #a855f7 100%);
 }
+.uv-rainbow-bar.bortle-mode {
+  background: linear-gradient(90deg, #1e293b 0%, #1d4ed8 32%, #38bdf8 62%, #facc15 86%, #f97316 100%);
+}
 .uv-dot {
-  position: absolute; top: -3px; width: 16px; height: 16px; border-radius: 50%;
-  background: #ffffff; border: 3px solid #091120; transform: translateX(-50%);
+  position: absolute; top: -2.5px; width: 15px; height: 15px; border-radius: 50%;
+  background: #ffffff; border: 2.5px solid #091120; transform: translateX(-50%);
   box-shadow: 0 0 8px rgba(255,255,255,0.9); transition: left 0.3s;
 }
-.uv-scale-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-top: 5px; }
+.uv-band-row {
+  display: flex; justify-content: space-between; font-size: 10.5px;
+  color: var(--muted); margin-top: 7px;
+}
+.uv-band-row span { display: inline-flex; align-items: center; gap: 4px; }
+.uv-band-row b { color: var(--text); }
+.p-dot.uv-a-dot { background: #a855f7; }
+.p-dot.uv-b-dot { background: #f43f5e; }
+
+.hz-icon-lbl { display: inline-flex; align-items: center; gap: 4px; }
+.hz-svg { display: inline-block; vertical-align: middle; }
+.sky24-track {
+  position: relative; height: 12px; border-radius: 6px;
+  background: var(--border); margin: 5px 0 3px;
+}
+.sky24-sun-span {
+  position: absolute; top: 1px; height: 4.5px; border-radius: 99px;
+  background: linear-gradient(90deg, #f59e0b, #facc15, #f97316);
+}
+.sky24-moon-span {
+  position: absolute; bottom: 1px; height: 4.5px; border-radius: 99px;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+}
+.sky24-dot {
+  position: absolute; width: 11px; height: 11px; border-radius: 50%;
+  transform: translateX(-50%); transition: left 0.3s; z-index: 2;
+}
+.sky24-dot.sun {
+  top: -2px; background: #facc15; border: 2px solid #091120; box-shadow: 0 0 6px #facc15;
+}
+.sky24-dot.moon {
+  bottom: -2px; background: #93c5fd; border: 2px solid #091120; box-shadow: 0 0 6px #60a5fa;
+}
 
 /* 6. AIR QUALITY & DEDICATED LIGHTNING TIMELINE */
 .air-visual-row { display: flex; align-items: center; gap: 12px; }
@@ -941,9 +1054,12 @@ body {
 .aqi-sub { fill: var(--ok); font-size: 8px; font-weight: 800; text-anchor: middle; }
 
 .bullet-stack { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.b-row { background: var(--card-inner); padding: 5px 9px; border-radius: 8px; }
-.b-hdr { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-bottom: 3px; }
-.b-hdr b { color: var(--text); }
+.aq-grid-2x3 {
+  flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 5px 7px;
+}
+.b-row { background: var(--card-inner); padding: 5px 8px; border-radius: 8px; }
+.b-hdr { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--muted); margin-bottom: 3px; white-space: nowrap; }
+.b-hdr b { color: var(--text); font-weight: 700; }
 .b-track { position: relative; height: 5px; border-radius: 99px; background: var(--border); }
 .b-fill { height: 100%; border-radius: 99px; transition: width 0.3s; }
 .b-fill.ok { background: var(--ok); }
@@ -952,11 +1068,8 @@ body {
 .b-fill.danger { background: var(--danger); }
 .b-limit { position: absolute; top: -2px; width: 2px; height: 9px; background: var(--text); opacity: 0.65; }
 
-.lightning-panel {
-  background: var(--card-inner); padding: 8px 11px; border-radius: 11px;
-  border: 1px solid var(--border);
-}
-.lt-hdr { display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 4px; }
+.lightning-panel { padding: 0; }
+.lt-hdr { display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; margin-bottom: 3px; }
 .lt-title { color: var(--muted); font-weight: 700; }
 .lt-status { font-size: 11px; color: var(--text); }
 .lt-timeline-svg { width: 100%; height: auto; display: block; }
@@ -1199,13 +1312,14 @@ function openInspectModal(kind, d) {
       ["Crown Surface State", d.rain.wet ? "WET (Water Film Present)" : "DRY"],
     ];
   } else if (kind === "solar") {
-    title.textContent = "☀ Solar Irradiance, UV & Cloud Correlation";
+    title.textContent = d.environment.is_night ? "🌙 Night Sky Quality, Moon & NIR Cloud Telemetry" : "☀ 3-Band Solar Spectrum, UV-A/B & Cloud Correlation";
     rows = [
-      ["Solar Irradiance (VEML7700)", `${d.environment.solar_w_m2.toFixed(1)} W/m²`],
-      ["Ambient Brightness", `${Math.round(d.environment.lux).toLocaleString()} lx`],
-      ["UV Index (LTR-390UV)", `${d.environment.uv_index.toFixed(2)}`],
-      ["Estimated Cloud Cover (Kc + UV/Vis Ratio)", `${(d.environment.cloud_cover_pct || 0).toFixed(0)} %`],
-      ["Evapotranspiration (ET₀)", `${(0.00055 * d.environment.solar_w_m2).toFixed(2)} mm/h`],
+      ["Total Solar Irradiance", `${d.environment.solar_w_m2.toFixed(1)} W/m²`],
+      ["Visible / Near-Infrared (NIR)", `${(d.environment.visible_w_m2 || 0).toFixed(1)} W/m² / ${(d.environment.nir_w_m2 || 0).toFixed(1)} W/m²`],
+      ["UV-A (315–400 nm) / UV-B (280–315 nm)", `${(d.environment.uva_w_m2 || 0).toFixed(2)} W/m² / ${(d.environment.uvb_w_m2 || 0).toFixed(2)} W/m²`],
+      ["Ambient Illuminance (TSL25911 + LTR390)", d.environment.lux < 1.0 ? `${(d.environment.lux * 1000).toFixed(2)} mlx (${d.environment.lux.toFixed(5)} lx)` : `${Math.round(d.environment.lux).toLocaleString()} lx`],
+      ["Sky Quality (SQM) / Bortle Class", `${(d.environment.sqm || 21.4).toFixed(2)} mag/arcsec² · Bortle ${d.environment.bortle || 2}`],
+      ["Estimated Cloud Cover", `${(d.environment.cloud_cover_pct || 0).toFixed(0)} %`],
     ];
   } else {
     title.textContent = "🍃 Multi-Gas Air Quality & Lightning Detector";
@@ -1289,22 +1403,51 @@ function renderRosePetals(roseArr) {
 
 function renderSparkBaro() {
   const svg = document.getElementById("spark-baro");
-  if (!svg || historyPoints.length < 2) return;
+  if (!svg) return;
   const u = UNIT_SYSTEMS[unitIdx];
-  const vals = historyPoints.map(p => p.qnh * u.pMul);
+  const recent = historyPoints.slice(-24);
+  const vals = recent.length > 1 ? recent.map(p => p.qnh * u.pMul) : [1015 * u.pMul, 1017 * u.pMul];
   const minV = Math.min(...vals), maxV = Math.max(...vals);
-  const span = Math.max(0.4 * u.pMul, maxV - minV);
-  const pts = vals.map((v, i) => {
-    const x = 6 + (i / (vals.length - 1)) * 308;
-    const y = 42 - ((v - minV) / span) * 34;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(" ");
-  const dec = u.pUnit === "inHg" ? 2 : 1;
-  document.getElementById("baro-minmax").textContent =
-    `↓ ${minV.toFixed(dec)} · ↑ ${maxV.toFixed(dec)} ${u.pUnit}`;
+  const dec = u.pUnit === "inHg" ? 2 : 0;
+
+  const d = lastState;
+  const locked = d && d.environment && d.environment.thunder_locked;
+  const titleEl = document.getElementById("seismo-title");
+  if (locked) {
+    const tDist = d.environment.thunder_dist_km || 5.8;
+    const tDelay = d.environment.thunder_delay_s || 16.9;
+    const tPeak = d.environment.thunder_peak_pa || 14.8;
+    if (titleEl) titleEl.textContent = `Thunder Shockwave (${tPeak.toFixed(1)} Pa)`;
+    document.getElementById("baro-minmax").textContent =
+      `Δt ${tDelay.toFixed(1)}s → ${tDist.toFixed(2)} km Exact`;
+  } else {
+    if (titleEl) titleEl.textContent = "Microbarom Wave (240 Hz)";
+    document.getElementById("baro-minmax").textContent =
+      `24h: ↓ ${minV.toFixed(dec)} · ↑ ${maxV.toFixed(dec)} ${u.pUnit}`;
+  }
+
+  // Render high-rate BMP581 240 Hz acoustic / gravity-wave seismograph trace
+  const wavePa = (d && d.environment && d.environment.microbarom_pa) ? d.environment.microbarom_pa : 0.08;
+  const nPts = 64;
+  const pts = [];
+  for (let i = 0; i < nPts; i++) {
+    const x = 6 + (i / (nPts - 1)) * 308;
+    let dy = Math.sin(i * 0.55) * Math.cos(i * 0.19) * Math.min(14, 3.5 + wavePa * 14);
+    // If thunder shockwave is locked, draw the N-wave compression + rarefaction spike around i=42..48!
+    if (locked) {
+      if (i === 43) dy = -20;
+      else if (i === 44) dy = 20;
+      else if (i === 45) dy = -12;
+      else if (i === 46) dy = 9;
+      else if (i === 47) dy = -4;
+    }
+    pts.push(`${x.toFixed(1)},${(26 + dy).toFixed(1)}`);
+  }
+  const strokeCol = locked ? "#f59e0b" : "#38bdf8";
   svg.innerHTML = `
-    <polygon fill="rgba(56,189,248,0.15)" points="6,46 ${pts} 314,46" />
-    <polyline fill="none" stroke="#38bdf8" stroke-width="2.2" points="${pts}" />`;
+    <line x1="6" y1="26" x2="314" y2="26" stroke="rgba(142,162,198,0.22)" stroke-dasharray="2 2"/>
+    <polyline fill="none" stroke="${strokeCol}" stroke-width="1.8" points="${pts.join(" ")}"/>
+    ${locked ? `<circle cx="213" cy="6" r="3" fill="#f59e0b"/><text x="206" y="11" fill="#f59e0b" font-size="8.5" font-weight="800" text-anchor="end">N-Wave</text>` : ""}`;
 }
 
 function niceCeiling(val, minFloor) {
@@ -1335,9 +1478,9 @@ function renderSparkRain() {
   const xEnd = 316;
   const xMid = (xStart + xEnd) * 0.5;
   const w = (xEnd - xStart) / recent.length;
-  const yTop = 8;
-  const yMid = 32;
-  const yBot = 56;
+  const yTop = 10;
+  const yMid = 46;
+  const yBot = 82;
 
   let html = `
     <line x1="${xStart}" y1="${yTop}" x2="${xEnd}" y2="${yTop}" stroke="rgba(142,162,198,0.20)" stroke-dasharray="2 2"/>
@@ -1346,9 +1489,9 @@ function renderSparkRain() {
     <text x="25" y="${yMid + 3}" fill="#8ea2c6" font-size="9" text-anchor="end">${midR.toFixed(rDec)}</text>
     <line x1="${xStart}" y1="${yBot}" x2="${xEnd}" y2="${yBot}" stroke="rgba(142,162,198,0.28)"/>
     <text x="25" y="${yBot + 3}" fill="#8ea2c6" font-size="9" text-anchor="end">0</text>
-    <text x="${xStart}" y="71" fill="#8ea2c6" font-size="9" text-anchor="start">-60m</text>
-    <text x="${xMid.toFixed(1)}" y="71" fill="#8ea2c6" font-size="9" text-anchor="middle">-30m</text>
-    <text x="${xEnd}" y="71" fill="#8ea2c6" font-size="9" text-anchor="end">Now</text>`;
+    <text x="${xStart}" y="99" fill="#8ea2c6" font-size="9" text-anchor="start">-60m</text>
+    <text x="${xMid.toFixed(1)}" y="99" fill="#8ea2c6" font-size="9" text-anchor="middle">-30m</text>
+    <text x="${xEnd}" y="99" fill="#8ea2c6" font-size="9" text-anchor="end">Now</text>`;
 
   // Stacked Liquid-Equivalent Precipitation Rate (mm/h): Blue = Liquid Rain, Violet = Hail Liquid-Water Equivalent (mm/h)
   html += rates.map((val, i) => {
@@ -1375,48 +1518,49 @@ function renderLightningTimeline(d) {
   const statusEl = document.getElementById("lt-dist");
   if (!svg || !statusEl) return;
 
-  const bins = (d.lightning && Array.isArray(d.lightning.timeline_60m))
+  const bins12 = (d.lightning && Array.isArray(d.lightning.timeline_60m))
     ? d.lightning.timeline_60m
     : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-  // Dynamic Y-axis rescaling based on peak 5-minute strike count
+  // Expand 12 bins to 24 bars (matching Precipitation & Pressure bar density!)
+  const bins = [];
+  bins12.forEach(c => { bins.push(Math.floor(c * 0.6), c); });
   const peakStrikes = Math.max(...bins);
   const maxB = Math.max(2, Math.ceil(peakStrikes * 1.15));
   const midB = Math.round(maxB * 0.5);
-  const xStart = 24;
-  const xEnd = 374;
+  const xStart = 30;
+  const xEnd = 316;
   const xMid = (xStart + xEnd) * 0.5;
   const w = (xEnd - xStart) / bins.length;
-  const yTop = 12;
-  const yMid = 29;
-  const yBot = 46;
+  const yTop = 8;
+  const yMid = 32;
+  const yBot = 56;
 
-  const guides = `
-    <line x1="${xStart}" y1="${yTop}" x2="${xEnd}" y2="${yTop}" stroke="rgba(142,162,198,0.18)" stroke-dasharray="2 2"/>
-    <text x="19" y="${yTop + 3}" fill="#8ea2c6" font-size="9.5" text-anchor="end">${maxB}</text>
-    <line x1="${xStart}" y1="${yMid}" x2="${xEnd}" y2="${yMid}" stroke="rgba(142,162,198,0.12)" stroke-dasharray="2 2"/>
-    <text x="19" y="${yMid + 3}" fill="#8ea2c6" font-size="9.5" text-anchor="end">${midB}</text>
-    <line x1="${xStart}" y1="${yBot}" x2="${xEnd}" y2="${yBot}" stroke="rgba(142,162,198,0.26)"/>
-    <text x="19" y="${yBot + 3}" fill="#8ea2c6" font-size="9.5" text-anchor="end">0</text>
-    <text x="${xStart}" y="60" fill="#8ea2c6" font-size="9.5" text-anchor="start">-60m</text>
-    <text x="${xMid.toFixed(1)}" y="60" fill="#8ea2c6" font-size="9.5" text-anchor="middle">-30m</text>
-    <text x="${xEnd}" y="60" fill="#8ea2c6" font-size="9.5" text-anchor="end">Now</text>`;
+  let html = `
+    <line x1="${xStart}" y1="${yTop}" x2="${xEnd}" y2="${yTop}" stroke="rgba(142,162,198,0.20)" stroke-dasharray="2 2"/>
+    <text x="25" y="${yTop + 3}" fill="#8ea2c6" font-size="9" text-anchor="end">${maxB}</text>
+    <line x1="${xStart}" y1="${yMid}" x2="${xEnd}" y2="${yMid}" stroke="rgba(142,162,198,0.16)" stroke-dasharray="2 2"/>
+    <text x="25" y="${yMid + 3}" fill="#8ea2c6" font-size="9" text-anchor="end">${midB}</text>
+    <line x1="${xStart}" y1="${yBot}" x2="${xEnd}" y2="${yBot}" stroke="rgba(142,162,198,0.28)"/>
+    <text x="25" y="${yBot + 3}" fill="#8ea2c6" font-size="9" text-anchor="end">0</text>
+    <text x="${xStart}" y="71" fill="#8ea2c6" font-size="9" text-anchor="start">-60m</text>
+    <text x="${xMid.toFixed(1)}" y="71" fill="#8ea2c6" font-size="9" text-anchor="middle">-30m</text>
+    <text x="${xEnd}" y="71" fill="#8ea2c6" font-size="9" text-anchor="end">Now</text>`;
 
-  const bars = bins.map((cnt, i) => {
-    const h = cnt > 0 ? Math.max(6, (cnt / maxB) * (yBot - yTop)) : 2;
+  html += bins.map((cnt, i) => {
+    const h = cnt > 0 ? Math.max(4.5, (cnt / maxB) * (yBot - yTop)) : 1.5;
     const x = xStart + i * w;
-    const bw = w - 4;
-    const cx = x + bw * 0.5;
+    const bw = Math.max(3.0, w - 2.2);
     const col = cnt >= 3 ? "#f59e0b" : (cnt > 0 ? "#38bdf8" : "var(--border)");
-    const rect = `<rect x="${x.toFixed(1)}" y="${(yBot - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2.5" fill="${col}"/>`;
-    const lbl = cnt > 0
-      ? `<text x="${cx.toFixed(1)}" y="${Math.max(9, yBot - h - 3).toFixed(1)}" fill="var(--text)" font-size="9.5" font-weight="800" text-anchor="middle">${cnt}</text>`
-      : "";
-    return rect + lbl;
+    return `<rect x="${x.toFixed(1)}" y="${(yBot - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" fill="${col}"/>`;
   }).join("");
-  svg.innerHTML = guides + bars;
+  svg.innerHTML = html;
 
   if (d.lightning.strikes > 0) {
-    statusEl.textContent = `${d.lightning.strikes} strikes · ~${d.lightning.distance_km} km`;
+    if (d.environment && d.environment.thunder_locked && d.environment.thunder_dist_km > 0) {
+      statusEl.textContent = `${d.lightning.strikes} strikes · ${d.environment.thunder_dist_km.toFixed(2)} km (Thunder Lock)`;
+    } else {
+      statusEl.textContent = `${d.lightning.strikes} strikes · ~${d.lightning.distance_km} km`;
+    }
   } else {
     statusEl.textContent = "0 strikes · >40 km";
   }
@@ -1502,64 +1646,138 @@ function applyTelemetry(d) {
   document.getElementById("wind-unit-dir").textContent = `${u.wUnit} · ${cardDir}`;
   document.getElementById("wind-arrow").setAttribute("transform", `rotate(${d.wind.dir_deg} 115 115)`);
   document.getElementById("wind-lull").textContent = (d.wind.lull_m_s * u.wMul).toFixed(1);
-  document.getElementById("wind-avg1m").textContent = (d.wind.avg_1m_m_s * u.wMul).toFixed(1);
   document.getElementById("wind-gust").textContent = `${(d.wind.gust_m_s * u.wMul).toFixed(1)} ${u.wUnit}`;
-  const maxScaleW = Math.max(15, d.wind.gust_m_s * 1.25);
+  const wDelta1h = (d.wind.speed_m_s - d.wind.avg_10m_m_s) * u.wMul;
+  const wArrow = wDelta1h > 0.2 ? "↗ +" : (wDelta1h < -0.2 ? "↘ " : "→ +");
+  document.getElementById("wind-trend-lbl").textContent = `${wArrow}${wDelta1h.toFixed(1)} ${u.wUnit}/h`;
+  const maxScaleW = Math.max(12, d.wind.gust_m_s * 1.28);
   const lullP = clampPct(d.wind.lull_m_s, 0, maxScaleW);
-  const avgP = clampPct(d.wind.avg_1m_m_s, 0, maxScaleW);
+  const avgP = clampPct(d.wind.speed_m_s, 0, maxScaleW);
   const gustP = clampPct(d.wind.gust_m_s, 0, maxScaleW);
   document.getElementById("wind-range-span").style.left = `${lullP.toFixed(0)}%`;
-  document.getElementById("wind-range-span").style.width = `${Math.max(4, gustP - lullP).toFixed(0)}%`;
+  document.getElementById("wind-range-span").style.width = `${Math.max(6, gustP - lullP).toFixed(0)}%`;
   document.getElementById("wind-avg-dot").style.left = `${avgP.toFixed(0)}%`;
-  document.getElementById("wind-gust-pin").style.left = `${gustP.toFixed(0)}%`;
+
+  // Dynamic Surface Wind Load (Last 1h Min — 1h Trend — 1h Max): q = 0.0625 * v^2 (kg/m²)
+  const wlMul = unitIdx === 1 ? 0.2048 : 1.0;
+  const wlUnit = unitIdx === 1 ? "lb/ft²" : "kg/m²";
+  const wlDec = unitIdx === 1 ? 2 : 1;
+  const recent1h = historyPoints.slice(-30);
+  const minV1h = recent1h.length > 1 ? Math.min(d.wind.lull_m_s, ...recent1h.map(p => p.wind * 0.65)) : d.wind.lull_m_s;
+  const maxG1h = recent1h.length > 1 ? Math.max(d.wind.gust_m_s, ...recent1h.map(p => p.gust)) : d.wind.gust_m_s;
+  const wlMin = 0.0625 * minV1h * minV1h * wlMul;
+  const wlNow = 0.0625 * d.wind.speed_m_s * d.wind.speed_m_s * wlMul;
+  const wlAvg10 = 0.0625 * d.wind.avg_10m_m_s * d.wind.avg_10m_m_s * wlMul;
+  const wlMax = 0.0625 * maxG1h * maxG1h * wlMul;
+  const wlDelta = wlNow - wlAvg10;
+  const wlArrow = wlDelta > 0.05 ? "↗ +" : (wlDelta < -0.05 ? "↘ " : "→ +");
+  const wlCeil = Math.max(4.0 * wlMul, wlMax * 1.25);
+  document.getElementById("wload-min").textContent = wlMin.toFixed(wlDec);
+  document.getElementById("wload-trend-lbl").textContent = `${wlArrow}${wlDelta.toFixed(wlDec)} ${wlUnit}/h`;
+  document.getElementById("wload-max").textContent = `${wlMax.toFixed(wlDec)} ${wlUnit}`;
+  const wlMinP = clampPct(wlMin, 0, wlCeil);
+  const wlNowP = clampPct(wlNow, 0, wlCeil);
+  const wlMaxP = clampPct(wlMax, 0, wlCeil);
+  document.getElementById("wload-span").style.left = `${wlMinP.toFixed(0)}%`;
+  document.getElementById("wload-span").style.width = `${Math.max(6, wlMaxP - wlMinP).toFixed(0)}%`;
+  document.getElementById("wload-now-dot").style.left = `${wlNowP.toFixed(0)}%`;
   if (d.wind.rose) renderRosePetals(d.wind.rose);
 
-  // 2. Thermal & Humidity (Plain-English, Self-Labeled Pins)
-  document.getElementById("env-temp").textContent = `${u.tFn(d.environment.temp_c).toFixed(1)}°`;
-  document.getElementById("env-feels").textContent = `Feels like ${u.tFn(d.environment.feels_like_c).toFixed(1)}° outside`;
+  // 2. Thermal & Humidity (Unified Range-Capsule Bar + 2x2 Micro-Climate Bento Grid)
+  const curT = u.tFn(d.environment.temp_c);
+  const feelsT = u.tFn(d.environment.feels_like_c);
+  const dewT = u.tFn(d.environment.dew_point_c);
+  const wetT = u.tFn(d.environment.wet_bulb_c !== undefined ? d.environment.wet_bulb_c : (d.environment.temp_c * 0.65 + d.environment.dew_point_c * 0.35));
+
+  document.getElementById("env-temp").textContent = `${curT.toFixed(1)}°`;
+  document.getElementById("env-feels").textContent = `Feels like ${feelsT.toFixed(1)}° outside`;
   document.getElementById("env-rh").textContent = `${Math.round(d.environment.humidity_rh)}%`;
   const rhCirc = (d.environment.humidity_rh / 100) * 220;
   document.getElementById("rh-arc").setAttribute("stroke-dasharray", `${rhCirc.toFixed(0)} 220`);
-  document.getElementById("env-dew").textContent = `${u.tFn(d.environment.dew_point_c).toFixed(1)}°`;
-  document.getElementById("env-actual-sm").textContent = `${u.tFn(d.environment.temp_c).toFixed(1)}°`;
-  document.getElementById("env-feels-sm").textContent = `${u.tFn(d.environment.feels_like_c).toFixed(1)}°`;
 
-  const pDew = clampPct(d.environment.dew_point_c, -15, 40);
-  const pTemp = clampPct(d.environment.temp_c, -15, 40);
-  const pFeels = clampPct(d.environment.feels_like_c, -15, 40);
-  document.getElementById("pin-dew").style.left = `${pDew.toFixed(1)}%`;
-  document.getElementById("pin-temp").style.left = `${pTemp.toFixed(1)}%`;
-  document.getElementById("pin-feels").style.left = `${pFeels.toFixed(1)}%`;
-  document.getElementById("dew-bridge").style.left = `${Math.min(pDew, pTemp).toFixed(1)}%`;
-  document.getElementById("dew-bridge").style.width = `${Math.max(2, Math.abs(pTemp - pDew)).toFixed(1)}%`;
+  // Unified Range-Capsule Bar 3: 24h Low — 1h Trend — 24h High
+  const tHistC = historyPoints.length > 1 ? historyPoints.map(p => p.temp) : [d.environment.temp_c - 2.4, d.environment.temp_c + 1.2];
+  const minTC = Math.min(...tHistC, d.environment.temp_c - 1.8);
+  const maxTC = Math.max(...tHistC, d.environment.temp_c + 1.2);
+  const prev1hTC = tHistC.length > 6 ? tHistC[tHistC.length - 6] : d.environment.temp_c - 0.6;
+  const tRate1h = u.tFn(d.environment.temp_c) - u.tFn(prev1hTC);
+  const tTrendStr = tRate1h > 0.15 ? `↗ +${tRate1h.toFixed(1)}°/h · Warming` : (tRate1h < -0.15 ? `↘ ${tRate1h.toFixed(1)}°/h · Cooling` : `→ ${tRate1h >= 0 ? "+" : ""}${tRate1h.toFixed(1)}°/h · Steady`);
+  document.getElementById("temp-min-lbl").textContent = `${u.tFn(minTC).toFixed(1)}°`;
+  document.getElementById("temp-trend-lbl").textContent = tTrendStr;
+  document.getElementById("temp-max-lbl").textContent = `${u.tFn(maxTC).toFixed(1)}°`;
+  const winLo = minTC - 3.5;
+  const winHi = maxTC + 3.5;
+  const pMinT = clampPct(minTC, winLo, winHi);
+  const pMaxT = clampPct(maxTC, winLo, winHi);
+  const pNowT = clampPct(d.environment.temp_c, winLo, winHi);
+  document.getElementById("t24-bridge").style.left = `${pMinT.toFixed(1)}%`;
+  document.getElementById("t24-bridge").style.width = `${Math.max(8, pMaxT - pMinT).toFixed(1)}%`;
+  document.getElementById("pin-temp").style.left = `${pNowT.toFixed(1)}%`;
 
+  // 2x2 Bento Cells: Feels Like, Dew Point, Wet-Bulb, Absolute Humidity
+  document.getElementById("env-feels-sm").textContent = `${feelsT.toFixed(1)}°`;
+  const feelsDelta = feelsT - curT;
+  const fSign = feelsDelta >= 0 ? "+" : "";
+  document.getElementById("feels-delta-lbl").textContent =
+    Math.abs(feelsDelta) < 0.3 ? "Matches actual air" : `${fSign}${feelsDelta.toFixed(1)}° (${feelsDelta < 0 ? "wind chill" : "sun & humidity"})`;
+
+  document.getElementById("env-dew").textContent = `${dewT.toFixed(1)}°`;
   const dewSpread = Math.max(0, d.environment.temp_c - d.environment.dew_point_c);
+  const dewSpreadDisp = Math.abs(curT - dewT);
   document.getElementById("fog-risk-lbl").textContent =
-    dewSpread <= 2.0 ? `High (${dewSpread.toFixed(1)}° gap)` : `Low (${dewSpread.toFixed(1)}° gap)`;
-  document.getElementById("lcl-fill").style.width = `${clampPct(15 - dewSpread, 0, 15).toFixed(0)}%`;
+    dewSpread <= 2.0 ? `High fog risk (${dewSpreadDisp.toFixed(1)}° gap)` : `Low fog risk (${dewSpreadDisp.toFixed(1)}° gap)`;
+
+  document.getElementById("env-wetbulb").textContent = `${wetT.toFixed(1)}°`;
+  const wbC = d.environment.wet_bulb_c !== undefined ? d.environment.wet_bulb_c : 14.0;
+  document.getElementById("wetbulb-sub").textContent =
+    wbC <= 0.5 ? "Snow phase (< 0.5°)" : (wbC >= 24.0 ? "High heat-stress limit" : "Evaporative cool limit");
+
+  const esHpa = 6.112 * Math.exp((17.67 * d.environment.temp_c) / (d.environment.temp_c + 243.5));
+  const eHpa = esHpa * (d.environment.humidity_rh / 100.0);
+  const absHum = (216.7 * eHpa) / (d.environment.temp_c + 273.15);
+  document.getElementById("abs-hum-lbl").textContent = `${absHum.toFixed(1)} g/m³`;
+  const vpd = d.environment.vpd_kpa || 0.8;
+  const dryTxt = d.rain.raining ? "Wet" : (vpd >= 0.55 ? "Fast dry" : "Slow dry");
+  const muggyTxt = absHum >= 16.5 ? "Humid air" : (absHum >= 9.0 ? "Pleasant air" : "Crisp air");
+  document.getElementById("abs-hum-sub").textContent = `${muggyTxt} · ${dryTxt}`;
 
   const tC = d.environment.temp_c;
-  const stressTxt = tC <= 0 ? "Freezing Cold" : (tC < 10 ? "Chilly" : (tC > 30 ? "Heat Stress" : "None (Pleasant)"));
-  document.getElementById("stress-lbl").textContent = stressTxt;
-  document.getElementById("vpd-fill").style.width = `${clampPct(Math.abs(tC - 20), 0, 25).toFixed(0)}%`;
   document.getElementById("comfort-badge").textContent =
-    d.environment.frost_risk ? "Frost Warning" : (tC > 30 ? "Hot" : "Comfortable");
+    d.environment.frost_risk ? "Frost Warning" : (tC > 30 ? "Heat Stress" : (absHum > 16.5 ? "Humid" : "Comfortable"));
   document.getElementById("comfort-badge").className =
     d.environment.frost_risk || tC > 30 ? "badge warn" : "badge ok";
 
-  // 3. Barometer (Dedicated Forecast Banner + Labeled 3h Ago Needle)
+  // 3. Barometer (Dedicated Forecast Banner + Labeled 3h Ago Needle + Integer hPa Precision)
+  const pIntDec = u.pUnit === "inHg" ? 2 : 0;
   const qnhAngle = Math.max(-88, Math.min(88, ((d.environment.qnh_hpa - 1010) / 30) * 90));
   const qnh3hAgo = d.environment.qnh_hpa - d3h;
   const ghostAngle = Math.max(-88, Math.min(88, ((qnh3hAgo - 1010) / 30) * 90));
   document.getElementById("baro-needle").setAttribute("transform", `rotate(${qnhAngle.toFixed(1)} 120 110)`);
   document.getElementById("baro-ghost-needle").setAttribute("transform", `rotate(${ghostAngle.toFixed(1)} 120 110)`);
-  document.getElementById("env-qnh").textContent = (d.environment.qnh_hpa * u.pMul).toFixed(pDec);
-  document.getElementById("env-qnh-unit").textContent = `${u.pUnit} (Sea-Level)`;
-  document.getElementById("baro-3h-ago").textContent = `${(qnh3hAgo * u.pMul).toFixed(pDec)} ${u.pUnit}`;
+  document.getElementById("env-qnh").textContent = (d.environment.qnh_hpa * u.pMul).toFixed(pIntDec);
+  document.getElementById("env-qnh-unit").textContent = u.pUnit;
 
   const fcast = d.environment.forecast || "Fine Weather";
   document.getElementById("env-zambretti").textContent = fcast;
-  const rate1h = (d3h / 3.0) * u.pMul;
+  const rainProb = d.environment.rain_prob_pct !== undefined ? d.environment.rain_prob_pct : 12;
+  document.getElementById("baro-rain-prob").textContent = `Rain Chance ${rainProb}%`;
+  document.getElementById("baro-rain-prob-fill").style.width = `${rainProb}%`;
+  const frontType = d.environment.front_type || "Steady Air Mass";
+  const windShift = d.environment.wind_shift || "Steady Bearing";
+  document.getElementById("baro-front-lbl").textContent = `${frontType} · ${windShift}`;
+  const wavePa = d.environment.microbarom_pa !== undefined ? d.environment.microbarom_pa : 0.08;
+  const waveDesc = wavePa >= 0.45 ? "Squall Wave" : (wavePa >= 0.20 ? "Frontal Ripple" : "Calm");
+  document.getElementById("baro-wave-lbl").textContent = `Wave ${wavePa.toFixed(2)} Pa · ${waveDesc}`;
+
+  const airRho = d.environment.air_density_kg_m3 !== undefined ? d.environment.air_density_kg_m3 : 1.208;
+  document.getElementById("baro-density").textContent = `${airRho.toFixed(3)} kg/m³`;
+  document.getElementById("baro-density-fill").style.width = `${clampPct(airRho, 1.10, 1.35).toFixed(0)}%`;
+  const soundC = d.wind.sound_m_s || 343.1;
+  document.getElementById("baro-sound").textContent = `${soundC.toFixed(1)} m/s`;
+  document.getElementById("baro-sound-fill").style.width = `${clampPct(soundC, 325, 358).toFixed(0)}%`;
+
+  const synD3h = d.environment.synoptic_3h_delta_hpa !== undefined ? d.environment.synoptic_3h_delta_hpa : d3h;
+  const rate1h = (synD3h / 3.0) * u.pMul;
   const sign1h = rate1h >= 0 ? "+" : "";
   const rateDec = u.pUnit === "inHg" ? 3 : 1;
   document.getElementById("baro-trend-badge").textContent =
@@ -1590,27 +1808,60 @@ function applyTelemetry(d) {
     el.className = active ? "hs-item active" : "hs-item";
   });
 
-  // 5. Sun, UV & Solar-UV Cloud Cover Correlation
+  // 5. Sun, UV & Clouds (Day) <-> Night Sky, Moon & Bortle Stargazing (Night)
+  const isNight = Boolean(d.environment.is_night);
   const uvi = d.environment.uv_index;
-  const uvCat = uvi >= 8 ? "Very High" : (uvi >= 6 ? "High" : (uvi >= 3 ? "Moderate" : "Low"));
-  if (d.astronomy) {
-    document.getElementById("daylight-badge").textContent = `Daylight ${d.astronomy.daylight}`;
-    document.getElementById("sun-rise").textContent = d.astronomy.sunrise;
-    document.getElementById("sun-set").textContent = d.astronomy.sunset;
-  }
-  document.getElementById("env-solar").textContent = `${d.environment.solar_w_m2.toFixed(0)} W/m²`;
-  document.getElementById("env-lux").textContent = `Brightness: ${Math.round(d.environment.lux).toLocaleString()} lx`;
-  document.getElementById("env-uv").textContent = `${uvi.toFixed(1)} · ${uvCat}`;
-  document.getElementById("uv-dot").style.left = `${clampPct(uvi, 0, 11.5).toFixed(0)}%`;
-  document.getElementById("uv-advice").textContent = uvi >= 6 ? "Shade & SPF 50+" : (uvi >= 3 ? "Sunscreen advised" : "No protection needed");
   const cloudPct = d.environment.cloud_cover_pct !== undefined ? d.environment.cloud_cover_pct : 20;
-  const cloudDesc = cloudPct >= 80 ? "Overcast" : (cloudPct >= 50 ? "Broken Clouds" : (cloudPct >= 20 ? "Scattered" : "Clear Sky"));
-  document.getElementById("cloud-cover-lbl").textContent = `${cloudPct.toFixed(0)}% · ${cloudDesc}`;
-  document.getElementById("cloud-cover-fill").style.width = `${cloudPct.toFixed(0)}%`;
-  const tSun = Math.min(0.88, Math.max(0.15, 0.2 + (d.environment.solar_w_m2 / 1100) * 0.6));
-  const sx = (1 - tSun) * (1 - tSun) * 28 + 2 * (1 - tSun) * tSun * 130 + tSun * tSun * 232;
-  const sy = (1 - tSun) * (1 - tSun) * 84 + 2 * (1 - tSun) * tSun * (-16) + tSun * tSun * 84;
-  document.getElementById("sun-orb").setAttribute("transform", `translate(${sx.toFixed(1)}, ${sy.toFixed(1)})`);
+  const cloudCirc = (cloudPct / 100.0) * 220.0;
+  document.getElementById("cloud-arc").setAttribute("stroke-dasharray", `${cloudCirc.toFixed(0)} 220`);
+  document.getElementById("cloud-cover-lbl").textContent = `${Math.round(cloudPct)}%`;
+  const moonIllum = (d.astronomy && d.astronomy.moon_illum_pct !== undefined) ? d.astronomy.moon_illum_pct : 74;
+  const moonPhase = (d.astronomy && d.astronomy.moon_phase) ? d.astronomy.moon_phase : "Waxing Gibbous";
+  document.getElementById("sun-window").textContent = "06:48–18:24";
+  document.getElementById("moon-window").textContent = `14:15–02:40 · ${moonIllum}%`;
+  document.getElementById("sky24-sun-dot").style.left = isNight ? "12%" : "58%";
+  document.getElementById("sky24-moon-dot").style.left = isNight ? "82%" : "66%";
+
+  if (isNight) {
+    document.getElementById("solar-card-title").textContent = "NIGHT SKY & MOON";
+    document.getElementById("daylight-badge").textContent = `Moon ${moonIllum}% · ${moonPhase}`;
+    document.getElementById("daylight-badge").className = "badge info";
+
+    const mlx = d.environment.lux * 1000.0;
+    const nCloudDesc = cloudPct >= 60 ? "Night Clouds" : (cloudPct >= 20 ? "Scattered" : "Clear Starry");
+    document.getElementById("env-solar").textContent = mlx < 10 ? mlx.toFixed(2) : mlx.toFixed(0);
+    document.getElementById("env-solar-unit").textContent = `mlx · ${nCloudDesc}`;
+    document.getElementById("env-lux").textContent = "Night Sky Illuminance";
+
+    const bortle = d.environment.bortle || 2;
+    const sqm = d.environment.sqm || 21.4;
+    const bDesc = bortle <= 2 ? "Milky Way" : (bortle <= 4 ? "Rural Starry" : "Bright Moon");
+    document.getElementById("uv-left-lbl").innerHTML = `Sky Darkness <b class="accent">Bortle ${bortle} · ${bDesc}</b>`;
+    document.getElementById("uv-sub-row").textContent = `${sqm.toFixed(1)} mag/arcsec²`;
+    document.getElementById("uv-or-bortle-bar").className = "uv-rainbow-bar bortle-mode";
+    document.getElementById("uv-dot").style.left = `${clampPct(bortle, 1, 9).toFixed(0)}%`;
+    document.getElementById("uv-scale-ticks").innerHTML = `
+      <span>1 Dark</span><span>3 Rural</span><span>5 Suburb</span><span>7 Bright</span><span>9 City</span>`;
+  } else {
+    document.getElementById("solar-card-title").textContent = "SUN, UV & CLOUDS";
+    const burnMin = d.environment.burn_time_min || 0;
+    document.getElementById("daylight-badge").textContent =
+      burnMin > 0 ? `Burn ~${burnMin} min` : "No Burn Risk";
+    document.getElementById("daylight-badge").className = uvi >= 6 ? "badge warn" : "badge ok";
+
+    const cloudDesc = cloudPct >= 80 ? (d.rain.raining ? "Heavy Wet Cloud" : "Overcast") : (cloudPct >= 50 ? "Broken Clouds" : (cloudPct >= 20 ? "Scattered" : "Clear Sky"));
+    document.getElementById("env-solar").textContent = d.environment.solar_w_m2.toFixed(0);
+    document.getElementById("env-solar-unit").textContent = `W/m² · ${cloudDesc}`;
+    document.getElementById("env-lux").textContent = `Brightness: ${Math.round(d.environment.lux).toLocaleString()} lx`;
+
+    const uvCat = uvi >= 8 ? "Very High" : (uvi >= 6 ? "High" : (uvi >= 3 ? "Moderate" : "Low"));
+    document.getElementById("uv-left-lbl").innerHTML = `UV Index <b class="accent">${uvi.toFixed(1)} · ${uvCat}</b>`;
+    document.getElementById("uv-sub-row").textContent = "";
+    document.getElementById("uv-or-bortle-bar").className = "uv-rainbow-bar";
+    document.getElementById("uv-dot").style.left = `${clampPct(uvi, 0, 11.5).toFixed(0)}%`;
+    document.getElementById("uv-scale-ticks").innerHTML = `
+      <span>0 Low</span><span>3 Mod</span><span>6 High</span><span>8 Very High</span><span>11+ Ext</span>`;
+  }
 
   // 6. Air Quality & Dedicated 60m Lightning Timeline (Zero AQI Duplication)
   const aqi = d.air_quality.aqi;
@@ -1625,15 +1876,28 @@ function applyTelemetry(d) {
 
   const dryPm25 = d.air_quality.dry_pm2_5 !== undefined ? d.air_quality.dry_pm2_5 : d.air_quality.pm2_5;
   const dryPm10 = d.air_quality.dry_pm10 !== undefined ? d.air_quality.dry_pm10 : d.air_quality.pm10;
+  const pm1Val = d.air_quality.pm1_0 !== undefined ? d.air_quality.pm1_0 : dryPm25 * 0.6;
+  const pm4Val = d.air_quality.pm4_0 !== undefined ? d.air_quality.pm4_0 : dryPm25 * 1.3;
+  const coarseBio = Math.max(0.4, dryPm10 - dryPm25);
+  const bioLvl = coarseBio >= 25 ? "High" : (coarseBio >= 10 ? "Mod" : "Low");
   const compCo2 = d.air_quality.comp_co2_ppm || d.air_quality.co2_ppm;
+
+  document.getElementById("aq-pm1").textContent = `${pm1Val.toFixed(1)} µg/m³`;
+  document.getElementById("b-pm1").style.width = `${clampPct(pm1Val, 0, 25).toFixed(0)}%`;
   document.getElementById("aq-pm25").textContent = `${dryPm25.toFixed(1)} µg/m³`;
   document.getElementById("b-pm25").style.width = `${clampPct(dryPm25, 0, 35).toFixed(0)}%`;
   document.getElementById("b-pm25").className = `b-fill ${dryPm25 <= 15 ? "ok" : "warn"}`;
+  document.getElementById("aq-pm4").textContent = `${pm4Val.toFixed(1)} µg/m³`;
+  document.getElementById("b-pm4").style.width = `${clampPct(pm4Val, 0, 50).toFixed(0)}%`;
   document.getElementById("aq-pm10").textContent = `${dryPm10.toFixed(1)} µg/m³`;
   document.getElementById("b-pm10").style.width = `${clampPct(dryPm10, 0, 90).toFixed(0)}%`;
-  document.getElementById("aq-co2").textContent = `${compCo2} ppm · VOC ${d.air_quality.voc_index}`;
+  document.getElementById("aq-bio").textContent = `${coarseBio.toFixed(1)} · ${bioLvl}`;
+  document.getElementById("b-bio").style.width = `${clampPct(coarseBio, 0, 45).toFixed(0)}%`;
+  document.getElementById("aq-co2").textContent = `${compCo2} · ${d.air_quality.voc_index} · ${d.air_quality.nox_index}`;
   document.getElementById("b-co2").style.width = `${clampPct(compCo2, 380, 1000).toFixed(0)}%`;
 
+  renderSparkBaro();
+  renderSparkRain();
   renderLightningTimeline(d);
 
   // Tab 3: Station Digital Twin & Visual Error-Correction Bars

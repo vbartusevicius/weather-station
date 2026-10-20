@@ -81,6 +81,24 @@ float MetCalculator::estimate_cloud_cover_pct(float solar_w_m2, float uv_index, 
     return clamp_f(n_kc_pct + diffuse_boost_pct, 0.0F, 100.0F);
 }
 
+float MetCalculator::sky_quality_mpsas(float ambient_lux) {
+    // Wide-field hemispherical TSL2591 Sky Quality Meter conversion: SQM (mag/arcsec^2) = 13.7 - 2.5 * log10(lux)
+    const float lx = clamp_f(ambient_lux, 0.00018F, 10.0F);
+    return clamp_f(13.7F - 2.5F * std::log10(lx), 12.0F, 22.0F);
+}
+
+std::uint8_t MetCalculator::bortle_class_from_sqm(float sqm_mpsas) {
+    if (sqm_mpsas >= 21.75F) return 1;
+    if (sqm_mpsas >= 21.50F) return 2;
+    if (sqm_mpsas >= 21.20F) return 3;
+    if (sqm_mpsas >= 20.40F) return 4;
+    if (sqm_mpsas >= 19.50F) return 5;
+    if (sqm_mpsas >= 18.90F) return 6;
+    if (sqm_mpsas >= 18.30F) return 7;
+    if (sqm_mpsas >= 17.50F) return 8;
+    return 9;
+}
+
 float MetCalculator::wind_chill_c(float temp_c, float wind_m_s) {
     const float v_kmh = wind_m_s * 3.6F;
     if (temp_c > 10.0F || v_kmh <= 4.8F) {
@@ -235,6 +253,81 @@ const char* MetCalculator::zambretti_forecast(float qnh_hpa, PressureTrend trend
     return "Much Rain, Very Unsettled";
 }
 
+float MetCalculator::diurnal_solar_tide_3h_delta_hpa(std::uint8_t local_hour, float solar_w_m2) {
+    // Semidiurnal S2 atmospheric solar tide peaks at 10:00 and 22:00 local time and troughs at 04:00 and 16:00.
+    const float amp = 0.75F + 0.45F * clamp_f(solar_w_m2 / 800.0F, 0.0F, 1.0F);
+    const float h_now = static_cast<float>(local_hour % 24U);
+    const float h_prev = h_now - 3.0F;
+    const float pi = 3.14159265F;
+    const float tide_now = amp * std::cos((2.0F * pi * (h_now - 10.0F)) / 12.0F);
+    const float tide_prev = amp * std::cos((2.0F * pi * (h_prev - 10.0F)) / 12.0F);
+    return tide_now - tide_prev;
+}
+
+float MetCalculator::microbarom_gravity_wave_pa(float bmp581_fifo_rms_pa, float wind_m_s) {
+    const float wind_turb_pa = 0.0035F * wind_m_s * wind_m_s;
+    return clamp_f(std::max(0.05F, bmp581_fifo_rms_pa - wind_turb_pa), 0.05F, 5.0F);
+}
+
+float MetCalculator::moist_air_density_kg_m3(float static_pressure_hpa, float temp_c, float rh_percent) {
+    // CIPM-2007 / ideal-gas moist air density: rho = (p_d / (R_d * T)) + (e / (R_v * T))
+    const float tk = temp_c + 273.15F;
+    const float es_hpa = 6.1078F * std::exp((17.27F * temp_c) / (temp_c + 237.3F));
+    const float e_pa = clamp_f(rh_percent, 0.0F, 100.0F) * 0.01F * es_hpa * 100.0F;
+    const float pd_pa = std::max(0.0F, static_pressure_hpa * 100.0F - e_pa);
+    return clamp_f((pd_pa / (287.058F * tk)) + (e_pa / (461.495F * tk)), 0.80F, 1.50F);
+}
+
+float MetCalculator::thunder_exact_distance_km(float thunder_delay_s, float measured_sound_m_s, float wind_m_s) {
+    // Fuse AS3935 500 kHz EM flash trigger (t_0) + BMP581 240 Hz acoustic N-wave arrival (t_thunder)
+    // using the live speed of sound c measured by the 40 kHz ultrasonic anemometer!
+    if (thunder_delay_s <= 0.05F || thunder_delay_s > 60.0F) {
+        return 0.0F;
+    }
+    const float c_eff = clamp_f(measured_sound_m_s, 315.0F, 365.0F) + 0.5F * wind_m_s;
+    return (c_eff * thunder_delay_s) * 0.001F;
+}
+
+const char* MetCalculator::sager_front_type(
+    float sea_level_hpa, float synoptic_3h_delta_hpa, float wind_dir_3h_delta_deg, float cloud_cover_pct) {
+    if (synoptic_3h_delta_hpa <= -2.5F && wind_dir_3h_delta_deg < -10.0F) {
+        return "Squall / Cold Front";
+    }
+    if (synoptic_3h_delta_hpa <= -1.2F && cloud_cover_pct >= 65.0F) {
+        return "Warm Front Approaching";
+    }
+    if (synoptic_3h_delta_hpa >= 1.5F && wind_dir_3h_delta_deg > 10.0F) {
+        return "Cold Front Clearing";
+    }
+    if (sea_level_hpa >= 1018.0F && std::fabs(synoptic_3h_delta_hpa) < 1.2F) {
+        return "High-Pressure Ridge";
+    }
+    if (sea_level_hpa < 1004.0F) {
+        return "Low-Pressure Trough";
+    }
+    return "Steady Air Mass";
+}
+
+std::uint8_t MetCalculator::sager_rain_probability_pct(
+    float sea_level_hpa, float synoptic_3h_delta_hpa, float wind_dir_3h_delta_deg, float cloud_cover_pct, bool raining) {
+    if (raining) {
+        return 96U;
+    }
+    float p = clamp_f((1018.0F - sea_level_hpa) * 2.2F, 4.0F, 65.0F);
+    if (synoptic_3h_delta_hpa < -0.5F) {
+        p += std::min(32.0F, -synoptic_3h_delta_hpa * 7.5F);
+    } else if (synoptic_3h_delta_hpa > 0.8F) {
+        p -= std::min(25.0F, synoptic_3h_delta_hpa * 5.0F);
+    }
+    if (wind_dir_3h_delta_deg < -10.0F) {
+        p += 12.0F;
+    } else if (wind_dir_3h_delta_deg > 12.0F) {
+        p -= 10.0F;
+    }
+    p += (cloud_cover_pct - 40.0F) * 0.25F;
+    return static_cast<std::uint8_t>(clamp_f(p, 5.0F, 95.0F));
+}
+
 DerivedEnvironment MetCalculator::compute(const AtmosphereReading& in) {
     DerivedEnvironment out{};
     const float ltr_lux = (in.raw_als_counts > 0U) ? lux_from_ltr390_als(in.raw_als_counts) : 0.0F;
@@ -242,6 +335,21 @@ DerivedEnvironment MetCalculator::compute(const AtmosphereReading& in) {
     out.solar_irradiance_w_m2 = solar_irradiance_w_m2(true_lux, in.tsl2591_ch1_nir);
     const float ltr_uvi = uv_index_from_ltr390(in.raw_uv_counts);
     out.uv_index = fuse_uv_index(ltr_uvi, in.raw_guvb_counts);
+    out.uva_w_m2 = clamp_f(out.uv_index * 4.8F, 0.0F, 95.0F);
+    out.uvb_w_m2 = (in.raw_guvb_counts > 0U)
+                       ? clamp_f(static_cast<float>(in.raw_guvb_counts) * 0.00075F, 0.0F, 8.0F)
+                       : clamp_f(out.uv_index * 0.32F, 0.0F, 8.0F);
+    out.visible_w_m2 = clamp_f(true_lux * 0.0036F, 0.0F, 900.0F);
+    out.nir_w_m2 = (in.tsl2591_ch1_nir > 0U)
+                       ? clamp_f(static_cast<float>(in.tsl2591_ch1_nir) * 0.012F, 0.0F, 900.0F)
+                       : std::max(0.0F, out.solar_irradiance_w_m2 - out.visible_w_m2 - out.uva_w_m2 - out.uvb_w_m2);
+    out.burn_time_min = (out.uv_index >= 2.0F)
+                            ? static_cast<std::uint16_t>(clamp_f(200.0F / out.uv_index, 8.0F, 180.0F))
+                            : 0U;
+    out.vitamin_d_active = (out.uv_index >= 2.5F && out.uvb_w_m2 >= 0.7F);
+    out.is_night = (true_lux < 2.0F && out.uv_index < 0.1F);
+    out.sqm_mag_arcsec2 = sky_quality_mpsas(true_lux);
+    out.bortle_class = bortle_class_from_sqm(out.sqm_mag_arcsec2);
     out.cloud_cover_pct = estimate_cloud_cover_pct(out.solar_irradiance_w_m2, out.uv_index);
     out.solar_heating_offset_c = solar_radiation_heating_error_c(out.solar_irradiance_w_m2, in.wind_speed_m_s);
     out.compensated_temp_c = in.temperature_c - out.solar_heating_offset_c;
@@ -257,8 +365,22 @@ DerivedEnvironment MetCalculator::compute(const AtmosphereReading& in) {
     out.dynamic_pressure_offset_hpa = out.static_pressure_hpa - in.station_pressure_hpa;
     out.sea_level_pressure_hpa = sea_level_pressure_hpa(out.static_pressure_hpa, out.compensated_temp_c, in.altitude_m);
     out.pressure_3h_delta_hpa = in.pressure_3h_delta_hpa;
-    out.pressure_trend = classify_pressure_trend(in.pressure_3h_delta_hpa);
+    out.solar_tide_offset_hpa = diurnal_solar_tide_3h_delta_hpa(in.local_hour, out.solar_irradiance_w_m2);
+    out.synoptic_3h_delta_hpa = in.pressure_3h_delta_hpa - out.solar_tide_offset_hpa;
+    out.microbarom_wave_pa = microbarom_gravity_wave_pa(in.bmp581_fifo_rms_pa, in.wind_speed_m_s);
+    out.air_density_kg_m3 = moist_air_density_kg_m3(out.static_pressure_hpa, out.compensated_temp_c, in.humidity_rh);
+    out.thunder_distance_km =
+        thunder_exact_distance_km(in.thunder_delay_s, in.measured_sound_m_s, in.wind_speed_m_s);
+    out.thunder_acoustic_locked = (out.thunder_distance_km > 0.05F && in.thunder_peak_pa >= 0.4F);
+    out.pressure_trend = classify_pressure_trend(out.synoptic_3h_delta_hpa);
     out.zambretti_forecast = zambretti_forecast(out.sea_level_pressure_hpa, out.pressure_trend, in.wind_dir_deg);
+    out.front_type = sager_front_type(
+        out.sea_level_pressure_hpa, out.synoptic_3h_delta_hpa, in.wind_dir_3h_delta_deg, out.cloud_cover_pct);
+    out.rain_prob_pct = sager_rain_probability_pct(
+        out.sea_level_pressure_hpa, out.synoptic_3h_delta_hpa, in.wind_dir_3h_delta_deg, out.cloud_cover_pct, in.raining);
+    out.wind_shift = (in.wind_dir_3h_delta_deg < -10.0F)
+                         ? "Backing (Deteriorating)"
+                         : ((in.wind_dir_3h_delta_deg > 10.0F) ? "Veering (Clearing)" : "Steady Bearing");
     out.absolute_humidity_g_m3 = absolute_humidity_g_m3(out.compensated_temp_c, in.humidity_rh);
     out.frost_risk = (out.compensated_temp_c <= 3.0F && out.dew_point_c <= 0.5F);
     return out;

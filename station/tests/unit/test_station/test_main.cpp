@@ -215,6 +215,21 @@ void test_meteorological_calculations(void) {
     // Clear sky (850 W/m2, UV 8.5) has lower cloud cover than overcast sky (120 W/m2, UV 1.8)
     TEST_ASSERT_TRUE(MetCalculator::estimate_cloud_cover_pct(850.0F, 8.5F) <
                      MetCalculator::estimate_cloud_cover_pct(120.0F, 1.8F));
+    TEST_ASSERT_TRUE(d.uva_w_m2 > d.uvb_w_m2 && d.uvb_w_m2 > 0.5F);
+    TEST_ASSERT_TRUE(d.burn_time_min >= 20 && d.burn_time_min <= 60);
+    TEST_ASSERT_TRUE(d.vitamin_d_active);
+    TEST_ASSERT_FALSE(d.is_night);
+    // Nighttime starlight (0.0008 lx) -> SQM > 20.3 mag/arcsec^2 (Bortle 2-4 dark sky)
+    const float sqm_dark = MetCalculator::sky_quality_mpsas(0.0008F);
+    TEST_ASSERT_TRUE(sqm_dark > 20.3F);
+    TEST_ASSERT_TRUE(MetCalculator::bortle_class_from_sqm(sqm_dark) <= 4);
+    // 4-Sensor Sager forecast & BMP581 50 Hz microbarom gravity-wave + EM-Acoustic Thunder Ranging check
+    TEST_ASSERT_TRUE(MetCalculator::sager_rain_probability_pct(992.0F, -4.2F, -25.0F, 92.0F, false) >
+                     MetCalculator::sager_rain_probability_pct(1020.0F, 0.4F, 15.0F, 15.0F, false));
+    TEST_ASSERT_TRUE(MetCalculator::microbarom_gravity_wave_pa(0.85F, 6.0F) > 0.50F);
+    TEST_ASSERT_FLOAT_WITHIN(0.05F, 1.20F, MetCalculator::moist_air_density_kg_m3(1013.25F, 20.0F, 50.0F));
+    // 16.8 s thunder delay at c = 344.0 m/s -> 5.78 km exact acoustic distance
+    TEST_ASSERT_FLOAT_WITHIN(0.15F, 5.78F, MetCalculator::thunder_exact_distance_km(16.8F, 344.0F, 0.0F));
     // TSL25911FN + LTR-390UV ALS handoff above 80k lx and GUVB-C31SM true UV-B fusion
     const float ltr_lux = MetCalculator::lux_from_ltr390_als(400000U, 3.0F, 100.0F);
     TEST_ASSERT_FLOAT_WITHIN(10.0F, 80000.0F, ltr_lux);

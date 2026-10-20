@@ -143,6 +143,64 @@ SCENARIOS = {
         "strikes": 0,
         "dist_km": 0,
     },
+    "night_dark": {
+        "wind_ms": 2.4,
+        "wind_dir": 310.0,
+        "gust_ms": 3.6,
+        "temp_c": 11.2,
+        "rh": 74.0,
+        "baro_hpa": 1016.5,
+        "delta3h": 0.4,
+        "lux": 0.00085,
+        "uv": 0.0,
+        "rain_rate": 0.0,
+        "rain_daily": 0.0,
+        "rain_state": "Dry",
+        "raining": False,
+        "wet": False,
+        "hail": 0,
+        "pm25": 4.8,
+        "pm10": 9.2,
+        "voc": 84,
+        "nox": 1,
+        "co2": 415,
+        "strikes": 0,
+        "dist_km": 0,
+        "is_night": True,
+        "moon_phase": "Waxing Crescent",
+        "moon_illum": 14,
+        "night_cloud": 6.0,
+        "nir_skyglow_mlx": 1.2,
+    },
+    "night_moon": {
+        "wind_ms": 4.1,
+        "wind_dir": 195.0,
+        "gust_ms": 6.3,
+        "temp_c": 13.6,
+        "rh": 82.0,
+        "baro_hpa": 1008.2,
+        "delta3h": -0.8,
+        "lux": 0.185,
+        "uv": 0.0,
+        "rain_rate": 0.0,
+        "rain_daily": 0.8,
+        "rain_state": "Dry",
+        "raining": False,
+        "wet": False,
+        "hail": 0,
+        "pm25": 8.4,
+        "pm10": 15.0,
+        "voc": 92,
+        "nox": 2,
+        "co2": 420,
+        "strikes": 0,
+        "dist_km": 0,
+        "is_night": True,
+        "moon_phase": "Full Moon",
+        "moon_illum": 96,
+        "night_cloud": 68.0,
+        "nir_skyglow_mlx": 42.5,
+    },
 }
 
 
@@ -213,18 +271,36 @@ def compute_snapshot() -> dict:
     qnh_hpa = static_hpa * math.exp(0.0341626 * alt_m / (temp_c + 273.15 + 0.0065 * alt_m * 0.5))
 
     delta3h = sc["delta3h"]
-    if delta3h <= -3.0:
+    solar_tide_hpa = -0.35 if sc["lux"] > 10000 else 0.18
+    synoptic_delta3h = delta3h - solar_tide_hpa
+    if synoptic_delta3h <= -3.0:
         trend_str = "Falling Rapidly"
         forecast = "Stormy, Heavy Rain & Gusts"
-    elif delta3h <= -1.1:
+        front_type = "Squall / Cold Front"
+        wind_shift = "Backing (Storming)"
+        rain_prob = 94
+        microbarom_pa = 0.78
+    elif synoptic_delta3h <= -1.0:
         trend_str = "Falling"
         forecast = "Showery, Becoming Unsettled"
-    elif delta3h >= 1.1:
+        front_type = "Warm Front Approaching"
+        wind_shift = "Backing (Deteriorating)"
+        rain_prob = 68
+        microbarom_pa = 0.34
+    elif synoptic_delta3h >= 1.1:
         trend_str = "Rising"
         forecast = "Fine, Improving"
+        front_type = "Cold Front Clearing"
+        wind_shift = "Veering (Clearing)"
+        rain_prob = 14
+        microbarom_pa = 0.14
     else:
         trend_str = "Steady"
         forecast = "Fine Weather"
+        front_type = "High-Pressure Ridge" if qnh_hpa >= 1015.0 else "Steady Air Mass"
+        wind_shift = "Steady Bearing"
+        rain_prob = 12 if qnh_hpa >= 1014.0 else 24
+        microbarom_pa = 0.08
 
     if rh > 70.0:
         aw = min(0.94, rh / 100.0)
@@ -267,10 +343,33 @@ def compute_snapshot() -> dict:
     t_ew = (l_eff / (c_sound - ve * cos_a)) * 1e6
     t_we = (l_eff / (c_sound + ve * cos_a)) * 1e6
 
-    kc = max(0.05, min(1.0, solar_w / 850.0))
-    n_kc = 100.0 * (((1.0 - kc) / 0.75) ** (1.0 / 3.4)) if kc < 1.0 else 0.0
-    uv_vis = (sc["uv"] * 105.0) / max(20.0, solar_w)
-    cloud_cover_pct = max(0.0, min(100.0, n_kc + max(-10.0, min(25.0, (uv_vis - 1.05) * 45.0))))
+    is_night = bool(sc.get("is_night", False))
+    if is_night:
+        cloud_cover_pct = float(sc.get("night_cloud", 10.0))
+        vis_w = 0.0
+        nir_w = 0.0
+        uva_w = 0.0
+        uvb_w = 0.0
+        burn_min = 0
+        vit_d = False
+        lx_clamped = max(0.00018, sc["lux"])
+        sqm_val = max(14.0, min(21.8, 18.8 - 1.45 * math.log10(lx_clamped / 0.001)))
+        bortle_val = 2 if sqm_val >= 21.2 else (4 if sqm_val >= 19.8 else 7)
+    else:
+        kc = max(0.05, min(1.0, solar_w / 850.0))
+        n_kc = 100.0 * (((1.0 - kc) / 0.75) ** (1.0 / 3.4)) if kc < 1.0 else 0.0
+        uv_vis = (sc["uv"] * 105.0) / max(20.0, solar_w)
+        cloud_cover_pct = max(0.0, min(100.0, n_kc + max(-10.0, min(25.0, (uv_vis - 1.05) * 45.0))))
+        uva_w = sc["uv"] * 4.8
+        uvb_w = sc["uv"] * 0.34 if sc["uv"] >= 1.8 else sc["uv"] * 0.12
+        vis_w = sc["lux"] * 0.0036
+        # Heavy wet storm clouds absorb NIR strongly relative to visible light
+        nir_ratio = 0.32 if sc["raining"] else 0.51
+        nir_w = max(0.0, solar_w * nir_ratio)
+        burn_min = round(200.0 / sc["uv"]) if sc["uv"] >= 2.0 else 0
+        vit_d = sc["uv"] >= 2.5 and uvb_w >= 0.7
+        sqm_val = 12.0
+        bortle_val = 9
 
     rain_daily = STATE.rain_daily_override if STATE.rain_daily_override is not None else sc["rain_daily"]
     payload = f"$AM,{uptime_s},{wind_ms:.2f},{wind_dir:.1f},{sc['rain_rate']:.2f},{rain_daily:.2f},{temp_c:.2f},{rh:.1f},{qnh_hpa:.2f},{sc['uv']:.1f},{aqi}"
@@ -331,11 +430,31 @@ def compute_snapshot() -> dict:
             "dyn_offset_hpa": dyn_offset_hpa,
             "qnh_hpa": qnh_hpa,
             "pressure_3h_delta_hpa": delta3h,
+            "synoptic_3h_delta_hpa": synoptic_delta3h,
+            "solar_tide_hpa": solar_tide_hpa,
+            "microbarom_pa": microbarom_pa,
+            "air_density_kg_m3": rho,
+            "thunder_delay_s": 16.9 if sc["strikes"] > 0 else 0.0,
+            "thunder_peak_pa": 14.8 if sc["strikes"] > 0 else 0.0,
+            "thunder_dist_km": (c_sound * 16.9) * 0.001 if sc["strikes"] > 0 else 0.0,
+            "thunder_locked": sc["strikes"] > 0,
+            "rain_prob_pct": rain_prob,
             "pressure_trend": trend_str,
             "forecast": forecast,
+            "front_type": front_type,
+            "wind_shift": wind_shift,
             "lux": sc["lux"],
             "solar_w_m2": solar_w,
+            "visible_w_m2": vis_w,
+            "nir_w_m2": nir_w,
+            "uva_w_m2": uva_w,
+            "uvb_w_m2": uvb_w,
             "uv_index": sc["uv"],
+            "burn_time_min": burn_min,
+            "vitamin_d": vit_d,
+            "is_night": is_night,
+            "sqm": sqm_val,
+            "bortle": bortle_val,
             "cloud_cover_pct": cloud_cover_pct,
             "abs_humidity_g_m3": 9.8,
         },
@@ -362,10 +481,13 @@ def compute_snapshot() -> dict:
             "timeline_60m": [0, 0, 1, 0, 2, 1, 3, 2, 4, 3, 2, 1] if sc["strikes"] > 0 else [0] * 12,
         },
         "astronomy": {
-            "sunrise": "06:48",
-            "sunset": "18:24",
-            "daylight": "11h 36m",
-            "sun_progress": 0.62 if sc["lux"] > 20000 else 0.35,
+            "sunrise": "20:15" if is_night else "06:48",
+            "sunset": "05:40" if is_night else "18:24",
+            "daylight": f"Moon {sc.get('moon_illum', 14)}% · {sc.get('moon_phase', 'Crescent')}" if is_night else "Daylight 11h 36m",
+            "sun_progress": 0.55 if is_night else (0.62 if sc["lux"] > 20000 else 0.35),
+            "moon_phase": sc.get("moon_phase", "Waxing Gibbous"),
+            "moon_illum_pct": sc.get("moon_illum", 74),
+            "nir_skyglow_mlx": sc.get("nir_skyglow_mlx", 0.0),
         },
         "heater": {
             "state": 1 if heating else 0,
