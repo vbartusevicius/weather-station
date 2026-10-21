@@ -14,9 +14,10 @@ from blocks import crown_sensors
 from common import block, part, power, power_flag, src
 from skidl import Net
 
-from variants.v1.main import CROWN_LINK, jst_sh10, wire
+from variants.v1.main import CROWN_LINK, jst_sh12, wire
 
 B2B_HDR4 = "gateway_fp:HX_PZ2.54-1x4P-SMD"
+JST_SH2 = "Connector_JST:JST_SH_BM02B-SRSS-TB_1x02-1MP_P1.00mm_Vertical"
 DOME_B2B_LINK = ("+3V3", "GND", "I2C_SDA", "I2C_SCL")
 
 
@@ -31,7 +32,8 @@ def build():
     us_tx = Net("US_TX")
     us_rx = Net("US_RX")
     rain_adc = Net("RAIN_ADC")
-    for n in (gnd, v3, v5):
+    heat5 = Net("+5V_HEAT")
+    for n in (gnd, v3, v5, heat5):
         power_flag(n)
 
     nets = {
@@ -39,10 +41,18 @@ def build():
         "I2C_SDA": sda, "I2C_SCL": scl,
         "US_SEL_A": us_sel_a, "US_SEL_B": us_sel_b,
         "US_TX": us_tx, "US_RX": us_rx,
-        "RAIN_ADC": rain_adc,
+        "RAIN_ADC": rain_adc, "+5V_HEAT": heat5,
     }
     block("int_main")
-    wire(jst_sh10("Main board", "J1", "10-pin JST-SH cable from main J2"), CROWN_LINK, nets)
+    wire(jst_sh12("Main board", "J1", "12-pin JST-SH cable from main J2 (+5V_HEAT spare pair included)"), CROWN_LINK, nets)
+    # Spare heater supply (+5V_HEAT, up to ~0.9 A) brought up "just in case" (e.g. a future rain-lid / dome heater)
+    block("aux_heat")
+    j11 = part("Connector", "Conn_01x02_Pin", "AUX 5V_HEAT", JST_SH2,
+               src(mpn="BM02B-SRSS-TB(LF)(SN)", mfr="JST", lcsc="C160388",
+                   source="Spare 2-pin JST-SH +5V_HEAT / GND outlet for a future crown heater (unused in V1)"),
+               ref="J11")
+    j11[1] += heat5
+    j11[2] += gnd
 
     crown_sensors.build(gnd, v5, v3, sda, scl, us_sel_a, us_sel_b, us_tx, us_rx, rain_adc)
 
@@ -56,11 +66,11 @@ def build():
 
 NET_CLASSES = {
     "SELV-CROWN": [
-        "GND", "+3V3", "+5V", "I2C_SDA", "I2C_SCL", "US_SEL_A", "US_SEL_B",
+        "GND", "+3V3", "+5V", "+5V_HEAT", "I2C_SDA", "I2C_SCL", "US_SEL_A", "US_SEL_B",
         "US_TX", "US_RX", "RAIN_ADC", "XD_N", "XD_E", "XD_S", "XD_W",
         "US_TX_DRV", "US_TX_AC", "US_RX_MUX", "US_VREF", "US_VTH", "US_AMP1_IN",
         "US_AMP1_FB", "US_AMP1_OUT", "US_AMP2_IN", "US_AMP2_FB", "US_AMP2_OUT",
         "PIEZO_IN", "PIEZO_INV", "PIEZO_STG1", "PIEZO_ENV", "Net-*",
     ],
-    "CROWN-Power": ["+5V", "+3V3"],
+    "CROWN-Power": ["+5V", "+5V_HEAT", "+3V3"],
 }

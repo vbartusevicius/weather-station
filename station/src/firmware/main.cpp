@@ -62,8 +62,9 @@ firmware::I2cBus g_i2c;
 firmware::Sht4x g_sht;
 firmware::Bmp581 g_bmp;
 firmware::Scd41 g_scd;
-firmware::Sen55 g_sen;
+firmware::Pmsa003i g_pm;
 firmware::Sgp41 g_sgp;
+firmware::Ads1115 g_heatmon;
 firmware::Lsm6ds3 g_imu;
 firmware::Mmc5603 g_mag;
 firmware::As3935 g_as;
@@ -144,7 +145,7 @@ void task_fast_i2c(void*) {
 }
 
 // ------------------------------------------------------------------------------------------------
-// Acquisition: slow I2C (SHT40, SEN55, SCD41, dome optics, compass) + service button
+// Acquisition: slow I2C (SHT40, SGP41, PMSA003I, SCD41, dome optics, compass) + service button
 // ------------------------------------------------------------------------------------------------
 void task_slow_i2c(void*) {
     TickType_t wake = xTaskGetTickCount();
@@ -173,6 +174,29 @@ void task_slow_i2c(void*) {
             esp_restart();
         } else if (btn == firmware::ButtonAction::Reboot) {
             esp_restart();
+        }
+
+        // Heater power monitor: one ADS1115 channel per 100 ms tick (conversion takes 62.5 ms)
+        {
+            namespace b = firmware::board;
+            using R = firmware::Ads1115::Range;
+            const std::uint32_t phase = tick % 10;
+            float v = 0.0F;
+            if (phase == 1) {
+                g_heatmon.start(0, R::Fs256mV);
+            } else if (phase >= 2 && phase <= 5) {
+                const bool ok = g_heatmon.read(v);
+                if (phase == 2) g_heatmon.start(1, R::Fs256mV);
+                if (phase == 3) g_heatmon.start(2, R::Fs4096mV);
+                if (phase == 4) g_heatmon.start(3, R::Fs4096mV);
+                if (ok) {
+                    Lock l;
+                    if (phase == 2) g_raw.power.refl_heater_a.set(v / b::refl_shunt_ohm, t);
+                    if (phase == 3) g_raw.power.probe_heater_a.set(v / b::probe_shunt_ohm, t);
+                    if (phase == 4) g_raw.power.rail_5v.set(v * b::rail5_divider, t);
+                    if (phase == 5) g_raw.power.rail_5v_logic.set(v * b::rail5_divider, t);
+                }
+            }
         }
 
         if (tick % 5 == 0) {  // 2 Hz: dome optics
@@ -207,8 +231,8 @@ void task_slow_i2c(void*) {
         const bool sgp_ok = g_sgp.measure(comp_ok, sht_rh.value, sht_t.value, sraw_voc, sraw_nox, nox_ok);
         float tc = 0.0F, rh = 0.0F;
         const bool sht_ok = ctl.sht_bakeout ? g_sht.heater_pulse(tc, rh) : g_sht.measure(tc, rh);
-        firmware::Sen55Data pm{};
-        const bool pm_ok = g_sen.read(pm);
+        firmware::PmData pm{};
+        const bool pm_ok = g_pm.read(t, pm);
         float co2 = 0.0F, st = 0.0F, srh = 0.0F;
         if (ctl.scd41_pause != scd_paused) {
             scd_paused = ctl.scd41_pause;
@@ -227,22 +251,17 @@ void task_slow_i2c(void*) {
             g_raw.thermo.rh_pct.set(rh, t);
         }
         if (pm_ok) {
-            auto put = [t](const core::Value<float>& v, core::Reading<float>& r) {
-                if (v.ok) r.set(v.v, t);
-            };
-            put(pm.pm1, g_raw.air.pm1_ug_m3);
-            put(pm.pm25, g_raw.air.pm25_ug_m3);
-            put(pm.pm4, g_raw.air.pm4_ug_m3);
-            put(pm.pm10, g_raw.air.pm10_ug_m3);
-            put(pm.voc, g_raw.air.voc_index);
-            put(pm.nox, g_raw.air.nox_index);
-        }
-        if (co2_ok) {
-            g_raw.air.co2_ppm.set(co2, t);
+            g_raw.air.pm1_ug_m3.set(pm.pm1, t);
+            g_raw.air.pm25_ug_m3.set(pm.pm25, t);
+            g_raw.air.pm10_ug_m3.set(pm.pm10, t);
         }
         if (sgp_ok) {
             g_raw.air.sgp_sraw_voc.set(sraw_voc, t);
             if (nox_ok) g_raw.air.sgp_sraw_nox.set(sraw_nox, t);
+        }
+        if (co2_ok) {
+            g_raw.air.co2_ppm.set(co2, t);
+            g_raw.air.scd41_temp_c.set(st, t);
         }
         if (mag_ok) {
             g_orientation.mag_x_ut = mag.x;
@@ -367,6 +386,9 @@ void rs485_service(const core::DerivedState& d) {
         } else if (cmd == rs485::CommandType::ResetDailyRain) {
             Lock l;
             g_pipeline.reset_rain_today();
+        } else if (cmd == rs485::CommandType::ForceHeaterCheck) {
+            Lock l;
+            g_pipeline.request_heater_check();
         }
     }
     const std::string frame = rs485::Rs485Protocol::encode_telemetry_frame(d);
@@ -612,6 +634,9 @@ esp_err_t handle_action(httpd_req_t* req) {
     if (std::strcmp(action, "reset_rain") == 0) {
         Lock l;
         g_pipeline.reset_rain_today();
+    } else if (std::strcmp(action, "heater_check") == 0) {
+        Lock l;
+        g_pipeline.request_heater_check();
     } else if (std::strcmp(action, "set_time") == 0) {
         firmware::Network::set_clock_from_browser(in["unix"] | static_cast<std::int64_t>(0));
     } else if (std::strcmp(action, "reboot") == 0) {
@@ -694,8 +719,9 @@ extern "C" void app_main(void) {
     g_sht.begin(g_i2c, b::i2c_addr_sht4x);
     g_bmp.begin(g_i2c, b::i2c_addr_bmp581);
     g_scd.begin(g_i2c, b::i2c_addr_scd41);
-    g_sen.begin(g_i2c, b::i2c_addr_sen55);
+    g_pm.begin(g_i2c, b::i2c_addr_pmsa003i, now_ms());
     g_sgp.begin(g_i2c, b::i2c_addr_sgp41);
+    g_heatmon.begin(g_i2c, b::i2c_addr_ads1115);
     g_imu.begin(g_i2c, b::i2c_addr_lsm6ds3);
     g_mag.begin(g_i2c, b::i2c_addr_mmc5603);
     g_as.begin(g_i2c, b::i2c_addr_as3935, g_cfg.as3935_tun_cap, g_cfg.as3935_indoor);

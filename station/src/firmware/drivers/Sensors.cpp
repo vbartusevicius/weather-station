@@ -206,50 +206,67 @@ bool Scd41::set_ambient_pressure(float hpa) {
     return sensirion_cmd_word(dev_, 0xE000, static_cast<std::uint16_t>(std::lround(hpa)));
 }
 
-// ----------------------------------------------------------------------------------------- SEN55
-bool Sen55::begin(I2cBus& bus, std::uint8_t addr) {
+// -------------------------------------------------------------------------------------- PMSA003I
+bool Pmsa003i::begin(I2cBus& bus, std::uint8_t addr, std::uint32_t now_ms) {
     present_ = bus.probe(addr);
     if (present_) {
-        dev_ = bus.add(addr);
-        sensirion_cmd(dev_, 0x0021);  // start measurement (all channels)
-        delay_ms(50);
+        dev_ = bus.add(addr, 100000);  // datasheet: 100 kHz standard-mode I2C
+        started_ms_ = now_ms;
     }
     return present_;
 }
 
-bool Sen55::read(Sen55Data& out) {
-    out = Sen55Data{};
-    std::uint16_t ready = 0;
-    if (!present_ || !sensirion_cmd(dev_, 0x0202)) {
+bool Pmsa003i::read(std::uint32_t now_ms, PmData& out) {
+    if (!present_ || now_ms - started_ms_ < kWarmupMs) {
         return false;
     }
-    delay_ms(20);
-    if (!sensirion_read_words(dev_, &ready, 1) || (ready & 0x0001) == 0) {
+    std::uint8_t f[32];
+    if (!dev_.read_regs(0x00, f, sizeof(f)) || f[0] != 0x42 || f[1] != 0x4D || ((f[2] << 8) | f[3]) != 28) {
         return false;
     }
-    std::uint16_t w[8];
-    if (!sensirion_cmd(dev_, 0x03C4)) {
+    std::uint16_t sum = 0;
+    for (std::size_t i = 0; i < 30; ++i) {
+        sum = static_cast<std::uint16_t>(sum + f[i]);
+    }
+    if (sum != static_cast<std::uint16_t>((f[30] << 8) | f[31]) || f[29] != 0) {  // checksum, error code
         return false;
     }
-    delay_ms(20);
-    if (!sensirion_read_words(dev_, w, 8)) {
+    auto word = [&f](std::size_t i) { return static_cast<float>((f[i] << 8) | f[i + 1]); };
+    out.pm1 = word(10);   // data 4: PM1.0 atmospheric
+    out.pm25 = word(12);  // data 5: PM2.5 atmospheric
+    out.pm10 = word(14);  // data 6: PM10 atmospheric
+    return true;
+}
+
+// --------------------------------------------------------------------------------------- ADS1115
+bool Ads1115::begin(I2cBus& bus, std::uint8_t addr) {
+    present_ = bus.probe(addr);
+    if (present_) {
+        dev_ = bus.add(addr);
+    }
+    return present_;
+}
+
+bool Ads1115::start(std::uint8_t channel, Range range) {
+    if (!present_ || channel > 3) {
         return false;
     }
-    auto pm = [](std::uint16_t v, core::Value<float>& o) {
-        if (v != 0xFFFF) o.set(static_cast<float>(v) / 10.0F);
-    };
-    auto sgn = [](std::uint16_t v, float scale, core::Value<float>& o) {
-        const auto s = static_cast<std::int16_t>(v);
-        if (s != 0x7FFF) o.set(static_cast<float>(s) / scale);
-    };
-    pm(w[0], out.pm1);
-    pm(w[1], out.pm25);
-    pm(w[2], out.pm4);
-    pm(w[3], out.pm10);
-    sgn(w[4], 100.0F, out.rh);
-    sgn(w[5], 200.0F, out.temp_c);
-    sgn(w[6], 10.0F, out.voc);
-    sgn(w[7], 10.0F, out.nox);
+    // OS=1 (start), MUX=1xx (AINx vs GND), PGA, MODE=1 (single-shot), DR=001 (16 SPS), comparator disabled
+    const std::uint16_t cfg = static_cast<std::uint16_t>(0x8000U | ((0x4U | channel) << 12) |
+                                                         (static_cast<std::uint16_t>(range) << 9) | 0x0100U |
+                                                         (0x1U << 5) | 0x0003U);
+    const std::uint8_t b[3] = {0x01, static_cast<std::uint8_t>(cfg >> 8), static_cast<std::uint8_t>(cfg & 0xFF)};
+    fs_v_ = range == Range::Fs256mV ? 0.256F : 4.096F;
+    return dev_.write(b, sizeof(b));
+}
+
+bool Ads1115::read(float& volts) {
+    std::uint8_t b[2];
+    if (!present_ || !dev_.read_regs(0x00, b, sizeof(b))) {
+        return false;
+    }
+    const auto raw = static_cast<std::int16_t>((b[0] << 8) | b[1]);
+    volts = static_cast<float>(raw) * fs_v_ / 32768.0F;
     return true;
 }
 

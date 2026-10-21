@@ -10,7 +10,7 @@
 //   D1  / GPIO1  = NTC_SENSE  (ADC1_CH1: reflector 10k NTC thermistor + SW1 SERVICE button)
 //   D2  / GPIO2  = RAIN_ADC   (ADC1_CH2: hybrid piezo charge-amp & capacitive rain envelope)
 //   D3  / GPIO21 = HEAT_PWM   (LEDC PWM driving AO3400A reflector de-icing heater MOSFET)
-//   D4  / GPIO22 = I2C_SDA    (BMP581, LSM6DS3, AS3935, SEN55, SHT40, SGP41, SCD41, LTR390, TSL25911, GUVB-C31SM, MMC5603NJ)
+//   D4  / GPIO22 = I2C_SDA    (BMP585, LSM6DS3, AS3935, ADS1115, PMSA003I, SHT40, SGP41, SCD41, LTR390, TSL25911, GUVB-C31SM, MMC5603NJ)
 //   D5  / GPIO23 = I2C_SCL    (I2C clock, 400 kHz)
 //   D6  / GPIO16 = US_SEL_A   (CD4052 ultrasonic transducer mux select A)
 //   D7  / GPIO17 = US_SEL_B   (CD4052 ultrasonic transducer mux select B)
@@ -54,12 +54,16 @@ constexpr std::uint8_t i2c_addr_mmc5603 = 0x30;  // crown U6 MEMSIC MMC5603NJ 20
 constexpr std::uint8_t i2c_addr_tsl25911 = 0x29;
 constexpr std::uint8_t i2c_addr_guvb_c31sm = 0x39;  // dome U3 GenUV GUVB-C31SM AlGaN UV-B sensor
 constexpr std::uint8_t i2c_addr_sht4x = 0x44;   // probe U3 SHT40-AD1F (SHT4x command set)
-constexpr std::uint8_t i2c_addr_bmp581 = 0x47;
+constexpr std::uint8_t i2c_addr_bmp581 = 0x47;  // probe U5 BMP585 (BMP581 register map, chip ID 0x51)
 constexpr std::uint8_t i2c_addr_ltr390 = 0x53;
-constexpr std::uint8_t i2c_addr_sgp41 = 0x59;
+constexpr std::uint8_t i2c_addr_sgp41 = 0x59;   // probe U2
 constexpr std::uint8_t i2c_addr_scd41 = 0x62;
-constexpr std::uint8_t i2c_addr_sen55 = 0x69;
+constexpr std::uint8_t i2c_addr_pmsa003i = 0x12;  // Plantower PMSA003I in the base pod via main J4 (100 kHz)
 constexpr std::uint8_t i2c_addr_lsm6ds3 = 0x6A;
+constexpr std::uint8_t i2c_addr_ads1115 = 0x48;  // main U4 heater power monitor
+constexpr float refl_shunt_ohm = 0.1F;    // main R16 (reflector heater return)
+constexpr float probe_shunt_ohm = 1.0F;   // main R17 (probe heater return, CO2_HEAT_RTN)
+constexpr float rail5_divider = 2.0F;     // main R20/R21 (+5V_HEAT) and R24/R25 (+5V), 10k/10k
 
 // Crown CD4052 dual 4:1 mux (select = B * 2 + A): X0..X3 = TX transducer, Y0..Y3 = RX transducer
 //   0: N -> S   1: S -> N   2: E -> W   3: W -> E

@@ -354,6 +354,25 @@
         "line_style": 0,
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
+        "name": "POWER-Power",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 1,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.3,
+        "tuning_profile": "",
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "clearance": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.2,
+        "line_style": 0,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
         "name": "PROBE-Power",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "priority": 1,
@@ -449,6 +468,25 @@
         "line_style": 0,
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
+        "name": "SELV-POWER",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 2,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.2,
+        "tuning_profile": "",
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "clearance": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.2,
+        "line_style": 0,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
         "name": "SELV-PROBE",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "priority": 2,
@@ -495,6 +533,10 @@
       },
       {
         "netclass": "MAIN-Power",
+        "pattern": "+5V_HEAT"
+      },
+      {
+        "netclass": "MAIN-Power",
         "pattern": "+5V_XIAO"
       },
       {
@@ -506,20 +548,8 @@
         "pattern": "AS_INP"
       },
       {
-        "netclass": "SELV-MAIN",
-        "pattern": "BUCK5_BST"
-      },
-      {
-        "netclass": "SELV-MAIN",
-        "pattern": "BUCK5_EN"
-      },
-      {
-        "netclass": "SELV-MAIN",
-        "pattern": "BUCK5_FB"
-      },
-      {
-        "netclass": "SELV-MAIN",
-        "pattern": "BUCK5_SW"
+        "netclass": "MAIN-Power",
+        "pattern": "CO2_HEAT_RTN"
       },
       {
         "netclass": "SELV-MAIN",
@@ -535,6 +565,10 @@
       },
       {
         "netclass": "MAIN-Power",
+        "pattern": "HEAT_SENSE"
+      },
+      {
+        "netclass": "MAIN-Power",
         "pattern": "HEAT_SW"
       },
       {
@@ -544,6 +578,22 @@
       {
         "netclass": "SELV-MAIN",
         "pattern": "I2C_SDA"
+      },
+      {
+        "netclass": "SELV-MAIN",
+        "pattern": "MON_5V"
+      },
+      {
+        "netclass": "SELV-MAIN",
+        "pattern": "MON_5V_LOGIC"
+      },
+      {
+        "netclass": "SELV-MAIN",
+        "pattern": "MON_PROBE"
+      },
+      {
+        "netclass": "SELV-MAIN",
+        "pattern": "MON_REFL"
       },
       {
         "netclass": "SELV-MAIN",

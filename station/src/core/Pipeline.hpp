@@ -47,6 +47,9 @@ public:
     void step(const RawState& raw, EventQueues& events, const StationConfig& cfg, DerivedState& out);
 
     void reset_rain_today() { rain_.reset_daily(); }
+    // HEAT_CHECK: drive the reflector heater at a fixed 2 W for 10 s and compare the measured current.
+    void request_heater_check() { heater_check_s_ = kHeaterCheckS; heater_check_hold_s_ = 0; }
+    static constexpr std::uint8_t kHeaterCheckS = 10;
     // SGP41 VOC gas-index state persistence (see airquality::GasIndexPair).
     bool voc_state(float& s0, float& s1) const { return gas_.voc_state(s0, s1); }
     void restore_voc_state(float s0, float s1) { gas_.restore_voc_state(s0, s1); }
@@ -74,6 +77,9 @@ private:
     airquality::GasIndexPair gas_{};
     std::uint32_t last_sgp_ms_{0};
     bool sgp_seen_{false};
+    std::uint8_t heater_check_s_{0};
+    const char* heater_check_result_{"—"};
+    std::uint8_t heater_check_hold_s_{0};   // keep showing the result for a minute
     history::TieredHistory hist_{};
     FiveMinuteRing five_min_{};
 

@@ -1,5 +1,6 @@
 """Build the 10-part modular ASA roof weather station enclosure with true meshing threads:
   1.  `base.stl/.step`:               Lower IP66 electronics bay + rear mast cradle + M90x1.8 top male thread & O-ring groove
+                                      + sealed duct bed for the flat PMSA003I particulate module beside the `main` board
   2.  `mast_clamp.stl/.step`:         Detachable front half-moon pole clamp saddle with flat M6 bolt/washer faces
   3.  `orings.stl/.step`:             4-piece elastomeric gasket set (3x full-perimeter Ø 90 mm housing seals + 1x JGS1 dome seal)
   4.  `probe_sleeve_back.stl/.step`:  Rear clamshell half for `probe` PCB with 4 external snap-fit ramp catches
@@ -32,6 +33,9 @@ VARIANT = SPEC["active_variant"]
 OUTER_R = ef.OUTER_R
 WALL = ef.WALL
 INNER_R = OUTER_R - WALL
+RAISE = ef.RAISE          # base bay grown by this much; parts above it are built in the design frame and lifted
+BTN_UP = 10.0             # main board lift (reset button pin lengthened by the same)
+UMB = 12.0                # umbrella lift inside the taller bay (clears the raised XIAO by 3.6 mm)
 
 
 def cone_y(y0, y1, r0, r1):
@@ -182,7 +186,7 @@ def cut_lock_triangles_y(body, y_base, y_tip, half_w=1.45, depth=0.45):
     return body
 
 
-def build_base():
+def build_base(umbrella=True):
     """Part 1: Rear Mast Cradle (y=0..34, z>=-1) with Solid Flat Clamping Ears (for nut + washer)
     + Sealed Lower Electronics Bell Housing (y=34..70.2) with Single Center IP68 M12/PG7 Cable-Gland Bulkhead,
     Full-Perimeter O-Ring Groove (y=65.2..66.4), and 8-Lug Push-Turn-Click External Bayonet Rim (y=66.4..70.2)."""
@@ -200,14 +204,15 @@ def build_base():
     body = cradle_cyl.union(flange).union(neck).cut(rear_ear_flat)
 
     # 2. Lower electronics bay cylinder (y = 34..66.4) + 8-lug bayonet male spigot (y = 66.4..69.9, r_root = 44.0 mm) + O-ring groove
-    bay_outer = cone_y(34.0, 66.4, OUTER_R, OUTER_R).union(cone_y(66.4, 69.9, 44.0, 44.0))
-    oring_groove = ring_cone_y(65.2, 66.4, 43.9, OUTER_R - 0.8, 43.9, OUTER_R - 0.8)
+    #    (all raised by RAISE = 15 mm: the bay is 15 mm taller than the original 34..70 design)
+    bay_outer = cone_y(34.0, 66.4 + RAISE, OUTER_R, OUTER_R).union(cone_y(66.4 + RAISE, 69.9 + RAISE, 44.0, 44.0))
+    oring_groove = ring_cone_y(65.2 + RAISE, 66.4 + RAISE, 43.9, OUTER_R - 0.8, 43.9, OUTER_R - 0.8)
     body = body.union(bay_outer).cut(oring_groove)
-    body = add_external_bayonet_y(body, 66.4, r_root=44.0, r_lug=45.15, n_lugs=8)
-    body = cut_lock_triangles_y(body, y_base=61.9, y_tip=64.3)
+    body = add_external_bayonet_y(body, 66.4 + RAISE, r_root=44.0, r_lug=45.15, n_lugs=8)
+    body = cut_lock_triangles_y(body, y_base=61.9 + RAISE, y_tip=64.3 + RAISE)
 
     # 3. Cut internal electronics cavity (y = 34.5..70.2, radius = 42.6 mm)
-    cavity = cone_y(34.5, 70.2, 42.6, 42.6)
+    cavity = cone_y(34.5, 70.2 + RAISE, 42.6, 42.6)
     body = body.cut(cavity)
 
     # 4. Stepped Center Bore for Mast Pole + IP68 M12x1.5 / PG7 Box-Wire Compression Cable Gland (Single Center Hole Only):
@@ -228,22 +233,25 @@ def build_base():
 
     # 6. Add 4 internal PCB standoffs supporting `main` (bottom of `main` is at y = 45.3) + 4 corner snap-fit retention clips
     #    Start at `y = 33.8 mm` (`0.70 mm` embedded into the `y = 34.5 mm` floor) so they are 100% fused into `base.stl`!
-    main_bot_y = SPEC["boards"]["main"]["y"] - SPEC["boards"]["main"]["thickness"]
-    for st in ef.standoffs("main"):
-        post = cone_y(33.8, main_bot_y, 1.65, 1.65).translate((st["x"], 0, st["z"]))
-        body = body.union(post)
-    for sx in (-1.0, 1.0):
-        for sz in (-1.0, 1.0):
-            cx, cz = sx * 21.4, sz * 28.9
-            guide = box(cx - 0.75, cx + 0.75, 33.8, 47.9, cz - 0.75, cz + 0.75)
-            hook = box(min(cx - sx * 1.6, cx + sx * 0.75), max(cx - sx * 1.6, cx + sx * 0.75),
-                       46.62, 47.7,
-                       min(cz - sz * 1.6, cz + sz * 0.75), max(cz - sz * 1.6, cz + sz * 0.75))
+    #    The same posts + corner snap clips hold the `power` board flat 1 mm above the floor under `main`.
+    for board in ("main", "power"):
+        top_y = SPEC["boards"][board]["y"]
+        bot_y = top_y - SPEC["boards"][board]["thickness"]
+        for st in ef.standoffs(board):
+            post = cone_y(33.8, bot_y, 1.65, 1.65).translate((st["x"], 0, st["z"]))
+            body = body.union(post)
+        for cx, cz, (dx, dz) in ef.CLIPS[board]:   # free-standing edge clips (see `ef.CLIPS`)
+            guide = box(cx - 0.75, cx + 0.75, 33.8, top_y + 1.4, cz - 0.75, cz + 0.75)
+            reach = 0.9 + ef.CLIP_REACH   # from the post centre: 0.9 mm to the board edge + 1.1 mm over the board
+            hx = sorted((cx - 0.75 * dx, cx + reach * dx)) if dx else (cx - 0.75, cx + 0.75)
+            hz = sorted((cz - 0.75 * dz, cz + reach * dz)) if dz else (cz - 0.75, cz + 0.75)
+            hook = box(hx[0], hx[1], top_y + 0.12, top_y + 1.2, hz[0], hz[1])
             body = body.union(guide).union(hook)
 
     # 7. Cut 4x 4-slit 1.2 mm anti-spider micro-grilles through the bottom overhang (`r = 32..40 mm`)
     #    + 4x lowest-point perimeter condensation weep slots at the floor corner (`y = 34.4..35.3 mm`)!
-    for deg in (30, 150, 210, 330):
+    #    (30/330 deg under `main`, 120/240 deg beside the PMSA003I bed, clear of its duct chambers)
+    for deg in (30, 120, 240, 330):
         rad = math.radians(deg)
         sx, sz = 35.5 * math.cos(rad), 35.5 * math.sin(rad)
         for offset in (-2.4, -0.8, 0.8, 2.4):
@@ -253,7 +261,8 @@ def build_base():
         weep = box(wx - 2.0, wx + 2.0, 34.4, 35.4, wz - 2.0, wz + 2.0)
         body = body.cut(weep)
 
-    # 8. Gravity-Return Captive Inverted-`T` REBOOT / FACTORY-RESET Button & Stepped Counterbore Boss (`at enc_x = -15.0, enc_z = +22.5 mm`):
+    # 8. Gravity-Return Captive Inverted-`T` REBOOT / FACTORY-RESET Button & Stepped Counterbore Boss (`at enc_x = +18.5, enc_z = -20.0 mm`,
+    #    under `main SW1`, clear of the front mast saddle, the clamp flange band and the `main` standoffs):
     #    - No O-ring (so zero friction prevents `SW1`'s 1.5 N spring + gravity from returning the button!).
     #    - `btn_boss` (`y = 29.2..40.0 mm, Ø 10.4 mm OD`) has a stepped through-bore:
     #      * Lower guide bore (`y = 24.0..37.8 mm, r = 2.50 mm` = Ø 5.0 mm ID)
@@ -264,14 +273,16 @@ def build_base():
     #      * Bottom protruding finger tip (`y = 27.0..38.10 mm, r = 2.15 mm` = Ø 4.3 mm)
     #      * Wide `T`-retaining flange (`y = 38.10..39.50 mm, r = 3.65 mm` = Ø 7.3 mm) resting above the `y = 37.80 mm` shelf
     #      * Top actuator tip (`y = 39.50..41.05 mm, r = 1.80 mm` = Ø 3.6 mm) sitting 0.25 mm below `SW1` on B.Cu (`y = 41.30 mm`)!
-    bx, bz = -15.0, 22.5
-    btn_boss = cone_y(29.2, 42.0, 5.2, 5.2).translate((bx, 0, bz))
+    #    (boss, bore, counterbore and button pin are BTN_UP = 10 mm taller since `main` sits 10 mm higher)
+    bx, bz = 18.5, -20.0
+    up = BTN_UP
+    btn_boss = cone_y(29.2, 42.0 + up, 5.2, 5.2).translate((bx, 0, bz))
     btn_bottom_flat = cone_y(24.0, 29.2, 5.6, 5.6).translate((bx, 0, bz))
-    btn_lower_bore = cone_y(24.0, 44.0, 2.50, 2.50).translate((bx, 0, bz))
-    btn_upper_counterbore = cone_y(39.80, 44.0, 4.00, 4.00).translate((bx, 0, bz))
-    t_button = (cone_y(27.0, 40.10, 2.15, 2.15)
-                .union(cone_y(40.10, 41.50, 3.65, 3.65))
-                .union(cone_y(41.50, 43.55, 1.80, 1.80))
+    btn_lower_bore = cone_y(24.0, 44.0 + up, 2.50, 2.50).translate((bx, 0, bz))
+    btn_upper_counterbore = cone_y(39.80 + up, 44.0 + up, 4.00, 4.00).translate((bx, 0, bz))
+    t_button = (cone_y(27.0, 40.10 + up, 2.15, 2.15)
+                .union(cone_y(40.10 + up, 41.50 + up, 3.65, 3.65))
+                .union(cone_y(41.50 + up, 43.55 + up, 1.80, 1.80))
                 .translate((bx, 0, bz)))
     body = body.union(btn_boss).cut(btn_bottom_flat).cut(btn_lower_bore).cut(btn_upper_counterbore).union(t_button)
 
@@ -285,23 +296,57 @@ def build_base():
     #    - The Umbrella's 4 locking tabs are a smooth, continuous extension of the 1.25 mm-thick conical shell itself
     #      out to `r = 42.0 mm` (no boxy step!), and the cable pass-through window (`13.0 x 11.0 mm`) is >2x smaller!
     for deg in (0, 90, 180, 270):
-        lower_shelf = arc_sector_y(55.90, 56.90, 40.2, 42.65, deg - 9.0, deg + 12.0)
-        click_bump = arc_sector_y(56.90, 57.18, 40.5, 42.65, deg + 4.8, deg + 6.5)
-        end_stop = arc_sector_y(56.90, 59.05, 40.2, 42.65, deg - 9.0, deg - 6.8)
-        upper_keeper = arc_sector_y(59.05, 59.95, 40.2, 42.65, deg - 9.0, deg + 4.5)
+        lower_shelf = arc_sector_y(55.90 + UMB, 56.90 + UMB, 40.2, 42.65, deg - 9.0, deg + 12.0)
+        click_bump = arc_sector_y(56.90 + UMB, 57.18 + UMB, 40.5, 42.65, deg + 4.8, deg + 6.5)
+        end_stop = arc_sector_y(56.90 + UMB, 59.05 + UMB, 40.2, 42.65, deg - 9.0, deg - 6.8)
+        upper_keeper = arc_sector_y(59.05 + UMB, 59.95 + UMB, 40.2, 42.65, deg - 9.0, deg + 4.5)
         body = body.union(lower_shelf).union(click_bump).union(end_stop).union(upper_keeper)
 
     # Continuous conical shell sloping smoothly from (r=2.0, y=62.0) to (r=41.9, y=58.50) with 1.25 mm uniform thickness
     # and >= 0.25 mm vertical & angular clearance from the 4 wall grooves so the Removable Umbrella is a 100% separate
     # non-touching shell (`Split to Objects`) inside `base.stl`!
-    umbrella_full = cone_y(58.50, 62.0, 41.9, 2.0).cut(cone_y(57.25, 60.75, 41.9, 0.5))
-    outer_trim = ring_cone_y(56.5, 60.0, 39.0, 42.4, 39.0, 42.4)
+    umbrella_full = cone_y(58.50 + UMB, 62.0 + UMB, 41.9, 2.0).cut(cone_y(57.25 + UMB, 60.75 + UMB, 41.9, 0.5))
+    outer_trim = ring_cone_y(56.5 + UMB, 60.0 + UMB, 39.0, 42.4, 39.0, 42.4)
     for deg in (0, 90, 180, 270):
-        outer_trim = outer_trim.cut(arc_sector_y(56.0, 60.5, 38.8, 42.0, deg - 5.8, deg + 3.8))
-    umbrella_cable_window = box(11.0, 24.0, 56.0, 62.5, 11.0, 22.0)
-    umbrella = umbrella_full.cut(outer_trim).cut(umbrella_cable_window)
-    body = body.union(umbrella)
+        outer_trim = outer_trim.cut(arc_sector_y(56.0 + UMB, 60.5 + UMB, 38.8, 42.0, deg - 5.8, deg + 3.8))
+    umbrella_cable_window = box(16.5, 31.5, 56.0 + UMB, 62.5 + UMB, 12.5, 26.5)   # over `main J2/J3` (crown + probe cables)
+    umbrella_shell = umbrella_full.cut(outer_trim).cut(umbrella_cable_window)
+    if umbrella:   # removable drip canopy (left out for the bay-floor render)
+        body = body.union(umbrella_shell)
 
+    # 10. Duct bed for the flat, face-down PMSA003I on the left half of the bay (see `ef.PM`).
+    return add_pm_bed(body)
+
+
+def add_pm_bed(body):
+    """Two sealed duct chambers under the PMSA003I face + floor exit slits, hard-stop pads and two snap hooks:
+      - Fan chamber (`x = -35.8..-15.6, z = -3.0..+17.8`) exhausts through 7 floor slits at the rear-left (`z = 9.8..17.4`).
+      - Inlet chamber (`x = -34.6..-26.4, z = -15.0..-4.6`) draws through 3 floor slits at the front-left (`z = -14.6..-9.8`).
+      - The chamber walls stop 1.0 mm under the module face: a 1.5 mm closed-cell foam gasket on the wall tops is squeezed
+        to 1.0 mm by the hooks, so the chambers only connect the module openings to the outside air below the base.
+      - The clamp flange band (`z = -8..+8`, `y < 28`) sits between the two exits under the base: no exhaust recirculation."""
+    pm = ef.PM
+    top = pm["face_y"] - pm["gasket"]
+    w = pm["wall"]
+    for ch in (pm["fan"], pm["inlet"]):
+        frame = (box(ch["x0"] - w, ch["x1"] + w, pm["floor_y"] - 0.1, top, ch["z0"] - w, ch["z1"] + w)
+                 .cut(box(ch["x0"], ch["x1"], pm["floor_y"] - 0.2, top + 0.1, ch["z0"], ch["z1"])))
+        body = body.union(frame)
+    roof = pm["inlet_roof"]
+    body = body.union(box(pm["inlet"]["x0"] - w, pm["inlet"]["x1"] + w, top - 1.2, top, roof["z0"], roof["z1"]))
+    for px, pz in pm["pads"]:
+        body = body.union(cone_y(pm["floor_y"] - 0.1, pm["face_y"], 1.5, 1.5).translate((px, 0, pz)))
+    hx0, hx1 = pm["hooks_x"]
+    zh, t, lip = pm["z_half"], pm["hook_t"], pm["hook_lip"]
+    for sz in (-1.0, 1.0):
+        z_in, z_out = sz * (zh + 0.2), sz * (zh + 0.2 + t)
+        post = box(hx0, hx1, pm["floor_y"] - 0.1, pm["top_y"] + 1.2, min(z_in, z_out), max(z_in, z_out))
+        hook = box(hx0, hx1, pm["top_y"], pm["top_y"] + 1.2, min(sz * (zh - lip), z_out), max(sz * (zh - lip), z_out))
+        body = body.union(post).union(hook)
+    for slits, ch in ((pm["fan_slits"], pm["fan"]), (pm["inlet_slits"], pm["inlet"])):
+        for x in slits["xs"]:
+            body = body.cut(box(x - pm["slit_w"] / 2.0, x + pm["slit_w"] / 2.0, 26.0, pm["floor_y"] + 0.1,
+                                slits["z0"], slits["z1"]))
     return body
 
 
@@ -363,6 +408,10 @@ def _build_probe_sleeve_cyl_ends(z_min, z_max):
 
 
 def build_probe_sleeve_back():
+    return _build_probe_sleeve_back().translate((0, RAISE, 0))
+
+
+def _build_probe_sleeve_back():
     """Part 4: Rear Clamshell Sleeve for `probe` PCB (y=68.5..118.0, z=-5.0..-0.05):
       - Between `y = 68.5..80.2 mm`, the inner wall hugs the `probe` PCB back face at `z = -0.70 mm`
         (`0.10 mm` gap from `z = -0.60 mm`!) with a grease/glue reservoir groove at `y = 77.2..79.2 mm`!
@@ -379,12 +428,23 @@ def build_probe_sleeve_back():
     return body.union(_build_probe_sleeve_cyl_ends(-15.0, -0.05)).cut(pcb_seat).cut(rear_cable_channel).cut(back_grease_groove)
 
 
+PROBE_FRONT_SLOTS_Y = (93.0, 96.5, 100.0, 103.5, 107.0, 110.5)  # 3.5 mm grid: SCD41 (93..100), SGP41 + BMP585 (103.5..110.5)
+PROBE_SIDE_SLOTS_Y = (92.0, 95.5, 99.0, 102.5, 106.0, 109.5)
+
+
 def build_probe_sleeve_front():
+    return _build_probe_sleeve_front().translate((0, RAISE, 0))
+
+
+def _build_probe_sleeve_front():
     """Part 5: Front Clamshell Sleeve for `probe` PCB (y=68.5..118.0, z=+0.05..+8.8):
       - Solid Enclosed Lower Shroud (`y = 75.0..77.2, z = +0.05..+6.5 mm`) completely covering `probe J1` on the front
         so there is ZERO external notch or opening!
       - Immediately above `J1` (`y = 76.25..80.2 mm`, below `SHT40`), the inner wall hugs the `probe` PCB front face at `z = +0.70 mm`
-        (`0.10 mm` gap from `z = +0.60 mm`!) with a grease/glue reservoir groove at `y = 77.2..79.2 mm`!"""
+        (`0.10 mm` gap from `z = +0.60 mm`!) with a grease/glue reservoir groove at `y = 77.2..79.2 mm`!
+      - Upper gas chamber (`y = 89.2..113.0 mm`) around the `SCD41`, `SGP41` and `BMP585`: one uniform grid of 6 front
+        slots (`12 x 1.2 mm`, 3.5 mm pitch; the slot at `y = 107.0` lies right over the SGP41 hot plate and the BMP585 gel
+        port), plus 6 side slots in each side wall so the shield airflow crosses the chamber."""
     j1_cover_shroud = box(-9.2, 9.2, 75.0, 77.4, 0.05, 6.5)
     lower_hood = box(-9.2, 9.2, 75.0, 89.2, 0.05, 3.4)
     upper_hood = box(-9.2, 9.2, 87.8, 114.0, 0.05, 8.8)
@@ -410,8 +470,11 @@ def build_probe_sleeve_front():
         .union(left_tongue)
         .union(right_tongue)
     )
-    for ys in (93.0, 96.5, 100.0, 104.0, 107.5):
+    for ys in PROBE_FRONT_SLOTS_Y:
         body = body.cut(box(-6.0, 6.0, ys - 0.6, ys + 0.6, 7.0, 9.2))
+    for ys in PROBE_SIDE_SLOTS_Y:  # cross-flow through both side walls (x = +/-7.4..9.2)
+        for sx in (-1.0, 1.0):
+            body = body.cut(box(min(sx * 7.0, sx * 9.6), max(sx * 7.0, sx * 9.6), ys - 0.8, ys + 0.8, 1.8, 6.8))
 
     return (body.union(_build_probe_sleeve_cyl_ends(0.05, 15.0))
             .cut(pcb_seat)
@@ -421,6 +484,10 @@ def build_probe_sleeve_front():
 
 
 def build_pagoda():
+    return _build_pagoda().translate((0, RAISE, 0))
+
+
+def _build_pagoda():
     """Part 6: Heavy-Duty Bolted 5-Plate Stevenson Pagoda Assembly (`pagoda.stl/.step`, y=66.5..123.8):
       - Heavy-Duty 5.0 mm-Thick Waterproof Bottom Bulkhead Deck (`y = 68.5..73.5, r = 10.58..48.0 mm`):
         Completely seals off `base.stl` below from wind-driven rain in the pagoda louvers above, supports the full
@@ -526,6 +593,10 @@ def build_pagoda():
 
 
 def build_wind_tunnel():
+    return _build_wind_tunnel().translate((0, RAISE, 0))
+
+
+def _build_wind_tunnel():
     """Part 7: Compact Heated Conical Reflector Deck (`wind_tunnel.stl/.step`, y=120.1..130.0):
       - Outer Bottom Skirt (y = 120.1..125.0) with 8-Lug Internal Push-Turn-Click Bayonet J-Slots
         locking onto `pagoda.stl` and compressing O-Ring #3 at the widest radius!
@@ -553,6 +624,10 @@ def build_wind_tunnel():
 
 
 def build_struts():
+    return _build_struts().translate((0, RAISE, 0))
+
+
+def _build_struts():
     """Part 8: 4x Separate Double-C Split Hollow Threaded Struts (Standard ISO M12x1.75) + 8x M12x1.75 Hex Locknuts
     + 1x Standard ISO M22x1.5 JGS1 Dome Hex Flange Retainer Nut (`struts.stl/.step`):
       - Each strut (at 45, 135, 225, 315 deg, r = 35.5 mm) is split lengthwise into TWO distinct C-shaped half-shells
@@ -630,6 +705,10 @@ def build_struts():
 
 
 def build_crown_base():
+    return _build_crown_base().translate((0, RAISE, 0))
+
+
+def _build_crown_base():
     """Part 9: Lower Ultrasonic Transducer & Diagonal `crown` PCB Tray (`crown_base.stl/.step`, y=172.5..189.8):
       - 4x Strut Holes (`r = 32.5 mm` at 45/135/225/315 deg — a full 10.0 mm inside the r = 42.5 mm wall so the
         ISO M12x1.75 hex locknuts have >3.0 mm of open wrench clearance all around!)
@@ -703,6 +782,10 @@ def build_crown_base():
 
 
 def build_crown():
+    return _build_crown().translate((0, RAISE, 0))
+
+
+def _build_crown():
     """Part 10: Removable Top Piezo Rain & JGS1 UV Dome Cover (`crown.stl/.step`, y=185.8..198.0):
       - Open on the bottom with an Internal M90x1.8 Female Thread (y = 186.0..190.2) that screws onto `crown_base.stl`
         and compresses the full-perimeter O-Ring #3!
@@ -763,7 +846,7 @@ def build_orings():
     ring_crown = ring_cone_y(184.9, 186.5, 44.1, 47.0, 44.1, 47.0)
     win = ef.uv_window()
     ring_uv = ring_cone_y(194.2, 195.1, 8.6, 10.3, 8.6, 10.3).translate((win["x"], 0, win["z"]))
-    return ring_base.union(ring_probe_bot).union(ring_refl).union(ring_crown).union(ring_uv)
+    return ring_base.union(ring_probe_bot).union(ring_refl).union(ring_crown).union(ring_uv).translate((0, RAISE, 0))
 
 
 ALL_PARTS = (

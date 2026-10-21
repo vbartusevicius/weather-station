@@ -36,6 +36,8 @@ MODELS_3D = {
     "LED_SK6805-EC15_1.5x1.5mm": ("LED_SK6805-EC15_1.5x1.5mm.step", 0),
     "Sensirion_SHT45_DFN-4": ("Sensirion_SHT45_DFN-4.step", 0),
     "Bosch_BMP581_LGA-10": ("Bosch_BMP581_LGA-10.step", 0),
+    "Bosch_BMP585_LGA-9": ("Bosch_BMP585_LGA-9.step", 0),
+    "TI_ADS1115_VSSOP-10": ("TI_ADS1115_VSSOP-10.step", 0),
     "Sensirion_SGP41_DFN-6": ("Sensirion_SGP41_DFN-6.step", 0),
     "Sensirion_SCD41_LGA-20": ("Sensirion_SCD41_LGA-20.step", 0),
     "Vishay_VEML7700-TT": ("Vishay_VEML7700-TT.step", 0),
@@ -98,6 +100,7 @@ POWER_CLASS = {
     "SELV-REFLECTOR": "REFLECTOR-Power",
     "SELV-DOME": "DOME-Power",
     "SELV-PROBE": "PROBE-Power",
+    "SELV-POWER": "POWER-Power",
 }
 
 
@@ -625,7 +628,7 @@ def export_dsn(board_name):
 
 
 def with_inset_boundary(dsn_text, frame):
-    inset = (frame["edge_clearance"] - 0.1) * 1000
+    inset = (frame["edge_clearance"] + 0.05) * 1000   # router keeps tracks inside the DRC copper-to-edge clearance
 
     def rewrite(match):
         nums = [float(n) for n in match.group(2).split()]
@@ -661,7 +664,8 @@ def with_net_classes(dsn_text, nets, net_settings):
     for cls, members in sorted(groups.items()):
         blocks.append(f'    (class {cls} {" ".join(members)}\n      (circuit\n        (use_via {via})\n      )\n'
                       f'      (rule\n        (width {classes[cls]["track_width"] * 1000:.0f})\n'
-                      f'        (clearance {classes[cls]["clearance"] * 1000:.0f})\n      )\n    )\n')
+                      # +10 um over the DRC minimum: Freerouting rounds 45-degree geometry right onto the limit
+                      f'        (clearance {(classes[cls]["clearance"] + 0.01) * 1000:.0f})\n      )\n    )\n')
     return dsn_text[:start] + "".join(blocks) + "  )\n" + dsn_text[end:]
 
 

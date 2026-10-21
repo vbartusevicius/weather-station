@@ -18,10 +18,9 @@ enum class AqiLevel : std::uint8_t {
 struct AirQualityInput {
     float pm1_0_ug_m3{4.0F};
     float pm2_5_ug_m3{6.5F};
-    float pm4_0_ug_m3{8.0F};
     float pm10_ug_m3{12.0F};
-    std::uint16_t voc_index{100};  // Sensirion SGP41 VOC Index (1..500, 100 = average)
-    std::uint16_t nox_index{1};    // Sensirion SGP41 NOx Index (1..500, 1 = clean outdoor air)
+    std::uint16_t voc_index{100};  // Sensirion VOC Index (SGP41 + gas index algorithm, 1..500, 100 = average)
+    std::uint16_t nox_index{1};    // Sensirion NOx Index (SGP41 + gas index algorithm, 1..500, 1 = clean outdoor air)
     std::uint16_t co2_ppm{420};    // Sensirion SCD41 photoacoustic CO2 (ppm)
     float relative_humidity_rh{50.0F};
     float pressure_hpa{1013.25F};

@@ -1,5 +1,6 @@
-"""12-32 V DC roof input protection, 40 V -> 5 V buck (SCT2400), VIN_ADC supply
-monitor, and constant-wattage de-icing heater MOSFET driver (AO3400A)."""
+"""12-32 V DC roof input protection, VIN_ADC supply monitor, and de-icing heater MOSFET driver (AO3400A).
+The two 5 V rails (+5V electronics, +5V_HEAT heaters) come from the separate `power` board (two SCT2430
+bucks) over main J5; no 12-32 V conductor leaves the base bay."""
 
 from common import block, part, power_flag, src
 from skidl import Net
@@ -8,19 +9,17 @@ R0603 = "Resistor_SMD:R_0603_1608Metric"
 C0603 = "Capacitor_SMD:C_0603_1608Metric"
 C0805 = "Capacitor_SMD:C_0805_2012Metric"
 D_SMA = "Diode_SMD:D_SMA"
-TSOT23_6 = "Package_TO_SOT_SMD:TSOT-23-6"
 FUSE1812 = "Fuse:Fuse_1812_4532Metric"
 TERM_KF250_4P = "gateway_fp:TerminalBlock_Kefa_KF250-3.5-4P"
-L_ANR4012 = "Inductor_SMD:L_APV_ANR4012"
 SOT23_AO3400 = "gateway_fp:AOS_AO3400A_SOT-23"
 
 
-def res(value, fields=None, footprint=R0603):
-    return part("Device", "R", value, footprint, fields)
+def res(value, fields=None, footprint=R0603, ref=None):
+    return part("Device", "R", value, footprint, fields, ref=ref)
 
 
-def cap(value, fields=None, footprint=C0603):
-    return part("Device", "C", value, footprint, fields)
+def cap(value, fields=None, footprint=C0603, ref=None):
+    return part("Device", "C", value, footprint, fields, ref=ref)
 
 
 def build(gnd, heat_pwm):
@@ -31,14 +30,12 @@ def build(gnd, heat_pwm):
     rs485_a = Net("RS485_A")
     rs485_b = Net("RS485_B")
     v5 = Net("+5V")
+    heat5 = Net("+5V_HEAT")
     vin_adc = Net("VIN_ADC")
     heat_sw = Net("HEAT_SW")
-    buck_sw = Net("BUCK5_SW")
-    buck_bst = Net("BUCK5_BST")
-    buck_en = Net("BUCK5_EN")
-    buck_fb = Net("BUCK5_FB")
     heat_gate = Net("HEAT_GATE")
-    for n in (vin_raw, vin_fused, vin_prot, v5):
+    heat_sense = Net("HEAT_SENSE")
+    for n in (vin_raw, vin_fused, vin_prot, v5, heat5):
         power_flag(n)
 
     # --- 4-pole push-in terminal J1 (1=VIN+ Red, 2=GND Black, 3=RS485_A+ White, 4=RS485_B- Yellow) ---
@@ -80,54 +77,6 @@ def build(gnd, heat_pwm):
     c_bulk[1] += vin_prot
     c_bulk[2] += gnd
 
-    # --- SCT2400 12-32 V -> +5V Buck Converter ---
-    block("buck5v")
-    u1 = part("gateway", "SCT2400", "SCT2400TVBR", TSOT23_6,
-              src(mpn="SCT2400TVBR", mfr="SCT", lcsc="C2693819",
-                  source="SCT2400 4.5-40 V input, 600 mA synchronous buck converter"),
-              ref="U1")
-    u1["VIN"] += vin_prot
-    u1["GND"] += gnd
-    u1["EN"] += buck_en
-    u1["BST"] += buck_bst
-    u1["SW"] += buck_sw
-    u1["FB"] += buck_fb
-
-    # EN UVLO divider: 51k / 10k -> turn-on at 1.21 * 6.1 = 7.4 V (supports 12-32 V)
-    r_en_top = res("51k", src(source="SCT2400 EN UVLO top (51k/10k -> 7.4 V turn-on)"))
-    r_en_top[1] += vin_prot
-    r_en_top[2] += buck_en
-    r_en_bot = res("10k", src(source="SCT2400 EN UVLO bottom"))
-    r_en_bot[1] += buck_en
-    r_en_bot[2] += gnd
-
-    c_bst = cap("100n 50V", src(source="SCT2400 bootstrap capacitor"))
-    c_bst[1] += buck_bst
-    c_bst[2] += buck_sw
-
-    l1 = part("Device", "L", "4.7uH", L_ANR4012,
-              src(mpn="SMNR4012-4R7MT", mfr="Sunna", lcsc="C135248",
-                  source="4.7 uH 1.15 A shielded power inductor"),
-              ref="L1")
-    l1[1] += buck_sw
-    l1[2] += v5
-
-    r_fb_top = res("51k", src(source="SCT2400 FB top: VOUT = 0.81*(1+51k/10k) = 4.94 V"))
-    r_fb_top[1] += v5
-    r_fb_top[2] += buck_fb
-    r_fb_bot = res("10k", src(source="SCT2400 FB bottom"))
-    r_fb_bot[1] += buck_fb
-    r_fb_bot[2] += gnd
-
-    c_cin = cap("10u 50V", src(source="SCT2400 input decoupling"), footprint=C0805)
-    c_cin[1] += vin_prot
-    c_cin[2] += gnd
-    for val in ("22u 25V", "22u 25V", "100n 50V"):
-        c_out = cap(val, src(source="SCT2400 output decoupling"),
-                    footprint=C0805 if "22u" in val else C0603)
-        c_out[1] += v5
-        c_out[2] += gnd
-
     # --- VIN_ADC 12-32 V Supply Voltage Monitor (100k / 10k -> 11:1 ratio) ---
     block("vin_sense")
     r_vin_top = res("100k", src(source="VIN_PROT 11:1 ADC divider top (32 V -> 2.91 V)"))
@@ -153,21 +102,23 @@ def build(gnd, heat_pwm):
     r_gpd[1] += heat_gate
     r_gpd[2] += gnd
     q1["1"] += heat_gate
-    q1["2"] += gnd
+    q1["2"] += heat_sense   # source -> R16 0.1 ohm current shunt -> GND (main_sensors heater_mon block)
     q1["3"] += heat_sw
 
     d_fly = part("Device", "D_Schottky", "SS16", D_SMA,
                  src(mpn="SS16", mfr="MDD", lcsc="C2481",
-                     source="Freewheeling flyback Schottky across heater cable inductance"),
+                     source="Freewheeling flyback Schottky across heater cable inductance (to the +5V_HEAT rail)"),
                  ref="D3")
     d_fly["A"] += heat_sw
-    d_fly["K"] += vin_prot
+    d_fly["K"] += heat5
 
     return {
         "vin_prot": vin_prot,
         "v5": v5,
+        "heat5": heat5,
         "vin_adc": vin_adc,
         "heat_sw": heat_sw,
+        "heat_sense": heat_sense,
         "rs485_a": rs485_a,
         "rs485_b": rs485_b,
     }

@@ -31,7 +31,7 @@ public:
         i2c_master_dev_handle_t handle_{nullptr};
     };
 
-    Device add(std::uint8_t addr);
+    Device add(std::uint8_t addr, std::uint32_t speed_hz = 0);  // 0 = bus speed
 
 private:
     friend class Device;
@@ -45,7 +45,7 @@ private:
     std::uint32_t speed_hz_{400000};
 };
 
-// Sensirion CRC-8 (poly 0x31, init 0xFF) used by SHT4x, SCD4x, SEN5x, SGP4x.
+// Sensirion CRC-8 (poly 0x31, init 0xFF) used by SHT4x, SCD4x, SGP4x.
 std::uint8_t sensirion_crc8(const std::uint8_t* data, std::size_t len);
 
 }  // namespace firmware

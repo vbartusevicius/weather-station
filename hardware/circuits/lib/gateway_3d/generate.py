@@ -19,6 +19,8 @@ PARTS = {
     "LED_SK6805-EC15_1.5x1.5mm": (1.5, 1.5, 0.65),
     "Sensirion_SHT45_DFN-4": (1.5, 1.5, 0.5),
     "Bosch_BMP581_LGA-10": (2.0, 2.0, 0.75),
+    "Bosch_BMP585_LGA-9": (3.25, 3.25, 1.96),
+    "TI_ADS1115_VSSOP-10": (3.0, 3.0, 1.1),
     "Sensirion_SGP41_DFN-6": (2.4, 2.4, 0.9),
     "Sensirion_SCD41_LGA-20": (10.1, 10.1, 6.5),
     "Vishay_VEML7700-TT": (6.8, 2.35, 3.0),

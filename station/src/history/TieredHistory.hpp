@@ -35,7 +35,6 @@ enum class Metric : std::uint8_t {
     CloudPct,
     Pm1,
     Pm25,
-    Pm4,
     Pm10,
     Co2Ppm,
     VocIndex,
@@ -119,7 +118,7 @@ public:
 
     // Persistence of hour + day tiers (minutes are not worth flash wear).
     static constexpr std::uint32_t kMagic = 0x41484953U;  // "AHIS"
-    static constexpr std::uint16_t kVersion = 1;
+    static constexpr std::uint16_t kVersion = 2;  // v2: PM4 removed (PMSA003I)
     std::size_t serialized_size() const;
     std::size_t serialize(std::uint8_t* buf, std::size_t cap, std::int64_t unix_s) const;
     // Restores hour/day rings saved at `saved_unix`, shifting by the elapsed hours/days.

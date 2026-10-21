@@ -30,13 +30,13 @@ def test_main_board_parts_fit_vertically_in_base_bay():
     floor_y = ef.SPEC["envelope"]["base_bay"]["floor_y"]
     ceil_y = ef.SPEC["envelope"]["base_bay"]["ceiling_y"]
     bad = [(b["ref"], b["y0"], b["y1"]) for b in ef.part_boxes()
-           if b["board"] == "main" and (b["y0"] < floor_y or b["y1"] > ceil_y)]
+           if b["board"] in ("main", "power") and (b["y0"] < floor_y or b["y1"] > ceil_y)]
     assert not bad, f"main bay vertical collisions: {bad}"
 
 
 def test_probe_board_parts_fit_inside_pagoda_height():
-    y0 = ef.SPEC["boards"]["probe"]["y_start"] - 1.0
-    y1 = ef.PAGODA_Y1
+    y0 = ef.SPEC["boards"]["probe"]["y_start"] - 1.0 + ef.RAISE
+    y1 = ef.PAGODA_Y1 + ef.RAISE
     bad = [(b["ref"], b["y0"], b["y1"]) for b in ef.part_boxes()
            if b["board"] == "probe" and (b["y0"] < y0 or b["y1"] > y1)]
     assert not bad, f"probe vertical collisions: {bad}"
@@ -44,7 +44,7 @@ def test_probe_board_parts_fit_inside_pagoda_height():
 
 def test_reflector_board_parts_fit_under_reflector_deck():
     bad = [(b["ref"], b["y0"], b["y1"]) for b in ef.part_boxes()
-           if b["board"] == "reflector" and (b["y0"] < 114.0 or b["y1"] > 125.0)]
+           if b["board"] == "reflector" and (b["y0"] < 114.0 + ef.RAISE or b["y1"] > 125.0 + ef.RAISE)]
     assert not bad, f"reflector vertical collisions: {bad}"
 
 

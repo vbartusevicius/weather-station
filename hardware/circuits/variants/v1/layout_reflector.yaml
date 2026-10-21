@@ -14,7 +14,7 @@ frame:
     SELV-REFLECTOR:
       - { x0: 0.0, y0: 0.0, x1: 24.0, y1: 24.0 }
   isolators: []
-  power_nets: [VIN_PROT, HEAT_SW]
+  power_nets: [+5V_HEAT, HEAT_SW]
   pours:
     - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 23.5, y1: 23.5 } }
   silk_labels:

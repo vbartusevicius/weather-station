@@ -28,7 +28,7 @@ bool I2cBus::probe(std::uint8_t addr) {
     return i2c_master_probe(bus_, addr, kTimeoutMs) == ESP_OK;
 }
 
-I2cBus::Device I2cBus::add(std::uint8_t addr) {
+I2cBus::Device I2cBus::add(std::uint8_t addr, std::uint32_t speed_hz) {
     Device d{};
     if (bus_ == nullptr) {
         return d;
@@ -36,7 +36,7 @@ I2cBus::Device I2cBus::add(std::uint8_t addr) {
     i2c_device_config_t cfg{};
     cfg.dev_addr_length = I2C_ADDR_BIT_LEN_7;
     cfg.device_address = addr;
-    cfg.scl_speed_hz = speed_hz_;
+    cfg.scl_speed_hz = speed_hz != 0 ? speed_hz : speed_hz_;
     Lock lock(mutex_);
     if (i2c_master_bus_add_device(bus_, &cfg, &d.handle_) != ESP_OK) {
         d.handle_ = nullptr;

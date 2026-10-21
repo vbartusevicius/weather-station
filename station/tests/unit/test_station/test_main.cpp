@@ -102,10 +102,9 @@ void fill_steady(RawState& r, std::uint32_t now_ms) {
     r.wind.second.set(w, now_ms);
     r.air.pm1_ug_m3.set(3.0F, now_ms);
     r.air.pm25_ug_m3.set(6.0F, now_ms);
-    r.air.pm4_ug_m3.set(8.0F, now_ms);
     r.air.pm10_ug_m3.set(12.0F, now_ms);
-    r.air.voc_index.set(100.0F, now_ms);
-    r.air.nox_index.set(1.0F, now_ms);
+    r.air.sgp_sraw_voc.set(30000, now_ms);
+    r.air.sgp_sraw_nox.set(16000, now_ms);
     r.air.co2_ppm.set(420.0F, now_ms);
     r.power.vin_v.set(24.0F, now_ms);
     r.power.reflector_c.set(18.0F, now_ms);
@@ -323,19 +322,19 @@ void test_meteorological_formulas(void) {
 }
 
 void test_air_quality_pm_only_aqi_nowcast_and_eaqi(void) {
-    AirQualityInput clean{3.0F, 5.4F, 7.0F, 12.0F, 95, 2, 418, 50.0F, 1013.25F};
+    AirQualityInput clean{3.0F, 5.4F, 12.0F, 95, 2, 418, 50.0F, 1013.25F};
     const auto r_clean = AirQualityEvaluator::evaluate(clean);
     TEST_ASSERT_EQUAL(AqiLevel::Good, r_clean.level);
     TEST_ASSERT_EQUAL_UINT8(1, r_clean.eu_eaqi);
 
     // A high NOx index no longer inflates the EPA AQI (relative Sensirion index, not an EPA pollutant)
-    AirQualityInput traffic{4.0F, 6.0F, 8.0F, 15.0F, 140, 180, 460, 55.0F, 1013.25F};
+    AirQualityInput traffic{4.0F, 6.0F, 15.0F, 140, 180, 460, 55.0F, 1013.25F};
     const auto r_nox = AirQualityEvaluator::evaluate(traffic);
     TEST_ASSERT_EQUAL_STRING("PM2.5", r_nox.dominant_pollutant);
     TEST_ASSERT_EQUAL(AqiLevel::Good, r_nox.level);
 
     // Fog (92 % RH): hygroscopic water growth is removed from PM2.5
-    AirQualityInput foggy{10.0F, 28.0F, 35.0F, 42.0F, 90, 2, 420, 92.0F, 980.0F};
+    AirQualityInput foggy{10.0F, 28.0F, 42.0F, 90, 2, 420, 92.0F, 980.0F};
     const auto r_fog = AirQualityEvaluator::evaluate(foggy);
     TEST_ASSERT_TRUE(r_fog.dry_pm2_5_ug_m3 < 8.5F);
     TEST_ASSERT_EQUAL_UINT16(420, r_fog.pressure_comp_co2_ppm);  // no double pressure correction
@@ -624,27 +623,26 @@ void test_pipeline_daytime_cloud_cover_rain_lightning_and_thunder(void) {
     TEST_ASSERT_FLOAT_WITHIN(1.5F, 49.0F, d.lightning.last_strike_age_s.v);
 }
 
-void test_constant_wattage_heater_scaling_across_12_to_32v(void) {
-    // Freezing outdoor air (-4 C), reflector at 0 C (NTC ~32.6k -> ~2525 mV)
-    HeaterSensorInput in_12v{1091, 2525, -4.0F, true};  // 12.0 V -> 1091 mV
-    HeaterSensorInput in_24v{2182, 2525, -4.0F, true};  // 24.0 V -> 2182 mV
-    HeaterSensorInput in_32v{2909, 2525, -4.0F, true};  // 32.0 V -> 2909 mV
-
-    const auto out_12 = DeIcingHeaterController::update(in_12v);
-    const auto out_24 = DeIcingHeaterController::update(in_24v);
-    const auto out_32 = DeIcingHeaterController::update(in_32v);
-
-    TEST_ASSERT_EQUAL(HeaterState::Heating, out_12.state);
-    TEST_ASSERT_EQUAL(HeaterState::Heating, out_24.state);
-    TEST_ASSERT_EQUAL(HeaterState::Heating, out_32.state);
-
-    // At 24 V and 32 V, PWM duty scales down so regulated thermal wattage stays capped at 4.0 W!
-    TEST_ASSERT_FLOAT_WITHIN(0.15F, 4.0F, out_24.actual_power_w);
-    TEST_ASSERT_FLOAT_WITHIN(0.15F, 4.0F, out_32.actual_power_w);
-    TEST_ASSERT_TRUE(out_32.pwm_duty_percent < out_24.pwm_duty_percent);
-
+void test_constant_wattage_heater_on_regulated_5v_rail(void) {
+    // Freezing outdoor air (-4 C), reflector at 0 C (NTC ~32.6k -> ~2525 mV); heater on the +5V rail
+    HeaterSensorInput lo{4.75F, 2525, -4.0F, true};
+    HeaterSensorInput nom{5.00F, 2525, -4.0F, true};
+    HeaterSensorInput hi{5.25F, 2525, -4.0F, true};
+    const auto out_lo = DeIcingHeaterController::update(lo);
+    const auto out_nom = DeIcingHeaterController::update(nom);
+    const auto out_hi = DeIcingHeaterController::update(hi);
+    TEST_ASSERT_EQUAL(HeaterState::Heating, out_nom.state);
+    // Constant 3.5 W across the rail tolerance: 4x 27 ohm (6.75 ohm) gives 3.70 W at 5.0 V, 3.34 W at 4.75 V
+    TEST_ASSERT_FLOAT_WITHIN(0.05F, 3.5F, out_nom.actual_power_w);
+    TEST_ASSERT_FLOAT_WITHIN(0.05F, 3.5F, out_hi.actual_power_w);
+    TEST_ASSERT_FLOAT_WITHIN(0.05F, 3.34F, out_lo.actual_power_w);   // 100 % duty: all the rail can give
+    TEST_ASSERT_FLOAT_WITHIN(0.1F, 100.0F, out_lo.pwm_duty_percent);
+    TEST_ASSERT_TRUE(out_hi.pwm_duty_percent < out_nom.pwm_duty_percent);
+    // A sagging rail (buck overloaded / input below its UVLO) locks the heater out
+    HeaterSensorInput sag{4.2F, 2525, -4.0F, true};
+    TEST_ASSERT_EQUAL(HeaterState::UndervoltageLockout, DeIcingHeaterController::update(sag).state);
     // Service button press decoded when NTC_SENSE pulled below 150 mV
-    HeaterSensorInput btn{2182, 40, 18.0F, false};
+    HeaterSensorInput btn{5.0F, 40, 18.0F, false};
     TEST_ASSERT_TRUE(DeIcingHeaterController::update(btn).service_button_pressed);
 }
 
@@ -738,8 +736,8 @@ void test_sgp41_gas_index_algorithm_blackout_baseline_event_and_state(void) {
     TEST_ASSERT_FLOAT_WITHIN(10.0F, 100.0F, v);
 }
 
-void test_pipeline_gas_source_and_uv_fusion(void) {
-    // SEN55 only (SGP41 absent): its on-module indices are used
+void test_pipeline_uv_fusion_and_sgp41_gas_indices(void) {
+    // LTR-390 only
     Pipeline p;
     RawState raw{};
     EventQueues ev{};
@@ -748,36 +746,87 @@ void test_pipeline_gas_source_and_uv_fusion(void) {
     fill_steady(raw, 1000);
     raw.optical.ltr_uvi.set(3.0F, 1000);
     p.step(raw, ev, cfg, d);
-    TEST_ASSERT_EQUAL_STRING("SEN55", d.air.gas_source);
-    TEST_ASSERT_FLOAT_WITHIN(0.01F, 100.0F, d.air.voc_index.v);
     TEST_ASSERT_EQUAL_STRING("LTR-390", d.solar.uv_source);
     TEST_ASSERT_FLOAT_WITHIN(0.01F, 3.0F, d.solar.uv_index.v);
-
-    // SGP41 present: after the blackout its gas index wins; SEN55 stays published for cross-checking
-    Pipeline q;
+    // VOC / NOx: no index during the gas index algorithm's 45 s blackout, then the learned baseline
+    TEST_ASSERT_FALSE(d.air.voc_index.ok);
+    TEST_ASSERT_TRUE(d.air.gas_learning);
     for (int s = 0; s < 120; ++s) {
         const std::uint32_t t = 1000U + static_cast<std::uint32_t>(s) * 1000U;
         fill_steady(raw, t);
-        raw.air.sgp_sraw_voc.set(30000, t);
-        if (s >= 10) raw.air.sgp_sraw_nox.set(16000, t);
-        raw.optical.ltr_uvi.set(3.0F, t);
-        raw.optical.guvb_uvi.set(5.0F, t);
-        q.step(raw, ev, cfg, d);
+        p.step(raw, ev, cfg, d);
     }
-    TEST_ASSERT_EQUAL_STRING("SGP41", d.air.gas_source);
-    TEST_ASSERT_TRUE(d.air.gas_learning);
     TEST_ASSERT_TRUE(d.air.voc_index.ok);
-    TEST_ASSERT_TRUE(d.air.voc_index_sen55.ok);
+    TEST_ASSERT_FLOAT_WITHIN(5.0F, 100.0F, d.air.voc_index.v);
+    TEST_ASSERT_TRUE(d.air.nox_index.ok);
+
     // UV: 80 % true UV-B sensor + 20 % LTR-390, both per-sensor values published
+    fill_steady(raw, 122000);
+    raw.optical.ltr_uvi.set(3.0F, 122000);
+    raw.optical.guvb_uvi.set(5.0F, 122000);
+    p.step(raw, ev, cfg, d);
     TEST_ASSERT_EQUAL_STRING("GUVB-C31SM + LTR-390", d.solar.uv_source);
     TEST_ASSERT_FLOAT_WITHIN(0.01F, 4.6F, d.solar.uv_index.v);
     TEST_ASSERT_FLOAT_WITHIN(0.01F, 5.0F, d.solar.uv_index_guvb.v);
     TEST_ASSERT_FLOAT_WITHIN(0.01F, 3.0F, d.solar.uv_index_ltr.v);
     const auto doc = parse(TelemetryFormatter::build_state_json(d, "t", WifiInfo{}));
-    TEST_ASSERT_EQUAL_STRING("SGP41", doc["air_quality"]["gas_source"].as<const char*>());
     TEST_ASSERT_FLOAT_WITHIN(0.1F, 5.0F, doc["solar"]["uv_index_guvb"].as<float>());
+    TEST_ASSERT_TRUE(doc["air_quality"]["pm4_0"].isNull());
+    TEST_ASSERT_TRUE(doc["air_quality"]["gas_learning"].as<bool>());
 }
 
+
+void test_heater_power_monitor_and_heat_check(void) {
+    Pipeline p;
+    RawState raw{};
+    EventQueues ev{};
+    StationConfig cfg{};
+    DerivedState d{};
+    auto feed = [&](std::uint32_t t, float refl_a, float probe_a, float scd_c) {
+        fill_steady(raw, t);
+        raw.power.refl_heater_a.set(refl_a, t);
+        raw.power.probe_heater_a.set(probe_a, t);
+        raw.power.rail_5v.set(5.0F, t);
+        raw.power.rail_5v_logic.set(5.02F, t);
+        raw.air.scd41_temp_c.set(scd_c, t);
+        p.step(raw, ev, cfg, d);
+    };
+    // Probe heater on (83 mA from +5V) holding the SCD41 zone at its +8 C setpoint
+    feed(1000, 0.0F, 0.0833F, 8.1F);
+    TEST_ASSERT_TRUE(d.heater.probe_on);
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 0.4165F, d.heater.probe_w.v);
+    TEST_ASSERT_EQUAL_STRING("heating", d.heater.probe_status);
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 8.1F, d.heater.probe_c.v);
+    // Cold zone but no current: the probe heater is not heating
+    feed(2000, 0.0F, 0.0F, 2.0F);
+    TEST_ASSERT_EQUAL_STRING("not-heating", d.heater.probe_status);
+    // Reflector idle (warm, dry) and no current: ok; current without a duty: stuck-on
+    TEST_ASSERT_EQUAL_STRING("ok", d.heater.reflector_status);
+    feed(3000, 0.2F, 0.0F, 9.0F);
+    TEST_ASSERT_EQUAL_STRING("stuck-on", d.heater.reflector_status);
+
+    // HEAT_CHECK: 10 s fixed 2 W pulse; at 5.0 V the duty is 2 x 6.75 / 5^2 = 54 % -> 0.40 A mean current
+    p.request_heater_check();
+    std::uint32_t t = 4000;
+    for (int s = 0; s < Pipeline::kHeaterCheckS; ++s, t += 1000) {
+        feed(t, 0.40F, 0.0F, 9.0F);
+        TEST_ASSERT_TRUE(s == Pipeline::kHeaterCheckS - 1 || d.controls.heater_check);
+    }
+    TEST_ASSERT_FLOAT_WITHIN(0.1F, 54.0F, d.heater.duty_pct);
+    TEST_ASSERT_FLOAT_WITHIN(0.05F, 2.0F, d.heater.reflector_w.v);
+    TEST_ASSERT_EQUAL_STRING("check-pass", d.heater.reflector_status);
+    // An open heater (no current during the pulse) fails the check
+    p.request_heater_check();
+    for (int s = 0; s < Pipeline::kHeaterCheckS; ++s, t += 1000) {
+        feed(t, 0.0F, 0.0F, 9.0F);
+    }
+    TEST_ASSERT_EQUAL_STRING("check-fail", d.heater.reflector_status);
+    const auto doc = parse(TelemetryFormatter::build_state_json(d, "t", WifiInfo{}));
+    TEST_ASSERT_EQUAL_STRING("check-fail", doc["heater"]["reflector_status"].as<const char*>());
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 9.0F, doc["heater"]["probe_c"].as<float>());
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 5.02F, doc["heater"]["rail_logic_v"].as<float>());
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 5.0F, doc["heater"]["rail_heat_v"].as<float>());
+}
 
 int main(void) {
     UNITY_BEGIN();
@@ -789,7 +838,7 @@ int main(void) {
     RUN_TEST(test_haptic_rain_rolling_rate_event_and_daily);
     RUN_TEST(test_meteorological_formulas);
     RUN_TEST(test_air_quality_pm_only_aqi_nowcast_and_eaqi);
-    RUN_TEST(test_constant_wattage_heater_scaling_across_12_to_32v);
+    RUN_TEST(test_constant_wattage_heater_on_regulated_5v_rail);
     RUN_TEST(test_longevity_sht45_bakeout_and_scd41_extreme_cold_guard);
     RUN_TEST(test_rs485_command_parsing);
     RUN_TEST(test_reboot_and_factory_reset_button_controller);
@@ -800,6 +849,7 @@ int main(void) {
     RUN_TEST(test_pipeline_three_hour_run_trends_history_and_publishers);
     RUN_TEST(test_pipeline_daytime_cloud_cover_rain_lightning_and_thunder);
     RUN_TEST(test_sgp41_gas_index_algorithm_blackout_baseline_event_and_state);
-    RUN_TEST(test_pipeline_gas_source_and_uv_fusion);
+    RUN_TEST(test_pipeline_uv_fusion_and_sgp41_gas_indices);
+    RUN_TEST(test_heater_power_monitor_and_heat_check);
     return UNITY_END();
 }

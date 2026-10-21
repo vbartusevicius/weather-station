@@ -16,7 +16,10 @@ active_variant: v1
 envelope:
   outer_diameter: 96.0
   outer_radius: 48.0
-  total_height: 198.0
+  total_height: 213.0
+  # Everything above the base (pagoda, probe, reflector, struts, crown, dome) is designed in the original frame and
+  # placed `above_base_raise` higher: the base bay grew by 15 mm (taller power/PM/main stack, more airflow room).
+  above_base_raise: 15.0
   wall: 2.0
   mast_socket:
     y_start: 0.0
@@ -26,9 +29,9 @@ envelope:
     cable_pass_through_diameter: 10.0
   base_bay:
     y_start: 32.0
-    y_end: 68.0
+    y_end: 83.0
     floor_y: 34.0
-    ceiling_y: 66.0
+    ceiling_y: 81.0
     inner_diameter: 92.0
   pagoda_shield:
     y_start: 68.0
@@ -68,14 +71,15 @@ enclosure:
 variants:
   v1:
     description: "Monolithic solid-state ultrasonic, haptic-rain & multi-gas air-quality roof weather station (12-32V wired)"
-    boards: [main, crown, reflector, dome, probe]
+    boards: [main, crown, reflector, dome, probe, power]
 
 boards:
   main:
-    plane: horizontal-xz     # enc_x = board_x - 20.5, enc_z = board_y - 28.0, top faces +y
+    plane: horizontal-xz     # enc_x = board_x - 0.5, enc_z = board_y - 26.0 (right half of the bay), top faces +y
     thickness: 1.2
-    y: 46.5                  # board top face y (bottom face at 42.8)
-    max_outline: { width: 41.0, height: 56.0 }
+    y: 56.5                  # board top face y (raised 10 mm with the taller bay: 6.8+ mm above the power board)
+    x_offset: 15.5           # board spans enc x = -0.5..31.5; the PMSA003I lies flat on the left half
+    max_outline: { width: 32.0, height: 52.0 }
     domains:
       SELV-MAIN: all
   crown:
@@ -86,6 +90,15 @@ boards:
     max_outline: { width: 34.0, height: 34.0 }
     domains:
       SELV-CROWN: all
+  power:
+    plane: horizontal-xz     # 28.5 x 30 mm two-rail power supply lying flat 1 mm above the bay floor, under `main`
+    thickness: 1.2
+    y: 41.7                  # board top face y (bottom face at 40.5, 6 mm above the y = 34.5 floor); inductors end at 46.2
+    x_offset: 23.75          # board spans enc x = 9.5..38.0 (clear of the gland locknut, juts past main's edge for J1)
+    z_offset: 1.0            # board spans enc z = -14.0..16.0 (clear of the reset button and main's L2)
+    max_outline: { width: 28.5, height: 30.0 }
+    domains:
+      SELV-POWER: all
   reflector:
     plane: horizontal-xz     # compact 24x24 mm horizontal T-cap directly under the wind-tunnel reflector apex (y = 123.8)
     thickness: 1.2
@@ -114,11 +127,11 @@ boards:
   interconnects:
     - from: main
       to: crown
-      signals: [+5V, +3V3, GND, I2C_SDA, I2C_SCL, US_SEL_A, US_SEL_B, US_TX, US_RX, RAIN_ADC]
+      signals: [+5V, +3V3, GND, I2C_SDA, I2C_SCL, US_SEL_A, US_SEL_B, US_TX, US_RX, RAIN_ADC, +5V_HEAT, GND]
       refs: { main: J2, crown: J1 }
       domain: SELV-MAIN
       type: cable
-      pins: 10
+      pins: 12
       connector_pitch: 1.0
       cable_length_mm: 160.0
     - from: crown
@@ -132,16 +145,25 @@ boards:
       cable_length_mm: 28.0
     - from: main
       to: probe
-      signals: [VIN_PROT, VIN_PROT, HEAT_SW, HEAT_SW, GND, NTC_SENSE, +3V3, GND, I2C_SDA, I2C_SCL]
+      signals: [+5V_HEAT, +5V_HEAT, HEAT_SW, HEAT_SW, GND, NTC_SENSE, +3V3, CO2_HEAT_RTN, I2C_SDA, I2C_SCL]
       refs: { main: J3, probe: J1 }
       domain: SELV-MAIN
       type: cable
       pins: 10
       connector_pitch: 1.0
       cable_length_mm: 60.0
+    - from: main
+      to: power
+      signals: [VIN_PROT, VIN_PROT, GND, GND, +5V, +5V, +5V_HEAT, +5V_HEAT]
+      refs: { main: J5, power: J1 }
+      domain: SELV-MAIN
+      type: cable
+      pins: 8
+      connector_pitch: 1.0
+      cable_length_mm: 60.0
     - from: probe
       to: reflector
-      signals: [VIN_PROT, HEAT_SW, NTC_SENSE, GND]
+      signals: [+5V_HEAT, HEAT_SW, NTC_SENSE, GND]
       refs: { probe: J2, reflector: J1 }
       domain: SELV-PROBE
       type: b2b_header
@@ -160,8 +182,8 @@ terminals:
     board: main
     poles: 6
     pitch: 1.5
-    type: jst-zh-smd (JST B6B-ZR-SM4-TF for Sensirion SEN55-SDN-T)
-    labels: [+5V, GND, I2C_SDA, I2C_SCL, SEL_GND, NC]
+    type: jst-zh-smd (JST B6B-ZR-SM4-TF -> harness -> Plantower PMSA003I 2x5 1.27 mm)
+    labels: [+5V, GND, I2C_SDA, I2C_SCL, NC, NC]
 
 checks:
   component_air_gap: 1.5
@@ -237,25 +259,32 @@ derived:
       - RS485_RO
       - RS485_A
       - RS485_B
-      - BUCK5_SW
-      - BUCK5_BST
-      - BUCK5_EN
-      - BUCK5_FB
       - AS_ACG
       - AS_INP
+      - +5V_HEAT
+      - HEAT_SENSE
+      - CO2_HEAT_RTN
+      - MON_REFL
+      - MON_PROBE
+      - MON_5V
+      - MON_5V_LOGIC
       - Net-*
       MAIN-Power:
       - VIN_RAW
       - VIN_FUSED
       - VIN_PROT
       - HEAT_SW
+      - HEAT_SENSE
+      - CO2_HEAT_RTN
       - +5V
+      - +5V_HEAT
       - +5V_XIAO
     crown:
       SELV-CROWN:
       - GND
       - +3V3
       - +5V
+      - +5V_HEAT
       - I2C_SDA
       - I2C_SCL
       - US_SEL_A
@@ -285,16 +314,17 @@ derived:
       - Net-*
       CROWN-Power:
       - +5V
+      - +5V_HEAT
       - +3V3
     reflector:
       SELV-REFLECTOR:
       - GND
-      - VIN_PROT
+      - +5V_HEAT
       - HEAT_SW
       - NTC_SENSE
       - Net-*
       REFLECTOR-Power:
-      - VIN_PROT
+      - +5V_HEAT
       - HEAT_SW
     dome:
       SELV-DOME:
@@ -309,9 +339,10 @@ derived:
       SELV-PROBE:
       - GND
       - +3V3
-      - VIN_PROT
+      - +5V_HEAT
       - HEAT_SW
       - CO2_HEAT_SW
+      - CO2_HEAT_RTN
       - CO2_NTC
       - CO2_VSET
       - CO2_GATE
@@ -320,8 +351,24 @@ derived:
       - I2C_SCL
       - Net-*
       PROBE-Power:
-      - VIN_PROT
       - HEAT_SW
       - CO2_HEAT_SW
+      - CO2_HEAT_RTN
+      - +5V_HEAT
       - +3V3
+    power:
+      SELV-POWER:
+      - GND
+      - VIN_PROT
+      - +5V
+      - +5V_HEAT
+      - LOGIC_*
+      - HEAT_*
+      - Net-*
+      POWER-Power:
+      - VIN_PROT
+      - +5V
+      - +5V_HEAT
+      - LOGIC_SW
+      - HEAT_SW
 # --- END GENERATED ---

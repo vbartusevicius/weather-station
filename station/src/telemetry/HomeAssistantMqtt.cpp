@@ -64,6 +64,10 @@ constexpr HaSensor kHaSensors[] = {
     {"lightning_distance", "Lightning Distance", "km", "distance", "measurement", "{{ value_json.lightning.distance_km }}"},
     {"lightning_strikes", "Lightning Strikes", "", "", "total_increasing", "{{ value_json.lightning.strikes_total }}"},
     {"vibration", "Ground Vibration", "mm/s", "", "measurement", "{{ value_json.seismic.ppv_mm_s }}"},
+    {"reflector_heater_power", "Reflector Heater Power", "W", "power", "measurement", "{{ value_json.heater.reflector_w }}"},
+    {"reflector_heater_temp", "Reflector Heater Temperature", "°C", "temperature", "measurement", "{{ value_json.heater.reflector_c }}"},
+    {"probe_heater_power", "Probe Heater Power", "W", "power", "measurement", "{{ value_json.heater.probe_w }}"},
+    {"probe_heater_temp", "Probe Heater Zone Temperature", "°C", "temperature", "measurement", "{{ value_json.heater.probe_c }}"},
 };
 constexpr std::size_t kHaSensorCount = sizeof(kHaSensors) / sizeof(kHaSensors[0]);
 
@@ -235,14 +239,10 @@ std::string TelemetryFormatter::build_state_json(const core::DerivedState& d, co
     put(aq, "pm1_0", q.pm1_ug_m3, 1);
     put(aq, "pm2_5", q.pm25_ug_m3, 1);
     put(aq, "pm2_5_raw", q.pm25_raw_ug_m3, 1);
-    put(aq, "pm4_0", q.pm4_ug_m3, 1);
     put(aq, "pm10", q.pm10_ug_m3, 1);
     put(aq, "coarse", q.coarse_ug_m3, 1);
     put(aq, "voc_index", q.voc_index, 0);
     put(aq, "nox_index", q.nox_index, 0);
-    put(aq, "voc_index_sen55", q.voc_index_sen55, 0);
-    put(aq, "nox_index_sen55", q.nox_index_sen55, 0);
-    aq["gas_source"] = q.gas_source;
     aq["gas_learning"] = q.gas_learning;
     put(aq, "co2_ppm", q.co2_ppm, 0);
     put(aq, "aqi", q.aqi, 0);
@@ -273,9 +273,18 @@ std::string TelemetryFormatter::build_state_json(const core::DerivedState& d, co
     JsonObject ht = doc["heater"].to<JsonObject>();
     ht["state"] = h.state;
     put(ht, "vin_v", h.vin_v, 2);
+    put(ht, "rail_heat_v", h.rail_heat_v, 2);
+    put(ht, "rail_logic_v", h.rail_logic_v, 2);
     put(ht, "reflector_c", h.reflector_c, 1);
     putf(ht, "duty_pct", h.duty_pct, 1);
     putf(ht, "power_w", h.power_w, 2);
+    put(ht, "probe_c", h.probe_c, 1);
+    put(ht, "probe_rise_k", h.probe_rise_k, 1);
+    put(ht, "reflector_w", h.reflector_w, 2);
+    put(ht, "probe_w", h.probe_w, 2);
+    ht["probe_on"] = h.probe_on;
+    ht["reflector_status"] = h.reflector_status;
+    ht["probe_status"] = h.probe_status;
 
     std::string out;
     serializeJson(doc, out);

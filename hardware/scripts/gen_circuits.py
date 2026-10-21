@@ -174,11 +174,18 @@ def collect_assembly_parts(variant, spec):
         "source": "AliExpress / Bena Optics / Crystran / Edmund Optics",
     })
     items.append({
-        "item": "Particulate Matter Sensor Module (PM1.0/2.5/4.0/10)",
+        "item": "Particulate Matter Sensor Module (PM1.0/2.5/10)",
         "qty": 1,
-        "part": "Sensirion SEN55-SDN-T (or SEN54-SDN-T) + 6-pin JST-ZH cable",
-        "description": "Laser-scattering PM1.0/PM2.5/PM4.0/10 environmental module seated in the lower intake bay; plugs into main J4",
-        "source": "Sensirion / Digi-Key / Mouser",
+        "part": "Plantower PMSA003I (I2C 0x12, 38.0x35.0x11.8 mm, inlet and fan exhaust on the same face, e.g. Adafruit 4505)",
+        "description": "Lies face-down on the left half of the base.stl bay beside main, openings edge outward (fan toward the rear): the inlet/fan face seals onto two duct chambers whose floor slits draw and exhaust outside air only; held by two snap hooks",
+        "source": "Adafruit / Digi-Key / Mouser / LCSC",
+    })
+    items.append({
+        "item": "PMSA003I harness + duct gasket",
+        "qty": 1,
+        "part": "100 mm 6-wire harness: 6-pin JST-ZH 1.5 mm (ZHR-6) to 2x5 1.27 mm IDC socket (module); 1.5 mm closed-cell EPDM foam strip (1.2 mm wide, on the duct chamber wall tops)",
+        "description": "Harness: main J4 pin 1 +5V -> module pins 1+2 (VCC), 2 GND -> 3+4, 3 SDA -> 9, 4 SCL -> 7; module pins 5/10 (RESET/SET) and 6/8 left open (internal pull-ups). Optional 47 uF/10 V across VCC/GND at the module end (datasheet). The module's connector faces up, next to main J4; the gasket is squeezed to 1.0 mm by the base snap hooks",
+        "source": "LCSC / AliExpress / local hardware",
     })
     items.append({
         "item": "Round Jacketed 10-Core Dismountable JST-SH Cable + Probe Jumper",
@@ -216,9 +223,9 @@ def collect_assembly_parts(variant, spec):
         "source": "Mouser / Digi-Key / LCSC",
     })
     items.append({
-        "item": "3D-printed ASA roof enclosure parts (9-part modular set)",
-        "qty": 9,
-        "part": "enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,strut_cover,crown}.stl",
+        "item": "3D-printed ASA roof enclosure parts (10-part modular set)",
+        "qty": 10,
+        "part": "enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,struts,crown_base,crown}.stl",
         "description": "UV-stabilized white/light-grey ASA (plus TPU 95A for orings.stl), 0.2 mm layers, vapor-smoothed + UV polyurethane topcoat, clamped to mast with 4x M6x25 316-stainless bolts & captured M6 hex nuts",
         "source": "printed",
     })
@@ -226,7 +233,7 @@ def collect_assembly_parts(variant, spec):
         "item": "Non-siloxane polyurethane conformal coating & potting resin",
         "qty": 1,
         "part": "Electrolube URC / Humiseal 1A33 polyurethane coating (-65..+130 C) + 2-part polyurethane resin",
-        "description": "Mask the 6 silkscreened NO-COAT sensor windows (SHT45, SCD41, SGP41, BMP581, LTR-390UV, VEML7700) with Kapton tape; coat both sides of main/crown/probe and pot the probe J1 connector cofferdam cup (NEVER use RTV silicone near SGP41)",
+        "description": "Mask the silkscreened NO-COAT sensor windows (SHT40, SCD41, SGP41, BMP585, dome optics) with Kapton tape; coat both sides of main/crown/probe and pot the probe J1 connector cofferdam cup (NEVER use RTV silicone near the SGP41: its vapours poison the MOx gas sensor)",
         "source": "Mouser / Digi-Key / TME",
     })
     return items

@@ -26,7 +26,7 @@ frame:
     SELV-CROWN:
       - { x0: 0.0, y0: 0.0, x1: 34.0, y1: 34.0 }
   isolators: []
-  power_nets: [+5V, +3V3]
+  power_nets: [+5V, +5V_HEAT, +3V3]
   pours:
     - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 33.5, y1: 33.5 } }
   # Explicit Top Silkscreen (`F.SilkS`) Connector Labels distinguishing the 4 Ultrasonic Wind connectors
@@ -55,6 +55,7 @@ heights:
   J8: 4.25
   J9: 4.25
   J10: 11.5
+  J11: 4.25
   U1: 1.15
   U2: 1.65
   U3: 1.65
@@ -67,7 +68,8 @@ parts:
   #     - `J2..J5` (`US_N, US_E, US_S, US_W`) at the N/E/S/W mid-edges right beside the 4 angled ultrasonic barrels!
   #     - `J6..J9` (`PZ_NE, PZ_NW, PZ_SW, PZ_SE`) near the 4 corners!
   #     - `J10` at exact center (17.0, 17.0) and `J1` (10-pin main cable) at (17.0, 10.2)! ---
-  J1:  { x: 17.0,  y: 10.2,  rot: 0,   block: int_main, locked: true }
+  J1:  { x: 17.0,  y: 10.8,  rot: 0,   block: int_main, locked: true }   # 12-pin (incl. spare +5V_HEAT pair)
+  J11: { x: 5.0,   y: 11.1,  rot: 90,  block: aux_heat, locked: true }   # spare +5V_HEAT outlet
   J10: { x: 17.0,  y: 17.0,  rot: 0,   block: int_dome, locked: true }
 
   # 4x 2-Pin JST-SH Ultrasonic Transducer Headers (`US_N`, `US_E`, `US_S`, `US_W`) on TOP (`F.Cu`)!
@@ -91,7 +93,7 @@ parts:
   R14: { x: 25.5,  y: 20.0,  rot: 0,   block: rain_afe }
   C12: { x: 25.5,  y: 17.5,  rot: 0,   block: rain_afe }
   R15: { x: 25.5,  y: 15.0,  rot: 0,   block: rain_afe }
-  R16: { x: 25.5,  y: 12.5,  rot: 0,   block: rain_afe }
+  R16: { x: 26.8,  y: 12.5,  rot: 0,   block: rain_afe }
   R17: { x: 13.0,  y: 25.0,  rot: 0,   block: rain_afe }
   C13: { x: 13.0,  y: 22.5,  rot: 0,   block: rain_afe }
 

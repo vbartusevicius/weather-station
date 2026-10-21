@@ -29,7 +29,6 @@ constexpr MetricInfo kMetrics[kMetricCount] = {
     {"cloud_pct", "%", Agg::Mean},
     {"pm1", "µg/m³", Agg::Mean},
     {"pm25", "µg/m³", Agg::Mean},
-    {"pm4", "µg/m³", Agg::Mean},
     {"pm10", "µg/m³", Agg::Mean},
     {"co2_ppm", "ppm", Agg::Mean},
     {"voc_index", "", Agg::Mean},

@@ -54,16 +54,14 @@ struct OpticalRaw {          // dome: TSL25911 (vis+NIR, auto-gain), LTR-390 (AL
     Reading<float> guvb_counts;    // range-normalised UV-B counts minus the factory dark offset (diagnostics)
 };
 
-struct AirRaw {              // SEN55 (PM, VOC/NOx index), SGP41 (raw MOx ticks), SCD41 (CO2, in-sensor pressure comp.)
+struct AirRaw {              // PMSA003I (PM1/2.5/10), SGP41 (raw MOx ticks), SCD41 (CO2, in-sensor pressure comp.)
     Reading<float> pm1_ug_m3;
     Reading<float> pm25_ug_m3;
-    Reading<float> pm4_ug_m3;
     Reading<float> pm10_ug_m3;
-    Reading<float> voc_index;      // SEN55 on-module gas index (fallback when the SGP41 is unavailable)
-    Reading<float> nox_index;
     Reading<std::uint16_t> sgp_sraw_voc;  // SGP41 raw VOC ticks, humidity/temperature compensated in-sensor
     Reading<std::uint16_t> sgp_sraw_nox;  // SGP41 raw NOx ticks (invalid during the 10 s conditioning)
     Reading<float> co2_ppm;
+    Reading<float> scd41_temp_c;   // SCD41 on-chip temperature = probe heater zone (heater resistors right behind it)
 };
 
 struct VibrationSecond {     // LSM6DS3 accelerometer, 200 Hz high-passed (gravity removed), 1-s summary
@@ -80,6 +78,10 @@ struct ImuRaw {
 struct PowerRaw {
     Reading<float> vin_v;
     Reading<float> reflector_c;   // reflector heater NTC
+    Reading<float> refl_heater_a; // ADS1115: mean reflector heater current (0.1 ohm shunt, PWM averaged)
+    Reading<float> probe_heater_a;// ADS1115: probe heater current (1 ohm shunt in its return)
+    Reading<float> rail_5v;       // ADS1115 AIN2: +5V_HEAT rail (power board U2) feeding both heaters
+    Reading<float> rail_5v_logic; // ADS1115 AIN3: +5V electronics rail (power board U1)
     bool service_button{false};
     bool rain_adc_ok{false};      // rain AFE sampling is running
 };

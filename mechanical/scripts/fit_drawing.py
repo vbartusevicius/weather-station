@@ -1,5 +1,5 @@
 """Fit drawings (`fit_side.svg` and `fit_top.svg`) verifying all 3 boards (`main`, `crown`, `probe`),
-ultrasonic transducers, piezo rain disc, SEN55 PM module, and 4 airfoil struts inside the cylindrical
+ultrasonic transducers, piezo rain disc, PMSA003I PM module, and 4 airfoil struts inside the cylindrical
 AeroMet roof weather station enclosure."""
 
 from pathlib import Path
@@ -13,13 +13,14 @@ from matplotlib.patches import Circle, Polygon, Rectangle
 
 REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "mechanical/build" / ef.VARIANT
-COLOURS = {"main": "#2e7d32", "crown": "#1565c0", "reflector": "#ad1457", "dome": "#6a1b9a", "probe": "#ef6c00"}
+COLOURS = {"main": "#2e7d32", "crown": "#1565c0", "reflector": "#ad1457", "dome": "#6a1b9a", "probe": "#ef6c00", "power": "#b71c1c"}
 LABELLED = {
-    "main": {"J1", "J2", "J3", "J4", "C1", "U3", "U7", "L2", "SW1", "SEN55_MOD"},
+    "main": {"J1", "J2", "J3", "J4", "J5", "C1", "U3", "U7", "L2", "SW1", "PM_MODULE"},
     "crown": {"J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "U2", "U5", "U6", "XD_N", "XD_S", "PIEZO_NE", "PIEZO_SW"},
     "reflector": {"J1", "R1", "R2", "R3", "R4", "TH1"},
     "dome": {"J1", "U1", "U2", "U3"},
-    "probe": {"J1", "J2", "U1", "U2", "U3", "R1", "R2"},
+    "probe": {"J1", "J2", "U1", "U2", "U3", "U5", "R1", "R2"},
+    "power": {"J1", "U1", "U2", "L1", "L2"},
 }
 
 
@@ -28,7 +29,8 @@ def rect(ax, x, y, w, h, **kw):
 
 
 def side_view():
-    """Vertical cross-section (x vs y) through the full 198 mm height of the station."""
+    """Vertical cross-section (x vs y) through the full height of the station (parts above the base lifted by RAISE)."""
+    up = ef.RAISE
     fig, ax = plt.subplots(figsize=(8, 12))
     r = ef.OUTER_R
     mr = ef.MAST_OD / 2.0
@@ -37,26 +39,27 @@ def side_view():
     # Mast socket + lower electronics bay outline
     rect(ax, -mr, 0, 2 * mr, 32, fill=True, fc="#eceff1", ec="black", lw=1.5)
     rect(ax, -mir, 0, 2 * mir, 30, fill=True, fc="white", ec="grey", ls="--", lw=1.0)
-    rect(ax, -r, 34, 2 * r, 34, fill=True, fc="#f5f5f5", ec="black", lw=1.8)
+    rect(ax, -r, 34, 2 * r, 34 + up, fill=True, fc="#f5f5f5", ec="black", lw=1.8)
 
     # 5-plate passive Stevenson pagoda outline
     for py in ef.SPEC["envelope"]["pagoda_shield"]["plate_ys"]:
+        py += up
         pts = [(-r, py - 3.5), (-18, py + 2.5), (18, py + 2.5), (r, py - 3.5)]
         ax.add_patch(Polygon(pts, closed=True, fc="#eeeeee", ec="black", lw=1.2, alpha=0.7))
 
     # Heated reflector cone + 4 airfoil struts
-    refl = [(-r, 126.0), (0, 130.0), (r, 126.0)]
+    refl = [(-r, 126.0 + up), (0, 130.0 + up), (r, 126.0 + up)]
     ax.add_patch(Polygon(refl, closed=True, fc="#cfd8dc", ec="black", lw=1.5))
     for st in ef.strut_centres():
-        rect(ax, st["x"] - 3.5, 126.0, 7.0, 48.0, fc="#e0e0e0", ec="black", lw=1.0, alpha=0.5)
+        rect(ax, st["x"] - 3.5, 126.0 + up, 7.0, 48.0, fc="#e0e0e0", ec="black", lw=1.0, alpha=0.5)
 
     # Top ultrasonic shroud & sloped rain/UV crown dome
-    crown_pts = [(-r, 174.0), (-r, 190.0), (-4, 198.0), (4, 198.0), (r, 190.0), (r, 174.0)]
+    crown_pts = [(-r, 174.0 + up), (-r, 190.0 + up), (-4, 198.0 + up), (4, 198.0 + up), (r, 190.0 + up), (r, 174.0 + up)]
     ax.add_patch(Polygon(crown_pts, closed=True, fc="#f5f5f5", ec="black", lw=1.8))
 
     # Board slabs and part bounding boxes
     boxes = ef.part_boxes()
-    for board in ("main", "probe", "reflector", "crown", "dome"):
+    for board in ("main", "power", "probe", "reflector", "crown", "dome"):
         c = COLOURS[board]
         for slab in ef.board_slabs(board):
             rect(ax, slab["x0"], slab["y0"], slab["x1"] - slab["x0"], slab["y1"] - slab["y0"],
@@ -99,7 +102,7 @@ def top_view():
 
     # Board outlines and parts in XZ plane
     boxes = ef.part_boxes()
-    for board in ("main", "crown", "reflector", "dome", "probe"):
+    for board in ("main", "power", "crown", "reflector", "dome", "probe"):
         c = COLOURS[board]
         for slab in ef.board_slabs(board):
             rect(ax, slab["x0"], slab["z0"], slab["x1"] - slab["x0"], slab["z1"] - slab["z0"],

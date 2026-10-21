@@ -1,0 +1,73 @@
+frame:
+  size: { x: 28.5, y: 30.0 }
+  copper_layers: 4
+  thickness: 1.2
+  min_drill: 0.2
+  min_track: 0.12
+  edge_clearance: 0.3
+  silk_inside: true
+  fine_pitch_power_pads: [U1, U2, J1]
+  raised_modules: []
+  plane_layers: [In1.Cu]
+  domains: [SELV-POWER]
+  domain_regions:
+    SELV-POWER:
+      - { x0: 0.0, y0: 0.0, x1: 28.5, y1: 30.0 }
+  isolators: []
+  power_nets: [VIN_PROT, +5V, +5V_HEAT, LOGIC_SW, HEAT_SW]
+  pours:
+    - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 28.0, y1: 29.5 } }
+  silk_labels:
+    - { text: "5V",      x: 10.0, y: 14.2, layer: F.SilkS }
+    - { text: "5V HEAT", x: 10.0, y: 29.4, layer: F.SilkS }
+    - { text: "MAIN",    x: 25.2, y: 22.4, layer: F.SilkS }
+
+heights:
+  default: 1.2
+  U1: 1.7
+  U2: 1.7
+  L1: 4.5
+  L2: 4.5
+  J1: 4.25
+  C4: 1.6
+  C5: 1.6
+  C12: 1.6
+  C13: 1.6
+
+parts:
+  # All parts on top (bottom face rests on the base posts 1 mm above the floor). Lower half (enc z -14..0.5):
+  # +5V electronics buck; upper half (enc z 1.5..16): +5V_HEAT heater buck. J1 at the outer edge, past main's edge.
+  J1:  { x: 25.2,  y: 15.0,  rot: 90,  block: int_main, locked: true }
+  U1:  { x: 5.0,   y: 4.0,  rot: 0,   block: buck_logic }
+  L1:  { x: 15.0,  y: 4.2,  rot: 0,   block: buck_logic }
+  C1:  { x: 2.0  , y: 9.0  , rot: 90 , block: buck_logic }
+  C4:  { x: 20.6 , y: 2.7  , rot: 90 , block: buck_logic }
+  C5:  { x: 20.6 , y: 7.7  , rot: 90 , block: buck_logic }
+  C3:  { x: 5.0  , y: 9.0  , rot: 0  , block: buck_logic }
+  C2:  { x: 8.2  , y: 9.0  , rot: 0  , block: buck_logic }
+  R3:  { x: 11.4 , y: 9.0  , rot: 0  , block: buck_logic }
+  R4:  { x: 14.6 , y: 9.0  , rot: 0  , block: buck_logic }
+  C6:  { x: 17.8 , y: 9.0  , rot: 0  , block: buck_logic }
+  R1:  { x: 5.0  , y: 11.6 , rot: 0  , block: buck_logic }
+  R2:  { x: 8.2  , y: 11.6 , rot: 0  , block: buck_logic }
+  R5:  { x: 11.4 , y: 11.6 , rot: 0  , block: buck_logic }
+  R6:  { x: 14.6 , y: 11.6 , rot: 0  , block: buck_logic }
+  C7:  { x: 17.8 , y: 11.6 , rot: 0  , block: buck_logic }
+  C8:  { x: 2.0  , y: 12.6 , rot: 90 , block: buck_logic }
+
+  U2:  { x: 5.0,   y: 19.5,  rot: 0,   block: buck_heat }
+  L2:  { x: 15.0,  y: 19.7,  rot: 0,   block: buck_heat }
+  C9:  { x: 2.0  , y: 24.5 , rot: 90 , block: buck_heat }
+  C12: { x: 20.6 , y: 18.2 , rot: 90 , block: buck_heat }
+  C13: { x: 20.6 , y: 23.2 , rot: 90 , block: buck_heat }
+  C11: { x: 5.0  , y: 24.5 , rot: 0  , block: buck_heat }
+  C10: { x: 8.2  , y: 24.5 , rot: 0  , block: buck_heat }
+  R9:  { x: 11.4 , y: 24.5 , rot: 0  , block: buck_heat }
+  R10: { x: 14.6 , y: 24.5 , rot: 0  , block: buck_heat }
+  C14: { x: 17.8 , y: 24.5 , rot: 0  , block: buck_heat }
+  R7:  { x: 5.0  , y: 27.1 , rot: 0  , block: buck_heat }
+  R8:  { x: 8.2  , y: 27.1 , rot: 0  , block: buck_heat }
+  R11: { x: 11.4 , y: 27.1 , rot: 0  , block: buck_heat }
+  R12: { x: 14.6 , y: 27.1 , rot: 0  , block: buck_heat }
+  C15: { x: 17.8 , y: 27.1 , rot: 0  , block: buck_heat }
+  C16: { x: 2.0  , y: 28.1 , rot: 90 , block: buck_heat }

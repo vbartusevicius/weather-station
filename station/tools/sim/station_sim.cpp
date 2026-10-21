@@ -85,7 +85,7 @@ struct Scenario {
     double wind_ms, gustiness, wind_dir;
     double cloud_pct;            // daytime cloud cover
     double night_lux;            // sky illuminance when the sun is down
-    double pm25, pm10, voc, nox, co2;
+    double pm25, pm10, co2;
     double rain_mm_h;            // rain rate during the active window
     std::int64_t rain_window_s;  // rain for the last N seconds
     double hail_mm_h;
@@ -106,7 +106,7 @@ Scenario make(const std::string& n) {
     s.temp_c = 15.5; s.temp_amp = 4.0; s.rh = 56; s.qnh = 1016.5; s.qnh_trend_per_h = 0.05;
     s.wind_ms = 4.2; s.gustiness = 0.35; s.wind_dir = 225;
     s.cloud_pct = 25; s.night_lux = 0.004;
-    s.pm25 = 6.2; s.pm10 = 12.8; s.voc = 98; s.nox = 2; s.co2 = 418;
+    s.pm25 = 6.2; s.pm10 = 12.8; s.co2 = 418;
     s.ripple_pa = 0.12;
     if (n == "storm") {
         s.name = "storm";
@@ -114,7 +114,7 @@ Scenario make(const std::string& n) {
         s.temp_c = 22.0; s.temp_amp = 3.0; s.rh = 86; s.qnh = 1002.0; s.qnh_trend_per_h = -1.1;
         s.wind_ms = 9.5; s.gustiness = 0.55; s.wind_dir = 250;
         s.cloud_pct = 96;
-        s.pm25 = 4.0; s.pm10 = 9.0; s.voc = 110; s.nox = 3; s.co2 = 425;
+        s.pm25 = 4.0; s.pm10 = 9.0; s.co2 = 425;
         s.rain_mm_h = 32.0; s.rain_window_s = 50 * 60; s.hail_mm_h = 6.0; s.hail_window_s = 12 * 60;
         s.strikes_per_10min = 9; s.storm_km = 4.5; s.ripple_pa = 0.6;
     } else if (n == "freeze") {
@@ -123,21 +123,21 @@ Scenario make(const std::string& n) {
         s.temp_c = -4.0; s.temp_amp = 1.2; s.rh = 97; s.qnh = 1029.0; s.qnh_trend_per_h = 0.4;
         s.wind_ms = 1.6; s.gustiness = 0.25; s.wind_dir = 90;
         s.cloud_pct = 92;
-        s.pm25 = 14.0; s.pm10 = 22.0; s.voc = 120; s.nox = 9; s.co2 = 432;
+        s.pm25 = 14.0; s.pm10 = 22.0; s.co2 = 432;
     } else if (n == "heatwave") {
         s.name = "heatwave";
         s.end_unix = local_to_unix(2025, 7, 20, 14, 0);
         s.temp_c = 29.0; s.temp_amp = 5.5; s.rh = 34; s.qnh = 1012.0; s.qnh_trend_per_h = -0.15;
         s.wind_ms = 2.6; s.gustiness = 0.4; s.wind_dir = 180;
         s.cloud_pct = 4;
-        s.pm25 = 11.0; s.pm10 = 24.0; s.voc = 140; s.nox = 6; s.co2 = 410;
+        s.pm25 = 11.0; s.pm10 = 24.0; s.co2 = 410;
     } else if (n == "plume") {
         s.name = "plume";
         s.end_unix = local_to_unix(2025, 11, 5, 12, 0);
         s.temp_c = 6.0; s.temp_amp = 1.5; s.rh = 80; s.qnh = 1024.0; s.qnh_trend_per_h = 0.0;
         s.wind_ms = 0.9; s.gustiness = 0.3; s.wind_dir = 135;
         s.cloud_pct = 70;
-        s.pm25 = 46.0; s.pm10 = 68.0; s.voc = 260; s.nox = 180; s.co2 = 515;
+        s.pm25 = 46.0; s.pm10 = 68.0; s.co2 = 515;
         s.sgp_voc_event = -330.0; s.sgp_nox_event = 4600.0; s.gas_event_s = 45 * 60;
     } else if (n == "train") {
         s.name = "train";
@@ -145,7 +145,7 @@ Scenario make(const std::string& n) {
         s.temp_c = 16.0; s.temp_amp = 4.0; s.rh = 58; s.qnh = 1014.6; s.qnh_trend_per_h = 0.1;
         s.wind_ms = 2.2; s.gustiness = 0.3; s.wind_dir = 180;
         s.cloud_pct = 35;
-        s.pm25 = 9.4; s.pm10 = 24.0; s.voc = 112; s.nox = 14; s.co2 = 422;
+        s.pm25 = 9.4; s.pm10 = 24.0; s.co2 = 422;
         s.train = true;
     } else if (n == "night_dark") {
         s.name = "night_dark";
@@ -153,14 +153,14 @@ Scenario make(const std::string& n) {
         s.temp_c = 5.0; s.temp_amp = 3.0; s.rh = 84; s.qnh = 1021.0; s.qnh_trend_per_h = 0.1;
         s.wind_ms = 1.1; s.gustiness = 0.3; s.wind_dir = 315;
         s.cloud_pct = 10; s.night_lux = 0.0011;
-        s.pm25 = 5.0; s.pm10 = 9.0; s.voc = 90; s.nox = 1; s.co2 = 421;
+        s.pm25 = 5.0; s.pm10 = 9.0; s.co2 = 421;
     } else if (n == "night_moon") {
         s.name = "night_moon";
         s.end_unix = local_to_unix(2025, 10, 7, 0, 30);  // full moon
         s.temp_c = 9.0; s.temp_amp = 3.0; s.rh = 90; s.qnh = 1009.0; s.qnh_trend_per_h = -0.4;
         s.wind_ms = 2.0; s.gustiness = 0.35; s.wind_dir = 200;
         s.cloud_pct = 60; s.night_lux = 0.12;
-        s.pm25 = 7.0; s.pm10 = 13.0; s.voc = 95; s.nox = 2; s.co2 = 424;
+        s.pm25 = 7.0; s.pm10 = 13.0; s.co2 = 424;
     }
     return s;
 }
@@ -293,11 +293,10 @@ private:
         const double aq = 1.0 + 0.15 * smooth(t, 3600, 12) + 0.05 * smooth(t, 120, 13);
         raw_.air.pm1_ug_m3.set(static_cast<float>(sc_.pm25 * 0.6 * aq), now);
         raw_.air.pm25_ug_m3.set(static_cast<float>(sc_.pm25 * aq), now);
-        raw_.air.pm4_ug_m3.set(static_cast<float>(sc_.pm25 * 1.3 * aq), now);
         raw_.air.pm10_ug_m3.set(static_cast<float>(sc_.pm10 * aq), now);
-        raw_.air.voc_index.set(static_cast<float>(sc_.voc * (1.0 + 0.08 * smooth(t, 900, 14))), now);
-        raw_.air.nox_index.set(static_cast<float>(std::max(1.0, sc_.nox * (1.0 + 0.1 * smooth(t, 900, 15)))), now);
         raw_.air.co2_ppm.set(static_cast<float>(sc_.co2 + 6.0 * smooth(t, 600, 16)), now);
+        // SCD41 sits on the probe heater zone: the analog thermostat holds it at +8 C in the cold, else ~0.4 K self-heating
+        raw_.air.scd41_temp_c.set(static_cast<float>(std::max(8.0 + 0.3 * smooth(t, 300, 25), temp + 0.4)), now);
 
         // SGP41 raw ticks: sensor baseline with realistic noise/drift; events only near "now" (the gas
         // index is relative to the site's own last ~24 h, so a permanent level would read as normal).
@@ -330,6 +329,11 @@ private:
         raw_.power.vin_v.set(24.1F, now);
         raw_.power.reflector_c.set(static_cast<float>(temp + (derived_.heater.power_w > 0.0F ? 5.0 : 1.0)), now);
         raw_.power.rain_adc_ok = true;
+        // Heater power monitor (ADS1115): reflector mean current = duty x 4.95 V / 6.75 ohm; probe heater 83 mA below +8 C
+        raw_.power.refl_heater_a.set(static_cast<float>(derived_.heater.duty_pct / 100.0 * 4.95 / 6.75), now);
+        raw_.power.probe_heater_a.set(temp < 8.0 ? 0.0833F : 0.0F, now);
+        raw_.power.rail_5v.set(4.95F, now);
+        raw_.power.rail_5v_logic.set(5.01F, now);
 
         // ---- rain & hail impacts (deterministic Poisson-like arrivals) ----
         if (raining) {

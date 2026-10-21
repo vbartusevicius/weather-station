@@ -126,16 +126,12 @@ struct RainDerived {
 struct AirDerived {
     Value<float> pm1_ug_m3;
     Value<float> pm25_ug_m3;         // humidity-corrected ("dry")
-    Value<float> pm25_raw_ug_m3;     // as reported by the SEN55
-    Value<float> pm4_ug_m3;
+    Value<float> pm25_raw_ug_m3;     // as reported by the PMSA003I
     Value<float> pm10_ug_m3;         // humidity-corrected
     Value<float> coarse_ug_m3;       // PM10 - PM2.5 (pollen, spores, dust)
-    Value<float> voc_index;          // Sensirion gas index: SGP41 + gas index algorithm, else SEN55
-    Value<float> nox_index;
-    Value<float> voc_index_sen55;    // cross-check / fallback
-    Value<float> nox_index_sen55;
-    const char* gas_source{"—"};     // "SGP41" or "SEN55"
-    bool gas_learning{false};        // SGP41 algorithm still in its initial learning phase
+    Value<float> voc_index;          // SGP41 + Sensirion gas index algorithm (1..500, 100 = typical for this site)
+    Value<float> nox_index;          // (1..500, 1 = clean baseline)
+    bool gas_learning{false};        // gas index algorithm still in its initial learning phase
     Value<float> co2_ppm;
     Value<float> aqi;                // US EPA AQI from NowCast PM2.5 / PM10
     Value<float> eaqi;               // European AQI band 1..6 from 24-h PM means
@@ -165,14 +161,24 @@ struct SeismicDerived {
 struct HeaterDerived {
     std::uint8_t state{0};
     Value<float> vin_v;
+    Value<float> rail_heat_v;        // +5V_HEAT (heaters)
+    Value<float> rail_logic_v;       // +5V (electronics)
     Value<float> reflector_c;
     float duty_pct{0.0F};
-    float power_w{0.0F};
+    float power_w{0.0F};             // reflector heater, set point: duty x V5^2 / 6.75 ohm
+    Value<float> probe_c;            // probe heater zone (SCD41 on-chip temperature; analog +8 C thermostat)
+    Value<float> probe_rise_k;       // probe heater zone minus air temperature
+    Value<float> reflector_w;        // measured: +5V x mean shunt current
+    Value<float> probe_w;            // measured: +5V x shunt current
+    bool probe_on{false};            // probe thermostat is heating (current > 20 mA)
+    const char* reflector_status{"—"};  // ok / open / stuck-on / check-running / check-pass / check-fail
+    const char* probe_status{"—"};      // ok / heating / stuck-on / not-heating
 };
 
 // Commands from processors back to the acquisition layer.
 struct Controls {
     float heater_duty_pct{0.0F};
+    bool heater_check{false};        // HEAT_CHECK self-test running (fixed 2 W reflector pulse)
     bool sht_bakeout{false};         // run the SHT40 200 mW heater pulse now
     bool scd41_pause{false};         // stop SCD41 periodic measurement (extreme cold)
     bool thermo_locked{false};       // ignore SHT40 values (post-bake-out cool-down)

@@ -1,11 +1,15 @@
 """Pagoda Probe board circuit blocks (vertical stem of the T-assembly):
   - U3 (bottom intake zone, below milled slot): Sensirion SHT45-AD1F-R2 +/-0.1 C / +/-1.0% RH sensor (I2C 0x44)
   - U1 (middle zone, above milled slot): Sensirion SCD41-D-R2 photoacoustic true CO2 sensor (I2C 0x62)
-  - Backside Closed-Loop Regulated 0.5 W Local Heater (B.Cu directly behind U1 SCD41 pad 21):
-    * R1, R2: 2x 470R 1206 0.25 W resistors wired in PARALLEL (0.50 W rated total, 235 Ohm net, full redundancy)
+  - Backside Closed-Loop Regulated 0.42 W Local Heater (B.Cu directly behind U1 SCD41 pad 21):
+    * R1, R2: 2x 120R 1206 0.25 W resistors in PARALLEL on the regulated +5V_HEAT rail (60 Ohm, 0.42 W, 83 % of rating each);
+      the heater current returns to main over CO2_HEAT_RTN through the 1 ohm monitor shunt (ADS1115 on main)
     * TH1: SDNT1608X103F3950FTF 10k 1% B=3950K NTC thermistor right between R1 & R2 on back of SCD41
     * U4 (LM393DR2G) + Q1 (AO3400A): Closed-loop analog thermostat regulating SCD41 backside to +8 C during extreme cold
+      (R7 470k positive feedback gives ~0.4 K hysteresis so the comparator does not chatter)
   - U2 (upper zone): Sensirion SGP41-D-R4 MOX multi-gas VOC Index + NOx Index sensor (I2C 0x59)
+  - U5 (upper zone, next to U2): Bosch BMP585 gel-filled barometer (I2C 0x47) in the vented probe chamber,
+    close to outside air for thunder pressure-wave timing
 """
 
 from builtins import NC
@@ -20,17 +24,19 @@ FP_SCD41 = "gateway_fp:Sensirion_SCD41_LGA-20"
 FP_SHT45 = "gateway_fp:Sensirion_SHT45_DFN-4"
 FP_LM393 = "gateway_fp:ON_LM393DR2G_SOIC-8"
 FP_AO3400 = "gateway_fp:AOS_AO3400A_SOT-23"
+FP_SGP41 = "gateway_fp:Sensirion_SGP41_DFN-6"
+FP_BMP585 = "gateway_fp:Bosch_BMP585_LGA-9"
 
 
-def res(value, fields=None, footprint=R0603):
-    return part("Device", "R", value, footprint, fields)
+def res(value, fields=None, footprint=R0603, ref=None):
+    return part("Device", "R", value, footprint, fields, ref=ref)
 
 
-def cap(value, fields=None, footprint=C0603):
-    return part("Device", "C", value, footprint, fields)
+def cap(value, fields=None, footprint=C0603, ref=None):
+    return part("Device", "C", value, footprint, fields, ref=ref)
 
 
-def build(gnd, v3, sda, scl, vin_prot):
+def build(gnd, v3, sda, scl, v5, heat_rtn):
     # --- U1: Sensirion SCD41-D-R2 True CO2 Sensor (I2C 0x62) ---
     block("air_quality")
     u1 = part("gateway", "SCD41", "SCD41-D-R2", FP_SCD41,
@@ -52,19 +58,19 @@ def build(gnd, v3, sda, scl, vin_prot):
     c_scd2[1] += v3
     c_scd2[2] += gnd
 
-    # --- Backside 0.5 W Parallel Redundant Heater + Closed-Loop NTC Thermostat Behind SCD41 ---
+    # --- Backside 0.42 W Parallel Redundant Heater (+5V_HEAT) + Closed-Loop NTC Thermostat Behind SCD41 ---
     block("co2_back_heater")
     co2_sw = Net("CO2_HEAT_SW")
     co2_ntc = Net("CO2_NTC")
     co2_vset = Net("CO2_VSET")
     co2_gate = Net("CO2_GATE")
 
-    # 2x 470R 1206 0.25 W resistors in PARALLEL (0.50 W total rated capacity, 235 Ohm net, full redundancy)
-    r1 = res("470R", src(source="Parallel 0.25 W 1206 backside heater 1 directly behind SCD41 pad 21"), footprint=R1206)
-    r2 = res("470R", src(source="Parallel 0.25 W 1206 backside heater 2 directly behind SCD41 pad 21"), footprint=R1206)
-    r1[1] += vin_prot
+    # 2x 120R 1206 0.25 W resistors in PARALLEL on +5V_HEAT (60 Ohm, 0.42 W total, 0.21 W each, independent of 12-32 V)
+    r1 = res("120R", src(source="Parallel 0.25 W 1206 backside heater 1 directly behind SCD41 pad 21"), footprint=R1206)
+    r2 = res("120R", src(source="Parallel 0.25 W 1206 backside heater 2 directly behind SCD41 pad 21"), footprint=R1206)
+    r1[1] += v5
     r1[2] += co2_sw
-    r2[1] += vin_prot
+    r2[1] += v5
     r2[2] += co2_sw
 
     # TH1: 10k 1% B3950 NTC thermistor on B.Cu right between R1 and R2 measuring SCD41 backside temperature
@@ -111,12 +117,15 @@ def build(gnd, v3, sda, scl, vin_prot):
                   source="Low-side MOSFET switching the parallel 0.5 W SCD41 backside heater array"),
               ref="Q1")
     q1["1"] += co2_gate
-    q1["2"] += gnd
+    q1["2"] += heat_rtn   # source -> CO2_HEAT_RTN -> 1 ohm monitor shunt on main
     q1["3"] += co2_sw
+    r_hyst = res("470k", src(source="Thermostat positive feedback (OUT -> IN+, ~0.4 K hysteresis)"), ref="R7")
+    r_hyst[1] += co2_gate
+    r_hyst[2] += co2_ntc
 
     # --- U2: Sensirion SGP41-D-R4 VOC + NOx Index Sensor (I2C 0x59) ---
     block("air_quality")
-    u2 = part("gateway", "SGP41", "SGP41-D-R4", "gateway_fp:Sensirion_SGP41_DFN-6",
+    u2 = part("gateway", "SGP41", "SGP41-D-R4", FP_SGP41,
               src(mpn="SGP41-D-R4", mfr="Sensirion", lcsc="C3659325",
                   source="Sensirion SGP41-D-R4 MOX VOC + NOx multi-gas sensor (I2C 0x59)"),
               ref="U2")
@@ -145,3 +154,22 @@ def build(gnd, v3, sda, scl, vin_prot):
     c_sht = cap("100n 50V", src(source="SHT45 decoupling"))
     c_sht[1] += v3
     c_sht[2] += gnd
+
+    # --- U5: Bosch BMP585 Barometer (I2C 0x47: SDO=VDDIO, CSB=VDDIO -> I2C mode) ---
+    block("baro")
+    u5 = part("gateway", "BMP585", "BMP585", FP_BMP585,
+              src(mpn="BMP585", mfr="Bosch Sensortec", lcsc="C18184976",
+                  source="Bosch BMP585 gel-filled liquid-resistant barometer (-40..+85 C, <0.1 Pa RMS, I2C 0x47)"),
+              ref="U5")
+    u5["1"] += scl    # SCX
+    u5["2"] += sda    # SDX
+    u5["3"] += v3     # SDO -> high = 0x47
+    u5["4"] += v3     # VDDIO
+    u5["5"] += NC     # INT (FIFO polled over I2C)
+    u5["6"] += gnd    # VSSIO/VSS
+    u5["7"] += v3     # CSB -> high = I2C mode
+    u5["8"] += v3     # VDD
+    u5["9"] += NC     # laser-mark pad, solder-resist covered
+    c_bmp = cap("100n 50V", src(source="BMP585 VDD/VDDIO decoupling"))
+    c_bmp[1] += v3
+    c_bmp[2] += gnd

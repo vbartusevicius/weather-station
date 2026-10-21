@@ -191,10 +191,9 @@ function openInspectModal(kind, d) {
     rows = [
       ["US AQI (NowCast PM) / EU EAQI band", `${fv(q.aqi, 0)} ${q.level} / ${fv(q.eaqi, 0)}`],
       ["PM2.5 dry / raw (humidity correction)", `${fv(q.pm2_5, 1)} / ${fv(q.pm2_5_raw, 1, " µg/m³")}`],
-      ["PM1.0 / PM4.0 / PM10", `${fv(q.pm1_0, 1)} / ${fv(q.pm4_0, 1)} / ${fv(q.pm10, 1, " µg/m³")}`],
+      ["PM1.0 / PM10 (PMSA003I)", `${fv(q.pm1_0, 1)} / ${fv(q.pm10, 1, " µg/m³")}`],
       ["CO₂ (SCD41, pressure-compensated in sensor)", fv(q.co2_ppm, 0, " ppm")],
-      ["VOC / NOx index (relative to this site's last ~24 h)", `${fv(q.voc_index, 0)} / ${fv(q.nox_index, 0)} · ${q.gas_source}${q.gas_learning ? " (learning)" : ""}`],
-      ["SEN55 cross-check VOC / NOx", `${fv(q.voc_index_sen55, 0)} / ${fv(q.nox_index_sen55, 0)}`],
+      ["VOC / NOx index (SGP41, relative to this site's last ~24 h)", `${fv(q.voc_index, 0)} / ${fv(q.nox_index, 0)}${q.gas_learning ? " (learning)" : ""}`],
       ["Lightning: last hour / today / total", `${l.strikes_1h} / ${l.strikes_today} / ${l.strikes_total}`],
       ["Distance (method) / closest 1 h", `${fv(l.distance_km, 2, " km")} (${l.method}) / ${fv(l.closest_1h_km, 1, " km")}`],
     ];
@@ -668,7 +667,6 @@ function applyTelemetry(d) {
   };
   bar("aq-pm1", "b-pm1", q.pm1_0, 25, 10);
   bar("aq-pm25", "b-pm25", q.pm2_5, 35, 15);
-  bar("aq-pm4", "b-pm4", q.pm4_0, 50, 25);
   bar("aq-pm10", "b-pm10", q.pm10, 90, 45);
   bar("aq-bio", "b-bio", q.coarse, 45, 20);
   setText("aq-co2", fv(q.co2_ppm, 0, " ppm"));
@@ -686,9 +684,9 @@ function applyTelemetry(d) {
   setText("twin-vin-badge", `${fv(h.vin_v, 1, " V")} · ${h.state === 1 ? `DE-ICING ${h.power_w.toFixed(1)} W` : "Heater Standby"}`);
   setText("tw-dome", `UV ${fv(uvi, 1)} · ${fv(s.irradiance_w_m2, 0, " W/m²")}`);
   setText("tw-crown", `c = ${fv(w.sound_m_s, 1, " m/s")}`);
-  setText("tw-heater", `${fv(h.reflector_c, 1, " °C")} · ${h.power_w.toFixed(1)} W`);
-  setText("tw-probe", `${fv(e.temp_c, 1, " °C")} · ${fv(q.co2_ppm, 0, " ppm CO₂")}`);
-  setText("tw-main", `${d.wifi.rssi_dbm} dBm · ${fv(h.vin_v, 1, " V")}`);
+  setText("tw-heater", `${fv(h.reflector_c, 1, " °C")} · ${fv(h.reflector_w, 1, " W")} measured`);
+  setText("tw-probe", `${fv(e.temp_c, 1, " °C")} · ${fv(q.co2_ppm, 0, " ppm CO₂")} · heater ${fv(h.probe_c, 1, " °C")} ${fv(h.probe_w, 2, " W")}`);
+  setText("tw-main", `${d.wifi.rssi_dbm} dBm · ${fv(h.vin_v, 1, " V")} in · 5V ${fv(h.rail_logic_v, 2)} / heat ${fv(h.rail_heat_v, 2)}`);
   setText("cv-solar", isNum(e.solar_offset_c) ? `-${e.solar_offset_c.toFixed(2)} °C` : "—");
   el("cb-solar").style.width = `${clampPct(e.solar_offset_c, 0, 1.5).toFixed(0)}%`;
   setText("cv-bern", isNum(e.pressure_wind_corr_hpa) ? `+${e.pressure_wind_corr_hpa.toFixed(2)} hPa` : "—");
@@ -698,7 +696,7 @@ function applyTelemetry(d) {
   el("cb-fog").style.width = `${((pmRat || 1) * 100).toFixed(0)}%`;
   setText("cv-tof", isNum(w.sound_m_s) ? `${w.sound_m_s.toFixed(1)} m/s → ${fv(w.acoustic_temp_c, 1, " °C")}` : "—");
   el("cb-tof").style.width = `${clampPct(w.sound_m_s, 320, 360).toFixed(0)}%`;
-  setText("cv-heater", `${h.duty_pct.toFixed(1)} % (${h.power_w.toFixed(1)} W / 4.0 W)`);
+  setText("cv-heater", `${h.duty_pct.toFixed(1)} % (${h.power_w.toFixed(1)} W set, ${fv(h.reflector_w, 1, " W")} measured, ${h.reflector_status})`);
   el("cb-heater").style.width = `${Math.max(2, h.duty_pct).toFixed(0)}%`;
 }
 

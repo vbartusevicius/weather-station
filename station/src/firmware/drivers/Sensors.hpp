@@ -60,20 +60,41 @@ private:
     bool running_{false};
 };
 
-struct Sen55Data {
-    core::Value<float> pm1, pm25, pm4, pm10, rh, temp_c, voc, nox;
+struct PmData {
+    float pm1{0.0F}, pm25{0.0F}, pm10{0.0F};  // ug/m3, "atmospheric environment" values (outdoor)
 };
 
-// Sensirion SEN55: PM1/2.5/4/10 + VOC / NOx index (Sensirion gas-index algorithm runs in-module).
-class Sen55 {
+// Plantower PMSA003I laser particle counter (I2C 0x12, 100 kHz, 5 V fan) in the sealed base pod: PM1.0 / PM2.5 / PM10.
+// One 32-byte frame per read: 0x42 0x4D, length 28, 13 data words, checksum = sum of the first 30 bytes.
+class Pmsa003i {
 public:
-    bool begin(I2cBus& bus, std::uint8_t addr);
-    bool read(Sen55Data& out);
+    static constexpr std::uint32_t kWarmupMs = 30000;  // datasheet: stable data >= 30 s after fan start
+
+    bool begin(I2cBus& bus, std::uint8_t addr, std::uint32_t now_ms);
+    bool read(std::uint32_t now_ms, PmData& out);
     bool present() const { return present_; }
 
 private:
     I2cBus::Device dev_;
     bool present_{false};
+    std::uint32_t started_ms_{0};
+};
+
+// TI ADS1115 (main U4, I2C 0x48): heater power monitor. Single-shot, single-ended conversions at 16 SPS: the
+// delta-sigma conversion integrates over 62.5 ms, averaging the 1 kHz reflector-heater PWM (with the R/C filters).
+class Ads1115 {
+public:
+    enum class Range : std::uint8_t { Fs256mV = 0b101, Fs4096mV = 0b001 };
+
+    bool begin(I2cBus& bus, std::uint8_t addr);
+    bool start(std::uint8_t channel, Range range);   // AIN0..AIN3 against GND
+    bool read(float& volts);                         // result of the last start() (>= 63 ms later)
+    bool present() const { return present_; }
+
+private:
+    I2cBus::Device dev_;
+    bool present_{false};
+    float fs_v_{0.256F};
 };
 
 // Sensirion SGP41 on the probe: raw VOC / NOx MOx ticks at 1 Hz, humidity/temperature compensated

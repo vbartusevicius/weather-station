@@ -24,6 +24,7 @@ BOARD_REF_OFFSET = {
     "reflector": 200,
     "dome": 300,
     "probe": 400,
+    "power": 500,
 }
 
 
@@ -248,8 +249,8 @@ def build_panel(
             combined_parts.append(cp)
 
     mb_coords: list[tuple[float, float]] = []
-    # 1. Horizontal mouse-bite tabs along bottom row: main <-> crown <-> reflector
-    horiz_placements = [p for p in placements if p[0] in ("main", "crown", "reflector")]
+    # 1. Horizontal mouse-bite tabs along bottom row: main <-> crown <-> reflector <-> power
+    horiz_placements = [p for p in placements if p[0] in ("main", "crown", "reflector", "power")]
     for i in range(len(horiz_placements) - 1):
         l_name, _, _, lx0, ly0, lw, lh = horiz_placements[i]
         _, _, _, rx0, ry0, _rw, rh = horiz_placements[i + 1]

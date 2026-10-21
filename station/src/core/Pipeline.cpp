@@ -23,6 +23,10 @@ constexpr std::uint32_t kOpticalMaxAgeMs = 5000;
 constexpr std::uint32_t kAirMaxAgeMs = 60000;
 constexpr std::uint32_t kImuMaxAgeMs = 3000;
 constexpr std::uint32_t kPowerMaxAgeMs = 5000;
+constexpr float kReflectorOhm = heater::DeIcingHeaterController::kHeaterResistanceOhm;  // 4x 27 ohm on +5V
+constexpr float kHeaterCheckW = 2.0F;
+constexpr float kProbeHeaterOnA = 0.02F;    // probe heater draws 83 mA from +5V when on
+constexpr float kProbeSetpointC = 8.0F;
 
 constexpr float kG = 9.80665F;
 constexpr float kLuxPerWm2 = 122.0F;     // luminous efficacy of global daylight (lm/W)
@@ -506,7 +510,6 @@ void Pipeline::process_air(const RawState& raw, DerivedState& d) {
     const float rh = d.thermo.rh_pct.ok ? d.thermo.rh_pct.v : 50.0F;
     using airquality::AirQualityEvaluator;
     if (in.pm1_ug_m3.fresh(now, kAirMaxAgeMs)) a.pm1_ug_m3.set(in.pm1_ug_m3.value);
-    if (in.pm4_ug_m3.fresh(now, kAirMaxAgeMs)) a.pm4_ug_m3.set(in.pm4_ug_m3.value);
     if (in.pm25_ug_m3.fresh(now, kAirMaxAgeMs)) {
         a.pm25_raw_ug_m3.set(in.pm25_ug_m3.value);
         a.pm25_ug_m3.set(AirQualityEvaluator::compensate_pm_hygroscopic_growth(in.pm25_ug_m3.value, rh));
@@ -517,8 +520,7 @@ void Pipeline::process_air(const RawState& raw, DerivedState& d) {
     if (a.pm25_ug_m3.ok && a.pm10_ug_m3.ok) {
         a.coarse_ug_m3.set(std::max(0.0F, a.pm10_ug_m3.v - a.pm25_ug_m3.v));
     }
-    // VOC / NOx: SGP41 raw ticks through Sensirion's gas index algorithm (exactly one new sample per
-    // second), SEN55 on-module indices as fallback and cross-check.
+    // VOC / NOx: SGP41 raw ticks through Sensirion's gas index algorithm, exactly one new sample per second.
     if (in.sgp_sraw_voc.fresh(now, 3000)) {
         const std::uint32_t t = in.sgp_sraw_voc.t_ms;
         if (sgp_seen_ && t - last_sgp_ms_ > 600000U) {
@@ -533,19 +535,7 @@ void Pipeline::process_air(const RawState& raw, DerivedState& d) {
         float v = 0.0F;
         if (gas_.voc(v)) a.voc_index.set(v);
         if (gas_.nox(v)) a.nox_index.set(v);
-        if (a.voc_index.ok) {
-            a.gas_source = "SGP41";
-            a.gas_learning = gas_.learning();
-        }
-    }
-    if (in.voc_index.fresh(now, kAirMaxAgeMs)) a.voc_index_sen55.set(in.voc_index.value);
-    if (in.nox_index.fresh(now, kAirMaxAgeMs)) a.nox_index_sen55.set(in.nox_index.value);
-    if (!a.voc_index.ok && a.voc_index_sen55.ok) {
-        a.voc_index = a.voc_index_sen55;
-        a.gas_source = "SEN55";
-    }
-    if (!a.nox_index.ok && a.nox_index_sen55.ok) {
-        a.nox_index = a.nox_index_sen55;
+        a.gas_learning = gas_.learning();
     }
     if (in.co2_ppm.fresh(now, kAirMaxAgeMs)) a.co2_ppm.set(in.co2_ppm.value);
 
@@ -662,15 +652,68 @@ void Pipeline::process_heater(const RawState& raw, DerivedState& d) {
     const bool ntc_ok = raw.power.reflector_c.fresh(raw.now_ms, kPowerMaxAgeMs);
     if (vin_ok) h.vin_v.set(raw.power.vin_v.value);
     if (ntc_ok) h.reflector_c.set(raw.power.reflector_c.value);
-    if (!vin_ok || !ntc_ok || !d.thermo.temp_c.ok) {
-        return;  // heater stays off without supply, reflector or ambient temperature
+    if (raw.air.scd41_temp_c.fresh(raw.now_ms, kAirMaxAgeMs)) {
+        h.probe_c.set(raw.air.scd41_temp_c.value);
+        if (d.thermo.temp_c.ok) h.probe_rise_k.set(raw.air.scd41_temp_c.value - d.thermo.temp_c.v);
     }
+    // Both heaters run from the separate +5V_HEAT rail (ADS1115 AIN2; nominal 5.0 V if the monitor is missing).
+    const float v5 = raw.power.rail_5v.fresh(raw.now_ms, kPowerMaxAgeMs) ? raw.power.rail_5v.value : 5.0F;
+    if (raw.power.rail_5v.fresh(raw.now_ms, kPowerMaxAgeMs)) h.rail_heat_v.set(raw.power.rail_5v.value);
+    if (raw.power.rail_5v_logic.fresh(raw.now_ms, kPowerMaxAgeMs)) h.rail_logic_v.set(raw.power.rail_5v_logic.value);
+    // Probe heater (analog +8 C thermostat): measured through its 1 ohm return shunt.
+    const bool probe_i_ok = raw.power.probe_heater_a.fresh(raw.now_ms, kPowerMaxAgeMs);
+    if (probe_i_ok) {
+        const float ia = std::max(0.0F, raw.power.probe_heater_a.value);
+        h.probe_w.set(v5 * ia);
+        h.probe_on = ia > kProbeHeaterOnA;
+        if (h.probe_c.ok) {
+            const bool warm = h.probe_c.v > kProbeSetpointC + 4.0F;   // well above the +8 C setpoint
+            const bool cold = h.probe_c.v < kProbeSetpointC - 3.0F;   // heater should be full on
+            h.probe_status = h.probe_on ? (warm ? "stuck-on" : "heating") : (cold ? "not-heating" : "ok");
+        }
+    }
+    if (!ntc_ok || !d.thermo.temp_c.ok) {
+        return;  // heater stays off without reflector or ambient temperature
+    }
+    const float vin = v5;  // reflector heater supply = +5V rail (independent of the 12-32 V input)
     const bool icing = d.thermo.temp_c.v <= 2.5F && (d.thermo.rh_pct.v >= 95.0F || d.rain.raining);
-    const auto out = heater::DeIcingHeaterController::control(raw.power.vin_v.value, raw.power.reflector_c.value, d.thermo.temp_c.v, icing);
+    auto out = heater::DeIcingHeaterController::control(vin, raw.power.reflector_c.value, d.thermo.temp_c.v, icing);
+    if (heater_check_s_ > 0) {
+        // Self-test pulse: fixed 2 W, independent of the thermostat logic (still capped below the 4 W design power)
+        out.pwm_duty_percent = std::min(100.0F, 100.0F * kHeaterCheckW * kReflectorOhm / (vin * vin));
+        out.actual_power_w = kHeaterCheckW;
+    }
     h.state = static_cast<std::uint8_t>(out.state);
     h.duty_pct = out.pwm_duty_percent;
     h.power_w = out.actual_power_w;
     d.controls.heater_duty_pct = out.pwm_duty_percent;
+    d.controls.heater_check = heater_check_s_ > 0;
+
+    // Reflector heater: measured mean current vs. the commanded duty (duty x V5 / 6.75 ohm).
+    if (raw.power.refl_heater_a.fresh(raw.now_ms, kPowerMaxAgeMs)) {
+        const float ia = std::max(0.0F, raw.power.refl_heater_a.value);
+        h.reflector_w.set(vin * ia);
+        const float expected_a = (h.duty_pct / 100.0F) * vin / kReflectorOhm;
+        const char* status = "ok";
+        if (expected_a > 0.03F && ia < 0.3F * expected_a) {
+            status = "open";
+        } else if (expected_a < 0.005F && ia > 0.03F) {
+            status = "stuck-on";
+        }
+        if (heater_check_s_ > 0) {
+            status = "check-running";
+            if (--heater_check_s_ == 0) {   // judge on the last second of the pulse (filter settled)
+                const float ratio = expected_a > 0.0F ? ia / expected_a : 0.0F;
+                heater_check_result_ = (ratio > 0.7F && ratio < 1.3F) ? "check-pass" : "check-fail";
+                heater_check_hold_s_ = 60;
+            }
+        }
+        if (heater_check_hold_s_ > 0) {
+            status = heater_check_result_;
+            --heater_check_hold_s_;
+        }
+        h.reflector_status = status;
+    }
 }
 
 void Pipeline::record_history(const DerivedState& d, float rain_mm, std::uint16_t strikes) {
@@ -696,7 +739,6 @@ void Pipeline::record_history(const DerivedState& d, float rain_mm, std::uint16_
     put(Metric::CloudPct, d.solar.cloud_cover_pct);
     put(Metric::Pm1, d.air.pm1_ug_m3);
     put(Metric::Pm25, d.air.pm25_ug_m3);
-    put(Metric::Pm4, d.air.pm4_ug_m3);
     put(Metric::Pm10, d.air.pm10_ug_m3);
     put(Metric::Co2Ppm, d.air.co2_ppm);
     put(Metric::VocIndex, d.air.voc_index);

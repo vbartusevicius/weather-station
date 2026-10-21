@@ -3,8 +3,8 @@ horizontal top bar of the T-assembly at y = 123.8 mm directly under the ultrason
 reflector cone):
   - J1 (back side): 4-pin 2.54 mm female socket strip (KH-2.54FH-1X4P-H8.5, C2905415)
     plugging directly onto the top 4-pin 2.54 mm male header (J2) of the vertical `probe` PCB
-  - R1, R2, R3, R4 (top side): 4x 100R 2512 1 W power resistors wired 100% in PARALLEL
-    (25.0 Ohm net, 4.0 W continuous rated capacity, full fault-tolerant redundancy)
+  - R1, R2, R3, R4 (top side): 4x 27R 2512 1 W power resistors wired 100% in PARALLEL on the regulated +5V_HEAT rail
+    (6.75 Ohm net, 3.7 W at 100 % PWM, 0.93 W per resistor, independent of the 12-32 V input)
   - TH1 (top center): SDNT1608X103F3950FTF 10k 1% B=3950K NTC thermistor measuring the
     true temperature of the horizontal reflector plate
   - C1: 100n 50V NTC sense noise filter capacitor
@@ -24,14 +24,14 @@ HDR_1X4_SMD = "gateway_fp:HX_PZ2.54-1x4P-SMD"
 
 def build():
     gnd = power("GND")
-    vin_prot = Net("VIN_PROT")
+    v5 = Net("+5V_HEAT")
     heat_sw = Net("HEAT_SW")
     ntc_sense = Net("NTC_SENSE")
-    for n in (gnd, vin_prot):
+    for n in (gnd, v5):
         power_flag(n)
 
     nets = {
-        "VIN_PROT": vin_prot,
+        "+5V_HEAT": v5,
         "HEAT_SW": heat_sw,
         "NTC_SENSE": ntc_sense,
         "GND": gnd,
@@ -43,13 +43,13 @@ def build():
               ref="J1")
     wire(j1, REFLECTOR_LINK, nets)
 
-    # 4x 100R 2512 1 W resistors wired 100% in PARALLEL between VIN_PROT and HEAT_SW (25.0 Ohm net, 4.0 W rated, full redundancy)
+    # 4x 27R 2512 1 W resistors wired 100% in PARALLEL between +5V and HEAT_SW (6.75 Ohm net, 3.7 W at 5 V, full redundancy)
     block("reflector_heater")
     for idx, quad in enumerate(("NW", "NE", "SW", "SE"), start=1):
-        r = part("Device", "R", "100R", R2512,
-                 src(source=f"Parallel horizontal reflector heater {quad} quadrant (100 Ohm 1 W 2512)"),
+        r = part("Device", "R", "27R", R2512,
+                 src(source=f"Parallel horizontal reflector heater {quad} quadrant (27 Ohm 1 W 2512)"),
                  ref=f"R{idx}")
-        r[1] += vin_prot
+        r[1] += v5
         r[2] += heat_sw
 
     th1 = part("Device", "Thermistor_NTC", "10k NTC", R0603,
@@ -66,6 +66,6 @@ def build():
 
 
 NET_CLASSES = {
-    "SELV-REFLECTOR": ["GND", "VIN_PROT", "HEAT_SW", "NTC_SENSE", "Net-*"],
-    "REFLECTOR-Power": ["VIN_PROT", "HEAT_SW"],
+    "SELV-REFLECTOR": ["GND", "+5V_HEAT", "HEAT_SW", "NTC_SENSE", "Net-*"],
+    "REFLECTOR-Power": ["+5V_HEAT", "HEAT_SW"],
 }
