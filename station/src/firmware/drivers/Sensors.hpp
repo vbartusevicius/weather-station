@@ -139,24 +139,6 @@ private:
     std::uint16_t reads_{0};
 };
 
-struct As3935Event {
-    enum class Kind : std::uint8_t { None, Lightning, Disturber, Noise } kind{Kind::None};
-    std::uint8_t distance_km{63};
-    std::uint32_t energy{0};
-};
-
-// ScioSense AS3935 lightning sensor (IRQ pin not routed: interrupt register polled).
-class As3935 {
-public:
-    bool begin(I2cBus& bus, std::uint8_t addr, std::uint8_t tun_cap, bool indoor);
-    bool poll(As3935Event& ev);
-    bool present() const { return present_; }
-
-private:
-    I2cBus::Device dev_;
-    bool present_{false};
-};
-
 // Lite-On LTR-390UV-01: alternates UVS (UV index) and ALS (lux up to 157 klx) every 500 ms.
 class Ltr390 {
 public:

@@ -61,7 +61,11 @@ def easyeda_pin_names(lcsc, *, refresh=False):
     for shape in shapes:
         if shape.startswith("P~"):
             segments = shape.split("^^")
-            names[segments[0].split("~")[3]] = segments[3].split("~")[4] if len(segments) > 3 else ""
+            # field 3 is the SPICE pin order; the pin-number label (segment 4) is the pad number when present
+            # (they differ e.g. for the XC6206 SOT-23 symbol: SPICE pin 2 = Vin on pad 3)
+            label = segments[4].split("~")[4] if len(segments) > 4 and len(segments[4].split("~")) > 4 else ""
+            number = label if re.fullmatch(r"[A-Z]?\d+", label) else segments[0].split("~")[3]
+            names[number] = segments[3].split("~")[4] if len(segments) > 3 else ""
     return names
 
 
@@ -175,7 +179,7 @@ def value_problems(part, record):
 
 
 PIN_ALIASES = {"CAT": "K", "CATHODE": "K", "AN": "A", "ANODE": "A", "COL": "C", "EM": "E", "EP": "EPAD",
-               "G": "GND", "VSS": "GND"}
+               "G": "GND", "VSS": "GND", "GNDPAD": "EPAD", "VO": "VOUT", "VI": "VIN"}
 
 
 def canonical_pin(ref, name):
@@ -191,7 +195,8 @@ def name_problems(ref, ours, theirs):
     problems = []
     for number, name in sorted(ours.items(), key=lambda item: (len(item[0]), item[0])):
         a, b = canonical_pin(ref, name), canonical_pin(ref, theirs.get(number, ""))
-        if a and b and a != b:
+        # MCU pins: 'PG10' and 'PG10-NRST' / 'PF0-OSC_IN' name the same pin (alternate function suffix)
+        if a and b and a != b and a.split("-")[0] != b.split("-")[0]:
             problems.append(f"pin {number} is {name!r} in our symbol but {theirs[number]!r} in the reference")
     return problems
 
@@ -307,6 +312,8 @@ def check_board(pcb, parts, *, live=False):
     checks = []
     for fp in sorted(pcb.Footprints(), key=lambda fp: fp.GetReference()):
         part = by_ref[fp.GetReference()]
+        if part["assembly"] == "none":   # copper-only feature (test / programming pad): nothing to source
+            continue
         key = reference_key(part)
         check = Check(fp.GetReference(), key, str(fp.GetFPID().GetLibItemName()), part["assembly"])
         checks.append(check)

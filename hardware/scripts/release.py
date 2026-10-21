@@ -51,7 +51,7 @@ def gate(board, out, checks):
     errors = [v for v in drc["violations"] if v["severity"] == "error"]
     unsourced = [p["ref"] for p in parts(board)
                  if not (p["assembly"] == "jlc" and p["lcsc"].startswith("C")
-                         or p["assembly"] == "hand" and p["mpn"])]
+                         or p["assembly"] == "hand" and p["mpn"] or p["assembly"] == "none")]
     problems = [f"{len(errors)} DRC errors"] * bool(errors) \
         + [f"{len(drc['unconnected_items'])} unrouted"] * bool(drc["unconnected_items"]) \
         + [f"unsourced parts {unsourced}"] * bool(unsourced) \

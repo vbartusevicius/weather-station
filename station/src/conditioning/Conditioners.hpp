@@ -60,24 +60,5 @@ private:
     std::uint16_t n_{0};
 };
 
-// RAIN_ADC (~16 kHz) piezo envelope -> discrete impacts (peak, baseline, width).
-class RainPulseDetector {
-public:
-    static constexpr float kSampleHz = 16000.0F;
-    static constexpr std::uint16_t kTriggerMv = 60;   // above baseline to start a pulse
-
-    // Returns true when a pulse just ended; `out` then holds the impact.
-    bool add(std::uint16_t mv, std::uint32_t t_ms, core::RainImpact& out);
-    std::uint16_t baseline_mv() const { return static_cast<std::uint16_t>(baseline_); }
-
-private:
-    float baseline_{206.0F};
-    bool init_{false};
-    bool in_pulse_{false};
-    std::uint16_t peak_{0};
-    std::uint32_t samples_{0};
-    std::uint32_t start_ms_{0};
-};
-
 }  // namespace conditioning
 }  // namespace station

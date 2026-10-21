@@ -329,10 +329,10 @@ private:
         raw_.power.vin_v.set(24.1F, now);
         raw_.power.reflector_c.set(static_cast<float>(temp + (derived_.heater.power_w > 0.0F ? 5.0 : 1.0)), now);
         raw_.power.rain_adc_ok = true;
-        // Heater power monitor (ADS1115): reflector mean current = duty x 4.95 V / 6.75 ohm; probe heater 83 mA below +8 C
-        raw_.power.refl_heater_a.set(static_cast<float>(derived_.heater.duty_pct / 100.0 * 4.95 / 6.75), now);
-        raw_.power.probe_heater_a.set(temp < 8.0 ? 0.0833F : 0.0F, now);
-        raw_.power.rail_5v.set(4.95F, now);
+        // Heater power monitor (ADS1115): reflector mean current = duty x 11.95 V / 30 ohm; probe heater 35 mA below +8 C
+        raw_.power.refl_heater_a.set(static_cast<float>(derived_.heater.duty_pct / 100.0 * 11.95 / 30.0), now);
+        raw_.power.probe_heater_a.set(temp < 8.0 ? 0.0351F : 0.0F, now);
+        raw_.power.rail_heat.set(11.95F, now);
         raw_.power.rail_5v_logic.set(5.01F, now);
 
         // ---- rain & hail impacts (deterministic Poisson-like arrivals) ----

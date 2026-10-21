@@ -1,47 +1,59 @@
 frame:
-  size: { x: 34.0, y: 34.0 }
-  # Compact 34.0 x 34.0 mm Square Outline with 4.5 mm 45-deg corner chamfers (corner radius = 20.8 mm!)
-  # so all 4 inward-angled ultrasonic barrels (at r = 25.5 mm) and all 4 square struts (at r = 31.0 mm)
-  # sit 100% outside the `crown` PCB with full top-down insertion clearance!
+  size: { x: 60.0, y: 60.0 }
+  # 60 x 60 mm crown v2 (centre 30, 30 = enclosure axis; +y = North, +x = East):
+  #  - 15 mm wide notches at N / E / S / W reach in to r = 17.5 mm so the four 29-deg tilted transducer barrels
+  #    (r = 25.5 mm) and their pigtails pass the board edge; the pigtails plug into J2..J5 at the notch bottoms.
+  #  - The NE corner is chamfered to 26.9 mm from the axis so the crown cable rises past it from the NE strut
+  #    (wire column r = 31 +/- 3 mm); the other three corners only lose 7 mm (r <= 38 mm, inside the crown lid).
   outline:
-    - [4.5,  0.0]
-    - [29.5, 0.0]
-    - [34.0, 4.5]
-    - [34.0, 29.5]
-    - [29.5, 34.0]
-    - [4.5,  34.0]
-    - [0.0,  29.5]
-    - [0.0,  4.5]
+    - [7.0,  0.0]
+    - [22.5, 0.0]
+    - [22.5, 12.5]
+    - [37.5, 12.5]
+    - [37.5, 0.0]
+    - [53.0, 0.0]
+    - [60.0, 7.0]
+    - [60.0, 22.5]
+    - [47.5, 22.5]
+    - [47.5, 37.5]
+    - [60.0, 37.5]
+    - [60.0, 38.0]
+    - [38.0, 60.0]
+    - [37.5, 60.0]
+    - [37.5, 47.5]
+    - [22.5, 47.5]
+    - [22.5, 60.0]
+    - [7.0,  60.0]
+    - [0.0,  53.0]
+    - [0.0,  37.5]
+    - [12.5, 37.5]
+    - [12.5, 22.5]
+    - [0.0,  22.5]
+    - [0.0,  7.0]
   copper_layers: 4
   thickness: 1.2
   min_drill: 0.2
   min_track: 0.12
   edge_clearance: 0.3
   silk_inside: true
-  fine_pitch_power_pads: [J1, J2, J3, J4, J5, J6, J7, J8, J9, J10, U1, U2, U3, U4, U5, U6]
+  fine_pitch_power_pads: [J1, J2, J3, J4, J5, J6, J7, J8, J9, J10, J11, U1, U2, U3, U4, U5, U6, U7, U8, U9, U10]
   raised_modules: []
   plane_layers: [In1.Cu]
   domains: [SELV-CROWN]
   domain_regions:
     SELV-CROWN:
-      - { x0: 0.0, y0: 0.0, x1: 34.0, y1: 34.0 }
+      - { x0: 0.0, y0: 0.0, x1: 60.0, y1: 60.0 }
   isolators: []
-  power_nets: [+5V, +5V_HEAT, +3V3]
+  power_nets: [+5V, +12V_HEAT, +3V3, VDRV]
   pours:
-    - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 33.5, y1: 33.5 } }
-  # Explicit Top Silkscreen (`F.SilkS`) Connector Labels distinguishing the 4 Ultrasonic Wind connectors
-  # (`US_N/E/S/W` at the N/E/S/W mid-edges) from the 4 Piezo Rain connectors (`PZ_NE/NW/SW/SE` near the 4 corners)!
+    - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 59.5, y1: 59.5 } }
+  # AS3935-AN04: no copper under the 500 kHz ferrite-rod antenna L1 on any layer (eddy currents kill its sensitivity)
+  copper_keepout:
+    - { x0: 6.3, y0: 3.8, x1: 19.7, y1: 9.2, layers: [In1.Cu, In2.Cu] }   # no planes under the ferrite rod
+    - { x0: 9.4, y0: 3.8, x1: 16.6, y1: 9.2, layers: [F.Cu, B.Cu] }       # no tracks between its end pads
+  connector_labels: { J1: "MAIN", J2: "N", J3: "E", J4: "S", J5: "W", J6: "PZ NE", J7: "PZ NW", J8: "PZ SW", J9: "PZ SE", J10: "DOME", J11: "HEAT" }
   silk_labels:
-    - { text: "MAIN",  x: 17.0, y: 7.2,  layer: F.SilkS }
-    - { text: "DOME",  x: 17.0, y: 13.8, layer: F.SilkS }
-    - { text: "US_N",  x: 12.2, y: 31.8, layer: F.SilkS }
-    - { text: "US_E",  x: 31.5, y: 22.0, layer: F.SilkS }
-    - { text: "US_S",  x: 12.2, y: 2.2,  layer: F.SilkS }
-    - { text: "US_W",  x: 2.5,  y: 22.0, layer: F.SilkS }
-    - { text: "PZ_NE", x: 27.5, y: 31.8, layer: F.SilkS }
-    - { text: "PZ_NW", x: 6.5,  y: 31.8, layer: F.SilkS }
-    - { text: "PZ_SW", x: 6.5,  y: 2.2,  layer: F.SilkS }
-    - { text: "PZ_SE", x: 27.5, y: 2.2,  layer: F.SilkS }
+    - { text: "SWD", x: 4.3, y: 47.6, layer: B.SilkS }
 
 heights:
   default: 1.2
@@ -56,73 +68,134 @@ heights:
   J9: 4.25
   J10: 11.5
   J11: 4.25
-  U1: 1.15
-  U2: 1.65
-  U3: 1.65
-  U4: 1.65
-  U5: 1.65
+  L1: 3.5
+  U1: 1.6
+  U2: 1.75
+  U3: 1.75
+  U4: 1.75
+  U5: 1.75
   U6: 0.8
+  U7: 1.75
+  U8: 1.75
+  U9: 0.9
+  U10: 1.25
+  Y1: 0.9
+  C13: 1.6
 
 parts:
-  # --- Front (+y, F.Cu at y = 182.8 mm): ALL 10 connectors on TOP (`F.Cu`) for effortless top-down plug-in!
-  #     - `J2..J5` (`US_N, US_E, US_S, US_W`) at the N/E/S/W mid-edges right beside the 4 angled ultrasonic barrels!
-  #     - `J6..J9` (`PZ_NE, PZ_NW, PZ_SW, PZ_SE`) near the 4 corners!
-  #     - `J10` at exact center (17.0, 17.0) and `J1` (10-pin main cable) at (17.0, 10.2)! ---
-  J1:  { x: 17.0,  y: 10.8,  rot: 0,   block: int_main, locked: true }   # 12-pin (incl. spare +5V_HEAT pair)
-  J11: { x: 5.0,   y: 11.1,  rot: 90,  block: aux_heat, locked: true }   # spare +5V_HEAT outlet
-  J10: { x: 17.0,  y: 17.0,  rot: 0,   block: int_dome, locked: true }
+  # ======================= TOP (F.Cu, faces the crown lid) =======================
+  J10: { x: 30.0, y: 30.0, rot: 0,   block: int_dome, locked: true }      # dome riser on the axis
+  J1:  { x: 40.8, y: 43.0, rot: 0,   block: int_main, locked: true }      # below the NE chamfer (cable rises at the NE strut)
+  J2:  { x: 30.0, y: 44.8, rot: 0,   block: us_rx, locked: true }         # transducer N (notch bottom)
+  J3:  { x: 44.8, y: 30.0, rot: -90, block: us_rx, locked: true }         # transducer E
+  J4:  { x: 30.0, y: 15.2, rot: 180, block: us_rx, locked: true }         # transducer S
+  J5:  { x: 15.2, y: 30.0, rot: 90,  block: us_rx, locked: true }         # transducer W
+  J6:  { x: 38.5, y: 36.0, rot: 0,   block: rain_afe, locked: true }      # piezo NE
+  J7:  { x: 21.5, y: 38.5, rot: 0,   block: rain_afe, locked: true }      # piezo NW
+  J8:  { x: 21.5, y: 21.5, rot: 180, block: rain_afe, locked: true }      # piezo SW
+  J9:  { x: 38.5, y: 21.5, rot: 180, block: rain_afe, locked: true }      # piezo SE
+  J11: { x: 9.0,  y: 44.0, rot: 0,   block: aux_heat, locked: true }
 
-  # 4x 2-Pin JST-SH Ultrasonic Transducer Headers (`US_N`, `US_E`, `US_S`, `US_W`) on TOP (`F.Cu`)!
-  J2:  { x: 17.0,  y: 30.8,  rot: 0,   block: us_transducers, locked: true }
-  J3:  { x: 30.8,  y: 17.0,  rot: -90, block: us_transducers, locked: true }
-  J4:  { x: 17.0,  y: 3.2,   rot: 180, block: us_transducers, locked: true }
-  J5:  { x: 3.2,   y: 17.0,  rot: 90,  block: us_transducers, locked: true }
+  U6:  { x: 30.0, y: 38.0, rot: 0,   block: compass }
+  C29: { x: 32.8, y: 38.0, rot: 90,  block: compass }
 
-  # 4x 2-Pin JST-SH Piezo Rain Headers (`PZ_NE`, `PZ_NW`, `PZ_SW`, `PZ_SE`) on TOP (`F.Cu`)!
-  J6:  { x: 27.5,  y: 28.0,  rot: 0,   block: rain_afe, locked: true }
-  J7:  { x: 6.5,   y: 28.0,  rot: 0,   block: rain_afe, locked: true }
-  J8:  { x: 6.5,   y: 5.5,   rot: 180, block: rain_afe, locked: true }
-  J9:  { x: 27.5,  y: 5.5,   rot: 180, block: rain_afe, locked: true }
+  # Lightning: antenna at the SW edge (copper keep-out on all layers), AS3935 beside it
+  L1:  { x: 13.0, y: 6.5,  rot: 0,   block: lightning }
+  U9:  { x: 12.5, y: 13.5, rot: 0,   block: lightning }
+  C25: { x: 16.8, y: 13.5, rot: 90,  block: lightning }
+  C26: { x: 16.8, y: 17.5, rot: 90,  block: lightning }
+  C27: { x: 5.0,  y: 6.5,  rot: 90,  block: lightning }   # tank caps at the AS_INP end (L1 pin 1, x = 8.35)
+  C28: { x: 7.2,  y: 11.5, rot: 0,   block: lightning }
+  R26: { x: 12.5, y: 17.8, rot: 0,   block: lightning }
 
-  U6:  { x: 17.0,  y: 23.5,  rot: 0,   block: compass, locked: true }
-  C14: { x: 20.5,  y: 23.5,  rot: 90,  block: compass }
+  # Transducer H-bridge drivers + T/R isolation diodes, one group per corner near its connector
+  U2:  { x: 17.0, y: 51.0, rot: 0,   block: us_tx }    # N
+  D1:  { x: 11.0, y: 51.0, rot: 0,   block: us_tx }
+  D2:  { x: 17.0, y: 56.0, rot: 0,   block: us_tx }
+  C14: { x: 17.0, y: 46.8, rot: 0,   block: us_tx }
+  R13: { x: 21.0, y: 55.5, rot: 90,  block: us_tx }
+  R1:  { x: 11.5, y: 55.0, rot: 90,  block: us_tx }
 
-  U5:  { x: 9.0,   y: 21.5,  rot: 0,   block: rain_afe }
-  C11: { x: 9.0,   y: 16.5,  rot: 0,   block: rain_afe }
-  R13: { x: 25.5,  y: 22.5,  rot: 0,   block: rain_afe }
-  R14: { x: 25.5,  y: 20.0,  rot: 0,   block: rain_afe }
-  C12: { x: 25.5,  y: 17.5,  rot: 0,   block: rain_afe }
-  R15: { x: 25.5,  y: 15.0,  rot: 0,   block: rain_afe }
-  R16: { x: 26.8,  y: 12.5,  rot: 0,   block: rain_afe }
-  R17: { x: 13.0,  y: 25.0,  rot: 0,   block: rain_afe }
-  C13: { x: 13.0,  y: 22.5,  rot: 0,   block: rain_afe }
+  U3:  { x: 52.5, y: 17.0, rot: 0,   block: us_tx }    # E
+  D3:  { x: 52.5, y: 11.5, rot: 0,   block: us_tx }
+  D4:  { x: 46.5, y: 13.0, rot: 0,   block: us_tx }
+  C15: { x: 47.3, y: 17.0, rot: 90,  block: us_tx }
+  R14: { x: 52.5, y: 21.3, rot: 0,   block: us_tx }
+  R2:  { x: 56.8, y: 11.5, rot: 90,  block: us_tx }
 
-  # --- Back (-y, B.Cu): ONLY low-profile SMD ICs (`<= 1.65 mm` height) & 0603 passives (ZERO connectors on B.Cu!) ---
-  U2:  { x: 17.0,  y: 10.0,  rot: 0,   side: back, block: us_afe }
-  C3:  { x: 24.0,  y: 10.0,  rot: 90,  side: back, block: us_afe }
-  U1:  { x: 8.5,   y: 10.0,  rot: 0,   side: back, block: us_afe }
-  C1:  { x: 8.5,   y: 5.5,   rot: 0,   side: back, block: us_afe }
-  C2:  { x: 8.5,   y: 14.5,  rot: 0,   side: back, block: us_afe }
-  R1:  { x: 12.0,  y: 16.5,  rot: 0,   side: back, block: us_afe }
+  U4:  { x: 43.0, y: 8.0,  rot: 0,   block: us_tx }    # S
+  D5:  { x: 43.0, y: 2.8,  rot: 0,   block: us_tx }
+  D6:  { x: 49.5, y: 6.0,  rot: 0,   block: us_tx }
+  C16: { x: 42.3, y: 12.6, rot: 0,   block: us_tx }
+  R15: { x: 39.3, y: 14.8, rot: 0,   block: us_tx }
+  R3:  { x: 55.5, y: 6.5,  rot: 0,   block: us_tx }
 
-  U3:  { x: 23.0,  y: 20.0,  rot: 0,   side: back, block: us_afe }
-  C5:  { x: 23.0,  y: 15.0,  rot: 0,   side: back, block: us_afe }
-  R2:  { x: 16.5,  y: 17.5,  rot: 0,   side: back, block: us_afe }
-  R3:  { x: 16.5,  y: 20.0,  rot: 0,   side: back, block: us_afe }
-  C4:  { x: 16.5,  y: 22.5,  rot: 0,   side: back, block: us_afe }
-  C6:  { x: 16.5,  y: 25.0,  rot: 0,   side: back, block: us_afe }
-  R4:  { x: 11.5,  y: 19.0,  rot: 0,   side: back, block: us_afe }
-  R5:  { x: 28.5,  y: 8.0,   rot: 0,   side: back, block: us_afe }
-  R6:  { x: 28.5,  y: 10.5,  rot: 0,   side: back, block: us_afe }
-  C7:  { x: 28.5,  y: 23.5,  rot: 0,   side: back, block: us_afe }
-  C8:  { x: 28.5,  y: 26.0,  rot: 0,   side: back, block: us_afe }
-  R7:  { x: 28.5,  y: 13.0,  rot: 0,   side: back, block: us_afe }
-  R8:  { x: 28.5,  y: 21.0,  rot: 0,   side: back, block: us_afe }
-  C9:  { x: 11.5,  y: 22.0,  rot: 0,   side: back, block: us_afe }
-  R9:  { x: 11.5,  y: 25.0,  rot: 0,   side: back, block: us_afe }
+  U5:  { x: 4.5,  y: 16.5, rot: 90,  block: us_tx }    # W
+  D7:  { x: 3.5,  y: 9.8,  rot: 0,   block: us_tx }
+  D8:  { x: 9.5,  y: 20.5, rot: 0,   block: us_tx }
+  C17: { x: 8.3,  y: 16.5, rot: 90,  block: us_tx }
+  R16: { x: 4.5,  y: 21.3, rot: 0,   block: us_tx }
+  R4:  { x: 13.0, y: 21.0, rot: 0,   block: us_tx }
 
-  U4:  { x: 23.5,  y: 28.5,  rot: 0,   side: back, block: us_afe }
-  R10: { x: 7.5,   y: 25.0,  rot: 0,   side: back, block: us_afe }
-  R11: { x: 7.5,   y: 27.5,  rot: 0,   side: back, block: us_afe }
-  R12: { x: 29.5,  y: 28.5,  rot: 0,   side: back, block: us_afe }
-  C10: { x: 11.5,  y: 27.8,  rot: 0,   side: back, block: us_afe }
+  # ======================= BOTTOM (B.Cu, faces the crown_base floor) =======================
+  # Posts (r = 16 mm, 22.5 deg off the axes) at (44.8, 36.1), (23.9, 44.8), (15.2, 23.9), (36.1, 15.2): keep 2.6 mm clear
+  U1:  { x: 30.0, y: 30.0, rot: 0,   side: back, block: crown_mcu }
+  C3:  { x: 21.5, y: 26.0, rot: 90,  side: back, block: crown_mcu }
+  C4:  { x: 38.5, y: 26.0, rot: 90,  side: back, block: crown_mcu }
+  C5:  { x: 38.5, y: 34.0, rot: 90,  side: back, block: crown_mcu }
+  C6:  { x: 26.0, y: 38.5, rot: 0,   side: back, block: crown_mcu }
+  C7:  { x: 29.3, y: 38.5, rot: 0,   side: back, block: crown_mcu }
+  R25: { x: 35.9, y: 21.5, rot: 0,   side: back, block: crown_mcu }   # BOOT0 (pin 61 lands on the lower edge when flipped)
+  C10: { x: 21.5, y: 34.0, rot: 90,  side: back, block: crown_mcu }
+  Y1:  { x: 18.0, y: 27.5, rot: 90,  side: back, block: crown_mcu }   # next to PF0 / PF1 (pins 5-6, lower left when flipped)
+  C11: { x: 18.0, y: 31.3, rot: 0,   side: back, block: crown_mcu }
+  C12: { x: 21.0, y: 21.6, rot: 0,   side: back, block: crown_mcu }
+  C8:  { x: 26.0, y: 21.5, rot: 0,   side: back, block: crown_power }
+  C9:  { x: 29.3, y: 21.5, rot: 0,   side: back, block: crown_power }
+  R27: { x: 32.6, y: 21.5, rot: 0,   side: back, block: crown_power }
+  TP1: { x: 3.0,  y: 40.0, rot: 0,   side: back, block: crown_mcu }
+  TP2: { x: 3.0,  y: 42.5, rot: 0,   side: back, block: crown_mcu }
+  TP3: { x: 3.0,  y: 45.0, rot: 0,   side: back, block: crown_mcu }
+  TP4: { x: 5.5,  y: 40.0, rot: 0,   side: back, block: crown_mcu }
+  TP5: { x: 5.5,  y: 42.5, rot: 0,   side: back, block: crown_mcu }
+
+  U10: { x: 44.0, y: 22.0, rot: 0,   side: back, block: crown_power }
+  C1:  { x: 48.5, y: 20.5, rot: 90,  side: back, block: crown_power }
+  C2:  { x: 44.0, y: 17.5, rot: 0,   side: back, block: crown_power }
+  C13: { x: 41.5, y: 30.0, rot: 90,  side: back, block: us_tx }
+  R17: { x: 44.5, y: 30.0, rot: 90,  side: back, block: us_tx }
+
+  # 47k + 10 nF receive coupling right under their transducer connectors (one RX net per channel crosses the board)
+  R5:  { x: 28.4, y: 45.5, rot: 0,   side: back, block: us_rx }   # N (under J2)
+  C30: { x: 31.6, y: 45.5, rot: 0,   side: back, block: us_rx }
+  R6:  { x: 44.8, y: 26.0, rot: 90,  side: back, block: us_rx }   # E (under J3)
+  C31: { x: 41.5, y: 25.5, rot: 90,  side: back, block: us_rx }
+  R7:  { x: 28.4, y: 16.5, rot: 0,   side: back, block: us_rx }   # S (under J4)
+  C32: { x: 31.6, y: 16.5, rot: 0,   side: back, block: us_rx }
+  R8:  { x: 14.0, y: 31.5, rot: 90,  side: back, block: us_rx }   # W (under J5)
+  C33: { x: 16.0, y: 35.4, rot: 90,  side: back, block: us_rx }
+
+  # Receive mux, 1M bias, TLV9062 preamp + VREF (NW quadrant)
+  U7:  { x: 16.0, y: 44.0, rot: 0,   side: back, block: us_rx }
+  C24: { x: 12.0, y: 38.8, rot: 0,   side: back, block: us_rx }
+  R9:  { x: 9.0,  y: 44.0, rot: 90,  side: back, block: us_rx }   # per-channel 1M bias at the mux inputs
+  R10: { x: 9.0,  y: 40.6, rot: 90,  side: back, block: us_rx }
+  R11: { x: 20.2, y: 37.2, rot: 0,   side: back, block: us_rx }
+  R12: { x: 20.2, y: 39.0, rot: 0,   side: back, block: us_rx }
+  U8:  { x: 15.5, y: 53.0, rot: 90,  side: back, block: us_rx }
+  C23: { x: 21.2, y: 51.0, rot: 90,  side: back, block: us_rx }
+  R20: { x: 9.0,  y: 51.0, rot: 90,  side: back, block: us_rx }
+  C19: { x: 9.0,  y: 47.5, rot: 90,  side: back, block: us_rx }
+  R21: { x: 21.2, y: 54.5, rot: 90,  side: back, block: us_rx }
+  C20: { x: 21.2, y: 57.8, rot: 90,  side: back, block: us_rx }
+  R18: { x: 11.5, y: 57.8, rot: 0,   side: back, block: us_rx }
+  R19: { x: 15.0, y: 57.8, rot: 0,   side: back, block: us_rx }
+  C18: { x: 18.0, y: 49.0, rot: 0,   side: back, block: us_rx }
+
+  # Rain charge amplifier (U8B) passives + piezo clamp (NE quadrant)
+  R22: { x: 41.0, y: 41.0, rot: 0,   side: back, block: rain_afe }
+  R23: { x: 41.0, y: 42.7, rot: 0,   side: back, block: rain_afe }
+  C21: { x: 41.0, y: 44.4, rot: 0,   side: back, block: rain_afe }
+  R24: { x: 41.0, y: 46.1, rot: 0,   side: back, block: rain_afe }
+  C22: { x: 45.5, y: 41.0, rot: 0,   side: back, block: rain_afe }
+  D9:  { x: 45.5, y: 44.5, rot: 0,   side: back, block: rain_afe }

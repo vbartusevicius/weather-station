@@ -150,7 +150,7 @@
         "min_microvia_drill": 0.1,
         "min_resolved_spokes": 2,
         "min_silk_clearance": 0.0,
-        "min_text_height": 0.8,
+        "min_text_height": 0.6,
         "min_text_thickness": 0.08,
         "min_through_hole_diameter": 0.2,
         "min_track_width": 0.12,
@@ -512,15 +512,59 @@
     "netclass_patterns": [
       {
         "netclass": "CROWN-Power",
+        "pattern": "+12V_HEAT"
+      },
+      {
+        "netclass": "CROWN-Power",
         "pattern": "+3V3"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "+3V3A"
       },
       {
         "netclass": "CROWN-Power",
         "pattern": "+5V"
       },
       {
-        "netclass": "CROWN-Power",
-        "pattern": "+5V_HEAT"
+        "netclass": "SELV-CROWN",
+        "pattern": "AS_ACG"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "AS_CS"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "AS_INP"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "AS_IRQ"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "AS_MISO"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "AS_MOSI"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "AS_SCK"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "CROWN_BOOT0"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "CROWN_IRQ"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "CROWN_NRST"
       },
       {
         "netclass": "SELV-CROWN",
@@ -536,15 +580,11 @@
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "N$1"
+        "pattern": "MUX_S0"
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "N$2"
-      },
-      {
-        "netclass": "SELV-CROWN",
-        "pattern": "PIEZO_ENV"
+        "pattern": "MUX_S1"
       },
       {
         "netclass": "SELV-CROWN",
@@ -556,7 +596,7 @@
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "PIEZO_STG1"
+        "pattern": "PIEZO_OUT"
       },
       {
         "netclass": "SELV-CROWN",
@@ -564,31 +604,31 @@
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "US_AMP1_FB"
+        "pattern": "SWCLK"
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "US_AMP1_IN"
+        "pattern": "SWDIO"
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "US_AMP1_OUT"
+        "pattern": "TX_N"
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "US_AMP2_FB"
+        "pattern": "TX_P"
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "US_AMP2_IN"
+        "pattern": "US_AMP_FB"
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "US_AMP2_OUT"
+        "pattern": "US_AMP_G"
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "US_RX"
+        "pattern": "US_AMP_OUT"
       },
       {
         "netclass": "SELV-CROWN",
@@ -596,47 +636,131 @@
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "US_SEL_A"
-      },
-      {
-        "netclass": "SELV-CROWN",
-        "pattern": "US_SEL_B"
-      },
-      {
-        "netclass": "SELV-CROWN",
-        "pattern": "US_TX"
-      },
-      {
-        "netclass": "SELV-CROWN",
-        "pattern": "US_TX_AC"
-      },
-      {
-        "netclass": "SELV-CROWN",
-        "pattern": "US_TX_DRV"
-      },
-      {
-        "netclass": "SELV-CROWN",
         "pattern": "US_VREF"
       },
       {
-        "netclass": "SELV-CROWN",
-        "pattern": "US_VTH"
+        "netclass": "CROWN-Power",
+        "pattern": "VDRV"
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "XD_E"
+        "pattern": "XD_EN_E"
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "XD_N"
+        "pattern": "XD_EN_N"
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "XD_S"
+        "pattern": "XD_EN_S"
       },
       {
         "netclass": "SELV-CROWN",
-        "pattern": "XD_W"
+        "pattern": "XD_EN_W"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_E_A"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_E_B"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_E_OUT_A"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_E_OUT_B"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_E_RX"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_E_RXC"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_N_A"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_N_B"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_N_OUT_A"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_N_OUT_B"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_N_RX"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_N_RXC"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_S_A"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_S_B"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_S_OUT_A"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_S_OUT_B"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_S_RX"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_S_RXC"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_W_A"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_W_B"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_W_OUT_A"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_W_OUT_B"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_W_RX"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XD_W_RXC"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XTAL_IN"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "XTAL_OUT"
       }
     ]
   },

@@ -61,6 +61,10 @@ MODELS_3D = {
 }
 
 
+SILK_TEXT_MM = 0.7     # reference + connector-label height (JLC prints >= 0.6 mm legibly with a 0.12 mm stroke)
+SILK_STROKE_MM = 0.12
+
+
 def pos(x, y):
     return pcbnew.VECTOR2I(pcbnew.FromMM(x), pcbnew.FromMM(-y))
 
@@ -283,6 +287,7 @@ def apply_frame(board, plan):
     settings.m_MinThroughDrill = pcbnew.FromMM(frame["min_drill"])
     settings.m_TrackMinWidth = pcbnew.FromMM(frame["min_track"])
     settings.m_CopperEdgeClearance = pcbnew.FromMM(frame["edge_clearance"])
+    settings.m_MinSilkTextHeight = pcbnew.FromMM(0.6)
     corners = [tuple(p) for p in frame["outline"]] if "outline" in frame else \
         rect_points({"x0": 0, "y0": 0, "x1": w, "y1": h})
     for a, b in zip(corners, corners[1:] + corners[:1]):
@@ -307,8 +312,8 @@ def apply_frame(board, plan):
         txt.SetLayer(lyr)
         txt.SetText(str(lbl["text"]))
         txt.SetPosition(pos(lbl["x"], lbl["y"]))
-        txt.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(0.8), pcbnew.FromMM(0.8)))
-        txt.SetTextThickness(pcbnew.FromMM(0.15))
+        txt.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(SILK_TEXT_MM), pcbnew.FromMM(SILK_TEXT_MM)))
+        txt.SetTextThickness(pcbnew.FromMM(SILK_STROKE_MM))
         if lyr == pcbnew.B_SilkS:
             txt.SetMirrored(True)
         board.Add(txt)
@@ -316,7 +321,8 @@ def apply_frame(board, plan):
         board.SetLayerType(LAYERS[layer], pcbnew.LT_POWER)
     all_copper = [LAYERS[n] for n in LAYERS if board.IsLayerEnabled(LAYERS[n])]
     for k in frame.get("copper_keepout", []):
-        keepout_zone(board, k["x0"], k["y0"], k["x1"], k["y1"], all_copper)
+        layers = [LAYERS[n] for n in k["layers"]] if "layers" in k else all_copper
+        keepout_zone(board, k["x0"], k["y0"], k["x1"], k["y1"], layers)
     for z in frame.get("pours", []):
         for layer in z["layers"]:
             add_pour(board, z["net"], layer, z["region"], z.get("priority", 0))
@@ -411,7 +417,7 @@ def net_classes(board, frame):
     return classes
 
 
-def project_net_settings(classes):
+def project_net_settings(classes, power_width=0.3):
     def netclass(name, priority, width):
         return {"name": name, "priority": priority, "clearance": 0.2, "track_width": width,
                 "via_diameter": 0.6, "via_drill": 0.3, "microvia_diameter": 0.3,
@@ -420,7 +426,7 @@ def project_net_settings(classes):
                 "pcb_color": "rgba(0,0,0,0)", "schematic_color": "rgba(0,0,0,0)"}
     defs = [netclass("Default", 2147483647, 0.2)]
     defs += [netclass(d, 2, 0.2) for d in POWER_CLASS]
-    defs += [netclass(p, 1, 0.3) for p in POWER_CLASS.values()]
+    defs += [netclass(p, 1, power_width) for p in POWER_CLASS.values()]
     patterns = [{"netclass": c, "pattern": n} for n, c in sorted(classes.items())]
     return defs, patterns
 
@@ -434,7 +440,7 @@ def write_rules(board, plan, board_name, pcb_path):
     pcb_path.with_suffix(".kicad_dru").write_text(dru)
     pro_path = pcb_path.with_suffix(".kicad_pro")
     project = json.loads(pro_path.read_text()) if pro_path.exists() else {}
-    defs, patterns = project_net_settings(net_classes(board, frame))
+    defs, patterns = project_net_settings(net_classes(board, frame), frame.get("power_track_width", 0.3))
     project.setdefault("net_settings", {}).update({"classes": defs, "netclass_patterns": patterns})
     pro_path.write_text(json.dumps(project, indent=2))
 
@@ -486,8 +492,8 @@ def save(board, plan, board_name, hidden_refs=()):
     widen_neckdown_stubs(board)
     for fp in board.Footprints():
         ref = fp.Reference()
-        ref.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(0.8), pcbnew.FromMM(0.8)))
-        ref.SetTextThickness(pcbnew.FromMM(0.12))
+        ref.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(SILK_TEXT_MM), pcbnew.FromMM(SILK_TEXT_MM)))
+        ref.SetTextThickness(pcbnew.FromMM(SILK_STROKE_MM))
         if fp.GetReference() in hidden_refs:
             ref.SetVisible(False)
     if plan["frame"].get("silk_inside"):
@@ -543,25 +549,53 @@ def place_references_inside(board, frame):
         x0, y0, x1, y1 = mm_box(fp.GetBoundingBox(False, False))
         return (x1 - x0) * (y1 - y0)
 
+    def place_next_to(fp, text, back, rotate=False):
+        """Try spots around `fp` (above, below, left, right, centre, corners) until `text` fits inside the board
+        without touching pads, silk or already placed labels on that side."""
+        x0, y0, x1, y1 = mm_box(fp.GetBoundingBox(False, False))
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        for angle in ((0, 90) if rotate else (0,)):
+            text.SetTextAngle(pcbnew.EDA_ANGLE(angle, pcbnew.DEGREES_T))
+            tx0, ty0, tx1, ty1 = mm_box(text.GetBoundingBox())
+            dx, dy = (tx1 - tx0) / 2 + 0.2, (ty1 - ty0) / 2 + 0.2
+            spots = [(cx, y0 - dy), (cx, y1 + dy), (x0 - dx, cy), (x1 + dx, cy), (cx, cy)]
+            spots += [(x, y) for x in (x0 - dx, x1 + dx) for y in (y0 - dy, y1 + dy)]
+            if rotate:   # connector labels may sit a little farther out
+                spots += [(cx, y0 - dy - 1.0), (cx, y1 + dy + 1.0), (x0 - dx - 1.0, cy), (x1 + dx + 1.0, cy)]
+                spots += [(cx + sx, y) for y in (y0 - dy, y1 + dy) for sx in (-3.0, 3.0, -6.0, 6.0)]
+            for x, y in spots:
+                text.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(x), pcbnew.FromMM(y)))
+                box = mm_box(text.GetBoundingBox(), 0.05)
+                fits = inside.contains(Polygon([(box[0], box[1]), (box[2], box[1]), (box[2], box[3]), (box[0], box[3])]))
+                if fits and not any(boxes_overlap(box, other) for other in pads[back] + taken[back]):
+                    taken[back].append(box)
+                    return True
+        return False
+
+    # Connector destination labels first ("CROWN", "MAIN", "N", "PZ NE", ...), on the connector's own side
+    for ref_name, label in sorted(frame.get("connector_labels", {}).items()):
+        fp = board.FindFootprintByReference(ref_name)
+        if fp is None:
+            continue
+        back = fp.IsFlipped()
+        for size in (SILK_TEXT_MM, 0.55):
+            txt = pcbnew.PCB_TEXT(board)
+            txt.SetLayer(pcbnew.B_SilkS if back else pcbnew.F_SilkS)
+            txt.SetText(str(label))
+            txt.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(size), pcbnew.FromMM(size)))
+            txt.SetTextThickness(pcbnew.FromMM(SILK_STROKE_MM))
+            txt.SetMirrored(back)
+            if place_next_to(fp, txt, back, rotate=True):
+                board.Add(txt)
+                break
+        else:
+            print(f"  WARNING: no room for the silk label {label!r} next to {ref_name}")
+
     for fp in sorted(board.Footprints(), key=area, reverse=True):
         ref = fp.Reference()
         ref.SetVisible(True)
-        back = fp.IsFlipped()
         ref.SetTextAngle(pcbnew.EDA_ANGLE(0, pcbnew.DEGREES_T))
-        x0, y0, x1, y1 = mm_box(fp.GetBoundingBox(False, False))
-        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-        tx0, ty0, tx1, ty1 = mm_box(ref.GetBoundingBox())
-        dx, dy = (tx1 - tx0) / 2 + 0.2, (ty1 - ty0) / 2 + 0.2
-        spots = [(cx, y0 - dy), (cx, y1 + dy), (x0 - dx, cy), (x1 + dx, cy), (cx, cy)]
-        spots += [(x, y) for x in (x0 - dx, x1 + dx) for y in (y0 - dy, y1 + dy)]
-        for x, y in spots:
-            ref.SetPosition(pcbnew.VECTOR2I(pcbnew.FromMM(x), pcbnew.FromMM(y)))
-            box = mm_box(ref.GetBoundingBox(), 0.05)
-            fits = inside.contains(Polygon([(box[0], box[1]), (box[2], box[1]), (box[2], box[3]), (box[0], box[3])]))
-            if fits and not any(boxes_overlap(box, other) for other in pads[back] + taken[back]):
-                taken[back].append(box)
-                break
-        else:
+        if not place_next_to(fp, ref, fp.IsFlipped()):
             ref.SetVisible(False)
 
 
@@ -679,8 +713,10 @@ def unconnected(board):
     return board.GetConnectivity().GetUnconnectedCount(False)
 
 
-def prune_ground_tracks(board):
-    candidates = [t for t in board.GetTracks() if t.GetNetname() in GROUND_NETS and t.GetClass() != "PCB_VIA"]
+def prune_ground_tracks(board, nets=GROUND_NETS):
+    """Remove router tracks of `nets` (GND + every net that has a copper pour) that the pours already connect."""
+    candidates = [t for t in board.GetTracks() if t.GetNetname() in nets
+                  and (t.GetClass() != "PCB_VIA" or t.GetNetname() not in GROUND_NETS)]   # keep GND stitching vias
     _DETACHED.extend(candidates)
     baseline = unconnected(board)
     removed, changed = 0, True
@@ -715,7 +751,8 @@ def import_ses(board_name):
     if not pcbnew.ImportSpecctraSES(board, str(ses)):
         sys.exit("SES import failed")
     widened = widen_neckdown_stubs(board)
-    removed = prune_ground_tracks(board) if plan["frame"].get("prune_ground_tracks", True) else 0
+    pour_nets = GROUND_NETS | {z["net"] for z in plan["frame"].get("pours", [])}
+    removed = prune_ground_tracks(board, pour_nets) if plan["frame"].get("prune_ground_tracks", True) else 0
     print(f"{board_name}: removed {removed} ground tracks the pours already cover, "
           f"widened {widened} neck-down stubs")
     save(board, plan, board_name)

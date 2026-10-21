@@ -1,15 +1,15 @@
 """12-32 V DC roof input protection, VIN_ADC supply monitor, and de-icing heater MOSFET driver (AO3400A).
-The two 5 V rails (+5V electronics, +5V_HEAT heaters) come from the separate `power` board (two SCT2430
-bucks) over main J5; no 12-32 V conductor leaves the base bay."""
+The two 5 V rails (+5V electronics, +12V_HEAT heaters) come from the separate `power` board (two 60 V TPS54360
+bucks) over main J5; no 12-32 V conductor leaves the base bay. Every part on VIN is rated >= 60 V (TVS clamp 58.1 V)."""
 
 from common import block, part, power_flag, src
 from skidl import Net
 
 R0603 = "Resistor_SMD:R_0603_1608Metric"
 C0603 = "Capacitor_SMD:C_0603_1608Metric"
-C0805 = "Capacitor_SMD:C_0805_2012Metric"
+C1206 = "Capacitor_SMD:C_1206_3216Metric"
 D_SMA = "Diode_SMD:D_SMA"
-FUSE1812 = "Fuse:Fuse_1812_4532Metric"
+FUSE2920 = "Fuse:Fuse_2920_7451Metric"
 TERM_KF250_4P = "gateway_fp:TerminalBlock_Kefa_KF250-3.5-4P"
 SOT23_AO3400 = "gateway_fp:AOS_AO3400A_SOT-23"
 
@@ -30,7 +30,7 @@ def build(gnd, heat_pwm):
     rs485_a = Net("RS485_A")
     rs485_b = Net("RS485_B")
     v5 = Net("+5V")
-    heat5 = Net("+5V_HEAT")
+    heat5 = Net("+12V_HEAT")
     vin_adc = Net("VIN_ADC")
     heat_sw = Net("HEAT_SW")
     heat_gate = Net("HEAT_GATE")
@@ -49,16 +49,17 @@ def build(gnd, heat_pwm):
     j1[3] += rs485_a
     j1[4] += rs485_b
 
-    f1 = part("Device", "Polyfuse", "1.1A", FUSE1812,
-              src(mpn="1812L110/33MR", mfr="Littelfuse", lcsc="C142747",
-                  source="1.1 A hold / 33 V resettable PTC fuse"),
+    f1 = part("Device", "Polyfuse", "1.1A", FUSE2920,
+              src(mpn="2920L110/60V", mfr="Littelfuse", lcsc="C49318488",
+                  source="1.1 A hold / 60 V resettable PTC fuse (rated above the 58 V TVS clamp)"),
               ref="F1")
     f1[1] += vin_raw
     f1[2] += vin_fused
 
-    d_tvs = part("Device", "D_Zener", "SMAJ33A", D_SMA,
-                 src(mpn="SMAJ33A", mfr="MDD", lcsc="C113966",
-                     source="33 V unidirectional TVS surge suppressor on roof DC input"),
+    # SMAJ36A: 36 V stand-off (> 32 V max input), 40 V min breakdown, 58.1 V clamp < 60 V TPS54360 rating
+    d_tvs = part("Device", "D_Zener", "SMAJ36A", D_SMA,
+                 src(mpn="SMAJ36A", mfr="MDD", lcsc="C113967",
+                     source="36 V unidirectional TVS surge suppressor on roof DC input (58.1 V clamp)"),
                  ref="D1")
     d_tvs["K"] += vin_prot
     d_tvs["A"] += gnd
@@ -70,9 +71,9 @@ def build(gnd, heat_pwm):
     d_rev["A"] += vin_fused
     d_rev["K"] += vin_prot
 
-    # Solid-state 50 V X7R MLCC ceramic input bank (paired with C4 10u 50V on VIN_PROT; -55..+125 C, 10-year roof longevity)
-    c_bulk = part("Device", "C", "10u 50V", C0805,
-                  src(source="Solid-state 50 V X7R ceramic input reservoir (-55..+125 C, zero electrolyte dry-out)"),
+    # 100 V X7R MLCC input reservoir: rated above the 58 V TVS clamp (a 50 V part would be over-stressed in a surge)
+    c_bulk = part("Device", "C", "2u2 100V", C1206,
+                  src(source="100 V X7R ceramic input reservoir on VIN_PROT (-55..+125 C, no electrolyte dry-out)"),
                   ref="C1")
     c_bulk[1] += vin_prot
     c_bulk[2] += gnd
@@ -107,7 +108,7 @@ def build(gnd, heat_pwm):
 
     d_fly = part("Device", "D_Schottky", "SS16", D_SMA,
                  src(mpn="SS16", mfr="MDD", lcsc="C2481",
-                     source="Freewheeling flyback Schottky across heater cable inductance (to the +5V_HEAT rail)"),
+                     source="Freewheeling flyback Schottky across heater cable inductance (to the +12V_HEAT rail)"),
                  ref="D3")
     d_fly["A"] += heat_sw
     d_fly["K"] += heat5

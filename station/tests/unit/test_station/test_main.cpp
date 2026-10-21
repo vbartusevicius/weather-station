@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstring>
 #include <string>
+#include <vector>
 #if __has_include(<unity.h>)
 #include <unity.h>
 #else
@@ -29,6 +30,8 @@
 #include "../../../src/astro/Astronomy.hpp"
 #include "../../../src/conditioning/Conditioners.hpp"
 #include "../../../src/core/Pipeline.hpp"
+#include "../../../src/crown/CrownDecode.hpp"
+#include "../../../src/crown/StmI2cBootloader.hpp"
 #include "../../../src/environment/MetCalculations.hpp"
 #include "../../../src/firmware/ButtonController.hpp"
 #include "../../../src/heater/DeIcingHeater.hpp"
@@ -465,19 +468,6 @@ void test_conditioners_vibration_pressure_and_rain_pulses(void) {
     float mean_hpa = 0.0F, ripple = 0.0F;
     TEST_ASSERT_TRUE(pa.take_second(mean_hpa, ripple));
     TEST_ASSERT_FLOAT_WITHIN(0.01F, 1000.0F, mean_hpa);
-
-    // Rain AFE: one 400 mV / 250 us pulse on a 206 mV bias
-    station::conditioning::RainPulseDetector rd;
-    station::core::RainImpact imp{};
-    bool got = false;
-    for (int i = 0; i < 1600; ++i) {
-        const bool pulse = i >= 1000 && i < 1004;  // 4 samples at 16 kHz = 250 us
-        got = got || rd.add(pulse ? 606 : 206, static_cast<std::uint32_t>(i / 16), imp);
-    }
-    TEST_ASSERT_TRUE(got);
-    TEST_ASSERT_EQUAL_UINT16(606, imp.peak_mv);
-    TEST_ASSERT_FLOAT_WITHIN(5.0F, 206.0F, static_cast<float>(imp.baseline_mv));
-    TEST_ASSERT_FLOAT_WITHIN(70.0F, 250.0F, static_cast<float>(imp.width_us));
 }
 
 void test_pipeline_missing_sensors_publish_null_not_defaults(void) {
@@ -624,26 +614,35 @@ void test_pipeline_daytime_cloud_cover_rain_lightning_and_thunder(void) {
 }
 
 void test_constant_wattage_heater_on_regulated_5v_rail(void) {
-    // Freezing outdoor air (-4 C), reflector at 0 C (NTC ~32.6k -> ~2525 mV); heater on the +5V rail
-    HeaterSensorInput lo{4.75F, 2525, -4.0F, true};
-    HeaterSensorInput nom{5.00F, 2525, -4.0F, true};
-    HeaterSensorInput hi{5.25F, 2525, -4.0F, true};
+    // Freezing outdoor air (-4 C), reflector at 0 C (NTC ~32.6k -> ~2525 mV); heater on the +12V_HEAT rail
+    // (lo = pass-through on a 12 V supply, nom = regulated 12 V, hi = regulator tolerance)
+    HeaterSensorInput lo{10.4F, 2525, -4.0F, true};
+    HeaterSensorInput nom{12.0F, 2525, -4.0F, true};
+    HeaterSensorInput hi{12.3F, 2525, -4.0F, true};
     const auto out_lo = DeIcingHeaterController::update(lo);
     const auto out_nom = DeIcingHeaterController::update(nom);
     const auto out_hi = DeIcingHeaterController::update(hi);
     TEST_ASSERT_EQUAL(HeaterState::Heating, out_nom.state);
-    // Constant 3.5 W across the rail tolerance: 4x 27 ohm (6.75 ohm) gives 3.70 W at 5.0 V, 3.34 W at 4.75 V
-    TEST_ASSERT_FLOAT_WITHIN(0.05F, 3.5F, out_nom.actual_power_w);
-    TEST_ASSERT_FLOAT_WITHIN(0.05F, 3.5F, out_hi.actual_power_w);
-    TEST_ASSERT_FLOAT_WITHIN(0.05F, 3.34F, out_lo.actual_power_w);   // 100 % duty: all the rail can give
+    // Constant 4.5 W across the rail range: 4x 120 ohm (30 ohm) gives 4.80 W at 12.0 V, 3.61 W at 10.4 V
+    TEST_ASSERT_FLOAT_WITHIN(0.05F, 4.5F, out_nom.actual_power_w);
+    TEST_ASSERT_FLOAT_WITHIN(0.05F, 4.5F, out_hi.actual_power_w);
+    TEST_ASSERT_FLOAT_WITHIN(0.05F, 3.61F, out_lo.actual_power_w);   // 100 % duty: all the rail can give
     TEST_ASSERT_FLOAT_WITHIN(0.1F, 100.0F, out_lo.pwm_duty_percent);
     TEST_ASSERT_TRUE(out_hi.pwm_duty_percent < out_nom.pwm_duty_percent);
-    // A sagging rail (buck overloaded / input below its UVLO) locks the heater out
-    HeaterSensorInput sag{4.2F, 2525, -4.0F, true};
+    // A sagging rail (input far below 12 V / buck overloaded) locks the heater out
+    HeaterSensorInput sag{8.5F, 2525, -4.0F, true};
     TEST_ASSERT_EQUAL(HeaterState::UndervoltageLockout, DeIcingHeaterController::update(sag).state);
     // Service button press decoded when NTC_SENSE pulled below 150 mV
-    HeaterSensorInput btn{5.0F, 40, 18.0F, false};
+    HeaterSensorInput btn{12.0F, 40, 18.0F, false};
     TEST_ASSERT_TRUE(DeIcingHeaterController::update(btn).service_button_pressed);
+    // An open reflector NTC (NTC_SENSE at the 3.3 V pull-up) must never heat blind, even in icing conditions
+    HeaterSensorInput open_ntc{12.0F, 3300, -10.0F, true};
+    const auto out_open = DeIcingHeaterController::update(open_ntc);
+    TEST_ASSERT_EQUAL(HeaterState::SensorFault, out_open.state);
+    TEST_ASSERT_EQUAL_FLOAT(0.0F, out_open.pwm_duty_percent);
+    // -40 C (3220 mV) is still a valid reading and heats
+    HeaterSensorInput deep_cold{12.0F, 3220, -40.0F, true};
+    TEST_ASSERT_EQUAL(HeaterState::Heating, DeIcingHeaterController::update(deep_cold).state);
 }
 
 void test_longevity_sht45_bakeout_and_scd41_extreme_cold_guard(void) {
@@ -786,15 +785,15 @@ void test_heater_power_monitor_and_heat_check(void) {
         fill_steady(raw, t);
         raw.power.refl_heater_a.set(refl_a, t);
         raw.power.probe_heater_a.set(probe_a, t);
-        raw.power.rail_5v.set(5.0F, t);
+        raw.power.rail_heat.set(12.0F, t);
         raw.power.rail_5v_logic.set(5.02F, t);
         raw.air.scd41_temp_c.set(scd_c, t);
         p.step(raw, ev, cfg, d);
     };
-    // Probe heater on (83 mA from +5V) holding the SCD41 zone at its +8 C setpoint
-    feed(1000, 0.0F, 0.0833F, 8.1F);
+    // Probe heater on (35 mA from +12V_HEAT) holding the SCD41 zone at its +8 C setpoint
+    feed(1000, 0.0F, 0.0353F, 8.1F);
     TEST_ASSERT_TRUE(d.heater.probe_on);
-    TEST_ASSERT_FLOAT_WITHIN(0.01F, 0.4165F, d.heater.probe_w.v);
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 0.4236F, d.heater.probe_w.v);
     TEST_ASSERT_EQUAL_STRING("heating", d.heater.probe_status);
     TEST_ASSERT_FLOAT_WITHIN(0.01F, 8.1F, d.heater.probe_c.v);
     // Cold zone but no current: the probe heater is not heating
@@ -805,14 +804,14 @@ void test_heater_power_monitor_and_heat_check(void) {
     feed(3000, 0.2F, 0.0F, 9.0F);
     TEST_ASSERT_EQUAL_STRING("stuck-on", d.heater.reflector_status);
 
-    // HEAT_CHECK: 10 s fixed 2 W pulse; at 5.0 V the duty is 2 x 6.75 / 5^2 = 54 % -> 0.40 A mean current
+    // HEAT_CHECK: 10 s fixed 2 W pulse; at 12.0 V the duty is 2 x 30 / 12^2 = 41.7 % -> 0.167 A mean current
     p.request_heater_check();
     std::uint32_t t = 4000;
     for (int s = 0; s < Pipeline::kHeaterCheckS; ++s, t += 1000) {
-        feed(t, 0.40F, 0.0F, 9.0F);
+        feed(t, 0.1667F, 0.0F, 9.0F);
         TEST_ASSERT_TRUE(s == Pipeline::kHeaterCheckS - 1 || d.controls.heater_check);
     }
-    TEST_ASSERT_FLOAT_WITHIN(0.1F, 54.0F, d.heater.duty_pct);
+    TEST_ASSERT_FLOAT_WITHIN(0.1F, 41.7F, d.heater.duty_pct);
     TEST_ASSERT_FLOAT_WITHIN(0.05F, 2.0F, d.heater.reflector_w.v);
     TEST_ASSERT_EQUAL_STRING("check-pass", d.heater.reflector_status);
     // An open heater (no current during the pulse) fails the check
@@ -825,7 +824,168 @@ void test_heater_power_monitor_and_heat_check(void) {
     TEST_ASSERT_EQUAL_STRING("check-fail", doc["heater"]["reflector_status"].as<const char*>());
     TEST_ASSERT_FLOAT_WITHIN(0.01F, 9.0F, doc["heater"]["probe_c"].as<float>());
     TEST_ASSERT_FLOAT_WITHIN(0.01F, 5.02F, doc["heater"]["rail_logic_v"].as<float>());
-    TEST_ASSERT_FLOAT_WITHIN(0.01F, 5.0F, doc["heater"]["rail_heat_v"].as<float>());
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 12.0F, doc["heater"]["rail_heat_v"].as<float>());
+}
+
+// ---------------------------------------------------------------- crown link (STM32 crown v2)
+void test_crown_blocks_decode_into_pipeline_types(void) {
+    crown::WindBlock w{};
+    w.seq = 3;
+    w.tof_ps[crown::kNS] = 281250000U;
+    w.tof_ps[crown::kSN] = 283000000U;
+    w.tof_ps[crown::kEW] = 282100000U;
+    w.tof_ps[crown::kWE] = 282100000U;
+    for (auto& s : w.snr_db) s = 34;
+    w.corr_pct[0] = 97;
+    w.corr_pct[1] = 92;
+    crown::seal(w);
+    std::uint8_t raw[sizeof(w)];
+    std::memcpy(raw, &w, sizeof w);
+    crown::WindBlock got{};
+    TEST_ASSERT_TRUE(crown::decode(raw, sizeof raw, got));
+    station::wind::TofQuad q{};
+    station::crown_link::WindQuality wq{};
+    TEST_ASSERT_TRUE(station::crown_link::to_tof_quad(got, q, wq));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 281.25F, q.t_ns_us);
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 283.0F, q.t_sn_us);
+    TEST_ASSERT_EQUAL_UINT8(92, wq.min_corr_pct);
+    // one bad path -> the quad is not used (no bogus gust from a rain-splashed path)
+    got.flags[crown::kEW] = crown::kPathLowCorr;
+    TEST_ASSERT_FALSE(station::crown_link::to_tof_quad(got, q, wq));
+    TEST_ASSERT_EQUAL_UINT8(1, wq.bad_paths);
+
+    crown::RainEvent re{};
+    re.age_ms = 40;
+    re.peak_mv = 512;
+    re.width_us = 900;
+    const auto imp = station::crown_link::to_rain_impact(re, 10000);
+    TEST_ASSERT_EQUAL_UINT32(9960, imp.t_ms);
+    TEST_ASSERT_EQUAL_UINT16(512 + station::crown_link::kRainBaselineMv, imp.peak_mv);
+    TEST_ASSERT_EQUAL_UINT16(station::crown_link::kRainBaselineMv, imp.baseline_mv);
+
+    crown::StrikeEvent se{};
+    se.kind = 1;
+    se.distance_km = 14;
+    se.energy = 123456;
+    se.age_ms = 300;
+    station::core::LightningStrike ls{};
+    TEST_ASSERT_TRUE(station::crown_link::to_strike(se, 5000, ls));
+    TEST_ASSERT_EQUAL_UINT32(4700, ls.t_ms);
+    TEST_ASSERT_EQUAL_UINT8(14, ls.distance_km);
+    se.kind = 2;   // disturber
+    TEST_ASSERT_FALSE(station::crown_link::to_strike(se, 5000, ls));
+}
+
+namespace {
+// Minimal STM32 ROM bootloader model speaking AN4221 (no-stretch commands) at one I2C address.
+class FakeRom : public station::crown_link::BootTransport {
+public:
+    std::uint8_t addr{crown::kBootloaderAddrB};
+    bool boot0{false}, in_rom{false};
+    std::vector<std::uint8_t> flash = std::vector<std::uint8_t>(128 * 1024, 0x00);
+    std::vector<std::uint8_t> out;   // bytes the master will read
+    int step{0};
+    std::uint8_t cmd{0};
+    std::uint32_t mem_addr{0};
+    bool erased{false};
+    int busy_polls{0};
+
+    void ack() { out.push_back(0x79); }
+    void nack() { out.push_back(0x1F); }
+    static bool sum_ok(const std::uint8_t* d, std::size_t n) {
+        std::uint8_t x = 0;
+        for (std::size_t i = 0; i + 1 < n; ++i) x ^= d[i];
+        return x == d[n - 1];
+    }
+    bool write(std::uint8_t a, const std::uint8_t* d, std::size_t n) override {
+        if (!in_rom || a != addr) return false;
+        if (step == 0) {
+            if (n != 2 || d[1] != static_cast<std::uint8_t>(~d[0])) { nack(); return true; }
+            cmd = d[0];
+            ack();
+            if (cmd == 0x00) { out.insert(out.end(), {3, 0x31, 0x00, 0x02, 0x11}); ack(); }
+            else if (cmd == 0x02) { out.insert(out.end(), {1, 0x04, 0x68}); ack(); }
+            else step = 1;
+            return true;
+        }
+        if (cmd == 0x45) {   // erase NS
+            if (n == 3 && d[0] == 0xFF && d[1] == 0xFF && sum_ok(d, 3)) {
+                std::fill(flash.begin(), flash.end(), 0xFF);
+                erased = true;
+                busy_polls = 3;
+            } else {
+                nack();
+            }
+            step = 0;
+            return true;
+        }
+        if (step == 1) {     // address
+            if (n != 5 || !sum_ok(d, 5)) { nack(); step = 0; return true; }
+            mem_addr = (std::uint32_t(d[0]) << 24) | (std::uint32_t(d[1]) << 16) | (std::uint32_t(d[2]) << 8) | d[3];
+            ack();
+            step = 2;
+            return true;
+        }
+        if (cmd == 0x32) {   // write NS: N-1, data, checksum
+            const std::size_t len = std::size_t(d[0]) + 1;
+            if (n != len + 2 || !sum_ok(d, n) || !erased) { nack(); step = 0; return true; }
+            for (std::size_t i = 0; i < len; ++i) flash[mem_addr - 0x08000000U + i] &= d[1 + i];
+            ack();
+            step = 0;
+            return true;
+        }
+        if (cmd == 0x11) {   // read: N-1 + complement
+            if (n != 2 || d[1] != static_cast<std::uint8_t>(~d[0])) { nack(); step = 0; return true; }
+            ack();
+            const std::size_t len = std::size_t(d[0]) + 1;
+            for (std::size_t i = 0; i < len; ++i) out.push_back(flash[mem_addr - 0x08000000U + i]);
+            step = 0;
+            return true;
+        }
+        return false;
+    }
+    bool read(std::uint8_t a, std::uint8_t* d, std::size_t n) override {
+        if (!in_rom || a != addr) return false;
+        if (busy_polls > 0 && n == 1) {
+            --busy_polls;
+            d[0] = 0x76;
+            if (busy_polls == 0) ack();
+            return true;
+        }
+        if (out.size() < n) return false;
+        std::copy(out.begin(), out.begin() + static_cast<long>(n), d);
+        out.erase(out.begin(), out.begin() + static_cast<long>(n));
+        return true;
+    }
+    void delay_ms(std::uint32_t) override {}
+    void set_boot0(bool high) override { boot0 = high; }
+    void reset_pulse() override {
+        in_rom = boot0;
+        step = 0;
+        out.clear();
+    }
+};
+}  // namespace
+
+void test_crown_rom_bootloader_flashes_and_verifies(void) {
+    FakeRom rom;
+    station::crown_link::StmI2cBootloader bl(rom);
+    std::vector<std::uint8_t> image(3001);
+    for (std::size_t i = 0; i < image.size(); ++i) image[i] = static_cast<std::uint8_t>(i * 7 + 3);
+    const auto r = bl.flash(image.data(), image.size());
+    TEST_ASSERT_EQUAL(static_cast<int>(station::crown_link::StmI2cBootloader::Result::Ok), static_cast<int>(r));
+    TEST_ASSERT_EQUAL_HEX8(crown::kBootloaderAddrB, bl.address());   // found at the second candidate address
+    TEST_ASSERT_EQUAL_MEMORY(image.data(), rom.flash.data(), image.size());
+    TEST_ASSERT_EQUAL_HEX8(0xFF, rom.flash[image.size()]);            // padding stays erased
+    TEST_ASSERT_FALSE(rom.boot0);                                      // BOOT0 released: boots the application
+    TEST_ASSERT_FALSE(rom.in_rom);
+
+    FakeRom absent;
+    absent.addr = 0x10;   // nothing answers at the bootloader addresses
+    station::crown_link::StmI2cBootloader bl2(absent);
+    TEST_ASSERT_EQUAL(static_cast<int>(station::crown_link::StmI2cBootloader::Result::NoBootloader),
+                      static_cast<int>(bl2.flash(image.data(), image.size())));
+    TEST_ASSERT_FALSE(absent.boot0);
 }
 
 int main(void) {
@@ -851,5 +1011,7 @@ int main(void) {
     RUN_TEST(test_sgp41_gas_index_algorithm_blackout_baseline_event_and_state);
     RUN_TEST(test_pipeline_uv_fusion_and_sgp41_gas_indices);
     RUN_TEST(test_heater_power_monitor_and_heat_check);
+    RUN_TEST(test_crown_blocks_decode_into_pipeline_types);
+    RUN_TEST(test_crown_rom_bootloader_flashes_and_verifies);
     return UNITY_END();
 }

@@ -34,8 +34,36 @@ OUTER_R = ef.OUTER_R
 WALL = ef.WALL
 INNER_R = OUTER_R - WALL
 RAISE = ef.RAISE          # base bay grown by this much; parts above it are built in the design frame and lifted
+TOP_RAISE = ef.TOP_RAISE  # wind_tunnel deck, struts, crown_base, crown: lifted a further TOP_RAISE (crown-cable gap)
+UPPER = ef.UPPER
 BTN_UP = 10.0             # main board lift (reset button pin lengthened by the same)
 UMB = 12.0                # umbrella lift inside the taller bay (clears the raised XIAO by 3.6 mm)
+
+# Bayonet face seals use standard 88 x 2.0 mm O-rings (EPDM/NBR 70A). The gland floor sits 1.5 mm below the mating
+# skirt face in the modelled (lugs centred) position: 25 % squeeze there; the O-ring lifts the upper part 0.20 mm
+# onto the lug shelves (gland 1.70 mm = 15 % squeeze, which is the preload that keeps the lugs in the detent);
+# pushing down 0.47 mm to pass the detent bridge compresses it to 1.23 mm (38 %, 77 % gland fill).
+ORING_CS = 2.0
+ORING_ID = 88.0
+ORING_FLOOR_BELOW_SEAT = -1.5
+LUG_PLAY = 0.20           # pocket floor (y0 + 1.45) to lug bottom (y0 + 1.65)
+
+# Pagoda through-bolts: 4x DIN 7984 M6 x 55 low-head socket cap screws (head d 10.0 x k 3.5 mm) + ISO 4032 nuts
+# (10 AF x 5.2 mm). A standard ISO 4762 head (k = 6 mm) would hit the reflector board corners.
+M6_HEAD_D, M6_HEAD_K = 10.0, 3.5
+M6_NUT_AF, M6_NUT_M = 10.0, 5.2
+LOUVER_T = 1.6            # pagoda louver blade thickness normal to its surface (was 0.71 mm)
+CLAMP_TRAVEL = 2.0        # mast clamp closing travel left between the clamp and base faces on a Ø 34 pole
+CLAMP_EAR_T = 5.0         # clamp ear thickness (bolt seats at z = -8, clear of the PMSA003I floor slits at z <= -9.8)
+MAST_Y0 = SPEC["envelope"]["mast_socket"]["y_start"]   # -31: 50 mm pole engagement (pole stop at y = 19)
+CLAMP_BOLT_YS = (-22.0, -0.5, 20.5)   # 3 rows x 2 M6 bolts along the 59 mm tall clamp
+CROWN_VENT_DEGS, CROWN_VENT_R = (45, 135, 225, 315), 14.0   # crown_base floor breather grilles (dome/cavity venting)
+# crown PCB edge clips (design-frame x, z, hook direction): W, N, S, E straight edges of the 60 x 60 mm board
+CROWN_CLIPS = ((-30.75, 15.0, (1, 0)), (-15.0, 30.75, (0, -1)), (-15.0, -30.75, (0, 1)), (30.75, -15.0, (-1, 0)))
+# Printed M12x1.75 strut locknuts: the internal thread groove reaches r = 6.22 mm, so 15 mm across flats leaves a
+# 1.28 mm wall at the flats (12 mm AF cut straight through them). Corners r = 8.66 mm -> 9.0 mm pockets.
+STRUT_NUT_AF = 15.0
+STRUT_NUT_POCKET_R = 9.0
 
 
 def cone_y(y0, y1, r0, r1):
@@ -194,19 +222,21 @@ def build_base(umbrella=True):
     mast_or = SPEC["envelope"]["mast_socket"]["outer_diameter"] / 2.0
 
     # 1. Rear half-moon mast cradle (y = 0..34, z >= -1.0) + solid flat clamping ears (x = -33..+33, y = 0..28, z = -1..+8.0)
-    cradle_cyl = cone_y(0.0, 34.0, mast_or, mast_or).cut(box(-40.0, 40.0, -0.5, 30.0, -40.0, -1.0))
-    flange = box(-33.0, 33.0, 0.0, 28.0, -1.0, 8.0)
+    #    The socket starts at MAST_Y0 (= -31): 50 mm of pole engagement up to the pole stop at y = 19.
+    cradle_cyl = cone_y(MAST_Y0, 34.0, mast_or, mast_or).cut(box(-40.0, 40.0, MAST_Y0 - 0.5, 30.0, -40.0, -1.0))
+    flange = box(-33.0, 33.0, MAST_Y0, 28.0, -1.0, 8.0)
     neck = cone_y(28.0, 35.0, mast_or, OUTER_R)
     rear_ear_flat = (
-        box(-35.0, -19.2, -0.5, 30.5, 8.0, 30.0)
-        .union(box(19.2, 35.0, -0.5, 30.5, 8.0, 30.0))
+        box(-35.0, -19.2, MAST_Y0 - 0.5, 30.5, 8.0, 30.0)
+        .union(box(19.2, 35.0, MAST_Y0 - 0.5, 30.5, 8.0, 30.0))
     )
     body = cradle_cyl.union(flange).union(neck).cut(rear_ear_flat)
 
     # 2. Lower electronics bay cylinder (y = 34..66.4) + 8-lug bayonet male spigot (y = 66.4..69.9, r_root = 44.0 mm) + O-ring groove
     #    (all raised by RAISE = 15 mm: the bay is 15 mm taller than the original 34..70 design)
     bay_outer = cone_y(34.0, 66.4 + RAISE, OUTER_R, OUTER_R).union(cone_y(66.4 + RAISE, 69.9 + RAISE, 44.0, 44.0))
-    oring_groove = ring_cone_y(65.2 + RAISE, 66.4 + RAISE, 43.9, OUTER_R - 0.8, 43.9, OUTER_R - 0.8)
+    oring_groove = ring_cone_y(ORING_FLOOR_BELOW_SEAT + 66.9 + RAISE, 66.4 + RAISE, 43.9, OUTER_R - 0.8,
+                               43.9, OUTER_R - 0.8)
     body = body.union(bay_outer).cut(oring_groove)
     body = add_external_bayonet_y(body, 66.4 + RAISE, r_root=44.0, r_lug=45.15, n_lugs=8)
     body = cut_lock_triangles_y(body, y_base=61.9 + RAISE, y_tip=64.3 + RAISE)
@@ -216,15 +246,15 @@ def build_base(umbrella=True):
     body = body.cut(cavity)
 
     # 4. Stepped Center Bore for Mast Pole + IP68 M12x1.5 / PG7 Box-Wire Compression Cable Gland (Single Center Hole Only):
-    mast_bore = cone_y(-0.1, 19.0, mast_ir, mast_ir)
+    mast_bore = cone_y(MAST_Y0 - 0.1, 19.0, mast_ir, mast_ir)
     gland_chamber = cone_y(18.8, 30.0, 13.0, 13.0)
     center_gland_hole = cone_y(29.5, 36.0, 6.1, 6.1)
     locknut_hex_seat = hex_prism_y(33.0, 35.0, across_flats=15.4)
     body = body.cut(mast_bore).cut(gland_chamber).cut(center_gland_hole).cut(locknut_hex_seat)
 
-    # 5. Cut 4x M6 clearance bolt holes (Ø 6.4 mm at x = +/-25.5, y = 7.5 & 20.5) on the solid flat clamping ears
+    # 5. Cut 6x M6 clearance bolt holes (Ø 6.4 mm at x = +/-25.5, 3 rows) on the solid flat clamping ears
     for xb in (-25.5, 25.5):
-        for yb in (7.5, 20.5):
+        for yb in CLAMP_BOLT_YS:
             bolt = (cq.Workplane("XY", origin=(0, 0, -10.0))
                     .center(xb, yb)
                     .circle(3.2)
@@ -356,16 +386,19 @@ def build_mast_clamp():
     mast_ir = SPEC["envelope"]["mast_socket"]["inner_diameter"] / 2.0
     mast_or = SPEC["envelope"]["mast_socket"]["outer_diameter"] / 2.0
 
-    half_cyl = cone_y(0.0, 28.0, mast_or, mast_or).intersect(box(-40.0, 40.0, -0.5, 29.0, -40.0, -1.5))
-    flange = box(-33.0, 33.0, 0.0, 28.0, -8.0, -1.5)
+    # The clamp face sits CLAMP_TRAVEL behind the base face (z = -1.0) on a Ø 34 pole, so tightening the M6 bolts can
+    # pull it CLAMP_TRAVEL closer: direct grip on Ø 32..34 mm poles, smaller poles with `mast_shims`.
+    face = -1.0 - CLAMP_TRAVEL
+    half_cyl = cone_y(MAST_Y0, 28.0, mast_or, mast_or).intersect(box(-40.0, 40.0, MAST_Y0 - 0.5, 29.0, -40.0, face))
+    flange = box(-33.0, 33.0, MAST_Y0, 28.0, face - CLAMP_EAR_T, face)
     ear_flat_cut = (
-        box(-35.0, -19.2, -0.5, 28.5, -25.0, -8.0)
-        .union(box(19.2, 35.0, -0.5, 28.5, -25.0, -8.0))
+        box(-35.0, -19.2, MAST_Y0 - 0.5, 28.5, -25.0, face - CLAMP_EAR_T)
+        .union(box(19.2, 35.0, MAST_Y0 - 0.5, 28.5, -25.0, face - CLAMP_EAR_T))
     )
-    body = half_cyl.union(flange).cut(cone_y(-0.1, 29.0, mast_ir, mast_ir)).cut(ear_flat_cut)
+    body = half_cyl.union(flange).cut(cone_y(MAST_Y0 - 0.1, 29.0, mast_ir, mast_ir)).cut(ear_flat_cut)
 
     for xb in (-25.5, 25.5):
-        for yb in (7.5, 20.5):
+        for yb in CLAMP_BOLT_YS:
             bolt = (cq.Workplane("XY", origin=(0, 0, -15.0))
                     .center(xb, yb)
                     .circle(3.2)
@@ -373,6 +406,23 @@ def build_mast_clamp():
             body = body.cut(bolt)
 
     return body
+
+
+MAST_SHIMS = (1.0, 2.0, 3.0, 4.0)   # shim wall t: bore Ø (34 - 2t); with 2.0 mm clamp travel each covers 2 mm of pole Ø (24..32)
+
+
+def build_mast_shims():
+    """Part 11: Printable split reducer shims for poles smaller than Ø 32 mm (one pair per size, 170-deg half
+    shells, 50 mm tall = the pole engagement of the mast bore). Laid out side by side next to the mast socket."""
+    mast_ir = SPEC["envelope"]["mast_socket"]["inner_diameter"] / 2.0
+    out = None
+    for k, t in enumerate(MAST_SHIMS):
+        for side in (0, 1):
+            shell = ring_cone_y(MAST_Y0, 19.0, mast_ir - t, mast_ir - 0.15, mast_ir - t, mast_ir - 0.15)
+            shell = shell.intersect(arc_sector_y(MAST_Y0 - 1.0, 20.0, 1.0, mast_ir + 1.0, 5.0, 175.0, steps=24))
+            shell = shell.rotate((0, 0, 0), (0, 1, 0), 180.0 * side).translate((60.0 + 40.0 * k, 0, 0))
+            out = shell if out is None else out.union(shell)
+    return out
 
 
 def _build_probe_sleeve_cyl_ends(z_min, z_max):
@@ -527,7 +577,10 @@ def _build_pagoda():
     # Each spacer column (`exact Ø 10.0 mm OD / Ø 6.2 mm ID` at r = 20.5 mm) has a Female Socket Bottom (`r = 4.1..5.0 mm`)
     # and a Male Spigot Top (`r = 3.1..3.95 mm`) so every column segment locks snugly into the next before bolting!
     for idx, py in enumerate(SPEC["envelope"]["pagoda_shield"]["plate_ys"][:4]):
-        louver_blade = ring_cone_y(py - 2.2, py + 3.0, 44.8, OUTER_R, 21.0, 24.2)
+        # 12.3-deg conical blade, LOUVER_T thick normal to its surface (radial offset = t / sin(slope)); the upper
+        # surface is unchanged, the extra material hangs below it.
+        dr = LOUVER_T / math.sin(math.atan(5.2 / 23.8))
+        louver_blade = ring_cone_y(py - 2.2, py + 3.0, OUTER_R - dr, OUTER_R, 24.2 - dr, 24.2)
         drip_lip = ring_cone_y(py - 4.5, py - 2.0, OUTER_R - 1.8, OUTER_R, OUTER_R - 1.8, OUTER_R)
         plate_ring = louver_blade.union(drip_lip)
         y_bot = 74.35 if idx == 0 else (py - 0.65)
@@ -555,7 +608,7 @@ def _build_pagoda():
         ring_cone_y(115.5, 118.8, 44.8, OUTER_R, 10.55, OUTER_R)
         .union(ring_cone_y(117.0, 120.1, 10.55, OUTER_R, 10.55, OUTER_R))
     )
-    top_oring_groove = ring_cone_y(118.9, 120.1, 43.9, OUTER_R - 0.8, 43.9, OUTER_R - 0.8)
+    top_oring_groove = ring_cone_y(ORING_FLOOR_BELOW_SEAT + 120.6, 120.1, 43.9, OUTER_R - 0.8, 43.9, OUTER_R - 0.8)
     top_spigot = ring_cone_y(119.8, 123.9, 42.6, 44.0, 42.6, 44.0)
     center_refl_well = cone_y(118.2, 124.2, 14.5, 14.5)
     top_cap = (top_drip_lip.union(top_structural_deck)
@@ -570,9 +623,9 @@ def _build_pagoda():
     for deg in (45, 135, 225, 315):
         rad = math.radians(deg)
         px, pz = 20.5 * math.cos(rad), 20.5 * math.sin(rad)
-        top_well_boss = cone_y(115.5, 120.6, 5.8, 5.8).translate((px, 0, pz))
+        top_well_boss = cone_y(115.5, 120.6, M6_HEAD_D / 2.0 + 1.1, M6_HEAD_D / 2.0 + 1.1).translate((px, 0, pz))
         top_female_sock = cone_y(115.4, 116.8, 4.1, 4.1).translate((px, 0, pz))
-        bolt_head_well = cone_y(117.8, 121.0, 5.0, 5.0).translate((px, 0, pz))
+        bolt_head_well = cone_y(117.8, 121.0, M6_HEAD_D / 2.0 + 0.3, M6_HEAD_D / 2.0 + 0.3).translate((px, 0, pz))
         m6_bore = cone_y(68.0, 121.6, 3.1, 3.1).translate((px, 0, pz))
         body = body.union(top_well_boss).cut(top_female_sock).cut(bolt_head_well).cut(m6_bore)
 
@@ -603,13 +656,14 @@ def _build_wind_tunnel():
       - Central Underside Cavity (y = 118.5..124.48) housing the 24x24 mm horizontal `reflector` heater PCB
         plus a Radial Cable Pass-Through Channel from the 45-deg NE strut pocket to the center `probe_sleeve_back` duct!
     """
-    outer_skirt = ring_cone_y(120.6, 125.0, 44.18, OUTER_R, 44.18, OUTER_R)
+    # The bayonet skirt stays on the pagoda joint; the skirt is TOP_RAISE taller so the deck (and everything that
+    # bolts onto it) sits TOP_RAISE higher, leaving a 10.4 mm crown-cable / service gap above the pagoda top deck.
+    outer_skirt = ring_cone_y(120.6, 125.0 + TOP_RAISE, 44.18, OUTER_R, 44.18, OUTER_R)
     outer_skirt = cut_internal_bayonet_y(outer_skirt, 120.1, r_minor=44.18, r_slot=45.40, n_lugs=8)
 
     deck_plate = cone_y(124.48, 126.5, OUTER_R, OUTER_R)
     reflector_cone = cone_y(126.5, 130.0, OUTER_R, 6.0)
-    body = outer_skirt.union(deck_plate).union(reflector_cone)
-    body = cut_lock_triangles_y(body, y_base=123.9, y_tip=121.5)
+    upper = deck_plate.union(reflector_cone)
 
     for st in ef.strut_centres():
         sx, sz = st["x"], st["z"]
@@ -617,14 +671,15 @@ def _build_wind_tunnel():
         # with `spot_face` at `y = 127.15 mm` so there is 3.4..5.9 mm of open vertical wire space above `pagoda` top (`y = 120.1 mm`)!
         spot_face = cone_y(127.15, 130.5, 7.2, 7.2).translate((sx, 0, sz))
         strut_hole = cone_y(123.0, 130.5, 6.1, 6.1).translate((sx, 0, sz))
-        nut_pocket = cone_y(118.5, 126.0, 7.6, 7.6).translate((sx, 0, sz))
-        body = body.cut(spot_face).cut(strut_hole).cut(nut_pocket)
+        nut_pocket = cone_y(118.5, 126.0, STRUT_NUT_POCKET_R, STRUT_NUT_POCKET_R).translate((sx, 0, sz))
+        upper = upper.cut(spot_face).cut(strut_hole).cut(nut_pocket)
 
-    return body
+    body = outer_skirt.union(upper.translate((0, TOP_RAISE, 0)))
+    return cut_lock_triangles_y(body, y_base=123.9, y_tip=121.5)
 
 
 def build_struts():
-    return _build_struts().translate((0, RAISE, 0))
+    return _build_struts().translate((0, UPPER, 0))
 
 
 def _build_struts():
@@ -670,12 +725,12 @@ def _build_struts():
                  .union(male_tongue_negx).union(male_tongue_posx))
 
         # Bottom & Top ISO M12x1.75 Hex Locknuts (`bot_nut` recessed up at y = 123.5..125.9 mm inside `wind_tunnel`!)
-        bot_nut = hex_prism_y(123.5, 125.9, across_flats=12.0, cx=sx, cz=sz).cut(
+        bot_nut = hex_prism_y(123.5, 125.9, across_flats=STRUT_NUT_AF, cx=sx, cz=sz).cut(
             cone_y(123.3, 126.1, 5.12, 5.12).translate((sx, 0, sz)))
         bot_nut = cut_internal_thread_y(bot_nut, (123.9, 125.65),
                                         r_minor=5.12, depth=0.90, half_base=0.55, half_crest=0.16, clearance=0.20, cx=sx, cz=sz)
 
-        top_nut = hex_prism_y(175.8, 178.4, across_flats=12.0, cx=sx, cz=sz).cut(
+        top_nut = hex_prism_y(175.8, 178.4, across_flats=STRUT_NUT_AF, cx=sx, cz=sz).cut(
             cone_y(175.6, 178.6, 5.12, 5.12).translate((sx, 0, sz)))
         top_nut = cut_internal_thread_y(top_nut, (176.1, 177.85),
                                         r_minor=5.12, depth=0.90, half_base=0.55, half_crest=0.16, clearance=0.20, cx=sx, cz=sz)
@@ -705,7 +760,7 @@ def _build_struts():
 
 
 def build_crown_base():
-    return _build_crown_base().translate((0, RAISE, 0))
+    return _build_crown_base().translate((0, UPPER, 0))
 
 
 def _build_crown_base():
@@ -718,7 +773,7 @@ def _build_crown_base():
     """
     shroud = cone_y(174.0, 186.0, OUTER_R, OUTER_R).union(cone_y(186.0, 189.8, 44.0, 44.0))
     crown_drip = ring_cone_y(172.5, 174.5, OUTER_R - 1.2, OUTER_R + 0.6, OUTER_R - 1.2, OUTER_R)
-    oring_groove = ring_cone_y(184.8, 186.0, 43.9, OUTER_R - 0.8, 43.9, OUTER_R - 0.8)
+    oring_groove = ring_cone_y(ORING_FLOOR_BELOW_SEAT + 186.5, 186.0, 43.9, OUTER_R - 0.8, 43.9, OUTER_R - 0.8)
     body = shroud.union(crown_drip).cut(oring_groove)
     body = add_external_bayonet_y(body, 186.0, r_root=44.0, r_lug=45.15, n_lugs=8)
     body = cut_lock_triangles_y(body, y_base=181.6, y_tip=184.0)
@@ -762,27 +817,39 @@ def _build_crown_base():
     for st in ef.strut_centres():
         sx, sz = st["x"], st["z"]
         strut_hole = cone_y(173.8, 176.2, 6.1, 6.1).translate((sx, 0, sz))
-        nut_pocket = cone_y(175.8, 179.0, 8.2, 8.2).translate((sx, 0, sz))
+        nut_pocket = cone_y(175.8, 179.0, STRUT_NUT_POCKET_R, STRUT_NUT_POCKET_R).translate((sx, 0, sz))
         body = body.cut(strut_hole).cut(nut_pocket)
 
     for st in ef.standoffs("crown"):
         post = cone_y(175.8, crown_bot_y, 1.7, 1.7).translate((st["x"], 0, st["z"]))
         body = body.union(post)
 
-    # 4x Snap-Fit Retention Clips holding the compact `34.0 x 34.0 mm` square `crown` PCB (`cx = +/-10.5, cz = +/-17.8`)
-    for sx in (-1.0, 1.0):
-        for sz in (-1.0, 1.0):
-            cx, cz = sx * 10.5, sz * 17.8
+    # 4x 3-slit 1.2 mm downward-facing breather grilles through the floor (r = 14 mm, between the 4 transducer barrels).
+    # The JGS1 dome's inside is open to this cavity through the retainer bore, so the dome breathes with it and dries out
+    # after a dew night instead of trapping moisture (same principle as the base bay grilles; rain cannot fall upward).
+    for deg in CROWN_VENT_DEGS:
+        for off in (-1.6, 0.0, 1.6):
+            slit = box(-3.0, 3.0, 173.8, 176.0, CROWN_VENT_R + off - 0.6, CROWN_VENT_R + off + 0.6)
+            body = body.cut(slit.rotate((0, 0, 0), (0, 1, 0), 90.0 - deg))
+
+    # 4x Snap-Fit Retention Clips over straight edges of the 60 x 60 mm `crown` PCB (rotationally symmetric, >= 11 mm
+    # from the strut nut pockets and the transducer barrels): (clip x, clip z, hook direction toward the board)
+    for cx, cz, (dx, dz) in CROWN_CLIPS:
+        if dx:
+            guide = box(cx - 0.75, cx + 0.75, 175.8, 184.0, cz - 1.2, cz + 1.2)
+            hook = box(min(cx - dx * 0.75, cx + dx * 1.95), max(cx - dx * 0.75, cx + dx * 1.95), 182.92, 183.9,
+                       cz - 1.2, cz + 1.2)
+        else:
             guide = box(cx - 1.2, cx + 1.2, 175.8, 184.0, cz - 0.75, cz + 0.75)
             hook = box(cx - 1.2, cx + 1.2, 182.92, 183.9,
-                       min(cz - sz * 1.5, cz + sz * 0.75), max(cz - sz * 1.5, cz + sz * 0.75))
-            body = body.union(guide).union(hook)
+                       min(cz - dz * 0.75, cz + dz * 1.95), max(cz - dz * 0.75, cz + dz * 1.95))
+        body = body.union(guide).union(hook)
 
     return body
 
 
 def build_crown():
-    return _build_crown().translate((0, RAISE, 0))
+    return _build_crown().translate((0, UPPER, 0))
 
 
 def _build_crown():
@@ -832,20 +899,23 @@ def _build_crown():
 
 
 def build_orings():
-    """Part 3: Elastomeric O-Ring & Gasket Set (`orings.stl/.step` — TPU 95A or Standard Metric EPDM/NBR):
-      1. Lower `base <-> pagoda` full-perimeter O-ring (y = 65.3..66.9, r = 44.1..47.0 mm)
-      2. Bottom Center `probe_sleeve <-> pagoda` waterproof bulkhead O-ring (y = 73.5..74.35, r = 10.6..13.1 mm)
-      3. Middle `pagoda <-> wind_tunnel` full-perimeter O-ring at widest radius (y = 119.0..120.6, r = 44.1..47.0 mm)
-      4. Upper `crown_base <-> crown` full-perimeter O-ring at widest radius (y = 184.9..186.5, r = 44.1..47.0 mm)
+    """Part 3: Elastomeric O-Ring & Gasket Set (`orings.stl/.step` — standard EPDM/NBR 70A, or TPU 95A prints):
+      1.-3. `base <-> pagoda`, `pagoda <-> wind_tunnel`, `crown_base <-> crown`: 88 x 2.0 mm O-rings, shown
+            uncompressed on their gland floors (they overlap the mating skirt by the 0.5 mm design squeeze)
+      4. Bottom Center `probe_sleeve <-> pagoda` waterproof bulkhead O-ring (y = 73.5..74.35, r = 10.6..13.1 mm)
       5. Top Center (0, 0) JGS1 Quartz Dome flange O-ring (y = 194.2..195.1, r = 8.6..10.3 mm)
-      6. Bottom Reset Button Plunger O-ring seal (at x = -16.0, z = +16.5, y = 32.6..33.8, r = 1.9..3.3 mm)
     """
-    ring_base = ring_cone_y(65.3, 66.9, 44.1, 47.0, 44.1, 47.0)
+    def bayonet_ring(seat_y):   # uncompressed 88 x 2.0 mm O-ring resting on its gland floor
+        y = seat_y + ORING_FLOOR_BELOW_SEAT + ORING_CS / 2.0
+        return cq.Workplane(obj=cq.Solid.makeTorus((ORING_ID + ORING_CS) / 2.0, ORING_CS / 2.0,
+                                                   cq.Vector(0, y, 0), cq.Vector(0, 1, 0)))
+
+    ring_base = bayonet_ring(66.9)
     ring_probe_bot = ring_cone_y(73.5, 74.35, 10.6, 13.1, 10.6, 13.1)
-    ring_refl = ring_cone_y(119.0, 120.6, 44.1, 47.0, 44.1, 47.0)
-    ring_crown = ring_cone_y(184.9, 186.5, 44.1, 47.0, 44.1, 47.0)
+    ring_refl = bayonet_ring(120.6)
+    ring_crown = bayonet_ring(186.5).translate((0, TOP_RAISE, 0))
     win = ef.uv_window()
-    ring_uv = ring_cone_y(194.2, 195.1, 8.6, 10.3, 8.6, 10.3).translate((win["x"], 0, win["z"]))
+    ring_uv = ring_cone_y(194.2, 195.1, 8.6, 10.3, 8.6, 10.3).translate((win["x"], TOP_RAISE, win["z"]))
     return ring_base.union(ring_probe_bot).union(ring_refl).union(ring_crown).union(ring_uv).translate((0, RAISE, 0))
 
 
@@ -860,17 +930,48 @@ ALL_PARTS = (
     ("struts", build_struts),
     ("crown_base", build_crown_base),
     ("crown", build_crown),
+    ("mast_shims", build_mast_shims),
 )
 
 
+def print_bodies(solid):
+    """Separate printable bodies of a part, largest first."""
+    return sorted((s for v in solid.vals() for s in v.Solids()), key=lambda s: -s.Volume())
+
+
+PLATE_GAP = 6.0       # mm between bodies on a print plate (MJF/SLS fuse gaps < ~0.5 mm; FDM needs room for brims)
+PLATE_WIDTH = 220.0   # row length before starting a new row
+
+
+def print_plate(solid):
+    """All bodies of a part laid out on the print bed (y = 0), in rows, >= PLATE_GAP apart: captive or stacked bodies
+    (umbrella, reset button, louver plates, strut halves, nuts, shims) can never print fused, yet each part stays
+    a single file to upload."""
+    placed, x, z, row_depth = [], 0.0, 0.0, 0.0
+    for body in print_bodies(solid):
+        bb = body.BoundingBox()
+        if x > 0.0 and x + bb.xlen > PLATE_WIDTH:
+            x, z, row_depth = 0.0, z + row_depth + PLATE_GAP, 0.0
+        placed.append(body.translate(cq.Vector(x - bb.xmin, -bb.ymin, z - bb.zmin)))
+        x += bb.xlen + PLATE_GAP
+        row_depth = max(row_depth, bb.zlen)
+    return cq.Workplane(obj=cq.Compound.makeCompound(placed))
+
+
 def export_parts(out_dir):
+    """Assembly-position STL/STEP per part, plus `print/<part>.stl`: the same bodies laid out flat for printing."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    print_dir = out_dir / "print"
+    print_dir.mkdir(exist_ok=True)
+    for old in print_dir.glob("*.stl"):
+        old.unlink()
     for name, builder in ALL_PARTS:
         solid = builder()
         cq.exporters.export(solid, str(out_dir / f"{name}.stl"))
         cq.exporters.export(solid, str(out_dir / f"{name}.step"))
-        print(f"Exported {name}.stl and {name}.step -> {out_dir.relative_to(REPO)}")
+        cq.exporters.export(print_plate(solid), str(print_dir / f"{name}.stl"))
+        print(f"Exported {name}.stl/.step + print plate ({len(print_bodies(solid))} bodies) -> {out_dir.relative_to(REPO)}")
 
 
 if __name__ == "__main__":

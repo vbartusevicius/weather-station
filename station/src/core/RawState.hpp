@@ -80,7 +80,7 @@ struct PowerRaw {
     Reading<float> reflector_c;   // reflector heater NTC
     Reading<float> refl_heater_a; // ADS1115: mean reflector heater current (0.1 ohm shunt, PWM averaged)
     Reading<float> probe_heater_a;// ADS1115: probe heater current (1 ohm shunt in its return)
-    Reading<float> rail_5v;       // ADS1115 AIN2: +5V_HEAT rail (power board U2) feeding both heaters
+    Reading<float> rail_heat;     // ADS1115 AIN2: +12V_HEAT rail (power board U2): both heaters + crown transducer drive
     Reading<float> rail_5v_logic; // ADS1115 AIN3: +5V electronics rail (power board U1)
     bool service_button{false};
     bool rain_adc_ok{false};      // rain AFE sampling is running

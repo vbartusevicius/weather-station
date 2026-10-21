@@ -17,6 +17,7 @@
 
 #include "../conditioning/Conditioners.hpp"
 #include "../core/Pipeline.hpp"
+#include "../crown/CrownDecode.hpp"
 #include "../heater/DeIcingHeater.hpp"
 #include "../rs485/Rs485Protocol.hpp"
 #include "../telemetry/HomeAssistantMqtt.hpp"
@@ -25,9 +26,9 @@
 #include "ButtonController.hpp"
 #include "WebAssets.hpp"
 #include "drivers/Analog.hpp"
+#include "drivers/CrownLink.hpp"
 #include "drivers/I2cBus.hpp"
 #include "drivers/Sensors.hpp"
-#include "drivers/Ultrasonic.hpp"
 #include "net/Network.hpp"
 #include "storage/Storage.hpp"
 
@@ -67,11 +68,10 @@ firmware::Sgp41 g_sgp;
 firmware::Ads1115 g_heatmon;
 firmware::Lsm6ds3 g_imu;
 firmware::Mmc5603 g_mag;
-firmware::As3935 g_as;
 firmware::Ltr390 g_ltr;
 firmware::Tsl2591 g_tsl;
 firmware::GuvbC31sm g_guvb;
-firmware::Ultrasonic g_us;
+firmware::CrownLink g_crown;
 firmware::AnalogFrontEnd g_adc;
 firmware::HeaterPwm g_heater;
 firmware::Storage g_storage;
@@ -81,7 +81,7 @@ httpd_handle_t g_http = nullptr;
 int g_ws_fds[4]{-1, -1, -1, -1};
 
 // ------------------------------------------------------------------------------------------------
-// Acquisition: fast I2C (IMU 200 Hz, barometer 100 Hz FIFO, lightning poll)
+// Acquisition: fast I2C (IMU 200 Hz, barometer 100 Hz FIFO)
 // ------------------------------------------------------------------------------------------------
 void task_fast_i2c(void*) {
     conditioning::VibrationAnalyzer vib;
@@ -106,13 +106,6 @@ void task_fast_i2c(void*) {
                     Lock l;
                     g_events.thunder.push(onset);
                 }
-            }
-        }
-        if (tick % 5 == 0) {
-            firmware::As3935Event ev{};
-            if (g_as.poll(ev) && ev.kind == firmware::As3935Event::Kind::Lightning) {
-                Lock l;
-                g_events.lightning.push({now_ms(), ev.distance_km, ev.energy});
             }
         }
         const std::uint32_t t = now_ms();
@@ -193,7 +186,7 @@ void task_slow_i2c(void*) {
                     Lock l;
                     if (phase == 2) g_raw.power.refl_heater_a.set(v / b::refl_shunt_ohm, t);
                     if (phase == 3) g_raw.power.probe_heater_a.set(v / b::probe_shunt_ohm, t);
-                    if (phase == 4) g_raw.power.rail_5v.set(v * b::rail5_divider, t);
+                    if (phase == 4) g_raw.power.rail_heat.set(v * b::rail_heat_divider, t);
                     if (phase == 5) g_raw.power.rail_5v_logic.set(v * b::rail5_divider, t);
                 }
             }
@@ -277,29 +270,68 @@ void task_slow_i2c(void*) {
 }
 
 // ------------------------------------------------------------------------------------------------
-// Acquisition: ultrasonic wind (4 quads per second)
+// Acquisition: crown STM32 (wind quads 4/s, rain impacts, lightning) over I2C + CROWN_IRQ
 // ------------------------------------------------------------------------------------------------
-void task_ultrasonic(void*) {
+void task_crown(void*) {
     conditioning::WindSecondAccumulator acc;
     TickType_t wake = xTaskGetTickCount();
     std::uint32_t last_second = now_ms();
+    std::uint32_t last_seq = 0;
+    std::uint32_t tick = 0;
     for (;;) {
-        vTaskDelayUntil(&wake, pdMS_TO_TICKS(250));
-        wind::ImuCompassReading orient{};
-        wind::ZeroWindCalibration cal{};
-        float delay_us = 0.0F;
-        {
-            Lock l;
-            orient = g_orientation;
-            cal.dt_ns_offset_us = g_cfg.dt_ns_offset_us;
-            cal.dt_ew_offset_us = g_cfg.dt_ew_offset_us;
-            delay_us = g_cfg.us_delay_us;
+        vTaskDelayUntil(&wake, pdMS_TO_TICKS(100));
+        ++tick;
+        if (g_crown.flashing()) {
+            continue;
         }
-        wind::TofQuad q{};
-        if (g_us.measure_quad(q, 3, delay_us)) {
-            const auto s = wind::UltrasonicWindSolver::solve(q, orient, cal);
-            if (s.valid) {
-                acc.add(s.v_east_m_s, s.v_north_m_s, s.speed_m_s, s.sound_speed_m_s, s.acoustic_temp_c);
+        // CROWN_IRQ gives low latency; the 250 ms status poll keeps wind flowing even with a broken IRQ wire
+        std::uint16_t status = 0;
+        if ((g_crown.irq() || tick % 3 == 0) && g_crown.read_status(status)) {
+            const std::uint32_t t_now = now_ms();
+            if (status & crown::kStWindNew) {
+                crown::WindBlock w{};
+                wind::TofQuad q{};
+                crown_link::WindQuality wq{};
+                if (g_crown.read_wind(w) && w.seq != last_seq && crown_link::to_tof_quad(w, q, wq)) {
+                    last_seq = w.seq;
+                    wind::ImuCompassReading orient{};
+                    wind::ZeroWindCalibration cal{};
+                    float delay_us = 0.0F;
+                    {
+                        Lock l;
+                        orient = g_orientation;
+                        cal.dt_ns_offset_us = g_cfg.dt_ns_offset_us;
+                        cal.dt_ew_offset_us = g_cfg.dt_ew_offset_us;
+                        delay_us = g_cfg.us_delay_us;
+                    }
+                    q.t_ns_us -= delay_us;
+                    q.t_sn_us -= delay_us;
+                    q.t_ew_us -= delay_us;
+                    q.t_we_us -= delay_us;
+                    const auto s = wind::UltrasonicWindSolver::solve(q, orient, cal);
+                    if (s.valid) {
+                        acc.add(s.v_east_m_s, s.v_north_m_s, s.speed_m_s, s.sound_speed_m_s, s.acoustic_temp_c);
+                    }
+                }
+            }
+            if (status & crown::kStRainPending) {
+                crown::RainEvent ev[16];
+                const int n = g_crown.pop_rain(ev, 16);
+                Lock l;
+                for (int i = 0; i < n; ++i) {
+                    g_events.rain.push(crown_link::to_rain_impact(ev[i], t_now));
+                }
+            }
+            if (status & crown::kStStrikePending) {
+                crown::StrikeEvent ev[8];
+                const int n = g_crown.pop_strikes(ev, 8);
+                Lock l;
+                for (int i = 0; i < n; ++i) {
+                    core::LightningStrike ls{};
+                    if (crown_link::to_strike(ev[i], t_now, ls)) {
+                        g_events.lightning.push(ls);
+                    }
+                }
             }
         }
         const std::uint32_t t = now_ms();
@@ -315,34 +347,20 @@ void task_ultrasonic(void*) {
 }
 
 // ------------------------------------------------------------------------------------------------
-// Acquisition: analog (rain piezo pulses, supply voltage, reflector NTC / service button)
+// Acquisition: analog (supply voltage, reflector NTC / service button)
 // ------------------------------------------------------------------------------------------------
 void task_analog(void*) {
-    conditioning::RainPulseDetector rain;
-    core::RainImpact batch[32];
     std::uint32_t last_second = now_ms();
     for (;;) {
-        int n = 0;
-        const std::uint32_t t_frame = now_ms();
-        g_adc.pump(20, [&](std::uint16_t mv) {
-            core::RainImpact imp{};
-            if (rain.add(mv, t_frame, imp) && n < 32) {
-                batch[n++] = imp;
-            }
-        });
+        g_adc.pump(50);
         const std::uint32_t t = now_ms();
         float vin_mv = 0.0F, ntc_mv = 0.0F;
         const bool second = t - last_second >= 1000U;
         const bool means = second && g_adc.take_means(vin_mv, ntc_mv);
-        if (n > 0 || second) {
+        if (second) {
             Lock l;
-            for (int i = 0; i < n; ++i) {
-                g_events.rain.push(batch[i]);
-            }
-            if (second) {
-                last_second = t;
-                g_raw.power.rain_adc_ok = g_adc.running();
-            }
+            last_second = t;
+            g_raw.power.rain_adc_ok = g_crown.present();   // rain is digitised on the crown
             if (means) {
                 g_raw.power.vin_v.set(heater::DeIcingHeaterController::decode_supply_voltage_v(static_cast<std::uint16_t>(vin_mv)), t);
                 g_raw.power.service_button = ntc_mv < heater::DeIcingHeaterController::kServiceBtnThresholdMv;
@@ -370,8 +388,10 @@ void init_rs485() {
     c.source_clk = UART_SCLK_DEFAULT;
     uart_driver_install(UART_NUM_1, 512, 512, 0, nullptr, 0);
     uart_param_config(UART_NUM_1, &c);
-    uart_set_pin(UART_NUM_1, firmware::board::rs485_io_pin, firmware::board::rs485_io_pin, UART_PIN_NO_CHANGE,
+    // Separate TX / RX pins; the driver asserts RTS (-> SP3485 DE + /RE) only while transmitting.
+    uart_set_pin(UART_NUM_1, firmware::board::rs485_tx_pin, firmware::board::rs485_rx_pin, firmware::board::rs485_de_pin,
                  UART_PIN_NO_CHANGE);
+    uart_set_mode(UART_NUM_1, UART_MODE_RS485_HALF_DUPLEX);
 }
 
 void rs485_service(const core::DerivedState& d) {
@@ -651,6 +671,34 @@ esp_err_t handle_action(httpd_req_t* req) {
     return send_json(req, std::string("{\"ok\":true,\"action\":\"") + action + "\"}");
 }
 
+// POST /api/crown/firmware (body = crown .bin for 0x08000000): reflash the crown STM32 through its ROM bootloader.
+esp_err_t handle_crown_firmware(httpd_req_t* req) {
+    const std::size_t len = req->content_len;
+    if (len == 0 || len > 128U * 1024U) {
+        return send_json(req, "{\"ok\":false,\"error\":\"image must be 1..131072 bytes\"}");
+    }
+    auto* image = static_cast<std::uint8_t*>(std::malloc(len));
+    if (image == nullptr) {
+        return send_json(req, "{\"ok\":false,\"error\":\"out of memory\"}");
+    }
+    std::size_t got = 0;
+    while (got < len) {
+        const int r = httpd_req_recv(req, reinterpret_cast<char*>(image) + got, len - got);
+        if (r <= 0) {
+            std::free(image);
+            return ESP_FAIL;
+        }
+        got += static_cast<std::size_t>(r);
+    }
+    const auto result = g_crown.flash(image, len);
+    std::free(image);
+    char msg[96];
+    std::snprintf(msg, sizeof msg, "{\"ok\":%s,\"result\":%d,\"crown_present\":%s}",
+                  result == crown_link::StmI2cBootloader::Result::Ok ? "true" : "false", static_cast<int>(result),
+                  g_crown.present() ? "true" : "false");
+    return send_json(req, msg);
+}
+
 esp_err_t handle_ws(httpd_req_t* req) {
     if (req->method == HTTP_GET) {
         const int fd = httpd_req_to_sockfd(req);
@@ -669,7 +717,7 @@ esp_err_t handle_ws(httpd_req_t* req) {
 
 void start_http() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.max_uri_handlers = 12;
+    config.max_uri_handlers = 13;
     config.stack_size = 8192;
     if (httpd_start(&g_http, &config) != ESP_OK) {
         return;
@@ -684,6 +732,7 @@ void start_http() {
         {"/api/config", HTTP_GET, handle_config_get, nullptr, false, false, nullptr},
         {"/api/config", HTTP_POST, handle_config_post, nullptr, false, false, nullptr},
         {"/api/action", HTTP_POST, handle_action, nullptr, false, false, nullptr},
+        {"/api/crown/firmware", HTTP_POST, handle_crown_firmware, nullptr, false, false, nullptr},
         {"/ws", HTTP_GET, handle_ws, nullptr, true, false, nullptr},
     };
     for (const auto& u : uris) {
@@ -694,8 +743,7 @@ void start_http() {
 void init_gpio() {
     gpio_config_t out{};
     out.mode = GPIO_MODE_OUTPUT;
-    out.pin_bit_mask = (1ULL << firmware::board::us_sel_a_pin) | (1ULL << firmware::board::us_sel_b_pin) |
-                       (1ULL << firmware::board::rf_switch_power_pin) | (1ULL << firmware::board::rf_antenna_select_pin);
+    out.pin_bit_mask = (1ULL << firmware::board::rf_switch_power_pin) | (1ULL << firmware::board::rf_antenna_select_pin);
     gpio_config(&out);
     gpio_set_level(firmware::board::rf_switch_power_pin, 0);   // enable the FM8625H RF switch
     gpio_set_level(firmware::board::rf_antenna_select_pin, 1); // external U.FL dipole
@@ -724,11 +772,18 @@ extern "C" void app_main(void) {
     g_heatmon.begin(g_i2c, b::i2c_addr_ads1115);
     g_imu.begin(g_i2c, b::i2c_addr_lsm6ds3);
     g_mag.begin(g_i2c, b::i2c_addr_mmc5603);
-    g_as.begin(g_i2c, b::i2c_addr_as3935, g_cfg.as3935_tun_cap, g_cfg.as3935_indoor);
     g_ltr.begin(g_i2c, b::i2c_addr_ltr390);
     g_tsl.begin(g_i2c, b::i2c_addr_tsl25911);
     g_guvb.begin(g_i2c, b::i2c_addr_guvb_c31sm);
-    g_us.begin(b::us_tx_pin, b::us_rx_pin, b::us_sel_a_pin, b::us_sel_b_pin);
+    if (g_crown.begin(g_i2c, b::crown_irq_pin, b::crown_nrst_pin, b::crown_boot0_pin)) {
+        crown::ConfigBlock cc{};
+        cc.quads_per_s = 4;
+        cc.burst_cycles = 8;
+        cc.as3935_outdoor = g_cfg.as3935_indoor ? 0 : 1;
+        cc.as3935_min_strikes = 1;
+        cc.rain_trigger_mv = 40;
+        g_crown.send_config(cc);
+    }
     g_adc.begin();
     g_heater.begin(b::heat_pwm_pin);
 
@@ -737,7 +792,7 @@ extern "C" void app_main(void) {
 
     xTaskCreate(task_analog, "analog", 4096, nullptr, 7, nullptr);
     xTaskCreate(task_fast_i2c, "fast_i2c", 4096, nullptr, 6, nullptr);
-    xTaskCreate(task_ultrasonic, "ultrasonic", 4096, nullptr, 5, nullptr);
+    xTaskCreate(task_crown, "crown", 4096, nullptr, 5, nullptr);
     xTaskCreate(task_slow_i2c, "slow_i2c", 6144, nullptr, 4, nullptr);
     xTaskCreate(task_pipeline, "pipeline", 12288, nullptr, 3, nullptr);
 }

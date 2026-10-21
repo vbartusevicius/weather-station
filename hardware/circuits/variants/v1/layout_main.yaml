@@ -6,7 +6,7 @@ frame:
   min_track: 0.12
   edge_clearance: 0.3
   silk_inside: true
-  fine_pitch_power_pads: [U2, U4, U5, U6, U7, U8, J2, J3, J4, J5, R1]
+  fine_pitch_power_pads: [U2, U4, U5, U7, J2, J3, J4, J5, R1]
   raised_modules: [U3]
   plane_layers: [In1.Cu]
   domains: [SELV-MAIN]
@@ -14,35 +14,35 @@ frame:
     SELV-MAIN:
       - { x0: 0.0, y0: 0.0, x1: 32.0, y1: 52.0 }
   isolators: []
-  power_nets: [VIN_RAW, VIN_FUSED, VIN_PROT, HEAT_SW, HEAT_SENSE, CO2_HEAT_RTN, +5V, +5V_HEAT, +5V_XIAO]
+  power_nets: [VIN_RAW, VIN_FUSED, VIN_PROT, HEAT_SW, HEAT_SENSE, CO2_HEAT_RTN, +5V, +12V_HEAT, +5V_XIAO]
   pours:
     - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 31.5, y1: 51.5 } }
   no_coat_keepouts: []
   # Concise Silkscreen Connection Labels (`F.SilkS` & `B.SilkS`):
+  connector_labels: { J2: "CROWN", J3: "PROBE", J4: "PM", J5: "POWER" }   # destination board / port, placed next to each connector
   silk_labels:
-    - { text: "+V GND A+ B-",    x: 8.6,  y: 14.4, layer: F.SilkS }
-    - { text: "CROWN",           x: 14.0, y: 48.3, layer: B.SilkS }
-    - { text: "PROBE",           x: 14.0, y: 42.5, layer: B.SilkS }
-    - { text: "PM",              x: 14.0, y: 36.0, layer: B.SilkS }
+    # J1 pin labels: J1 is rotated 180 deg, so pin 4 (B-) is on the left and pin 1 (+V) on the right
+    - { text: "B-",  x: 3.35,  y: 14.4, layer: F.SilkS }
+    - { text: "A+",  x: 6.85,  y: 14.4, layer: F.SilkS }
+    - { text: "GND", x: 10.35, y: 14.4, layer: F.SilkS }
+    - { text: "+V",  x: 13.85, y: 14.4, layer: F.SilkS }
     - { text: "RST",             x: 19.0, y: 10.4, layer: B.SilkS }
 
 heights:
   default: 1.2
   J1: 11.0
-  F1: 1.2
+  F1: 1.6
   D1: 2.0
   D2: 2.0
   D3: 2.0
-  C1: 1.3
+  C1: 1.6
   Q1: 1.1
   U2: 1.0
   U3: 11.0
   SW1: 1.5
   U7: 1.65
-  U8: 1.15
   U5: 0.9
-  U6: 0.9
-  L2: 4.5
+  D4: 1.1
   J4: 4.5
   J5: 4.25
   J2: 4.25
@@ -52,9 +52,9 @@ parts:
   # 32 x 52 mm main board on the right half of the base bay (enc x = -0.5..31.5); the PMSA003I lies on the left.
   # --- Front (+y): 4-pole push-in terminal J1 (12-32 V + RS-485) at the front edge, input protection row ---
   J1:  { x: 8.6,   y: 7.0,   rot: 180, block: power_in, locked: true }
-  F1:  { x: 20.0,  y: 7.0,   rot: 90,  block: power_in }
-  D1:  { x: 24.1,  y: 7.0,   rot: 90,  block: power_in }
-  D2:  { x: 28.1,  y: 7.0,   rot: 90,  block: power_in }
+  F1:  { x: 19.6,  y: 7.0,   rot: 90,  block: power_in }   # 2920 60 V PTC (7.4 x 5.1 mm)
+  D1:  { x: 24.6,  y: 7.0,   rot: 90,  block: power_in }
+  D2:  { x: 28.6,  y: 7.0,   rot: 90,  block: power_in }
   C1:  { x: 29.4,  y: 12.6,  rot: 0,   block: power_in }
 
   # XIAO ESP32-C6 on 5.0 mm sockets (both 5 V rails now come from the `power` board under main, via J5)
@@ -69,21 +69,20 @@ parts:
   C5: { x: 23.5,  y: 25.0,  rot: 0,   block: mcu }
 
   SW1: { x: 19.0,  y: 6.0,   rot: 90,  side: back, block: mcu, locked: true }   # over the base button at enc (+18.5, -20.0)
-  U8:  { x: 12.0,  y: 39.0,  rot: 0,   block: rs485 }
-  C6: { x: 15.5,  y: 39.0,  rot: 90,  block: rs485 }
   U7:  { x: 5.0,   y: 44.5,  rot: 0,   block: rs485 }
   C7: { x: 11.0,  y: 50.1,  rot: 0,   block: rs485 }
   R8: { x: 11.0,  y: 43.5,  rot: 0,   block: rs485 }
   R9: { x: 11.0,  y: 45.7,  rot: 0,   block: rs485 }
   R10: { x: 11.0,  y: 47.9,  rot: 0,   block: rs485 }
   C8: { x: 2.6,   y: 38.0,  rot: 0,   block: rs485 }
+  R26: { x: 12.0,  y: 39.0,  rot: 0,   block: rs485 }   # optional 120R terminator (hand-fit at a bus end only)
 
   J2:  { x: 23.5,  y: 48.3,  rot: 0,   block: int_crown, locked: true }
   J3:  { x: 24.5,  y: 42.5,  rot: 0,   block: int_probe, locked: true }
   J4:  { x: 24.5,  y: 35.5,  rot: 0,   block: pm_sensor, locked: true }
   C13: { x: 30.6,  y: 30.0,  rot: 90,  block: pm_sensor }
 
-  # --- Back (-y): input sense, heater MOSFET, 6-Axis IMU, Lightning Detector (clear of the XIAO socket pins) ---
+  # --- Back (-y): input sense, heater MOSFET, 6-Axis IMU (clear of the XIAO socket pins) ---
   R1:  { x: 25.0,  y: 14.0,  rot: 0,   side: back, block: vin_sense }
   R2:  { x: 25.0,  y: 16.5,  rot: 0,   side: back, block: vin_sense }
   C3:  { x: 25.0,  y: 19.0,  rot: 0,   side: back, block: vin_sense }
@@ -110,9 +109,4 @@ parts:
   U5:  { x: 8.0,   y: 46.0,  rot: 0,   side: back, block: imu }
   C9: { x: 8.0,   y: 42.5,  rot: 0,   side: back, block: imu }
 
-  U6:  { x: 25.0,  y: 40.5,  rot: 0,   side: back, block: lightning }
-  C10: { x: 19.5,  y: 39.5,  rot: 0,   side: back, block: lightning }
-  C11: { x: 19.5,  y: 42.0,  rot: 0,   side: back, block: lightning }
-  L2:  { x: 23.5,  y: 47.0,  rot: 0,   side: back, block: lightning }
-  C12: { x: 29.0,  y: 41.5,  rot: 90,  side: back, block: lightning }
-  R11: { x: 29.0,  y: 37.0,  rot: 90,  side: back, block: lightning }
+  D4:  { x: 8.6,   y: 11.8,  rot: 0,   side: back, block: rs485 }       # SM712 RS-485 TVS next to J1

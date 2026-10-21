@@ -150,14 +150,23 @@ def collect_assembly_parts(variant, spec):
             "description": f"4x4 mm MLPQ-16 lightning strike distance & energy detector ({locs})",
             "source": "Digi-Key / Mouser / LCSC",
         })
+    if "MA5532-AE" in hand_by_mpn:
+        locs = ", ".join(hand_by_mpn["MA5532-AE"]["locs"])
+        items.append({
+            "item": "AS3935 lightning antenna (hand-soldered)",
+            "qty": len(hand_by_mpn["MA5532-AE"]["locs"]),
+            "part": "Coilcraft MA5532-AED (100 uH +/-2 %, 11.7 x 3.5 mm open ferrite rod)",
+            "description": f"ScioSense AS3935-AN04 recommended antenna ({locs}); tuned with 2x 470 pF C0G + the AS3935 internal 0..120 pF array",
+            "source": "Coilcraft / Digi-Key / Mouser (not stocked at JLCPCB)",
+        })
 
     # Off-board sensors & transducers
     items.append({
         "item": "Waterproof 40 kHz Closed-Face Ultrasonic Transceivers + 2-Pin JST-SH Pigtails",
         "qty": 4,
-        "part": "STEMINC SMATR10H40X80 / TaiMI TM-A1040H07TR (Ø 10.0x7.0 mm closed-face aluminum 40 kHz transceiver) OR INGHAi GU14095B-40TR (LCSC C242186) / Same Sky CUSA-TR65-065-2200-W68 / CUSA-TR65-065-2200-TH68 (IP68 Ø 14x9 mm) + 4x 2-Pin JST-SH (SHR-02V-S-B) Pigtails",
+        "part": "Ø 10.0 x 7.0 mm closed-face aluminium waterproof 40 kHz transceiver, e.g. EU10AIF40H07T/R (the part proven in the open-source QingStation V-path anemometer) + 4x 2-pin JST-SH (SHR-02V-S-B) pigtails. Only Ø 10 mm parts fit the Ø 10.5 mm barrels: do NOT buy Ø 14/16 mm types",
         "description": "4 inward-angled (29.0 deg V-beam) transceivers seated in the N/E/S/W covered barrels of crown_base.stl, locked from the back by the 4 slotted press-fit retaining rings (in struts.stl), and plugged into crown J2..J5 (BM02B-SRSS-TB, LCSC C160388)",
-        "source": "LCSC (C242186) / Digi-Key & Mouser (Same Sky CUSA-TR65) / STEMINC (SMATR10H40X80)",
+        "source": "AliExpress / Taobao (EU10AIF40H07T/R or equivalent Ø 10 x 7 mm, >= 106 dB SPL @ 10 V, >= -75 dB sensitivity)",
     })
     items.append({
         "item": "20 mm Piezoelectric Haptic Rain Discs (4-Quadrant Symmetric Array)",
@@ -170,7 +179,7 @@ def collect_assembly_parts(variant, spec):
         "item": "JGS1 Fused Silica UV & Solar Optical Dome (or Ø 20x1.5 mm JGS1 Flat Disc)",
         "qty": 1,
         "part": "JGS1/JGS2 UV Fused Silica Hemispherical Dome (Ø 18.0 mm OD / Ø 15.6 mm ID x 9.0 mm height with Ø 20.5 mm flange, Bena Optics DW-series / AliExpress) OR standard Ø 20.0 x 1.5 mm JGS1 Quartz Glass Disc",
-        "description": "185-2500 nm UV-B/UV-A/Visible/NIR transmission (>=92%); seats from underneath against the top crimson O-ring inside crown.stl and is clamped by the M22x1.0 threaded retainer nut",
+        "description": "185-2500 nm UV-B/UV-A/Visible/NIR transmission (>=92%); seats from underneath against the 17 x 1.5 mm O-ring inside crown.stl and is clamped by the printed M22x1.5 threaded retainer (flange must be <= 1.2 mm thick: get the supplier drawing before ordering)",
         "source": "AliExpress / Bena Optics / Crystran / Edmund Optics",
     })
     items.append({
@@ -188,23 +197,23 @@ def collect_assembly_parts(variant, spec):
         "source": "LCSC / AliExpress / local hardware",
     })
     items.append({
-        "item": "Round Jacketed 10-Core Dismountable JST-SH Cable + Probe Jumper",
+        "item": "Crown cable (12-pin JST-SH) + probe jumper (10-pin JST-SH)",
         "qty": 2,
-        "part": "260 mm (250-300 mm) Ø 4.2 mm Round Jacketed 10-Core 30AWG Cable with 10-pin 1.0 mm JST-SH (SHR-10V-S-B) plugs (main J2 <-> crown J1, 224.2 mm routed path + 35 mm service loop) + 60 mm 10-pin JST-SH jumper (main J3 <-> probe J1, 32.0 mm direct + 28 mm slack)",
-        "description": "Passes through the 13x11 mm umbrella cutout, the 12.6x3.35 mm rear conduit of probe_sleeve_back, and the 45-deg NE split-C strut with the SHR-10V-S-B connector attached (or crimp pins removable via housing lance tabs)",
+        "part": "260 mm 12-conductor 30 AWG cable, OD <= 3.2 mm (or 12 loose 30 AWG wires in a PTFE sleeve), SHR-12V-S-B plug on both ends wired pin 1 <-> pin 1 (main J2 <-> crown J1, 224 mm routed path + 35 mm service loop) + 60 mm 10-wire SHR-10V-S-B jumper, pin 1 <-> pin 1 (main J3 <-> probe J1)",
+        "description": "main J2 and crown J1 are 12-pin BM12B-SRSS-TB. The crown cable passes the 13x11 mm umbrella cutout, the 12.6 x 3.35 mm rear conduit of probe_sleeve_back (a Ø 4.2 mm cable does NOT fit) and the 45-deg NE split-C strut; crimp one end after threading it through the strut nut",
         "source": "Digi-Key / Mouser / LCSC / AliExpress",
     })
     items.append({
         "item": "Stainless Steel M6 Fastener Set (Pagoda Through-Bolts & Mast Clamp Bolts)",
         "qty": 1,
-        "part": "4x M6x55 mm Socket Cap Bolts + 4x M6 Hex Nuts (Pagoda stack) + 4x M6x35 mm Hex Bolts + 8x M6 Washers + 4x M6 Locknuts (Mast Clamp)",
-        "description": "A4-70 / 316 stainless steel fasteners clamping the 5-plate pagoda stack (through the Ø 6.2 mm column bores) and clamping the mast saddle onto Ø 25-34 mm roof poles",
+        "part": "4x M6x55 DIN 7984 LOW-HEAD socket cap screws (head 10 x 3.5 mm; a standard ISO 4762 head hits the reflector board) + 4x ISO 4032 M6 nuts (pagoda stack) + 6x M6x35 hex bolts + 12x M6 washers (DIN 9021 large) + 6x M6 locknuts (mast clamp, 3 rows over the 50 mm pole engagement)",
+        "description": "A4-70 / 316 stainless steel fasteners clamping the 5-plate pagoda stack (through the Ø 6.2 mm column bores) and clamping the mast saddle: direct grip on Ø 32-34 mm poles, Ø 24-32 mm poles with the printed mast_shims (4 sizes, 50 mm tall)",
         "source": "Local hardware / McMaster-Carr / Mouser",
     })
     items.append({
         "item": "Elastomeric O-Ring Seal Set (5 Rings)",
         "qty": 1,
-        "part": "3x Ø 88x1.5 mm EPDM/NBR O-Rings (base<->pagoda, pagoda<->wind_tunnel, crown_base<->crown) + 1x Ø 21x1.5 mm O-Ring (probe_sleeve bottom) + 1x Ø 17x1.5 mm O-Ring (JGS1 UV dome)",
+        "part": "3x 88 x 2.0 mm EPDM/NBR 70A O-rings (base<->pagoda, pagoda<->wind_tunnel, crown_base<->crown: glands sized for 2.0 mm, a 1.5 mm ring does not seal) + 1x 21 x 1.5 mm O-ring (probe_sleeve bottom) + 1x 17 x 1.5 mm O-ring (JGS1 UV dome)",
         "description": "Standard metric EPDM/nitrile O-rings (or 3D-printed in TPU 95A from orings.stl) sealing all 3 bayonet joints, the bottom pagoda bulkhead, and the JGS1 quartz dome",
         "source": "Local hardware / McMaster-Carr / TPU 95A print",
     })
@@ -219,14 +228,14 @@ def collect_assembly_parts(variant, spec):
         "item": "Dual-Band 2.4 / 5.8 GHz U.FL (IPEX-1) Flexible PCB Dipole Antenna",
         "qty": 1,
         "part": "Molex 1461530100 / Taoglas FXP830 (42x12 mm, +4.5 dBi, 100 mm U.FL coax)",
-        "description": "Plugs into XIAO ESP32-C6 U.FL jack (activated via GPIO3=LOW, GPIO14=HIGH) and snaps horizontally into the upper inner-wall cradle of base.stl so the main lobe radiates downward through the roof",
+        "description": "Plugs into XIAO ESP32-C6 U.FL jack (activated via GPIO3=LOW, GPIO14=HIGH); stick it (its own adhesive) horizontally on the inner bay wall above the umbrella, away from the main board (V1 has no printed cradle)",
         "source": "Mouser / Digi-Key / LCSC",
     })
     items.append({
-        "item": "3D-printed ASA roof enclosure parts (10-part modular set)",
-        "qty": 10,
-        "part": "enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,struts,crown_base,crown}.stl",
-        "description": "UV-stabilized white/light-grey ASA (plus TPU 95A for orings.stl), 0.2 mm layers, vapor-smoothed + UV polyurethane topcoat, clamped to mast with 4x M6x25 316-stainless bolts & captured M6 hex nuts",
+        "item": "3D-printed roof enclosure parts (11-part modular set)",
+        "qty": 11,
+        "part": "enclosure/print/<part>.stl (one print plate per part) — assembled-position references in enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,struts,crown_base,crown,mast_shims}.stl",
+        "description": "Order/print enclosure/print/<part>.stl: each part's bodies laid out >= 6 mm apart, so captive and stacked bodies (umbrella, reset button, louver plates, strut halves, nuts, shims) are never printed fused. MJF PA12 or UV-stabilised ASA (TPU 95A only if printing orings); clamped to the mast with 6x M6x35 bolts",
         "source": "printed",
     })
     items.append({

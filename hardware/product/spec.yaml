@@ -16,13 +16,17 @@ active_variant: v1
 envelope:
   outer_diameter: 96.0
   outer_radius: 48.0
-  total_height: 213.0
+  total_height: 250.0          # y = -31 (bottom of the 50 mm mast socket) .. 219 (dome apex incl. both raises)
   # Everything above the base (pagoda, probe, reflector, struts, crown, dome) is designed in the original frame and
   # placed `above_base_raise` higher: the base bay grew by 15 mm (taller power/PM/main stack, more airflow room).
   above_base_raise: 15.0
+  # The wind_tunnel deck and everything above it (struts, crown_base, crown, reflector/crown/dome boards) sit a further
+  # `above_pagoda_raise` higher: a 10.4 mm (was 4.4 mm) cable/service gap between the pagoda top and the wind_tunnel deck
+  # for the crown cable; the probe board is 6 mm longer so its J2 still carries the reflector board under the deck.
+  above_pagoda_raise: 6.0
   wall: 2.0
   mast_socket:
-    y_start: 0.0
+    y_start: -31.0           # socket extended 31 mm downward: 50 mm of pole engagement (pole stop at y = 19)
     y_end: 32.0
     outer_diameter: 44.0
     inner_diameter: 34.0       # fits standard 25.4..34.0 mm (1" to 1-1/4") roof mast with M4 clamp bolts
@@ -83,20 +87,19 @@ boards:
     domains:
       SELV-MAIN: all
   crown:
-    plane: horizontal-xz     # compact 34.0 x 34.0 mm square-chamfered board at y = 182.8 mm (corner r = 20.8 mm, 100% inside the 4 ultrasonic barrels & 4 struts!)
-    shape: octagon
+    plane: horizontal-xz     # 60 x 60 mm crown v2 at y = 182.8 mm: N/E/S/W notches for the transducer barrels, NE corner clear of the cable column (outline in layout_crown.yaml)
     thickness: 1.2
     y: 182.8
-    max_outline: { width: 34.0, height: 34.0 }
+    max_outline: { width: 60.0, height: 60.0 }
     domains:
       SELV-CROWN: all
   power:
-    plane: horizontal-xz     # 28.5 x 30 mm two-rail power supply lying flat 1 mm above the bay floor, under `main`
+    plane: horizontal-xz     # 28.5 x 21.5 mm two-rail power supply lying flat under `main`
     thickness: 1.2
     y: 41.7                  # board top face y (bottom face at 40.5, 6 mm above the y = 34.5 floor); inductors end at 46.2
     x_offset: 23.75          # board spans enc x = 9.5..38.0 (clear of the gland locknut, juts past main's edge for J1)
-    z_offset: 1.0            # board spans enc z = -14.0..16.0 (clear of the reset button and main's L2)
-    max_outline: { width: 28.5, height: 30.0 }
+    z_offset: -3.25          # board spans enc z = -14.0..7.5 (clear of the reset button and main's L2)
+    max_outline: { width: 28.5, height: 21.5 }
     domains:
       SELV-POWER: all
   reflector:
@@ -117,23 +120,23 @@ boards:
     domains:
       SELV-DOME: all
   probe:
-    plane: vertical-xy       # vertical stem of the T inside the 5-plate pagoda (y = 69.0..119.0)
+    plane: vertical-xy       # vertical stem of the T inside the 5-plate pagoda (y = 69.0..125.0)
     thickness: 1.2
     y_start: 69.0
     z: 0.6                   # front face at +0.6, back face at -0.6
-    max_outline: { width: 14.0, height: 50.0 }
+    max_outline: { width: 14.0, height: 56.0 }   # 6 mm longer (above_pagoda_raise) so J2 reaches the raised reflector
     domains:
       SELV-PROBE: all
   interconnects:
     - from: main
       to: crown
-      signals: [+5V, +3V3, GND, I2C_SDA, I2C_SCL, US_SEL_A, US_SEL_B, US_TX, US_RX, RAIN_ADC, +5V_HEAT, GND]
+      signals: [+12V_HEAT, +12V_HEAT, GND, GND, +5V, GND, I2C_SDA, GND, I2C_SCL, CROWN_IRQ, CROWN_NRST, CROWN_BOOT0]
       refs: { main: J2, crown: J1 }
       domain: SELV-MAIN
       type: cable
       pins: 12
       connector_pitch: 1.0
-      cable_length_mm: 160.0
+      cable_length_mm: 260.0     # BOM: 260 mm 12-conductor cable (routed path ~224 mm + service loop)
     - from: crown
       to: dome
       signals: [+3V3, GND, I2C_SDA, I2C_SCL]
@@ -145,7 +148,7 @@ boards:
       cable_length_mm: 28.0
     - from: main
       to: probe
-      signals: [+5V_HEAT, +5V_HEAT, HEAT_SW, HEAT_SW, GND, NTC_SENSE, +3V3, CO2_HEAT_RTN, I2C_SDA, I2C_SCL]
+      signals: [+12V_HEAT, +12V_HEAT, HEAT_SW, HEAT_SW, GND, NTC_SENSE, +3V3, CO2_HEAT_RTN, I2C_SDA, I2C_SCL]
       refs: { main: J3, probe: J1 }
       domain: SELV-MAIN
       type: cable
@@ -154,7 +157,7 @@ boards:
       cable_length_mm: 60.0
     - from: main
       to: power
-      signals: [VIN_PROT, VIN_PROT, GND, GND, +5V, +5V, +5V_HEAT, +5V_HEAT]
+      signals: [VIN_PROT, VIN_PROT, GND, GND, +5V, +5V, +12V_HEAT, +12V_HEAT]
       refs: { main: J5, power: J1 }
       domain: SELV-MAIN
       type: cable
@@ -163,7 +166,7 @@ boards:
       cable_length_mm: 60.0
     - from: probe
       to: reflector
-      signals: [+5V_HEAT, HEAT_SW, NTC_SENSE, GND]
+      signals: [+12V_HEAT, HEAT_SW, NTC_SENSE, GND]
       refs: { probe: J2, reflector: J1 }
       domain: SELV-PROBE
       type: b2b_header
@@ -200,10 +203,10 @@ derived:
       pin: D1/GPIO1
       net: NTC_SENSE
       note: 'ADC1_CH1: reflector NTC thermistor + service button'
-    rain_adc:
+    crown_boot0:
       pin: D2/GPIO2
-      net: RAIN_ADC
-      note: 'ADC1_CH2: hybrid piezo impact & capacitive rain envelope'
+      net: CROWN_BOOT0
+      note: Crown STM32 BOOT0 (high + reset = ROM I2C bootloader)
     heat_pwm:
       pin: D3/GPIO21
       net: HEAT_PWM
@@ -211,31 +214,31 @@ derived:
     i2c_sda:
       pin: D4/GPIO22
       net: I2C_SDA
-      note: I2C bus SDA (all environmental, UV, IMU, gas & PM sensors)
+      note: I2C bus SDA (sensors, crown STM32 peripheral 0x2A)
     i2c_scl:
       pin: D5/GPIO23
       net: I2C_SCL
       note: I2C bus SCL
-    us_sel_a:
+    rs485_tx:
       pin: D6/GPIO16
-      net: US_SEL_A
-      note: Ultrasonic transducer mux select bit A
-    us_sel_b:
+      net: RS485_TX
+      note: UART1 TX -> SP3485 DI
+    rs485_rx:
       pin: D7/GPIO17
-      net: US_SEL_B
-      note: Ultrasonic transducer mux select bit B
-    us_tx:
+      net: RS485_RX
+      note: UART1 RX <- SP3485 RO
+    rs485_de:
       pin: D8/GPIO19
-      net: US_TX
-      note: 'RMT TX: 40 kHz ultrasonic burst output'
-    us_rx:
+      net: RS485_DE
+      note: UART1 RTS (RS-485 half-duplex mode) -> SP3485 DE + /RE
+    crown_irq:
       pin: D9/GPIO20
-      net: US_RX
-      note: 'RMT RX / GPTimer capture: ultrasonic echo zero-cross'
-    rs485_io:
+      net: CROWN_IRQ
+      note: Crown STM32 data-ready / lightning interrupt (input)
+    crown_nrst:
       pin: D10/GPIO18
-      net: RS485_IO
-      note: 'UART1 TX/RX: Auto-direction RS-485 transceiver (SP3485EN)'
+      net: CROWN_NRST
+      note: Crown STM32 NRST (open-drain output)
   net_classes:
     main:
       SELV-MAIN:
@@ -245,23 +248,19 @@ derived:
       - +5V_XIAO
       - VIN_ADC
       - NTC_SENSE
-      - RAIN_ADC
       - HEAT_PWM
       - HEAT_GATE
       - I2C_SDA
       - I2C_SCL
-      - US_SEL_A
-      - US_SEL_B
-      - US_TX
-      - US_RX
-      - RS485_IO
+      - CROWN_IRQ
+      - CROWN_NRST
+      - CROWN_BOOT0
+      - RS485_TX
+      - RS485_RX
       - RS485_DE
-      - RS485_RO
       - RS485_A
       - RS485_B
-      - AS_ACG
-      - AS_INP
-      - +5V_HEAT
+      - +12V_HEAT
       - HEAT_SENSE
       - CO2_HEAT_RTN
       - MON_REFL
@@ -277,54 +276,47 @@ derived:
       - HEAT_SENSE
       - CO2_HEAT_RTN
       - +5V
-      - +5V_HEAT
+      - +12V_HEAT
       - +5V_XIAO
     crown:
       SELV-CROWN:
       - GND
       - +3V3
+      - +3V3A
       - +5V
-      - +5V_HEAT
+      - +12V_HEAT
+      - VDRV
       - I2C_SDA
       - I2C_SCL
-      - US_SEL_A
-      - US_SEL_B
-      - US_TX
-      - US_RX
+      - CROWN_IRQ
+      - CROWN_NRST
+      - CROWN_BOOT0
+      - XTAL_*
+      - SWDIO
+      - SWCLK
+      - AS_*
+      - TX_P
+      - TX_N
+      - MUX_*
+      - XD_*
+      - US_*
+      - PIEZO_*
       - RAIN_ADC
-      - XD_N
-      - XD_E
-      - XD_S
-      - XD_W
-      - US_TX_DRV
-      - US_TX_AC
-      - US_RX_MUX
-      - US_VREF
-      - US_VTH
-      - US_AMP1_IN
-      - US_AMP1_FB
-      - US_AMP1_OUT
-      - US_AMP2_IN
-      - US_AMP2_FB
-      - US_AMP2_OUT
-      - PIEZO_IN
-      - PIEZO_INV
-      - PIEZO_STG1
-      - PIEZO_ENV
       - Net-*
       CROWN-Power:
       - +5V
-      - +5V_HEAT
+      - +12V_HEAT
       - +3V3
+      - VDRV
     reflector:
       SELV-REFLECTOR:
       - GND
-      - +5V_HEAT
+      - +12V_HEAT
       - HEAT_SW
       - NTC_SENSE
       - Net-*
       REFLECTOR-Power:
-      - +5V_HEAT
+      - +12V_HEAT
       - HEAT_SW
     dome:
       SELV-DOME:
@@ -339,7 +331,7 @@ derived:
       SELV-PROBE:
       - GND
       - +3V3
-      - +5V_HEAT
+      - +12V_HEAT
       - HEAT_SW
       - CO2_HEAT_SW
       - CO2_HEAT_RTN
@@ -354,21 +346,21 @@ derived:
       - HEAT_SW
       - CO2_HEAT_SW
       - CO2_HEAT_RTN
-      - +5V_HEAT
+      - +12V_HEAT
       - +3V3
     power:
       SELV-POWER:
       - GND
       - VIN_PROT
       - +5V
-      - +5V_HEAT
+      - +12V_HEAT
       - LOGIC_*
       - HEAT_*
       - Net-*
       POWER-Power:
       - VIN_PROT
       - +5V
-      - +5V_HEAT
+      - +12V_HEAT
       - LOGIC_SW
       - HEAT_SW
 # --- END GENERATED ---

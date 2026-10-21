@@ -391,53 +391,6 @@ bool Mmc5603::read(core::Vec3& field_ut) {
     return true;
 }
 
-// --------------------------------------------------------------------------------------- AS3935
-bool As3935::begin(I2cBus& bus, std::uint8_t addr, std::uint8_t tun_cap, bool indoor) {
-    if (!bus.probe(addr)) {
-        return false;
-    }
-    dev_ = bus.add(addr);
-    dev_.write_reg(0x3C, 0x96);  // PRESET_DEFAULT
-    delay_ms(2);
-    dev_.write_reg(0x3D, 0x96);  // CALIB_RCO
-    const std::uint8_t tun = static_cast<std::uint8_t>(tun_cap & 0x0F);
-    dev_.write_reg(0x08, static_cast<std::uint8_t>(0x20 | tun));  // DISP_TRCO while calibrating
-    delay_ms(2);
-    dev_.write_reg(0x08, tun);
-    // AFE gain: outdoor 0b01110, indoor 0b10010 (bits 5:1), PWD = 0
-    present_ = dev_.write_reg(0x00, static_cast<std::uint8_t>((indoor ? 0x12 : 0x0E) << 1));
-    return present_;
-}
-
-bool As3935::poll(As3935Event& ev) {
-    ev = As3935Event{};
-    std::uint8_t r = 0;
-    if (!present_ || !dev_.read_regs(0x03, &r, 1)) {
-        return false;
-    }
-    switch (r & 0x0F) {
-        case 0x08: {
-            std::uint8_t b[4];
-            if (!dev_.read_regs(0x04, b, 4)) {
-                return false;
-            }
-            ev.kind = As3935Event::Kind::Lightning;
-            ev.energy = static_cast<std::uint32_t>(b[0]) | (static_cast<std::uint32_t>(b[1]) << 8) |
-                        (static_cast<std::uint32_t>(b[2] & 0x1F) << 16);
-            ev.distance_km = b[3] & 0x3F;
-            return true;
-        }
-        case 0x04:
-            ev.kind = As3935Event::Kind::Disturber;
-            return true;
-        case 0x01:
-            ev.kind = As3935Event::Kind::Noise;
-            return true;
-        default:
-            return false;
-    }
-}
-
 // --------------------------------------------------------------------------------------- LTR390
 bool Ltr390::begin(I2cBus& bus, std::uint8_t addr) {
     if (!bus.probe(addr)) {

@@ -13,18 +13,16 @@ import enclosure_features as ef
 def _board_solids():
     out = {}
     for name in ef.SPEC["variants"][ef.VARIANT]["boards"]:
-        cfg = ef.SPEC["boards"][name]
         b = ef.board_slab(name)
         if name == "dome":
             cx = (b["x0"] + b["x1"]) / 2.0
             cz = (b["z0"] + b["z1"]) / 2.0
             r = (b["x1"] - b["x0"]) / 2.0
             out[name] = be.cone_y(b["y0"], b["y1"], r, r).translate((cx, 0, cz))
-        elif cfg.get("shape") == "octagon":
+        elif ef.board_outline_xz(name):
             import cadquery as cq
-            pts = [(-12.5, -17.0), (12.5, -17.0), (17.0, -12.5), (17.0, 12.5),
-                   (12.5, 17.0), (-12.5, 17.0), (-17.0, 12.5), (-17.0, -12.5)]
-            out[name] = cq.Workplane("XZ", origin=(0, b["y0"], 0)).polyline(pts).close().extrude(-(b["y1"] - b["y0"]))
+            out[name] = (cq.Workplane("XZ", origin=(0, b["y0"], 0)).polyline(ef.board_outline_xz(name)).close()
+                         .extrude(-(b["y1"] - b["y0"])))
         else:
             out[name] = be.box(b["x0"], b["x1"], b["y0"], b["y1"], b["z0"], b["z1"])
     return out
@@ -88,18 +86,22 @@ def test_boards_clear_enclosure_and_threads_truly_mesh():
     assert pagoda.intersect(sleeve_back.union(sleeve_front).rotate((0, 0, 0), (0, 1, 0), 180)).val().Volume() > 25.0
     assert sleeve_back.intersect(sleeve_front.translate((0.4, 0, 0))).val().Volume() > 10.0
 
-    # 4. Pagoda Top M6 Bolts (`r = 20.5 mm`) vs Wind-Tunnel Bottom Strut Nuts (`r = 29.5 mm`) Non-Collision Verification:
+    # 4. Pagoda M6 x 55 through-bolts at real size (DIN 7984 low head d 10 x k 3.5, ISO 4032 nut 10 AF x 5.2 under the
+    #    deck, shank to the bolt tip) clear the pagoda, wind_tunnel, struts, reflector board and the base umbrella.
     assert pagoda.intersect(struts).val().Volume() < 1e-3
     for deg in (45, 135, 225, 315):
-        import math
         rad = math.radians(deg)
         px, pz = 20.5 * math.cos(rad), 20.5 * math.sin(rad)
-        m6_bolt = (be.cone_y(67.8 + ef.RAISE, 117.8 + ef.RAISE, 2.95, 2.95).translate((px, 0, pz))
-                   .union(be.cone_y(117.8 + ef.RAISE, 120.2 + ef.RAISE, 4.8, 4.8).translate((px, 0, pz)))
-                   .union(be.hex_prism_y(67.8 + ef.RAISE, 70.1 + ef.RAISE, across_flats=9.8, cx=px, cz=pz)))
-        assert pagoda.intersect(m6_bolt).val().Volume() < 1e-3
-        assert wind_tunnel.intersect(m6_bolt).val().Volume() < 1e-3
-        assert struts.intersect(m6_bolt).val().Volume() < 1e-3
+        head_y0 = 117.8 + ef.RAISE
+        nut_y1 = 70.1 + ef.RAISE
+        tip_y = head_y0 - 55.0
+        m6_bolt = (be.cone_y(tip_y, head_y0, 3.0, 3.0).translate((px, 0, pz))
+                   .union(be.cone_y(head_y0, head_y0 + be.M6_HEAD_K, be.M6_HEAD_D / 2.0, be.M6_HEAD_D / 2.0)
+                          .translate((px, 0, pz)))
+                   .union(be.hex_prism_y(nut_y1 - be.M6_NUT_M, nut_y1, across_flats=be.M6_NUT_AF, cx=px, cz=pz)))
+        for other, label in ((pagoda, "pagoda"), (wind_tunnel, "wind_tunnel"), (struts, "struts"),
+                             (plates["reflector"], "reflector"), (base, "base")):
+            assert other.intersect(m6_bolt).val().Volume() < 1e-3, f"M6 bolt at {deg} deg hits {label}"
 
     # 5. Zero Clash Between Any `probe` PCB Component (including `probe J1` bottom connector, `SCD41`, `SGP41`, `BMP585`, `SHT40`,
     #    and backside heater) and `probe_sleeve_front`, `probe_sleeve_back`, or `pagoda`!
@@ -121,10 +123,10 @@ def test_boards_clear_enclosure_and_threads_truly_mesh():
     for tp in ef.transducer_pockets():
         tx, tz = tp["x"], tp["z"]
         axis = (tz, 0, -tx) if (tx != 0 or tz != 0) else (1, 0, 0)
-        xd_can = be.cone_y(-1.75, 3.4, 5.0, 5.0).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2 + ef.RAISE, tz))
-        ret_ring = be.ring_cone_y(3.4, 4.8, 3.0, 5.2, 3.0, 5.2).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2 + ef.RAISE, tz))
+        xd_can = be.cone_y(-1.75, 3.4, 5.0, 5.0).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2 + ef.UPPER, tz))
+        ret_ring = be.ring_cone_y(3.4, 4.8, 3.0, 5.2, 3.0, 5.2).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2 + ef.UPPER, tz))
         # Verify the Ø 8.9 mm (`r = 4.43 mm`) acoustic aperture bore is 100% round and unobstructed from s = -10.0 to +8.0 mm!
-        bore_gauge = be.cone_y(-10.0, 8.0, 4.43, 4.43).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2 + ef.RAISE, tz))
+        bore_gauge = be.cone_y(-10.0, 8.0, 4.43, 4.43).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2 + ef.UPPER, tz))
         assert crown_base.intersect(bore_gauge).val().Volume() < 1e-3, f"XD_{tp['name']} aperture has a chord blockage!"
         assert crown_base.intersect(xd_can).val().Volume() < 1e-3
         assert crown_base.intersect(ret_ring).val().Volume() < 1e-3
@@ -172,7 +174,7 @@ def test_boards_clear_enclosure_and_threads_truly_mesh():
     #    - The ENE cable strut bore (at r = 32.5 mm, x = +28.7 mm outside the x = +/-20.5 mm `crown` PCB!)
     #      has an unobstructed vertical wire path all the way up past the `crown` PCB (from y = 174.0 to y = 186.0 mm)!
     ne_st = ef.strut_centres()[0]
-    ne_wire_column = be.cone_y(174.0 + ef.RAISE, 186.0 + ef.RAISE, 3.0, 3.0).translate((ne_st["x"], 0, ne_st["z"]))
+    ne_wire_column = be.cone_y(174.0 + ef.UPPER, 186.0 + ef.UPPER, 3.0, 3.0).translate((ne_st["x"], 0, ne_st["z"]))
     assert crown_base.intersect(ne_wire_column).val().Volume() < 1e-3
     assert plates["crown"].intersect(ne_wire_column).val().Volume() < 1e-3
 
@@ -263,3 +265,66 @@ def test_board_snap_clips_stand_free_of_the_wall_and_grip_the_boards():
             inside_x = slab["x0"] <= cx + dx * 2.0 <= slab["x1"]
             inside_z = slab["z0"] <= cz + dz * 2.0 <= slab["z1"]
             assert inside_x and inside_z, f"{board} clip at ({cx}, {cz}) does not hook over its board"
+
+
+def _gap_below(solid, x, z, y_from, y_to, step=0.01):
+    """Lowest y >= y_from at (x, z) where `solid` has material (probing a 0.1 mm column upward)."""
+    probe = be.box(x - 0.05, x + 0.05, y_from, y_to, z - 0.05, z + 0.05)
+    hits = [s.BoundingBox().ymin for v in solid.intersect(probe).vals() for s in v.Solids()]
+    return min(hits) if hits else None
+
+
+def test_bayonet_o_rings_are_squeezed_15_to_40_percent():
+    """Each bayonet face seal: gland height (groove floor -> mating skirt face) at the lug-shelf resting position
+    (O-ring preload lifts the upper part by LUG_PLAY) and at the 0.47 mm push needed to pass the detent bridge."""
+    cs = be.ORING_CS
+    r_seal = (be.ORING_ID + cs) / 2.0
+    pairs = (("base->pagoda", be.build_base(), be.build_pagoda(), 66.4 + ef.RAISE),
+             ("pagoda->wind_tunnel", be.build_pagoda(), be.build_wind_tunnel(), 120.1 + ef.RAISE),
+             ("crown_base->crown", be.build_crown_base(), be.build_crown(), 186.0 + ef.UPPER))
+    for name, lower, upper, groove_top in pairs:
+        for deg in (10.0, 100.0, 190.0):   # between the J-slot entry drops (open at the skirt bottom)
+            x, z = r_seal * math.cos(math.radians(deg)), r_seal * math.sin(math.radians(deg))
+            column = be.box(x - 0.05, x + 0.05, groove_top - 4.0, groove_top - 0.05, z - 0.05, z + 0.05)
+            floor = max(s.BoundingBox().ymax for v in lower.intersect(column).vals() for s in v.Solids())
+            face = _gap_below(upper, x, z, floor, groove_top + 3.0)
+            assert face is not None, f"{name}: no mating face above the O-ring"
+            rest = face - floor + be.LUG_PLAY
+            pushed = rest - 0.47
+            assert 0.60 * cs <= pushed + 0.01 and rest <= 0.85 * cs + 0.01, (
+                f"{name}: gland {rest:.2f} mm at rest / {pushed:.2f} mm pushed for a {cs} mm O-ring")
+            fill = math.pi * (cs / 2.0) ** 2 / ((47.2 - 43.9) * pushed)
+            assert fill <= 0.85, f"{name}: gland overfilled ({fill:.0%}) when pushing through the detent"
+
+
+def test_printed_strut_nuts_keep_a_wall_at_the_flats():
+    """A 1.1 mm annulus just outside the nut's internal thread groove (r 6.3..7.4 mm) must be one closed ring of
+    material at mid-height of every printed M12 strut nut (the old 12 mm AF nut was cut open at its flats)."""
+    struts = be.build_struts()
+    assert be.STRUT_NUT_AF / 2.0 - (5.12 + 0.90 + 0.20) >= 1.0
+    for st in ef.strut_centres():
+        for y in (124.7 + ef.UPPER, 177.1 + ef.UPPER):
+            ring = be.ring_cone_y(y - 0.05, y + 0.05, 6.3, 7.4, 6.3, 7.4).translate((st["x"], 0, st["z"]))
+            pieces = [s for v in struts.intersect(ring).vals() for s in v.Solids()]
+            full = ring.val().Volume()
+            assert len(pieces) == 1 and sum(s.Volume() for s in pieces) > 0.99 * full, \
+                f"strut nut at {st['deg']} deg, y={y:.1f}: wall at the flats is open"
+
+
+def test_print_plates_keep_every_body_apart():
+    """Each part's print plate (`print/<part>.stl`) holds all its bodies (captive umbrella/button, louver plates, strut
+    halves, nuts, shims) on the bed, >= PLATE_GAP apart so none can fuse; no body is a sliver."""
+    for name, builder in be.ALL_PARTS:
+        solid = builder()
+        bodies = be.print_bodies(solid)
+        plate = [s for v in be.print_plate(solid).vals() for s in v.Solids()]
+        assert bodies and len(plate) == len(bodies), f"{name}: plate lost bodies"
+        boxes = [s.BoundingBox() for s in plate]
+        for body, bb in zip(plate, boxes):
+            assert body.isValid() and body.Volume() > 5.0, f"{name}: invalid or sliver body ({body.Volume():.2f} mm3)"
+            assert abs(bb.ymin) < 1e-6, f"{name}: body not on the bed"
+        for i in range(len(boxes)):
+            for j in range(i + 1, len(boxes)):
+                a, b = boxes[i], boxes[j]
+                gap = max(b.xmin - a.xmax, a.xmin - b.xmax, b.zmin - a.zmax, a.zmin - b.zmax)
+                assert gap >= be.PLATE_GAP - 0.01, f"{name}: plate bodies {i} and {j} only {gap:.2f} mm apart"

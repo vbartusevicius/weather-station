@@ -23,9 +23,9 @@ constexpr std::uint32_t kOpticalMaxAgeMs = 5000;
 constexpr std::uint32_t kAirMaxAgeMs = 60000;
 constexpr std::uint32_t kImuMaxAgeMs = 3000;
 constexpr std::uint32_t kPowerMaxAgeMs = 5000;
-constexpr float kReflectorOhm = heater::DeIcingHeaterController::kHeaterResistanceOhm;  // 4x 27 ohm on +5V
+constexpr float kReflectorOhm = heater::DeIcingHeaterController::kHeaterResistanceOhm;  // 4x 120 ohm on +12V_HEAT
 constexpr float kHeaterCheckW = 2.0F;
-constexpr float kProbeHeaterOnA = 0.02F;    // probe heater draws 83 mA from +5V when on
+constexpr float kProbeHeaterOnA = 0.015F;   // probe heater draws 35 mA from +12V_HEAT when on
 constexpr float kProbeSetpointC = 8.0F;
 
 constexpr float kG = 9.80665F;
@@ -656,9 +656,9 @@ void Pipeline::process_heater(const RawState& raw, DerivedState& d) {
         h.probe_c.set(raw.air.scd41_temp_c.value);
         if (d.thermo.temp_c.ok) h.probe_rise_k.set(raw.air.scd41_temp_c.value - d.thermo.temp_c.v);
     }
-    // Both heaters run from the separate +5V_HEAT rail (ADS1115 AIN2; nominal 5.0 V if the monitor is missing).
-    const float v5 = raw.power.rail_5v.fresh(raw.now_ms, kPowerMaxAgeMs) ? raw.power.rail_5v.value : 5.0F;
-    if (raw.power.rail_5v.fresh(raw.now_ms, kPowerMaxAgeMs)) h.rail_heat_v.set(raw.power.rail_5v.value);
+    // Both heaters run from the separate +12V_HEAT rail (ADS1115 AIN2; nominal 12.0 V if the monitor is missing).
+    const float v5 = raw.power.rail_heat.fresh(raw.now_ms, kPowerMaxAgeMs) ? raw.power.rail_heat.value : 12.0F;
+    if (raw.power.rail_heat.fresh(raw.now_ms, kPowerMaxAgeMs)) h.rail_heat_v.set(raw.power.rail_heat.value);
     if (raw.power.rail_5v_logic.fresh(raw.now_ms, kPowerMaxAgeMs)) h.rail_logic_v.set(raw.power.rail_5v_logic.value);
     // Probe heater (analog +8 C thermostat): measured through its 1 ohm return shunt.
     const bool probe_i_ok = raw.power.probe_heater_a.fresh(raw.now_ms, kPowerMaxAgeMs);
@@ -675,7 +675,7 @@ void Pipeline::process_heater(const RawState& raw, DerivedState& d) {
     if (!ntc_ok || !d.thermo.temp_c.ok) {
         return;  // heater stays off without reflector or ambient temperature
     }
-    const float vin = v5;  // reflector heater supply = +5V rail (independent of the 12-32 V input)
+    const float vin = v5;  // reflector heater supply = +12V_HEAT rail (12 V, or VIN - ~1 V on a weak 12 V supply)
     const bool icing = d.thermo.temp_c.v <= 2.5F && (d.thermo.rh_pct.v >= 95.0F || d.rain.raining);
     auto out = heater::DeIcingHeaterController::control(vin, raw.power.reflector_c.value, d.thermo.temp_c.v, icing);
     if (heater_check_s_ > 0) {
@@ -689,7 +689,7 @@ void Pipeline::process_heater(const RawState& raw, DerivedState& d) {
     d.controls.heater_duty_pct = out.pwm_duty_percent;
     d.controls.heater_check = heater_check_s_ > 0;
 
-    // Reflector heater: measured mean current vs. the commanded duty (duty x V5 / 6.75 ohm).
+    // Reflector heater: measured mean current vs. the commanded duty (duty x V / 30 ohm).
     if (raw.power.refl_heater_a.fresh(raw.now_ms, kPowerMaxAgeMs)) {
         const float ia = std::max(0.0F, raw.power.refl_heater_a.value);
         h.reflector_w.set(vin * ia);

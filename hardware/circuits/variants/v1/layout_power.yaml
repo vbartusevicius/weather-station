@@ -1,5 +1,5 @@
 frame:
-  size: { x: 28.5, y: 30.0 }
+  size: { x: 28.5, y: 21.5 }
   copper_layers: 4
   thickness: 1.2
   min_drill: 0.2
@@ -12,15 +12,25 @@ frame:
   domains: [SELV-POWER]
   domain_regions:
     SELV-POWER:
-      - { x0: 0.0, y0: 0.0, x1: 28.5, y1: 30.0 }
+      - { x0: 0.0, y0: 0.0, x1: 28.5, y1: 21.5 }
   isolators: []
-  power_nets: [VIN_PROT, +5V, +5V_HEAT, LOGIC_SW, HEAT_SW]
+  power_nets: [VIN_PROT, +5V, +12V_HEAT, LOGIC_SW, HEAT_SW]
+  power_track_width: 0.4          # 1 oz outer: ~1.3 A at 10 K rise; fits the 1.0 mm JST-SH J1 pitch
   pours:
-    - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 28.0, y1: 29.5 } }
+    - { net: GND, layers: [In1.Cu, B.Cu], region: { x0: 0.5, y0: 0.5, x1: 28.0, y1: 21.0 } }
+    - { net: GND, layers: [F.Cu], region: { x0: 0.5, y0: 0.5, x1: 28.0, y1: 21.0 } }   # catch-diode / C_IN / EP return
+    # Power-stage copper on F.Cu (priority over the GND pour): short, wide SW node pin 8 -> D.K -> L.1, C_IN VIN pads,
+    # L.2 -> C_OUT. Router tracks these pours already connect are pruned after routing.
+    - { net: LOGIC_SW,  layers: [F.Cu], priority: 1, region: { x0: 10.9, y0: 5.15, x1: 18.95, y1: 6.95 } }
+    - { net: +5V,       layers: [F.Cu], priority: 1, region: { x0: 21.6, y0: 0.4,  x1: 28.2,  y1: 3.25 } }
+    - { net: VIN_PROT,  layers: [F.Cu], priority: 1, region: { x0: 0.4,  y0: 0.4,  x1: 4.9,   y1: 3.3 } }
+    - { net: HEAT_SW,   layers: [F.Cu], priority: 1, region: { x0: 10.9, y0: 13.35, x1: 18.95, y1: 15.15 } }
+    - { net: +12V_HEAT,  layers: [F.Cu], priority: 1, region: { x0: 21.6, y0: 8.6,  x1: 28.2,  y1: 11.45 } }
+    - { net: VIN_PROT,  layers: [F.Cu], priority: 1, region: { x0: 0.4,  y0: 8.6,  x1: 4.9,   y1: 11.5 } }
+  connector_labels: { J1: "MAIN" }   # destination board / port, placed next to each connector
   silk_labels:
-    - { text: "5V",      x: 10.0, y: 14.2, layer: F.SilkS }
-    - { text: "5V HEAT", x: 10.0, y: 29.4, layer: F.SilkS }
-    - { text: "MAIN",    x: 25.2, y: 22.4, layer: F.SilkS }
+    - { text: "5V",      x: 15.0, y: 7.9,  layer: F.SilkS }
+    - { text: "5V HEAT", x: 6.0,  y: 17.5, layer: F.SilkS }
 
 heights:
   default: 1.2
@@ -28,46 +38,63 @@ heights:
   U2: 1.7
   L1: 4.5
   L2: 4.5
+  D1: 2.3
+  D2: 2.3
   J1: 4.25
-  C4: 1.6
+  C1: 1.6
+  C2: 1.6
   C5: 1.6
-  C12: 1.6
-  C13: 1.6
+  C6: 1.6
+  C10: 1.6
+  C11: 1.6
+  C14: 1.6
+  C15: 1.6
 
 parts:
-  # All parts on top (bottom face rests on the base posts 1 mm above the floor). Lower half (enc z -14..0.5):
-  # +5V electronics buck; upper half (enc z 1.5..16): +5V_HEAT heater buck. J1 at the outer edge, past main's edge.
-  J1:  { x: 25.2,  y: 15.0,  rot: 90,  block: int_main, locked: true }
-  U1:  { x: 5.0,   y: 4.0,  rot: 0,   block: buck_logic }
-  L1:  { x: 15.0,  y: 4.2,  rot: 0,   block: buck_logic }
-  C1:  { x: 2.0  , y: 9.0  , rot: 90 , block: buck_logic }
-  C4:  { x: 20.6 , y: 2.7  , rot: 90 , block: buck_logic }
-  C5:  { x: 20.6 , y: 7.7  , rot: 90 , block: buck_logic }
-  C3:  { x: 5.0  , y: 9.0  , rot: 0  , block: buck_logic }
-  C2:  { x: 8.2  , y: 9.0  , rot: 0  , block: buck_logic }
-  R3:  { x: 11.4 , y: 9.0  , rot: 0  , block: buck_logic }
-  R4:  { x: 14.6 , y: 9.0  , rot: 0  , block: buck_logic }
-  C6:  { x: 17.8 , y: 9.0  , rot: 0  , block: buck_logic }
-  R1:  { x: 5.0  , y: 11.6 , rot: 0  , block: buck_logic }
-  R2:  { x: 8.2  , y: 11.6 , rot: 0  , block: buck_logic }
-  R5:  { x: 11.4 , y: 11.6 , rot: 0  , block: buck_logic }
-  R6:  { x: 14.6 , y: 11.6 , rot: 0  , block: buck_logic }
-  C7:  { x: 17.8 , y: 11.6 , rot: 0  , block: buck_logic }
-  C8:  { x: 2.0  , y: 12.6 , rot: 90 , block: buck_logic }
+  # Power stages on top (F.Cu), small-signal parts on the bottom next to their converter (short vias to the
+  # BOOT / VIN / RT / FB / COMP pins), never under the PowerPAD thermal vias. The bottom face rests on the base posts at the 4 corners (keep 2 mm clear).
+  # TPS54360 hot loop (SLVSBB4G layout guide): C_IN right at VIN (pin 2) / GND, catch diode D directly beside SW (pin 8)
+  # with its anode on the F.Cu GND pour, inductor next, C_OUT at the inductor output.
+  # J1 lies along the top edge (board 28.5 x 21.5 mm); its right half juts past main's edge (board x > 22.25).
+  # Plug the 8-pin cable in before main is fitted.
+  J1:  { x: 22.25, y: 18.6,  rot: 0,   block: int_main, locked: true }
 
-  U2:  { x: 5.0,   y: 19.5,  rot: 0,   block: buck_heat }
-  L2:  { x: 15.0,  y: 19.7,  rot: 0,   block: buck_heat }
-  C9:  { x: 2.0  , y: 24.5 , rot: 90 , block: buck_heat }
-  C12: { x: 20.6 , y: 18.2 , rot: 90 , block: buck_heat }
-  C13: { x: 20.6 , y: 23.2 , rot: 90 , block: buck_heat }
-  C11: { x: 5.0  , y: 24.5 , rot: 0  , block: buck_heat }
-  C10: { x: 8.2  , y: 24.5 , rot: 0  , block: buck_heat }
-  R9:  { x: 11.4 , y: 24.5 , rot: 0  , block: buck_heat }
-  R10: { x: 14.6 , y: 24.5 , rot: 0  , block: buck_heat }
-  C14: { x: 17.8 , y: 24.5 , rot: 0  , block: buck_heat }
-  R7:  { x: 5.0  , y: 27.1 , rot: 0  , block: buck_heat }
-  R8:  { x: 8.2  , y: 27.1 , rot: 0  , block: buck_heat }
-  R11: { x: 11.4 , y: 27.1 , rot: 0  , block: buck_heat }
-  R12: { x: 14.6 , y: 27.1 , rot: 0  , block: buck_heat }
-  C15: { x: 17.8 , y: 27.1 , rot: 0  , block: buck_heat }
-  C16: { x: 2.0  , y: 28.1 , rot: 90 , block: buck_heat }
+  # --- +5V electronics buck (top row, y 0.3..7.3) ---
+  C1:  { x: 1.3,   y: 3.8,   rot: 90,  block: buck_logic }
+  C2:  { x: 3.75,   y: 3.8,   rot: 90,  block: buck_logic }
+  U1:  { x: 8.9,   y: 3.8,   rot: 0,   block: buck_logic }
+  D1:  { x: 15.1,  y: 3.8,   rot: 270, block: buck_logic }
+  L1:  { x: 20.3,  y: 3.8,   rot: 0,   block: buck_logic }
+  C5:  { x: 24.9,  y: 3.8,   rot: 90,  block: buck_logic }
+  C6:  { x: 27.3,  y: 3.8,   rot: 90,  block: buck_logic }
+  C3:  { x: 5.6  , y: 2.2  ,   rot: 0,   side: back, block: buck_logic }   # VIN HF, under VIN pin 2
+  C4:  { x: 8.9  , y: 7.0  ,   rot: 0,   side: back, block: buck_logic }   # BOOT-SW, under pins 1 / 8
+  C7:  { x: 20.2 , y: 6.6  ,   rot: 0,   side: back, block: buck_logic }   # VOUT HF, under L1 output
+  R1:  { x: 17.1 , y: 6.6  ,   rot: 0,   side: back, block: buck_logic }
+  R2:  { x: 2.6  , y: 6.6  ,   rot: 0,   side: back, block: buck_logic }
+  R5:  { x: 2.6  , y: 4.9  ,   rot: 0,   side: back, block: buck_logic }
+  R6:  { x: 14.0 , y: 4.9  ,   rot: 0,   side: back, block: buck_logic }
+  C8:  { x: 17.1 , y: 4.9  ,   rot: 0,   side: back, block: buck_logic }
+  R3:  { x: 14.0 , y: 3.2  ,   rot: 0,   side: back, block: buck_logic }
+  R4:  { x: 14.0 , y: 1.5  ,   rot: 0,   side: back, block: buck_logic }
+  C9:  { x: 14.0 , y: 6.6  ,   rot: 0,   side: back, block: buck_logic }
+
+  # --- +12V_HEAT heater buck (top row, y 8.5..15.5) ---
+  C10: { x: 1.3,   y: 12.0,  rot: 90,  block: buck_heat }
+  C11: { x: 3.75,   y: 12.0,  rot: 90,  block: buck_heat }
+  U2:  { x: 8.9,   y: 12.0,  rot: 0,   block: buck_heat }
+  D2:  { x: 15.1,  y: 12.0,  rot: 270, block: buck_heat }
+  L2:  { x: 20.3,  y: 12.0,  rot: 0,   block: buck_heat }
+  C14: { x: 24.9,  y: 12.0,  rot: 90,  block: buck_heat }
+  C15: { x: 27.3,  y: 12.0,  rot: 90,  block: buck_heat }
+  C12: { x: 5.6  , y: 10.4 ,  rot: 0,   side: back, block: buck_heat }
+  C13: { x: 8.9  , y: 15.2 ,  rot: 0,   side: back, block: buck_heat }
+  C16: { x: 20.2 , y: 14.8 ,  rot: 0,   side: back, block: buck_heat }
+  R7:  { x: 17.1 , y: 14.8 ,  rot: 0,   side: back, block: buck_heat }
+  R8:  { x: 2.6  , y: 14.8 ,  rot: 0,   side: back, block: buck_heat }
+  R11: { x: 2.6  , y: 13.1 ,  rot: 0,   side: back, block: buck_heat }
+  R12: { x: 14.0 , y: 13.1 ,  rot: 0,   side: back, block: buck_heat }
+  C17: { x: 17.1 , y: 13.1 ,  rot: 0,   side: back, block: buck_heat }
+  R9:  { x: 14.0 , y: 11.4 ,  rot: 0,   side: back, block: buck_heat }
+  R10: { x: 14.0 , y: 9.7  ,  rot: 0,   side: back, block: buck_heat }
+  C18: { x: 14.0 , y: 14.8 ,  rot: 0,   side: back, block: buck_heat }

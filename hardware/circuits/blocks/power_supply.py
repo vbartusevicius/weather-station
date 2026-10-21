@@ -1,15 +1,36 @@
-"""SCT2430 3.8-40 V -> 5 V / 3.5 A synchronous buck (datasheet Table 3 design: 500 kHz, 7.8 uH, 2x 47 uF),
-instantiated twice on the `power` board: +5V for the electronics and +5V_HEAT for the heaters."""
+"""TI TPS54360 4.5-60 V asynchronous buck (datasheet SLVSBB4G section 8.2 design procedure), instantiated twice on
+the `power` board: +5V for the electronics and +12V_HEAT for the heaters and the crown transducer drivers.
+
+Common: f_sw = 92417 x RT^-0.991 = 743 kHz (RT = 130k, 243 kHz away from the AS3935 500 kHz band); catch diode
+B360A (60 V, 3 A); UVLO 511k / 82.5k (start 8.0 V, stop 6.25 V); gm_ps = 12 A/V, gm_ea = 350 uA/V, VREF = 0.8 V.
+
++5V (logic): L 8.2 uH (ripple 0.70 A at 36 V), COUT 2x 47 uF 10 V (~40 uF at 5 V), modulator pole 796 Hz,
+  f_co 17 kHz: R4 = 2 pi f_co C VOUT / (gm_ps VREF gm_ea) = 6.49k, C5 = 1 / (2 pi R4 f_p) = 33 nF,
+  C8 = 1 / (pi R4 f_sw) = 68 pF; FB 53.6k / 10.2k -> 5.00 V. Min on-time at 44 V: 168 ns > 135 ns.
++12V_HEAT: L 22 uH (ripple 0.46 A at 32 V, 0.20 A at 16 V), COUT 2x 22 uF 25 V (~14 uF effective at 12 V DC bias),
+  modulator pole 1.5 A / (2 pi 12 V 14 uF) = 1.42 kHz, f_co 20 kHz: R4 = 6.49k, C5 = 1 / (2 pi 6.49k 1.42 kHz) = 18 nF,
+  C8 = 68 pF; FB 140k / 10k -> 0.8 x 15 = 12.0 V. Min on-time at 44 V: 367 ns.
+  Below ~13.5 V input the high-side switch simply stays on (datasheet 7.3.4, 100 % duty with BOOT refresh): the rail
+  then follows VIN minus ~1 V (10.4-11 V on a 12 V supply). Heater power is held by the firmware's constant-wattage
+  PWM on the measured rail; the crown transducer drive amplitude follows the rail (receiver AGC absorbs +/-1.2 dB)."""
 
 from common import block, part, src
 from skidl import Net
 
 R0603 = "Resistor_SMD:R_0603_1608Metric"
 C0603 = "Capacitor_SMD:C_0603_1608Metric"
-C0805 = "Capacitor_SMD:C_0805_2012Metric"
 C1206 = "Capacitor_SMD:C_1206_3216Metric"
-ESOP8 = "Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.514x3.2mm"
+POWERPAD8 = "Package_SO:TI_SO-PowerPAD-8_ThermalVias"
+D_SMA = "Diode_SMD:D_SMA"
 L_SWPA6045 = "Inductor_SMD:L_Sunlord_SWPA6045S"
+
+# per-rail values: inductor (value, mpn, lcsc, note), output cap, compensation zero cap, FB divider (top, bottom)
+RAILS = {
+    5.0: {"l": ("8.2uH", "SWPA6045S8R2MT", "C96963", "Isat 3.9 A, Irms 2.6 A, 56 mOhm"),
+          "cout": "47u 10V", "c5": ("33n 50V", "f_z = 742 Hz"), "fb": ("53k6", "10k2")},
+    12.0: {"l": ("22uH", "SWPA6045S220MT", "C83454", "Isat 1.9 A, Irms 1.6 A, 140 mOhm"),
+           "cout": "22u 25V", "c5": ("18n 50V", "f_z = 1.36 kHz"), "fb": ("140k", "10k")},
+}
 
 
 def res(value, source, ref):
@@ -20,42 +41,53 @@ def cap(value, source, ref, footprint=C0603):
     return part("Device", "C", value, footprint, src(source=source), ref=ref)
 
 
-def sct2430(name, vin, vout, gnd, u, l, c, r):
-    """One SCT2430 5.0 V buck. `c` = 8 capacitor refs, `r` = 6 resistor refs (explicit, stable layout)."""
+def tps54360(name, vin, vout, gnd, u, l, d, c, r, volts=5.0):
+    """One TPS54360 buck at `volts` (5.0 or 12.0). `c` = 9 capacitor refs, `r` = 6 resistor refs (stable layout)."""
     block(f"buck_{name}")
+    cfg = RAILS[volts]
     tag = name.upper()
     sw, bst, en, fb, rt, comp, cc = (Net(f"{tag}_{n}") for n in ("SW", "BST", "EN", "FB", "RT", "COMP", "CC"))
-    ic = part("gateway", "SCT2430", "SCT2430STER", ESOP8,
-              src(mpn="SCT2430STER", mfr="SCT", lcsc="C509397",
-                  source=f"SCT2430 3.8-40 V input, 3.5 A synchronous buck converter ({name} 5 V rail)"),
+    ic = part("Regulator_Switching", "TPS54360DDA", "TPS54360DDAR", POWERPAD8,
+              src(mpn="TPS54360DDAR", mfr="Texas Instruments", lcsc="C44377",
+                  source=f"TPS54360 4.5-60 V input, 3.5 A buck converter ({name} {volts:g} V rail, 743 kHz)"),
               ref=u)
-    for pin, net in (("VIN", vin), ("GND", gnd), ("EP", gnd), ("EN", en), ("BOOT", bst), ("SW", sw),
-                     ("FB", fb), ("RT/CLK", rt), ("COMP", comp)):
+    for pin, net in (("1", bst), ("2", vin), ("3", en), ("4", rt), ("5", fb), ("6", comp), ("7", gnd),
+                     ("8", sw), ("9", gnd)):
         ic[pin] += net
-    ind = part("Device", "L", "8.2uH", L_SWPA6045,
-               src(mpn="SWPA6045S8R2MT", mfr="Sunlord", lcsc="C96963",
-                   source="8.2 uH shielded power inductor, Isat 3.9 A, Irms 2.6 A, 56 mOhm (6 x 6 x 4.5 mm)"),
+    l_val, l_mpn, l_lcsc, l_note = cfg["l"]
+    ind = part("Device", "L", l_val, L_SWPA6045,
+               src(mpn=l_mpn, mfr="Sunlord", lcsc=l_lcsc,
+                   source=f"{l_val} shielded power inductor, {l_note} (6 x 6 x 4.5 mm)"),
                ref=l)
     ind[1] += sw
     ind[2] += vout
-    caps = (("10u 50V", vin, gnd, "SCT2430 input decoupling", C0805),
-            ("100n 50V", vin, gnd, "SCT2430 input high-frequency decoupling (at VIN/GND pins)", C0603),
-            ("100n 50V", bst, sw, "SCT2430 bootstrap capacitor", C0603),
-            ("47u 10V", vout, gnd, "SCT2430 output capacitor 1 (datasheet 2x 47 uF)", C1206),
-            ("47u 10V", vout, gnd, "SCT2430 output capacitor 2", C1206),
-            ("100n 50V", vout, gnd, "SCT2430 output high-frequency decoupling", C0603),
-            ("3n3 50V", cc, gnd, "SCT2430 COMP capacitor (datasheet Table 3, 5 V)", C0603),
-            ("22p C0G 50V", comp, gnd, "SCT2430 COMP high-frequency pole capacitor", C0603))
+    diode = part("Device", "D_Schottky", "B360A", D_SMA,
+                 src(mpn="B360A-13-F", mfr="Diodes Inc", lcsc="C94193",
+                     source="TPS54360 catch diode (60 V, 3 A Schottky, SW -> GND)"),
+                 ref=d)
+    diode["K"] += sw
+    diode["A"] += gnd
+    c5_val, c5_note = cfg["c5"]
+    caps = (("2u2 100V", vin, gnd, "TPS54360 input capacitor 1 (100 V X7R, >= 3 uF effective with C2)", C1206),
+            ("2u2 100V", vin, gnd, "TPS54360 input capacitor 2", C1206),
+            ("100n 100V", vin, gnd, "TPS54360 input high-frequency decoupling (at VIN/GND pins)", C0603),
+            ("100n 50V", bst, sw, "TPS54360 bootstrap capacitor (datasheet 0.1 uF)", C0603),
+            (cfg["cout"], vout, gnd, "TPS54360 output capacitor 1", C1206),
+            (cfg["cout"], vout, gnd, "TPS54360 output capacitor 2", C1206),
+            ("100n 50V", vout, gnd, "TPS54360 output high-frequency decoupling", C0603),
+            (c5_val, cc, gnd, f"TPS54360 compensation zero capacitor C5 ({c5_note})", C0603),
+            ("68p C0G 50V", comp, gnd, "TPS54360 compensation pole capacitor C8", C0603))
     for ref, (val, a, b, source, fp) in zip(c, caps):
         x = cap(val, f"{source} [{name}]", ref, fp)
         x[1] += a
         x[2] += b
-    ress = (("51k", vin, en, "SCT2430 EN UVLO top (51k/10k -> 7.1 V on / 6.4 V off)"),
-            ("10k", en, gnd, "SCT2430 EN UVLO bottom"),
-            ("53k6", vout, fb, "SCT2430 FB top: VOUT = 0.8 * (1 + 53.6k / 10.2k) = 5.00 V"),
-            ("10k2", fb, gnd, "SCT2430 FB bottom"),
-            ("200k", rt, gnd, "SCT2430 RT: 500 kHz switching frequency"),
-            ("33k2", comp, cc, "SCT2430 COMP series resistor (datasheet Table 3, 5 V / 2x 47 uF)"))
+    fb_top, fb_bot = cfg["fb"]
+    ress = (("511k", vin, en, "TPS54360 EN UVLO top (511k/82.5k -> 8.0 V start, 6.25 V stop)"),
+            ("82k5", en, gnd, "TPS54360 EN UVLO bottom"),
+            (fb_top, vout, fb, f"TPS54360 FB top: VOUT = 0.8 * (1 + {fb_top} / {fb_bot}) = {volts:.2f} V"),
+            (fb_bot, fb, gnd, "TPS54360 FB bottom"),
+            ("130k", rt, gnd, "TPS54360 RT: 743 kHz switching frequency"),
+            ("6k49", comp, cc, "TPS54360 compensation resistor R4 (f_co ~ 17-20 kHz)"))
     for ref, (val, a, b, source) in zip(r, ress):
         x = res(val, f"{source} [{name}]", ref)
         x[1] += a

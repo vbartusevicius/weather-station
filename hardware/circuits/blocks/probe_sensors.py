@@ -2,11 +2,11 @@
   - U3 (bottom intake zone, below milled slot): Sensirion SHT45-AD1F-R2 +/-0.1 C / +/-1.0% RH sensor (I2C 0x44)
   - U1 (middle zone, above milled slot): Sensirion SCD41-D-R2 photoacoustic true CO2 sensor (I2C 0x62)
   - Backside Closed-Loop Regulated 0.42 W Local Heater (B.Cu directly behind U1 SCD41 pad 21):
-    * R1, R2: 2x 120R 1206 0.25 W resistors in PARALLEL on the regulated +5V_HEAT rail (60 Ohm, 0.42 W, 83 % of rating each);
+    * R1, R2: 2x 680R 1206 0.5 W resistors in PARALLEL on the +12V_HEAT rail (340 Ohm, 0.42 W at 12 V, 42 % of rating each);
       the heater current returns to main over CO2_HEAT_RTN through the 1 ohm monitor shunt (ADS1115 on main)
     * TH1: SDNT1608X103F3950FTF 10k 1% B=3950K NTC thermistor right between R1 & R2 on back of SCD41
-    * U4 (LM393DR2G) + Q1 (AO3400A): Closed-loop analog thermostat regulating SCD41 backside to +8 C during extreme cold
-      (R7 470k positive feedback gives ~0.4 K hysteresis so the comparator does not chatter)
+    * U4 (LM2903DR2G on +12V_HEAT, 2-36 V) + Q1 (AO3400A, gate pulled to +3V3): analog thermostat holding SCD41 at +8 C
+      during extreme cold (R7 470k positive feedback gives ~1.4 K hysteresis so the comparator does not chatter)
   - U2 (upper zone): Sensirion SGP41-D-R4 MOX multi-gas VOC Index + NOx Index sensor (I2C 0x59)
   - U5 (upper zone, next to U2): Bosch BMP585 gel-filled barometer (I2C 0x47) in the vented probe chamber,
     close to outside air for thunder pressure-wave timing
@@ -58,16 +58,16 @@ def build(gnd, v3, sda, scl, v5, heat_rtn):
     c_scd2[1] += v3
     c_scd2[2] += gnd
 
-    # --- Backside 0.42 W Parallel Redundant Heater (+5V_HEAT) + Closed-Loop NTC Thermostat Behind SCD41 ---
+    # --- Backside 0.42 W Parallel Redundant Heater (+12V_HEAT) + Closed-Loop NTC Thermostat Behind SCD41 ---
     block("co2_back_heater")
     co2_sw = Net("CO2_HEAT_SW")
     co2_ntc = Net("CO2_NTC")
     co2_vset = Net("CO2_VSET")
     co2_gate = Net("CO2_GATE")
 
-    # 2x 120R 1206 0.25 W resistors in PARALLEL on +5V_HEAT (60 Ohm, 0.42 W total, 0.21 W each, independent of 12-32 V)
-    r1 = res("120R", src(source="Parallel 0.25 W 1206 backside heater 1 directly behind SCD41 pad 21"), footprint=R1206)
-    r2 = res("120R", src(source="Parallel 0.25 W 1206 backside heater 2 directly behind SCD41 pad 21"), footprint=R1206)
+    # 2x 680R 1206 0.5 W resistors in PARALLEL on +12V_HEAT (340 Ohm, 0.42 W total at 12 V, 0.21 W each)
+    r1 = res("680R", src(source="Parallel 0.5 W 1206 backside heater 1 directly behind SCD41 pad 21"), footprint=R1206)
+    r2 = res("680R", src(source="Parallel 0.5 W 1206 backside heater 2 directly behind SCD41 pad 21"), footprint=R1206)
     r1[1] += v5
     r1[2] += co2_sw
     r2[1] += v5
@@ -92,12 +92,14 @@ def build(gnd, v3, sda, scl, v5, heat_rtn):
     r_set_bot[1] += co2_vset
     r_set_bot[2] += gnd
 
-    # Closed-loop thermostat comparator U4 (LM393) + low-side MOSFET switch Q1 (AO3400A)
-    u4 = part("gateway", "LM393", "LM393DR2G", FP_LM393,
-              src(mpn="LM393DR2G", mfr="onsemi", lcsc="C7955",
-                  source="Closed-loop analog thermostat comparator regulating SCD41 backside heater via TH1"),
+    # Closed-loop thermostat comparator U4 (LM2903, -40..+125 C) + low-side MOSFET switch Q1 (AO3400A).
+    # Powered from +12V_HEAT (10.4-12 V): its input common-mode range (0..VCC-2.0 V over temperature) covers the
+    # 2.27 V NTC/setpoint node; the open-collector output is pulled to +3V3 so Q1's gate never sees the 12 V rail.
+    u4 = part("gateway", "LM393", "LM2903DR2G", FP_LM393,
+              src(mpn="LM2903DR2G", mfr="onsemi", lcsc="C57474",
+                  source="Closed-loop analog thermostat comparator (-40..+125 C) regulating SCD41 backside heater via TH1"),
               ref="U4")
-    u4["8"] += v3
+    u4["8"] += v5
     u4["4"] += gnd
     u4["3"] += co2_ntc   # IN/A+ (rises above V_SET when T_SCD41 < +8 C)
     u4["2"] += co2_vset  # IN/A- (+8 C threshold)
@@ -108,18 +110,18 @@ def build(gnd, v3, sda, scl, v5, heat_rtn):
     r_gate_pu = res("10k", src(source="Thermostat open-collector gate pull-up"))
     r_gate_pu[1] += v3
     r_gate_pu[2] += co2_gate
-    c_u4 = cap("100n 50V", src(source="LM393 thermostat decoupling"))
-    c_u4[1] += v3
+    c_u4 = cap("100n 50V", src(source="LM2903 thermostat decoupling (+12V_HEAT)"))
+    c_u4[1] += v5
     c_u4[2] += gnd
 
     q1 = part("gateway", "AO3400A", "AO3400A", FP_AO3400,
               src(mpn="AO3400A", mfr="Alpha & Omega Semicon", lcsc="C20917",
-                  source="Low-side MOSFET switching the parallel 0.5 W SCD41 backside heater array"),
+                  source="Low-side MOSFET switching the parallel 0.42 W SCD41 backside heater array"),
               ref="Q1")
     q1["1"] += co2_gate
     q1["2"] += heat_rtn   # source -> CO2_HEAT_RTN -> 1 ohm monitor shunt on main
     q1["3"] += co2_sw
-    r_hyst = res("470k", src(source="Thermostat positive feedback (OUT -> IN+, ~0.4 K hysteresis)"), ref="R7")
+    r_hyst = res("470k", src(source="Thermostat positive feedback (OUT -> IN+, ~48 mV = ~1.4 K hysteresis)"), ref="R7")
     r_hyst[1] += co2_gate
     r_hyst[2] += co2_ntc
 

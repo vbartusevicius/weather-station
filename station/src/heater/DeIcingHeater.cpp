@@ -31,7 +31,14 @@ float DeIcingHeaterController::decode_ntc_temperature_c(std::uint16_t ntc_adc_mv
 HeaterControlOutput DeIcingHeaterController::update(const HeaterSensorInput& in) {
     const bool button = (in.ntc_adc_mv < kServiceBtnThresholdMv);
     const float reflector_c = button ? in.ambient_temp_c : decode_ntc_temperature_c(in.ntc_adc_mv);
-    HeaterControlOutput out = control(in.rail_v, reflector_c, in.ambient_temp_c, in.icing_suspected);
+    HeaterControlOutput out{};
+    if (!button && in.ntc_adc_mv > kNtcOpenThresholdMv) {
+        out.state = HeaterState::SensorFault;
+        out.supply_voltage_v = in.rail_v;
+        out.reflector_temp_c = reflector_c;
+        return out;
+    }
+    out = control(in.rail_v, reflector_c, in.ambient_temp_c, in.icing_suspected);
     out.service_button_pressed = button;
     return out;
 }
@@ -59,7 +66,7 @@ HeaterControlOutput DeIcingHeaterController::control(float rail_v, float reflect
     const float temp_err = clamp_f((kReflectorTargetTempC - out.reflector_temp_c) / 4.0F, 0.25F, 1.0F);
     const float desired_power_w = kTargetPowerW * temp_err;
 
-    // Constant-wattage duty cycle on the +5V rail (compensates its tolerance / load droop):
+    // Constant-wattage duty cycle on the +12V_HEAT rail (compensates the pass-through range and load droop):
     // P_full(V) = V^2 / R_heat => duty = desired_power_w / P_full(V)
     const float p_full_w = (out.supply_voltage_v * out.supply_voltage_v) / kHeaterResistanceOhm;
     const float duty = clamp_f(desired_power_w / std::max(0.5F, p_full_w), 0.0F, 1.0F);

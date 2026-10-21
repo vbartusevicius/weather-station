@@ -1,13 +1,13 @@
-"""V1 top crown ultrasonic, 4-quadrant piezo rain & compass board
-(41.0 x 56.0 mm, 4 layers, 1.2 mm, lowered to y = 181.5 mm with full roof clearance):
-  - J1: 10-pin JST-SH from main J2
-  - J2..J5 (bottom): 4x 2-pin JST-SH headers for N/E/S/W 40 kHz waterproof ultrasonic transducers
-  - J6..J9 (top): 4x 2-pin JST-SH headers wired in parallel for the 4x 20 mm Murata piezo rain discs
-  - J10 (top center 0,0): 4-pin 2.54 mm vertical SMD header feeding the elevated 12x12 mm `dome` Micro-PCB
-    right inside the hollow JGS1 Fused Silica Hemispherical Dome
-  - U1..U4: 40 kHz Ultrasonic ToF Multiplexer & Bandpass/Zero-Cross AFE
-  - U5: TLV9062IDR 4-Piezo Charge Amplifier & 206 mV Linear Envelope Follower
-  - U6 (LIS2MDLTR): 3-axis magnetometer for Digital North auto-alignment
+"""V1 crown board v2 (50 x 50 mm octagon with four transducer notches, 4 layers, 1.2 mm, y = 182.8 mm):
+  - U1 STM32G431RBT6: digitises the wind echoes, rain impacts and lightning events; I2C peripheral 0x2A for main,
+    reflashed by the ESP32 through the ROM I2C bootloader (CROWN_BOOT0 + CROWN_NRST from main)
+  - U2..U5 + D1..D8: UCC27524 H-bridge transducer drivers on +12V_HEAT with BAV99 T/R isolation
+  - D9..D12 + U7 + U8A: receive clamps, 74HC4052 mux and 40 kHz band-pass preamp into the STM32 PGA / ADC1
+  - U8B + D13: piezo rain charge amplifier into ADC2
+  - U9 + L1: AS3935 lightning detector (SPI) with its MA5532-AE ferrite-rod antenna
+  - U6: MMC5603NJ compass (main I2C bus); U10: 3.3 V LDO (crown + dome)
+  - J1: 12-pin JST-SH from main J2; J2..J5 transducers (1 = A, 2 = B); J6..J9 piezo discs; J10 dome riser;
+    J11 spare +12V_HEAT outlet; TP1..TP5 SWD pads
 """
 
 from blocks import crown_sensors
@@ -25,36 +25,26 @@ def build():
     gnd = power("GND")
     v3 = power("+3V3")
     v5 = power("+5V")
-    sda = Net("I2C_SDA")
-    scl = Net("I2C_SCL")
-    us_sel_a = Net("US_SEL_A")
-    us_sel_b = Net("US_SEL_B")
-    us_tx = Net("US_TX")
-    us_rx = Net("US_RX")
-    rain_adc = Net("RAIN_ADC")
-    heat5 = Net("+5V_HEAT")
-    for n in (gnd, v3, v5, heat5):
+    heat12 = Net("+12V_HEAT")
+    for n in (gnd, v5, heat12):   # +3V3 is driven by the crown LDO U10
         power_flag(n)
-
     nets = {
-        "+5V": v5, "+3V3": v3, "GND": gnd,
-        "I2C_SDA": sda, "I2C_SCL": scl,
-        "US_SEL_A": us_sel_a, "US_SEL_B": us_sel_b,
-        "US_TX": us_tx, "US_RX": us_rx,
-        "RAIN_ADC": rain_adc, "+5V_HEAT": heat5,
+        "+5V": v5, "+3V3": v3, "GND": gnd, "+12V_HEAT": heat12,
+        "I2C_SDA": Net("I2C_SDA"), "I2C_SCL": Net("I2C_SCL"),
+        "CROWN_IRQ": Net("CROWN_IRQ"), "CROWN_NRST": Net("CROWN_NRST"), "CROWN_BOOT0": Net("CROWN_BOOT0"),
     }
     block("int_main")
-    wire(jst_sh12("Main board", "J1", "12-pin JST-SH cable from main J2 (+5V_HEAT spare pair included)"), CROWN_LINK, nets)
-    # Spare heater supply (+5V_HEAT, up to ~0.9 A) brought up "just in case" (e.g. a future rain-lid / dome heater)
+    wire(jst_sh12("Main board", "J1", "12-pin JST-SH cable from main J2 (+12V_HEAT, +5V, I2C, crown MCU control)"),
+         CROWN_LINK, nets)
     block("aux_heat")
-    j11 = part("Connector", "Conn_01x02_Pin", "AUX 5V_HEAT", JST_SH2,
+    j11 = part("Connector", "Conn_01x02_Pin", "AUX 12V_HEAT", JST_SH2,
                src(mpn="BM02B-SRSS-TB(LF)(SN)", mfr="JST", lcsc="C160388",
-                   source="Spare 2-pin JST-SH +5V_HEAT / GND outlet for a future crown heater (unused in V1)"),
+                   source="Spare 2-pin JST-SH +12V_HEAT / GND outlet for a future crown / dome heater (unused in V1)"),
                ref="J11")
-    j11[1] += heat5
+    j11[1] += heat12
     j11[2] += gnd
 
-    crown_sensors.build(gnd, v5, v3, sda, scl, us_sel_a, us_sel_b, us_tx, us_rx, rain_adc)
+    crown_sensors.build(nets)
 
     block("int_dome")
     j10 = part("Connector_Generic", "Conn_01x04", "DOME_SOCKET", B2B_HDR4,
@@ -66,11 +56,9 @@ def build():
 
 NET_CLASSES = {
     "SELV-CROWN": [
-        "GND", "+3V3", "+5V", "+5V_HEAT", "I2C_SDA", "I2C_SCL", "US_SEL_A", "US_SEL_B",
-        "US_TX", "US_RX", "RAIN_ADC", "XD_N", "XD_E", "XD_S", "XD_W",
-        "US_TX_DRV", "US_TX_AC", "US_RX_MUX", "US_VREF", "US_VTH", "US_AMP1_IN",
-        "US_AMP1_FB", "US_AMP1_OUT", "US_AMP2_IN", "US_AMP2_FB", "US_AMP2_OUT",
-        "PIEZO_IN", "PIEZO_INV", "PIEZO_STG1", "PIEZO_ENV", "Net-*",
+        "GND", "+3V3", "+3V3A", "+5V", "+12V_HEAT", "VDRV", "I2C_SDA", "I2C_SCL", "CROWN_IRQ", "CROWN_NRST",
+        "CROWN_BOOT0", "XTAL_*", "SWDIO", "SWCLK", "AS_*", "TX_P", "TX_N", "MUX_*", "XD_*", "US_*", "PIEZO_*", "RAIN_ADC",
+        "Net-*",
     ],
-    "CROWN-Power": ["+5V", "+5V_HEAT", "+3V3"],
+    "CROWN-Power": ["+5V", "+12V_HEAT", "+3V3", "VDRV"],
 }

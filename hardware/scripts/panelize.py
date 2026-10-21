@@ -18,6 +18,10 @@ TAB_H = 3.2
 HOLE_DIA = 0.5
 HOLE_Y_OFFS = (-0.9, -0.3, 0.3, 0.9)
 
+# Boards ordered on their own instead of in the panel: the 60 x 60 mm notched crown v2 outline does not fit the
+# rectangular row layout below (its per-board release has Gerbers, BOM and CPL).
+SEPARATE_BOARDS = ("crown",)
+
 BOARD_REF_OFFSET = {
     "main": 0,
     "crown": 100,
@@ -133,6 +137,7 @@ def build_panel(
     root: Path,
     board_checks: dict[str, list],
 ) -> list[str]:
+    boards = tuple(b for b in boards if b not in SEPARATE_BOARDS)
     panel_dir = root / "panel"
     shutil.rmtree(panel_dir, ignore_errors=True)
     panel_dir.mkdir(parents=True)
@@ -250,7 +255,8 @@ def build_panel(
 
     mb_coords: list[tuple[float, float]] = []
     # 1. Horizontal mouse-bite tabs along bottom row: main <-> crown <-> reflector <-> power
-    horiz_placements = [p for p in placements if p[0] in ("main", "crown", "reflector", "power")]
+    horiz_placements = [p for p in placements if p[0] in ("main", "crown", "reflector", "power")
+                        or p[0] == "probe" and not any(q[0] == "crown" for q in placements)]
     for i in range(len(horiz_placements) - 1):
         l_name, _, _, lx0, ly0, lw, lh = horiz_placements[i]
         _, _, _, rx0, ry0, _rw, rh = horiz_placements[i + 1]
@@ -277,7 +283,7 @@ def build_panel(
 
         # If left board is `main` and `probe` is above `crown`, also add a mouse-bite tab from `main` to `probe`!
         probe_pl = next((p for p in placements if p[0] == "probe"), None)
-        if l_name == "main" and probe_pl:
+        if l_name == "main" and probe_pl and any(q[0] == "crown" for q in placements):
             _, _, _, px0, py0, _pw, ph = probe_pl
             py1 = round(py0 + ph, 4)
             for drw in list(panel.GetDrawings()):

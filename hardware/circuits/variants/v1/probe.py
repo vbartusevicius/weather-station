@@ -15,13 +15,13 @@ from skidl import Net
 from variants.v1.main import PROBE_LINK, jst_sh10, wire
 
 SOCKET_1X4_RA_SMD = "gateway_fp:HX_PM2.54-1x4P-RA-SMD"
-REFLECTOR_LINK = ("+5V_HEAT", "HEAT_SW", "NTC_SENSE", "GND")
+REFLECTOR_LINK = ("+12V_HEAT", "HEAT_SW", "NTC_SENSE", "GND")
 
 
 def build():
     gnd = power("GND")
     v3 = power("+3V3")
-    v5 = Net("+5V_HEAT")   # the probe only uses 5 V for its heater
+    v5 = Net("+12V_HEAT")   # the probe only uses 5 V for its heater
     heat_rtn = Net("CO2_HEAT_RTN")
     heat_sw = Net("HEAT_SW")
     ntc_sense = Net("NTC_SENSE")
@@ -31,7 +31,7 @@ def build():
         power_flag(n)
 
     nets = {
-        "HEAT_SW": heat_sw, "GND": gnd, "+5V_HEAT": v5, "CO2_HEAT_RTN": heat_rtn,
+        "HEAT_SW": heat_sw, "GND": gnd, "+12V_HEAT": v5, "CO2_HEAT_RTN": heat_rtn,
         "NTC_SENSE": ntc_sense, "+3V3": v3, "I2C_SDA": sda, "I2C_SCL": scl,
     }
     block("int_main")
@@ -49,8 +49,8 @@ def build():
 
 NET_CLASSES = {
     "SELV-PROBE": [
-        "GND", "+3V3", "+5V_HEAT", "HEAT_SW", "CO2_HEAT_SW", "CO2_HEAT_RTN", "CO2_NTC",
+        "GND", "+3V3", "+12V_HEAT", "HEAT_SW", "CO2_HEAT_SW", "CO2_HEAT_RTN", "CO2_NTC",
         "CO2_VSET", "CO2_GATE", "NTC_SENSE", "I2C_SDA", "I2C_SCL", "Net-*",
     ],
-    "PROBE-Power": ["HEAT_SW", "CO2_HEAT_SW", "CO2_HEAT_RTN", "+5V_HEAT", "+3V3"],
+    "PROBE-Power": ["HEAT_SW", "CO2_HEAT_SW", "CO2_HEAT_RTN", "+12V_HEAT", "+3V3"],
 }

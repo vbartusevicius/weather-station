@@ -161,15 +161,15 @@ struct SeismicDerived {
 struct HeaterDerived {
     std::uint8_t state{0};
     Value<float> vin_v;
-    Value<float> rail_heat_v;        // +5V_HEAT (heaters)
+    Value<float> rail_heat_v;        // +12V_HEAT (heaters, crown drive)
     Value<float> rail_logic_v;       // +5V (electronics)
     Value<float> reflector_c;
     float duty_pct{0.0F};
-    float power_w{0.0F};             // reflector heater, set point: duty x V5^2 / 6.75 ohm
+    float power_w{0.0F};             // reflector heater, set point: duty x V^2 / 30 ohm
     Value<float> probe_c;            // probe heater zone (SCD41 on-chip temperature; analog +8 C thermostat)
     Value<float> probe_rise_k;       // probe heater zone minus air temperature
     Value<float> reflector_w;        // measured: +5V x mean shunt current
-    Value<float> probe_w;            // measured: +5V x shunt current
+    Value<float> probe_w;            // measured: +12V_HEAT x shunt current
     bool probe_on{false};            // probe thermostat is heating (current > 20 mA)
     const char* reflector_status{"—"};  // ok / open / stuck-on / check-running / check-pass / check-fail
     const char* probe_status{"—"};      // ok / heating / stuck-on / not-heating

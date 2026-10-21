@@ -5,8 +5,7 @@
 namespace station {
 namespace firmware {
 
-template <typename F>
-bool AnalogFrontEnd::pump(std::uint32_t timeout_ms, F&& on_rain) {
+inline bool AnalogFrontEnd::pump(std::uint32_t timeout_ms) {
     if (!running_) {
         return false;
     }
@@ -19,9 +18,7 @@ bool AnalogFrontEnd::pump(std::uint32_t timeout_ms, F&& on_rain) {
         const int ch = static_cast<int>(p->type2.channel);
         const int raw = static_cast<int>(p->type2.data);
         const int mv = to_mv(ch, raw);
-        if (ch == 2) {
-            on_rain(static_cast<std::uint16_t>(mv));
-        } else if (ch == 0) {
+        if (ch == 0) {
             vin_sum_ += mv;
             ++vin_n_;
         } else if (ch == 1) {

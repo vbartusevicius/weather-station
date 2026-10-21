@@ -48,17 +48,15 @@ def board_plates():
     colours = {"main": PCB_MAIN, "crown": PCB_CROWN, "reflector": PCB_REFLECTOR, "dome": PCB_DOME, "probe": PCB_PROBE, "power": PCB_POWER}
     plates = []
     for board in ef.SPEC["variants"][ef.VARIANT]["boards"]:
-        cfg = ef.SPEC["boards"][board]
         s = ef.board_slab(board)
         if board == "dome":
             cx, cz = (s["x0"] + s["x1"]) / 2.0, (s["z0"] + s["z1"]) / 2.0
             plates.append((cyl_y(cx, cz, s["y0"], s["y1"], s["x1"] - s["x0"]), colours[board], board))
-        elif cfg.get("shape") == "octagon":
-            # Compact 34.0 x 34.0 mm Square-Chamfered `crown` PCB (`x = -17..+17, z = -17..+17` with 4.5 mm 45-deg corner chamfers!)
-            pts = [(-12.5, -17.0), (12.5, -17.0), (17.0, -12.5), (17.0, 12.5),
-                   (12.5, 17.0), (-12.5, 17.0), (-17.0, 12.5), (-17.0, -12.5)]
-            oct_slab = cq.Workplane("XZ", origin=(0, s["y0"], 0)).polyline(pts).close().extrude(-(s["y1"] - s["y0"]))
-            plates.append((oct_slab, colours[board], board))
+        elif ef.board_outline_xz(board):
+            # custom outline from the layout plan (crown: 60 x 60 mm with transducer notches and chamfers)
+            slab = (cq.Workplane("XZ", origin=(0, s["y0"], 0)).polyline(ef.board_outline_xz(board)).close()
+                    .extrude(-(s["y1"] - s["y0"])))
+            plates.append((slab, colours[board], board))
         else:
             plates.append((box(s["x0"], s["x1"], s["y0"], s["y1"], s["z0"], s["z1"]), colours[board], board))
     return plates
@@ -74,10 +72,10 @@ def realistic_part(b):
         # Rotate around `axis = (cz, 0, -cx)` by `+tilt_deg` (29.0 deg) so the transducer face tilts INWARD (`V-beam`)!
         # Seats against the 1.0+ mm bottom resting shoulder (`s = -1.80 mm`) with the Press-Fit Rear Retaining Ring behind it!
         axis = (cz, 0, -cx) if (cx != 0 or cz != 0) else (1, 0, 0)
-        can = be.cone_y(-1.75, 3.4, 5.0, 5.0).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.RAISE, cz))
-        face = be.cone_y(-1.80, -1.3, 4.3, 4.3).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.RAISE, cz))
-        ret_ring = be.ring_cone_y(3.4, 4.8, 3.0, 5.2, 3.0, 5.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.RAISE, cz))
-        pigtail = be.cone_y(3.4, 5.8, 1.2, 1.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.RAISE, cz))
+        can = be.cone_y(-1.75, 3.4, 5.0, 5.0).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.UPPER, cz))
+        face = be.cone_y(-1.80, -1.3, 4.3, 4.3).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.UPPER, cz))
+        ret_ring = be.ring_cone_y(3.4, 4.8, 3.0, 5.2, 3.0, 5.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.UPPER, cz))
+        pigtail = be.cone_y(3.4, 5.8, 1.2, 1.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.UPPER, cz))
         return [(can, ALU), (face, (0.25, 0.28, 0.32)), (ret_ring, (0.94, 0.45, 0.22)), (pigtail, GOLD)]
     if fp in ("PIEZO_27MM", "PIEZO_20MM"):
         d = 20.0 if fp == "PIEZO_20MM" else 27.0
@@ -114,12 +112,12 @@ def realistic_part(b):
         return [(box(x0 + 0.15, x1 - 0.15, y0, y1, z0 + 0.15, z1 - 0.15), IVORY)]
     if "HX_PM2.54-1x4P-RA-SMD" in fp:
         # Right-angle 1x4 2.54 mm female socket on `probe J2` facing straight UP (+Y) to y = 120.1 mm to mate flush with `reflector J1`!
-        housing = box(-5.08, 5.08, 114.2 + ef.RAISE, 120.1 + ef.RAISE, 0.6, 3.1)
+        housing = box(-5.08, 5.08, 114.2 + ef.UPPER, 120.1 + ef.UPPER, 0.6, 3.1)
         return [(housing, PART)]
     if "HX_PZ2.54-1x4P-SMD" in fp and b.get("board") == "reflector":
         # Vertical 1x4 2.54 mm male header on underside of `reflector J1` (insulator at y = 120.1..122.6, 4 gold pins down to y = 115.2)
-        insulator = box(-5.08, 5.08, 120.1 + ef.RAISE, 122.6 + ef.RAISE, 0.6, 3.1)
-        pins = [box(px - 0.32, px + 0.32, 115.2 + ef.RAISE, 122.6 + ef.RAISE, 1.53, 2.17) for px in (-3.81, -1.27, 1.27, 3.81)]
+        insulator = box(-5.08, 5.08, 120.1 + ef.UPPER, 122.6 + ef.UPPER, 0.6, 3.1)
+        pins = [box(px - 0.32, px + 0.32, 115.2 + ef.UPPER, 122.6 + ef.UPPER, 1.53, 2.17) for px in (-3.81, -1.27, 1.27, 3.81)]
         return [(insulator, PART)] + [(p, GOLD) for p in pins]
     if "LED_SK6805" in fp:
         return [(box(x0, x1, y0, y1, z0, z1), (0.10, 0.88, 0.32))]
@@ -227,7 +225,7 @@ def stl_part_views(stl_map, crown_inside_items=(), pagoda_inside_items=(), base_
     and for `crown.png` and `pagoda.png` show the zoomed-in cutaway with internal boards, O-rings, and hardware."""
     for name, solid in stl_map.items():
         if name == "crown" and crown_inside_items:
-            render("crown", crown_inside_items, (68, 228 + ef.RAISE, 82), focal=(0, 190.5 + ef.RAISE, 0), zoom=2.15)
+            render("crown", crown_inside_items, (68, 228 + ef.UPPER, 82), focal=(0, 190.5 + ef.UPPER, 0), zoom=2.15)
             continue
         if name == "base" and base_inside_items:
             # Front half (z < 0) of the shell translucent: `main` board + parts, PMSA003I on its duct bed, umbrella
@@ -254,20 +252,20 @@ def stl_part_views(stl_map, crown_inside_items=(), pagoda_inside_items=(), base_
             # and show the central M22x1.5 JGS1 Dome Nut + 4 Slotted Ultrasonic Press-Fit Retaining Rings in the center!
             st0 = ef.strut_centres()[0]
             sx, sz = st0["x"], st0["z"]
-            uv_box = box(-24.0, 24.0, 185.0 + ef.RAISE, 196.0 + ef.RAISE, -24.0, 24.0)
+            uv_box = box(-24.0, 24.0, 185.0 + ef.UPPER, 196.0 + ef.UPPER, -24.0, 24.0)
             uv_n = solid.intersect(uv_box).translate((0, -40.0, 0))
             struts_only = solid.cut(uv_box)
-            ne_box = box(10.0, 50.0, 120.0 + ef.RAISE, 180.0 + ef.RAISE, 10.0, 50.0)
+            ne_box = box(10.0, 50.0, 120.0 + ef.UPPER, 180.0 + ef.UPPER, 10.0, 50.0)
             other_struts = struts_only.cut(ne_box)
             ne_sub = struts_only.intersect(ne_box)
-            nut_ring_bot = be.ring_cone_y(123.3 + ef.RAISE, 126.1 + ef.RAISE, 5.10, 9.5, 5.10, 9.5).translate((sx, 0, sz))
-            nut_ring_top = be.ring_cone_y(175.6 + ef.RAISE, 178.6 + ef.RAISE, 5.10, 9.5, 5.10, 9.5).translate((sx, 0, sz))
+            nut_ring_bot = be.ring_cone_y(123.3 + ef.UPPER, 126.1 + ef.UPPER, 5.10, 9.5, 5.10, 9.5).translate((sx, 0, sz))
+            nut_ring_top = be.ring_cone_y(175.6 + ef.UPPER, 178.6 + ef.UPPER, 5.10, 9.5, 5.10, 9.5).translate((sx, 0, sz))
             bot_n = ne_sub.intersect(nut_ring_bot).translate((0, -4.5, 0))
             top_n = ne_sub.intersect(nut_ring_top).translate((0, 4.5, 0))
             c_only = ne_sub.cut(nut_ring_bot).cut(nut_ring_top)
-            front_mask = (box(10, 50, 120 + ef.RAISE, 180 + ef.RAISE, sz, 50)
-                          .union(box(sx - 4.38, sx - 3.55, 128.7 + ef.RAISE, 172.3 + ef.RAISE, sz - 1.30, sz + 0.35))
-                          .cut(box(sx + 3.55, sx + 4.38, 128.7 + ef.RAISE, 172.3 + ef.RAISE, sz - 0.35, sz + 1.30)))
+            front_mask = (box(10, 50, 120 + ef.UPPER, 180 + ef.UPPER, sz, 50)
+                          .union(box(sx - 4.38, sx - 3.55, 128.7 + ef.UPPER, 172.3 + ef.UPPER, sz - 1.30, sz + 0.35))
+                          .cut(box(sx + 3.55, sx + 4.38, 128.7 + ef.UPPER, 172.3 + ef.UPPER, sz - 0.35, sz + 1.30)))
             c_back = c_only.cut(front_mask).translate((0, 0, -5.5))
             c_front = c_only.intersect(front_mask).translate((0, 0, 5.5))
             render(name, [
@@ -319,32 +317,32 @@ def main():
     crown = be.build_crown()
     win = ef.uv_window()
     # Hollow JGS1 Fused Silica Hemispherical Dome (Ø 18.0 mm OD / Ø 15.6 mm ID, 1.2 mm wall) + O-Ring + Standard ISO M22x1.5 Hex-Flange Retainer Nut:
-    uv_flange_shell = be.ring_cone_y(193.0 + ef.RAISE, 194.2 + ef.RAISE, 7.8, 10.35, 7.8, 10.35).translate((win["x"], 0, win["z"]))
-    uv_neck_shell = be.ring_cone_y(194.2 + ef.RAISE, 198.0 + ef.RAISE, 7.8, 9.0, 7.8, 9.0).translate((win["x"], 0, win["z"]))
-    hemi_outer = (cq.Workplane("XY", origin=(win["x"], 198.0 + ef.RAISE, win["z"]))
+    uv_flange_shell = be.ring_cone_y(193.0 + ef.UPPER, 194.2 + ef.UPPER, 7.8, 10.35, 7.8, 10.35).translate((win["x"], 0, win["z"]))
+    uv_neck_shell = be.ring_cone_y(194.2 + ef.UPPER, 198.0 + ef.UPPER, 7.8, 9.0, 7.8, 9.0).translate((win["x"], 0, win["z"]))
+    hemi_outer = (cq.Workplane("XY", origin=(win["x"], 198.0 + ef.UPPER, win["z"]))
                   .sphere(9.0)
-                  .intersect(box(-25, 25, 198.0 + ef.RAISE, 209.0 + ef.RAISE, -25, 25)))
-    hemi_inner = (cq.Workplane("XY", origin=(win["x"], 198.0 + ef.RAISE, win["z"]))
+                  .intersect(box(-25, 25, 198.0 + ef.UPPER, 209.0 + ef.UPPER, -25, 25)))
+    hemi_inner = (cq.Workplane("XY", origin=(win["x"], 198.0 + ef.UPPER, win["z"]))
                   .sphere(7.8)
-                  .intersect(box(-25, 25, 197.8 + ef.RAISE, 209.0 + ef.RAISE, -25, 25)))
+                  .intersect(box(-25, 25, 197.8 + ef.UPPER, 209.0 + ef.UPPER, -25, 25)))
     uv_lens = uv_flange_shell.union(uv_neck_shell).union(hemi_outer.cut(hemi_inner))
-    uv_nut_hex = be.hex_prism_y(189.8 + ef.RAISE, 191.0 + ef.RAISE, across_flats=22.0, cx=win["x"], cz=win["z"]).cut(
-        be.cone_y(189.5 + ef.RAISE, 193.5 + ef.RAISE, 8.2, 8.2).translate((win["x"], 0, win["z"])))
-    uv_nut_barrel = be.ring_cone_y(190.4 + ef.RAISE, 193.0 + ef.RAISE, 8.2, 10.20, 8.2, 10.20).translate((win["x"], 0, win["z"]))
-    uv_retainer_nut = be.add_external_thread_y(uv_nut_hex.union(uv_nut_barrel), (191.2 + ef.RAISE, 192.7 + ef.RAISE),
+    uv_nut_hex = be.hex_prism_y(189.8 + ef.UPPER, 191.0 + ef.UPPER, across_flats=22.0, cx=win["x"], cz=win["z"]).cut(
+        be.cone_y(189.5 + ef.UPPER, 193.5 + ef.UPPER, 8.2, 8.2).translate((win["x"], 0, win["z"])))
+    uv_nut_barrel = be.ring_cone_y(190.4 + ef.UPPER, 193.0 + ef.UPPER, 8.2, 10.20, 8.2, 10.20).translate((win["x"], 0, win["z"]))
+    uv_retainer_nut = be.add_external_thread_y(uv_nut_hex.union(uv_nut_barrel), (191.2 + ef.UPPER, 192.7 + ef.UPPER),
                                                r_root=10.20, depth=0.70, half_base=0.45, half_crest=0.14,
                                                cx=win["x"], cz=win["z"])
     # Vertical 4-pin 2.54 mm board-to-board riser posts connecting `crown J10` (y=181.5) to round `dome J1` (y=196.0)
-    b2b_riser = box(-5.1, 5.1, 181.5 + ef.RAISE, 196.0 + ef.RAISE, -1.25, 1.25)
+    b2b_riser = box(-5.1, 5.1, 181.5 + ef.UPPER, 196.0 + ef.UPPER, -1.25, 1.25)
     # 4x M6x55 mm Stainless Steel Through-Bolts + Bottom M6 Hex Nuts clamping the Pagoda stack through the Ø 6.2 mm bores (at r = 23.0 mm)
     # Top M6 bolt head (y = 117.8..120.2 mm) sits recessed inside the Ø 10.4 mm counterbore well, 12.5 mm radially clear of the r = 35.5 mm strut nuts!
     m4_bolts = None
     for deg in (45, 135, 225, 315):
         rad = math.radians(deg)
         px, pz = 20.5 * math.cos(rad), 20.5 * math.sin(rad)
-        shaft = be.cone_y(67.8 + ef.RAISE, 117.8 + ef.RAISE, 2.95, 2.95).translate((px, 0, pz))
-        head = be.cone_y(117.8 + ef.RAISE, 120.2 + ef.RAISE, 4.8, 4.8).translate((px, 0, pz))
-        nut = be.hex_prism_y(67.8 + ef.RAISE, 70.1 + ef.RAISE, across_flats=9.8, cx=px, cz=pz)
+        shaft = be.cone_y(117.8 - 55.0 + ef.RAISE, 117.8 + ef.RAISE, 2.95, 2.95).translate((px, 0, pz))
+        head = be.cone_y(117.8 + ef.RAISE, 117.8 + be.M6_HEAD_K + ef.RAISE, be.M6_HEAD_D / 2.0, be.M6_HEAD_D / 2.0).translate((px, 0, pz))
+        nut = be.hex_prism_y(70.1 - be.M6_NUT_M + ef.RAISE, 70.1 + ef.RAISE, across_flats=be.M6_NUT_AF, cx=px, cz=pz)
         bolt = shaft.union(head).union(nut)
         m4_bolts = bolt if m4_bolts is None else m4_bolts.union(bolt)
 
@@ -390,8 +388,8 @@ def main():
         (lock_triangle_inlays(70.1 + ef.RAISE, 67.7 + ef.RAISE), MARKER_INK, 1.0),
         (lock_triangle_inlays(115.7 + ef.RAISE, 118.1 + ef.RAISE), MARKER_INK, 1.0),
         (lock_triangle_inlays(123.9 + ef.RAISE, 121.5 + ef.RAISE), MARKER_INK, 1.0),
-        (lock_triangle_inlays(181.6 + ef.RAISE, 184.0 + ef.RAISE), MARKER_INK, 1.0),
-        (lock_triangle_inlays(189.4 + ef.RAISE, 187.0 + ef.RAISE), MARKER_INK, 1.0),
+        (lock_triangle_inlays(181.6 + ef.UPPER, 184.0 + ef.UPPER), MARKER_INK, 1.0),
+        (lock_triangle_inlays(189.4 + ef.UPPER, 187.0 + ef.UPPER), MARKER_INK, 1.0),
     ]
 
     exterior = [
@@ -423,7 +421,7 @@ def main():
     ] + inside, (250, 172, 250), focal=(0, 109.5, 0), zoom=1.05)
 
     # Half cutaway section (x <= 0) showing the internal boards, O-rings, meshing threads, pagoda conduit, and transducers
-    keep = box(-60, 0, -5, 210, -60, 60)
+    keep = box(-60, 0, -40, 230, -60, 60)
     section = [
         (base.intersect(keep), STL_COLOURS["base"], 1.0),
         (mast_clamp.intersect(keep), STL_COLOURS["mast_clamp"], 1.0),
@@ -475,7 +473,7 @@ def main():
          (uv_retainer_nut.intersect(keep), BRASS, 1.0),
          (uv_retainer_nut.cut(keep), BRASS, 0.35),
          (b2b_riser, GOLD, 1.0),
-         (orings.intersect(box(-50, 50, 184 + ef.RAISE, 200 + ef.RAISE, -50, 50)), STL_COLOURS["orings"], 0.92)]
+         (orings.intersect(box(-50, 50, 184 + ef.UPPER, 200 + ef.UPPER, -50, 50)), STL_COLOURS["orings"], 0.92)]
         + crown_pcb_grp
         + dome_pcb_grp
     )
@@ -494,7 +492,7 @@ def main():
         + [(s.intersect(keep), c, op) for s, c, op in probe_grp]
         + [(s.intersect(keep), c, op) for s, c, op in refl_grp]
     )
-    rear = box(-60, 60, -5, 55.5 + be.UMB, 0, 60)   # rear half below the umbrella stays opaque
+    rear = box(-60, 60, -40, 55.5 + be.UMB, 0, 60)   # rear half below the umbrella stays opaque
     base_inside_items = (
         [(base.intersect(rear), STL_COLOURS["base"], 1.0),
          (base.cut(rear), STL_COLOURS["base"], 0.12)]
@@ -502,34 +500,16 @@ def main():
     )
     # Bay floor from above: umbrella, boards and the PMSA003I left out; floor features opaque, walls translucent
     floor_only = be.build_base(umbrella=False)
-    low = box(-60, 60, -5, 60.0, -60, 60)
-    big = 52.0   # labels float above the floor (top view) / below the base (underside view)
+    low = box(-60, 60, -40, 60.0, -60, 60)
     render("base_floor", [
         (floor_only.intersect(low), STL_COLOURS["base"], 1.0),
         (floor_only.cut(low), STL_COLOURS["base"], 0.10),
-    ], (-20, 300, -60), focal=(0, 40.0, 0), up=(0, 0, 1), zoom=1.25, labels=[
-        ("PM fan exhaust chamber", (-26.0, big, 8.0)),
-        ("PM intake chamber + roofed duct", (-30.0, big, -14.0)),
-        ("PM hooks", (-20.0, big + 4, 22.0)),
-        ("power board posts + clips", (24.0, big - 6, 0.0)),
-        ("main board posts", (2.0, big, 24.0)),
-        ("reset button", (18.5, big, -20.0)),
-        ("cable gland", (0.0, big - 10, 0.0)),
-    ])
+    ], (-20, 300, -60), focal=(0, 40.0, 0), up=(0, 0, 1), zoom=1.25)
     # Underside seen straight from below: duct exit slits, bay grilles, weep drains, reset button, mast clamp
     render("base_underside", [
         (base, STL_COLOURS["base"], 1.0),
         (mast_clamp, STL_COLOURS["mast_clamp"], 1.0),
-    ], (-15, -260, -60), focal=(0, 25.0, 0), up=(0, 0, 1), zoom=1.25, labels=[
-        ("PM exhaust slits", (-28.0, 10.0, 13.6)),
-        ("PM intake slits", (-31.2, 10.0, -15.2)),
-        ("reset button", (18.5, 10.0, -20.0)),
-        ("bay vents", (30.7, 10.0, 17.8)),
-        ("bay vents", (30.7, 10.0, -17.8)),
-        ("bay vents", (-17.8, 10.0, 30.7)),
-        ("bay vents", (-17.8, 10.0, -30.7)),
-        ("mast clamp", (0.0, 5.0, -30.0)),
-    ])
+    ], (-15, -260, -60), focal=(0, 10.0, 0), up=(0, 0, 1), zoom=1.15)
     stl_part_views(stl_map, crown_inside_items=crown_inside_items, pagoda_inside_items=pagoda_inside_items,
                    base_inside_items=base_inside_items)
 

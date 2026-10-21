@@ -40,6 +40,9 @@ TUNNEL_Y1 = ENV["wind_tunnel"]["y_end"]
 CROWN_Y0 = ENV["top_crown"]["y_start"]
 CROWN_Y1 = ENV["top_crown"]["y_end"]
 RAISE = ENV.get("above_base_raise", 0.0)   # parts above the base are placed this much higher
+TOP_RAISE = ENV.get("above_pagoda_raise", 0.0)   # wind_tunnel deck and everything above it: a further lift
+UPPER = RAISE + TOP_RAISE
+TOP_BOARDS = ("reflector", "crown", "dome")
 BASE_BOARDS = ("main", "power")
 
 MAIN_W = SPEC["boards"]["main"]["max_outline"]["width"]
@@ -72,7 +75,7 @@ def board_point(board, x, y, n=0.0):
         rot_rad = math.radians(cfg.get("rot_deg", 0.0))
         rx = u * math.cos(rot_rad) - v * math.sin(rot_rad)
         rz = u * math.sin(rot_rad) + v * math.cos(rot_rad)
-        lift = 0.0 if board in BASE_BOARDS else RAISE
+        lift = 0.0 if board in BASE_BOARDS else (UPPER if board in TOP_BOARDS else RAISE)
         return (rx + cfg.get("x_offset", 0.0),
                 cfg["y"] + n + lift,
                 rz + cfg.get("z_offset", 0.0))
@@ -101,6 +104,14 @@ def board_slab(board):
 
 def board_slabs(board):
     return [board_slab(board)]
+
+
+def board_outline_xz(board):
+    """Enclosure (x, z) polygon of a horizontal board with a custom `frame.outline` in its layout plan, else None."""
+    outline = layout_plan(board)["frame"].get("outline")
+    if not outline or SPEC["boards"][board]["plane"] != "horizontal-xz":
+        return None
+    return [board_to_enc(board, x, y) for x, y in outline]
 
 
 def bbox_centre(comp):
@@ -135,7 +146,7 @@ PM = {
 CLIP_REACH = 1.1
 CLIPS = {
     "main": [(21.5, -26.9, (0, 1)), (7.5, 26.9, (0, -1)), (32.4, -22.0, (-1, 0)), (-1.4, 22.0, (1, 0))],
-    "power": [(36.0, -14.9, (0, 1)), (36.0, 16.9, (0, -1)), (8.6, -13.0, (1, 0)), (8.6, 15.0, (1, 0))],
+    "power": [(36.0, -14.9, (0, 1)), (12.5, 8.4, (0, -1)), (8.6, -6.1, (1, 0)), (8.6, 4.0, (1, 0))],   # clear of J1 / between the buck rows
 }
 
 
@@ -161,13 +172,13 @@ def part_boxes():
             })
     # Off-board 4x 40 kHz Ultrasonic Transducers (N, E, S, W at r=17.5 mm, flush from y=174.0 ceiling up to y=181.6 underside of `crown` PCB!)
     tr_r = ENV["wind_tunnel"]["transducer_radius"]
-    crown_bot_y = SPEC["boards"]["crown"]["y"] - SPEC["boards"]["crown"]["thickness"] + RAISE
+    crown_bot_y = SPEC["boards"]["crown"]["y"] - SPEC["boards"]["crown"]["thickness"] + UPPER
     for name, deg in ENV["wind_tunnel"]["transducer_angles_deg"].items():
         rad = math.radians(deg)
         tx, tz = tr_r * math.cos(rad), tr_r * math.sin(rad)
         boxes.append({
             "board": "crown", "ref": f"XD_{name}", "side": "back", "footprint": "ULTRASONIC_10MM",
-            "x0": tx - 5.0, "x1": tx + 5.0, "y0": TUNNEL_Y1 + RAISE, "y1": crown_bot_y,
+            "x0": tx - 5.0, "x1": tx + 5.0, "y0": TUNNEL_Y1 + UPPER, "y1": crown_bot_y,
             "z0": tz - 5.0, "z1": tz + 5.0,
         })
     # Off-board Plantower PMSA003I particulate module lying face-down on its duct chambers (left half of the bay)
@@ -182,7 +193,7 @@ def part_boxes():
         px, pz = 25.0 * math.cos(rad), 25.0 * math.sin(rad)
         boxes.append({
             "board": "crown", "ref": f"PIEZO_{quad}", "side": "front", "footprint": "PIEZO_20MM",
-            "x0": px - 10.0, "x1": px + 10.0, "y0": 193.2 + RAISE, "y1": 193.8 + RAISE,
+            "x0": px - 10.0, "x1": px + 10.0, "y0": 193.2 + UPPER, "y1": 193.8 + UPPER,
             "z0": pz - 10.0, "z1": pz + 10.0,
         })
     return boxes
@@ -220,7 +231,10 @@ def standoffs(board):
     cfg = SPEC["boards"][board]
     w, h = cfg["max_outline"]["width"], cfg["max_outline"]["height"]
     if board == "crown":
-        local_pts = [(5.5, 2.0), (w - 5.5, 2.0), (5.5, h - 2.0), (w - 5.5, h - 2.0)]
+        # 4 posts at r = 16 mm, 22.5 deg off the transducer axes: clear of the barrels, the strut nut pockets on the
+        # diagonals, the floor vents and the PCB notches (rotationally symmetric).
+        local_pts = [(w / 2 + 16.0 * math.cos(math.radians(a)), h / 2 + 16.0 * math.sin(math.radians(a)))
+                     for a in (22.5, 112.5, 202.5, 292.5)]
         pts = []
         for bx, by in local_pts:
             ex, ey, ez = board_point(board, bx, by)

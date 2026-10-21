@@ -1,5 +1,5 @@
 frame:
-  size: { x: 14.0, y: 50.0 }
+  size: { x: 14.0, y: 56.0 }   # 6 mm longer: J2 reaches the reflector under the raised wind_tunnel deck
   copper_layers: 4
   thickness: 1.2
   min_drill: 0.2
@@ -12,23 +12,22 @@ frame:
   domains: [SELV-PROBE]
   domain_regions:
     SELV-PROBE:
-      - { x0: 0.0, y0: 0.0, x1: 14.0, y1: 50.0 }
+      - { x0: 0.0, y0: 0.0, x1: 14.0, y1: 56.0 }
   isolators: []
-  power_nets: [HEAT_SW, CO2_HEAT_SW, CO2_HEAT_RTN, +5V_HEAT, +3V3]
+  power_nets: [HEAT_SW, CO2_HEAT_SW, CO2_HEAT_RTN, +12V_HEAT, +3V3]
   slots:
     - { x0: 3.0, y0: 18.8, x1: 11.0, y1: 20.0 }
   copper_keepout:
     - { x0: 2.5, y0: 18.3, x1: 11.5, y1: 20.5 }
   pours:
-    - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 13.5, y1: 49.5 } }
+    - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 13.5, y1: 55.5 } }
   no_coat_keepouts:
     - { x0: 4.2, y0: 12.2, x1: 6.8,  y1: 14.8, layer: F.SilkS }  # U3 SHT45 PTFE membrane window
     - { x0: 1.8, y0: 23.3, x1: 12.2, y1: 33.7, layer: F.SilkS }  # U1 SCD41 acoustic gas window
     - { x0: 2.4, y0: 36.4, x1: 5.6,  y1: 39.6, layer: F.SilkS }  # U2 SGP41 MOX hotplate aperture
     - { x0: 8.0, y0: 35.9, x1: 12.0, y1: 39.9, layer: F.SilkS }  # U5 BMP585 gel pressure port
-  silk_labels:
-    - { text: "MAIN",      x: 7.0, y: 8.2,  layer: F.SilkS }
-    - { text: "REFLECTOR", x: 7.0, y: 42.8, layer: F.SilkS }
+  connector_labels: { J1: "MAIN", J2: "REFL" }   # destination board / port, placed next to each connector
+  silk_labels: []
 
 heights:
   default: 1.2
@@ -58,7 +57,7 @@ parts:
   U5:  { x: 10.0,  y: 37.9,  rot: 0,   block: baro, locked: true }
   C6:  { x: 10.0,  y: 41.0,  rot: 0,   block: baro }
 
-  J2:  { x: 7.0,   y: 46.5,  rot: 0,   block: int_reflector, locked: true }
+  J2:  { x: 7.0,   y: 52.5,  rot: 0,   block: int_reflector, locked: true }
 
   # --- Back (-z): 0.5 W Parallel 1206 Heater (R1 || R2) + TH1 NTC + LM393 (U4) + AO3400A (Q1) Closed-Loop Thermostat ---
   R1:  { x: 7.0,   y: 25.0,  rot: 0,   side: back, block: co2_back_heater, locked: true }

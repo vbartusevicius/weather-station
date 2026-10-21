@@ -23,5 +23,5 @@ def board_checks(request):
 
 def test_every_part_is_checked_and_lands_pin_for_pin(board_checks):
     parts, checks = board_checks
-    assert {c.ref for c in checks} == {p["ref"] for p in parts}
+    assert {c.ref for c in checks} == {p["ref"] for p in parts if p["assembly"] != "none"}   # none = copper-only pads
     assert not [f"{c.ref} {c.lcsc}: {p}" for c in checks for p in c.problems]

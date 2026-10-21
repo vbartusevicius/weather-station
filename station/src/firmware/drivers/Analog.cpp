@@ -15,17 +15,17 @@ bool AnalogFrontEnd::begin() {
     if (adc_continuous_new_handle(&hcfg, &handle_) != ESP_OK) {
         return false;
     }
-    // Board: ADC1_CH2 = RAIN_ADC, ADC1_CH0 = VIN_ADC, ADC1_CH1 = NTC_SENSE
-    static const std::uint8_t kOrder[10] = {2, 2, 2, 2, 0, 2, 2, 2, 2, 1};
-    adc_digi_pattern_config_t pattern[10]{};
-    for (int i = 0; i < 10; ++i) {
+    // Board: ADC1_CH0 = VIN_ADC, ADC1_CH1 = NTC_SENSE (rain is digitised on the crown STM32)
+    static const std::uint8_t kOrder[2] = {0, 1};
+    adc_digi_pattern_config_t pattern[2]{};
+    for (int i = 0; i < 2; ++i) {
         pattern[i].atten = ADC_ATTEN_DB_12;
         pattern[i].channel = kOrder[i];
         pattern[i].unit = ADC_UNIT_1;
         pattern[i].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH;
     }
     adc_continuous_config_t cfg{};
-    cfg.pattern_num = 10;
+    cfg.pattern_num = 2;
     cfg.adc_pattern = pattern;
     cfg.sample_freq_hz = kTotalRateHz;
     cfg.conv_mode = ADC_CONV_SINGLE_UNIT_1;
@@ -33,7 +33,7 @@ bool AnalogFrontEnd::begin() {
     if (adc_continuous_config(handle_, &cfg) != ESP_OK) {
         return false;
     }
-    for (int ch = 0; ch < 3; ++ch) {
+    for (int ch = 0; ch < 2; ++ch) {
         adc_cali_curve_fitting_config_t cc{};
         cc.unit_id = ADC_UNIT_1;
         cc.chan = static_cast<adc_channel_t>(ch);
@@ -47,7 +47,7 @@ bool AnalogFrontEnd::begin() {
 
 int AnalogFrontEnd::to_mv(int channel, int raw) const {
     int mv = 0;
-    if (channel >= 0 && channel < 3 && cali_[channel] != nullptr && adc_cali_raw_to_voltage(cali_[channel], raw, &mv) == ESP_OK) {
+    if (channel >= 0 && channel < 2 && cali_[channel] != nullptr && adc_cali_raw_to_voltage(cali_[channel], raw, &mv) == ESP_OK) {
         return mv;
     }
     return raw * 3300 / 4095;

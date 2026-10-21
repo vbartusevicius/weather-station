@@ -133,38 +133,5 @@ bool VibrationAnalyzer::take_second(core::Vec3& gravity_g, core::VibrationSecond
     return true;
 }
 
-bool RainPulseDetector::add(std::uint16_t mv, std::uint32_t t_ms, core::RainImpact& out) {
-    if (!init_) {
-        baseline_ = static_cast<float>(mv);
-        init_ = true;
-    }
-    const float level = static_cast<float>(mv);
-    if (!in_pulse_) {
-        if (level > baseline_ + kTriggerMv) {
-            in_pulse_ = true;
-            peak_ = mv;
-            samples_ = 1;
-            start_ms_ = t_ms;
-            return false;
-        }
-        // Track the resting (wet/dry) DC bias with a ~2 s time constant while idle.
-        baseline_ += (level - baseline_) / (2.0F * kSampleHz);
-        return false;
-    }
-    peak_ = std::max(peak_, mv);
-    ++samples_;
-    const bool ended = level < baseline_ + kTriggerMv * 0.5F;
-    const bool too_long = samples_ > static_cast<std::uint32_t>(0.02F * kSampleHz);  // 20 ms: not a drop
-    if (!ended && !too_long) {
-        return false;
-    }
-    in_pulse_ = false;
-    out.t_ms = start_ms_;
-    out.peak_mv = peak_;
-    out.baseline_mv = static_cast<std::uint16_t>(baseline_);
-    out.width_us = static_cast<std::uint16_t>(std::min<std::uint32_t>(65535U, samples_ * 1000000U / static_cast<std::uint32_t>(kSampleHz)));
-    return true;
-}
-
 }  // namespace conditioning
 }  // namespace station

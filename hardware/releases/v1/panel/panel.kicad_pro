@@ -150,7 +150,7 @@
         "min_microvia_drill": 0.1,
         "min_resolved_spokes": 2,
         "min_silk_clearance": 0.0,
-        "min_text_height": 0.8,
+        "min_text_height": 0.6,
         "min_text_thickness": 0.08,
         "min_through_hole_diameter": 0.2,
         "min_track_width": 0.12,
@@ -524,6 +524,10 @@
     "netclass_assignments": null,
     "netclass_patterns": [
       {
+        "netclass": "MAIN-Power",
+        "pattern": "+12V_HEAT"
+      },
+      {
         "netclass": "SELV-MAIN",
         "pattern": "+3V3"
       },
@@ -533,23 +537,23 @@
       },
       {
         "netclass": "MAIN-Power",
-        "pattern": "+5V_HEAT"
-      },
-      {
-        "netclass": "MAIN-Power",
         "pattern": "+5V_XIAO"
-      },
-      {
-        "netclass": "SELV-MAIN",
-        "pattern": "AS_ACG"
-      },
-      {
-        "netclass": "SELV-MAIN",
-        "pattern": "AS_INP"
       },
       {
         "netclass": "MAIN-Power",
         "pattern": "CO2_HEAT_RTN"
+      },
+      {
+        "netclass": "SELV-MAIN",
+        "pattern": "CROWN_BOOT0"
+      },
+      {
+        "netclass": "SELV-MAIN",
+        "pattern": "CROWN_IRQ"
+      },
+      {
+        "netclass": "SELV-MAIN",
+        "pattern": "CROWN_NRST"
       },
       {
         "netclass": "SELV-MAIN",
@@ -601,10 +605,6 @@
       },
       {
         "netclass": "SELV-MAIN",
-        "pattern": "RAIN_ADC"
-      },
-      {
-        "netclass": "SELV-MAIN",
         "pattern": "RS485_A"
       },
       {
@@ -617,27 +617,11 @@
       },
       {
         "netclass": "SELV-MAIN",
-        "pattern": "RS485_IO"
+        "pattern": "RS485_RX"
       },
       {
         "netclass": "SELV-MAIN",
-        "pattern": "RS485_RO"
-      },
-      {
-        "netclass": "SELV-MAIN",
-        "pattern": "US_RX"
-      },
-      {
-        "netclass": "SELV-MAIN",
-        "pattern": "US_SEL_A"
-      },
-      {
-        "netclass": "SELV-MAIN",
-        "pattern": "US_SEL_B"
-      },
-      {
-        "netclass": "SELV-MAIN",
-        "pattern": "US_TX"
+        "pattern": "RS485_TX"
       },
       {
         "netclass": "SELV-MAIN",

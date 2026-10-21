@@ -44,7 +44,7 @@ def test_probe_board_parts_fit_inside_pagoda_height():
 
 def test_reflector_board_parts_fit_under_reflector_deck():
     bad = [(b["ref"], b["y0"], b["y1"]) for b in ef.part_boxes()
-           if b["board"] == "reflector" and (b["y0"] < 114.0 + ef.RAISE or b["y1"] > 125.0 + ef.RAISE)]
+           if b["board"] == "reflector" and (b["y0"] < 114.0 + ef.UPPER or b["y1"] > 125.0 + ef.UPPER)]
     assert not bad, f"reflector vertical collisions: {bad}"
 
 
