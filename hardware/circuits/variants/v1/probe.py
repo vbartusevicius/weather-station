@@ -1,6 +1,6 @@
 """V1 pagoda probe board (14.0 x 50.0 mm, 4 layers, 1.2 mm, vertical stem of the T-assembly):
   - J1 (bottom): 10-pin JST-SH from main J3
-  - U3 (bottom intake zone, below milled slot): Sensirion SHT45-AD1F-R2 precision thermo-hygrometer
+  - U3 (bottom intake zone, between the two milled slots): Sensirion SHT40-AD1F-R2 thermo-hygrometer
   - U1 (middle zone, above milled slot): Sensirion SCD41-D-R2 photoacoustic true CO2 sensor
   - Backside Closed-Loop 0.42 W Local Heater (B.Cu behind U1): 2x 120R 1206 in parallel on +5V + TH1 10k NTC + LM393 + AO3400A
   - U2 + U5 (upper zone): Sensirion SGP41-D-R4 VOC/NOx sensor + Bosch BMP585 barometer (thunder pressure waves)
@@ -20,7 +20,7 @@ REFLECTOR_LINK = ("+12V_HEAT", "HEAT_SW", "NTC_SENSE", "GND")
 
 def build():
     gnd = power("GND")
-    v3 = power("+3V3")
+    v3 = Net("+3V3_PROBE")   # dedicated LDO rail from the power board (through main J5 -> J3)
     v5 = Net("+12V_HEAT")   # the probe only uses 5 V for its heater
     heat_rtn = Net("CO2_HEAT_RTN")
     heat_sw = Net("HEAT_SW")
@@ -32,7 +32,7 @@ def build():
 
     nets = {
         "HEAT_SW": heat_sw, "GND": gnd, "+12V_HEAT": v5, "CO2_HEAT_RTN": heat_rtn,
-        "NTC_SENSE": ntc_sense, "+3V3": v3, "I2C_SDA": sda, "I2C_SCL": scl,
+        "NTC_SENSE": ntc_sense, "+3V3_PROBE": v3, "I2C_SDA": sda, "I2C_SCL": scl,
     }
     block("int_main")
     wire(jst_sh10("Main board", "J1", "10-pin JST-SH cable from main J3"), PROBE_LINK, nets)
@@ -49,8 +49,8 @@ def build():
 
 NET_CLASSES = {
     "SELV-PROBE": [
-        "GND", "+3V3", "+12V_HEAT", "HEAT_SW", "CO2_HEAT_SW", "CO2_HEAT_RTN", "CO2_NTC",
+        "GND", "+3V3_PROBE", "+12V_HEAT", "HEAT_SW", "CO2_HEAT_SW", "CO2_HEAT_RTN", "CO2_NTC",
         "CO2_VSET", "CO2_GATE", "NTC_SENSE", "I2C_SDA", "I2C_SCL", "Net-*",
     ],
-    "PROBE-Power": ["HEAT_SW", "CO2_HEAT_SW", "CO2_HEAT_RTN", "+12V_HEAT", "+3V3"],
+    "PROBE-Power": ["HEAT_SW", "CO2_HEAT_SW", "CO2_HEAT_RTN", "+12V_HEAT", "+3V3_PROBE"],
 }

@@ -1,5 +1,6 @@
 """Pagoda Probe board circuit blocks (vertical stem of the T-assembly):
-  - U3 (bottom intake zone, below milled slot): Sensirion SHT45-AD1F-R2 +/-0.1 C / +/-1.0% RH sensor (I2C 0x44)
+  - U3 (bottom intake zone, between the two milled slots): Sensirion SHT40-AD1F-R2 +/-0.2 C / +/-1.8 % RH sensor
+    (I2C 0x44; same DFN-4 footprint as the SHT45)
   - U1 (middle zone, above milled slot): Sensirion SCD41-D-R2 photoacoustic true CO2 sensor (I2C 0x62)
   - Backside Closed-Loop Regulated 0.42 W Local Heater (B.Cu directly behind U1 SCD41 pad 21):
     * R1, R2: 2x 680R 1206 0.5 W resistors in PARALLEL on the +12V_HEAT rail (340 Ohm, 0.42 W at 12 V, 42 % of rating each);
@@ -153,7 +154,7 @@ def build(gnd, v3, sda, scl, v5, heat_rtn):
     u3["3"] += v3
     u3["4"] += gnd
     u3["5"] += gnd
-    c_sht = cap("100n 50V", src(source="SHT45 decoupling"))
+    c_sht = cap("100n 50V", src(source="SHT40 decoupling"))
     c_sht[1] += v3
     c_sht[2] += gnd
 

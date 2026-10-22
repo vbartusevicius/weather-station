@@ -1,7 +1,7 @@
 # AeroMet V1 — Manufacturing-Readiness Fix Checklist
 
 Source: design review of 2026-10-20 (commit `22ec981`). Phase 1 fixes applied 2026-10-21 (independent electrical / mechanical / docs items).
-Status of the design: **NOT ready to order.** Phase 2 (crown STM32 wind / rain / lightning, 12 V heater rail, RS-485 RX) is in source and the
+Status of the design: **NOT ready to order** (open: prototype checks Q1–Q4, Q6, S1–S5; dome quote M13 / B3; sourcing decision B2; budget B5 re-quote). Phase 2 (crown STM32 wind / rain / lightning, 12 V heater rail, RS-485 RX) is in source and the
 release regenerates cleanly, but it is unprototyped: the bench / prototype checks listed per item are still required.
 Commissioning / calibration steps for every built station: `CALIBRATION.md`.
 Tick an item only when the fix is in the source (`hardware/circuits`, `hardware/circuits/variants/v1`, `mechanical/scripts`,
@@ -60,17 +60,21 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
   - Fix: 2.2 kΩ (check all sink currents) and/or 100 kHz bus; keep US_TX away from SDA/SCL in the 12-pin cable pin order.
 - [x] **E15 (M) Reflector heater resistors at 93 % of rating** (4× 27 Ω 2512 1 W at 5 V) touching the plastic deck (0.08 mm). Use 2 W parts or more resistors; add firmware over-temperature cut-off on TH1.
   - **Status:** DONE (Phase 1): reflector resistors 27R 2512 2 W HP12 (C2791259) = 46 % of rating; firmware open-NTC SensorFault lockout (unit-tested).
-- [ ] **E16 (M) 3V3 budget from the XIAO LDO** (≈ 550 mA peaks: ESP32-C6 TX + SCD41 + sensors; Seeed rates 600–700 mA). Measure on prototype or add a dedicated 3V3 regulator.
+- [x] **E16 (M) 3V3 budget from the XIAO LDO** (≈ 550 mA peaks: ESP32-C6 TX + SCD41 + sensors; Seeed rates 600–700 mA). Measure on prototype or add a dedicated 3V3 regulator.
+  - **Status:** DONE: dedicated `+3V3_PROBE` rail: AP2112K-3.3 (C51118, 600 mA, -40..+85 C) on the power board from +5V, through power J1 / main J5 (now 10-pin, 3 GND contacts) straight to probe J3 pin 7. The XIAO 3V3 regulator now carries only the ESP32-C6 (354 mA TX peak) + main-board sensors / pull-ups / RS-485 bias (≈ 25 mA) ≈ 380 mA vs its 700 mA rating; the probe rail peaks ≈ 215 mA (SCD41 205 mA) vs 600 mA. OPEN: confirm on the prototype (CALIBRATION.md step 1).
 
 ## 2. PCB layout / fab
 
 - [x] **P1 (H) Power board is auto-routed with 0.3 mm tracks** for VIN / SW / VOUT, GND plane only on In1, no pours, few vias.
   - **Status:** DONE: TPS54360 stages per SLVSBB4G; SW nodes, VIN and VOUT are F.Cu pours (SW ~14 mm2, 3.5 mm residual track + 1 via to the bottom boot cap), J1 along the top edge, board 28.5 x 21.5 mm; 0 DRC / 0 unrouted.
   - Fix: hand layout per SCT2430 datasheet (tight hot loop, pours on F.Cu, thermal vias under EP, SW node minimal area).
-- [ ] **P2 (M) Probe: reflector heater current (now ≈ 0.4 A at 12 V, was 0.74 A) routed past SHT40**, and the In1 GND plane connects SHT40 to J1 (which sits in the warm base bay).
+- [x] **P2 (M) Probe: reflector heater current (now ≈ 0.4 A at 12 V, was 0.74 A) routed past SHT40**, and the In1 GND plane connects SHT40 to J1 (which sits in the warm base bay).
+  - **Status:** DONE: second milled slot (y 9.0-10.2, copper keep-out on all layers) between J1 and the SHT40, so heat from the base bay and the heater pair reaches the SHT40 only over the two 2 mm side bridges; probe re-routed 0 DRC.
   - Fix: route heater pair on the far edge, add copper keep-out / second slot between J1 and SHT40.
-- [ ] **P3 (M) Panel has no fiducials, tooling holes or edge rails** (5-board panel 146.6 × 52.1 mm; the crown ships as its own board). Add rails + fiducials or order "added by JLCPCB" for both orders.
-- [ ] **P4 (D) Double-sided assembly** on the panel (main, power, probe, dome, reflector bottom parts) and on the crown — budget for it.
+- [x] **P3 (M) Panel has no fiducials, tooling holes or edge rails** (5-board panel 146.6 × 52.1 mm; the crown ships as its own board). Add rails + fiducials or order "added by JLCPCB" for both orders.
+  - **Status:** DONE (owner decision: no own rails): compact 140.6 x 63.2 mm panel (column packing search over rotations / orders, tabs placed >= 1 mm from part pads, every board on >= 2 tabs); order with "Edge rails / fiducials: added by JLCPCB".
+- [x] **P4 (D) Double-sided assembly** on the panel (main, power, probe, dome, reflector bottom parts) and on the crown — budget for it.
+  - **Status:** DONE (costed): the panel has parts on both sides (97 top / 109 bottom placements): Standard PCBA double-sided adds $25.56 setup and $8.21 stencil over single-sided (included in B5); no part forces a single side.
 
 ## 3. Mechanical (verify on released STEP, not only on the parametric model)
 
@@ -87,31 +91,35 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
 - [x] **M3 (B) ISO 4762 M6 socket heads (Ø10 × 6 mm) collide with all 4 reflector board corners** (2.4 mm³ each). Tests model a 2.4 mm head.
   - **Status:** DONE (Phase 1): DIN 7984 low-head M6x55 (head 10 x 3.5) in BOM/CAD, head wells Ø 10.6; test models real head + ISO 4032 nut + bolt tip vs pagoda, wind_tunnel, struts, reflector board, base.
   - Fix: DIN 7984 low head / button head, or chamfer reflector corners, or move bolts; head wells Ø10.0 → Ø10.6.
-- [ ] **M4 (B) Crown cable path.** Ø4.2 mm cable vs 3.35 mm sleeve conduit (73 mm³ overlap); 4.38 mm gap under wind_tunnel deck with the NE M6 head on the radial path; 90° bend into the strut within ≈ 3 mm; plug must pass the M12 nut bore.
-  - **Status:** PARTIAL: wind_tunnel deck raised 6 mm (10.4 mm gap above the pagoda deck, cable passes over the M6 heads), probe 56 mm; BOM cable OD <= 3.2 mm for the 3.35 mm sleeve conduit. The 12-pin crown cable is final (Phase 2 pin map). OPEN: swept-cable test T3 along the real route.
+- [x] **M4 (B) Crown cable path.** Ø4.2 mm cable vs 3.35 mm sleeve conduit (73 mm³ overlap); 4.38 mm gap under wind_tunnel deck with the NE M6 head on the radial path; 90° bend into the strut within ≈ 3 mm; plug must pass the M12 nut bore.
+  - **Status:** DONE: rear conduit 4.1 mm deep with >= 0.8 mm walls (probe_sleeve_back widened/deepened inside the r 10.35 hub-bore circle), `test_crown_cable_and_probe_jumper_sweep_clear`: Ø 3.2 mm cable (+0.3) on a 10 mm bend radius from main J2 through the umbrella window, conduit, pagoda gap, NE strut and past the crown NE chamfer to crown J1 clears every part and PCB; path 202 mm + slack fits the 260 mm BOM cable. OPEN: thread-and-crimp assembly step on the first build.
   - Fix: widen conduit ≥ 5 mm, dedicated radial groove in the wind_tunnel underside clear of bolts, larger bend space, or use a flat FFC/ribbon + inline connector.
   - Accept: test sweeping a Ø(cable + 0.5) tube along the full routed path from main J2 to crown J1 with zero intersection.
-- [ ] **M5 (B) Transducer barrels Ø10.5 mm vs listed Ø14+ mm parts.** Pick ONE purchasable waterproof 40 kHz transceiver, then size barrel, aperture and retaining ring to its drawing.
-  - **Status:** PARTIAL: Ø 14.6 mm barrels + printed Ø 10 mm sleeves (see Q5); BOM allows Ø 10 x 7 (default) or Ø 14 x 9 mm. OPEN: size against the purchased part's drawing.
+- [x] **M5 (B) Transducer barrels Ø10.5 mm vs listed Ø14+ mm parts.** Pick ONE purchasable waterproof 40 kHz transceiver, then size barrel, aperture and retaining ring to its drawing.
+  - **Status:** DONE: default transducer = Same Sky CUSA-TR65-065-2200-TH68 (Ø 14 x 9 mm aluminium, IP68, 150 Vp-p rated, 2200 pF, 65 deg, -40..+80 C, ~$3-6 at Digi-Key / Mouser) straight in the Ø 14.6 mm barrels (0.3 mm radial clearance), locked by the printed rings; tested in CAD (can, ring, Ø 12 mm aperture, crown PCB). Alternatives with a rated drive: PUI UTR-1440K-TT-R (Ø 14.4, 140 Vp-p), Multicomp MCUSD14A40S09RS (Ø 14, 160 Vp-p). Ø 10 mm parts (EU10AIF40H07T/R) still fit the printed sleeves but publish no drive rating. OPEN: check the can tolerance on the delivered parts.
 - [x] **M6 (B) Captive printed-in-place parts.** base.stl: umbrella (0.40 mm gap) and reset button (0.30 mm) inside the base; struts.stl: nuts threaded on with 0.2 mm, rings 0.098 mm from the dome nut. MJF/SLS fuse < ~0.5 mm; FDM cannot print the floating umbrella.
   - **Status:** DONE (Phase 1): `enclosure/print/<part>_<nn>.stl` one body per file (base 3, pagoda 5, struts 21, orings 5, mast_shims 4); README/BOM point to it; `test_every_print_body_is_exported_separately_and_printable`.
   - Fix: export every separate body as its own STL (`umbrella.stl`, `reset_button.stl`, `strut_half_*.stl`, `m12_nut.stl`, …); use ≥ 0.5 mm clearance where parts must print captive.
 - [x] **M7 (H) Mast clamp only clamps Ø33.5–34 mm** (split gap 0.5 mm), 19 mm pole engagement. Fix: ≥ 2–3 mm clamp travel + shims for 25–34 mm, ≥ 40 mm engagement, consider U-bolts / hose clamps.
-  - **Status:** DONE: 50 mm pole engagement (socket from y = -31), 6x M6 bolts in 3 rows, 2.0 mm clamp travel, 4 shim sizes 50 mm tall (Ø 24-34 mm poles). Keep bolt torque moderate on PA12 (fender washers).
+  - **Status:** DONE: 40 mm tall clamp (owner decision; socket from y = -12, 31 mm pole engagement), 6x M6 bolts in 3 rows (13 mm pitch, ISO 7089 washers), 2.0 mm clamp travel, 4 shim sizes 31 mm tall (Ø 24-34 mm poles). Keep bolt torque moderate on PA12.
 - [x] **M8 (H) Pagoda louvers ≈ 0.71 mm thick** (measured) on ≈ 24 mm spans. Fix: ≥ 1.5–2 mm normal thickness.
   - **Status:** DONE (Phase 1): louver blades 1.6 mm normal thickness (lower surface moved down).
 - [x] **M9 (H) Radiation shield leaks:** 64/256 horizontal and 124/204 upward (−10°) rays reach the probe core. Fix: overlapping louvers that block lines of sight both from sky and from roof (classic double-louver Stevenson profile).
   - **Status:** DONE: labyrinth = upturned rim on each blade's inner edge (r 24.2–25.8, +7.0 mm) + down-skirt under the blade / top deck above (r 30.0–31.4, to +5.0 mm). `test_radiation_labyrinth_blocks_every_line_of_sight_to_the_probe`: 0 of 2 × 2 480 rays aimed at the shielded zone (y 76–115.5) (−75…+75°) reach the probe core (92 per section without it). Cost: the narrowest air passage drops from ≈ 9.4 mm to ≈ 3.3 mm (rim-to-skirt channel), so expect more self-heating error in still air — check against an aspirated reference (S3).
-- [ ] **M10 (M) Reflector deck "thermal contact" relies on a 0.08 mm gap** with stack-up tolerance ±0.3 mm. Add a compliant thermal pad or define a hard stop.
+- [x] **M10 (M) Reflector deck "thermal contact" relies on a 0.08 mm gap** with stack-up tolerance ±0.3 mm. Add a compliant thermal pad or define a hard stop.
+  - **Status:** DONE (BOM + README): silicone-free thermal gap filler between the heater resistors and the deck covers the 0.08 mm (+/-0.3) gap; silicone excluded because it poisons the SGP41.
 - [x] **M11 (M) No U.FL antenna cradle in CAD** (claimed in README/BOM). Add it or remove the claim.
   - **Status:** DONE (Phase 1, docs): no cradle in V1; BOM/README say adhesive-mount the dipole on the inner wall.
-- [ ] **M12 (M) Reset-button bore is an open hole** (no O-ring in CAD, README says waterproofed). Add gland or membrane.
-  - **Status:** PARTIAL: README no longer claims a waterproof button; the bore is still open.
+- [x] **M12 (M) Reset-button bore is an open hole** (no O-ring in CAD, README says waterproofed). Add gland or membrane.
+  - **Status:** WON'T FIX (owner decision): an O-ring's friction would stop the button's spring from returning it. The bore opens downward on the base underside (drip side, no standing water) and the README no longer claims a waterproof button.
 - [ ] **M13 (M) JGS1 dome stack-up.** Flange must be ≤ 1.2 mm thick (194.2 − 193.0); dome PCB clears the inner hemisphere by only ≈ 0.3 mm; no desiccant/vent → internal dew. Get a real dome drawing and add an ePTFE vent or desiccant.
-  - **Status:** PARTIAL: vents DONE (4x 3-slit 1.2 mm downward grilles in the crown_base floor; the dome breathes through the retainer bore). OPEN: real dome drawing (flange <= 1.2 mm, see B3); optional ePTFE adhesive vent + desiccant bag.
-- [ ] **M14 (M) Cable gland needs a hollow mast** (gland dome nut extends below the y = 19 mm pole stop). Document the required mast ID.
-- [ ] **M15 (M) Probe sleeve final angle is set by thread run-out + O-ring squeeze** (uncontrolled). Add a key/index or a non-threaded keyed bayonet.
-- [ ] **M16 (D) "No supports needed" FDM claim** is not true for base clips/hooks, barrels at 29°, umbrella. Re-check print orientation per part.
+  - **Status:** PARTIAL: vents done; supplier drawing `enclosure/drawings/jgs1_dome.svg` (flange Ø 20.6 +0/-0.2 x 1.0-1.2 mm, neck Ø 18.0 ±0.1 x 3.8 mm, SR 9.0 / 7.8 hemisphere, ID 15.6, 14.0 mm total) generated from the CAD numbers; crown top hole widened to Ø 18.5 (was a zero-clearance Ø 18.0). OPEN: supplier confirmation of the drawing (B3).
+- [x] **M14 (M) Cable gland needs a hollow mast** (gland dome nut extends below the y = 19 mm pole stop). Document the required mast ID.
+  - **Status:** DONE (docs): README section 4 and the gland BOM line require a hollow mast with ID >= 18 mm (e.g. 33.7 x 3.2 mm pipe) with the cable inside.
+- [x] **M15 (M) Probe sleeve final angle is set by thread run-out + O-ring squeeze** (uncontrolled). Add a key/index or a non-threaded keyed bayonet.
+  - **Status:** WON'T FIX (owner decision): a key would stop the thread before the bottom O-ring reaches full squeeze. The probe works at any sleeve angle (the sleeve is round; the probe board's orientation comes from its own slot).
+- [x] **M16 (D) "No supports needed" FDM claim** is not true for base clips/hooks, barrels at 29°, umbrella. Re-check print orientation per part.
+  - **Status:** DONE (docs): README FDM orientation / support table per print plate (MJF/SLS need none).
 
 ## 4. Firmware
 
@@ -121,13 +129,14 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
   - **Status:** DONE (Phase 2): crown firmware (`crown/`) with sampled-echo DSP (see E7); the station receives CRC-checked times of flight over I²C and rejects quads with any bad path.
 - [x] **F3 (M)** RS-485 streams telemetry unconditionally every cycle → collides with a polling master. Respond only when polled or use a time slot.
   - **Status:** DONE in source: `task_rs485` answers `STATE?` with the latest frame (plus `PING`, `RESET_RAIN`, `HEAT_CHECK`) and never transmits unsolicited. OPEN: bench test with a polling master.
-- [ ] **F4 (M)** I²C at 400 kHz for every device (see E14); PMSA003I 100 kHz max.
+- [x] **F4 (M)** I²C at 400 kHz for every device (see E14); PMSA003I 100 kHz max.
+  - **Status:** DONE (verified in firmware): per-device SCL speeds (`I2cBus::add(addr, hz)`): PMSA003I, crown STM32 and its ROM bootloader at 100 kHz, others at 400 kHz; 2.2k pull-ups (E14).
 - [x] **F5 (M)** Heater over-temperature cut-off and NTC plausibility (open/short) before enabling PWM.
   - **Status:** DONE (Phase 1): `HeaterState::SensorFault` for an open reflector NTC (> 3270 mV), unit test added. 25 C over-temperature cut-off already existed.
 
 ## 4b. Phase 2 items still open (crown v2 / 12 V rail)
 
-- [ ] **Q1 (H)** Crown firmware HAL glue (`crown/src/main.cpp`) compiles but has never run: bring up on the first board with SWD (TP1..TP5): clock, TIM8 burst + dead time on a scope, ADC/TIM6 sample timing, I²C peripheral, AS3935 SPI + tuning.
+- [ ] **Q1 (H)** Crown firmware HAL glue (`crown/src/main.cpp`) compiles but has never run: bring up on the first board with SWD (`J12`, Tag-Connect TC2030-NL): clock, TIM8 burst + dead time on a scope, ADC/TIM6 sample timing, I²C peripheral, AS3935 SPI + tuning.
 - [ ] **Q2 (H)** STM32G431 ROM I²C bootloader address: firmware tries 0x52 and 0x56; confirm against AN2606 / the first board (CALIBRATION.md step 2). `kCmdEnterBootloader` relies on a `.noinit` RAM flag the default linker script may zero; the BOOT0 line is the primary path. BOOT0 pin: RM0440 factory option bytes (`FLASH_OPTR` = 0xFFEF F8AA: nSWBOOT0 = 1, nBOOT0 = 1) take BOOT0 from PB8, so a factory-fresh chip honours CROWN_BOOT0 — confirm on the first board.
 - [ ] **Q3 (H)** Echo amplitude: ngspice uses an estimated ~50 mVpp EMF; measure with the real transducers + printed reflector, then trim the preamp gain (R21) if needed. Wind-tunnel calibration (S1) still required.
 - [ ] **Q4 (M)** AS3935 vs ultrasonic bursts: log disturber / noise events with bursts on and off on the prototype (actions `crown_bursts_off` / `crown_bursts_on`, counters in `/api/config` → `crown.disturbers`; CALIBRATION.md step 9).
@@ -143,11 +152,14 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
   - **Status:** DONE: `rs485_address` (0 = single station, 1–247 = `<addr>:CMD`, talker `$AM<addr>`), real CRC-16/MODBUS on `PONG`; unit-tested. OPEN: bench test (CALIBRATION.md step 3).
 - [x] **Q11 (M) Crown status read unprotected.** The 2-byte status shared the 260 mm cable with the 50 mA drive bursts without a CRC.
   - **Status:** DONE: protocol v2, `kStatus` = status + CRC-8, the station drops bad reads (crown + station tests). OPEN: measure crosstalk on the first board (scope on SDA/SCL during bursts).
-- [ ] **Q12 (H) Crown production programming.** Every crown STM32 needs one SWD flash (TP1–TP5) before the station can update it over I²C. Define the fixture (pogo pins on the 5 pads), the released image (`crown/.pio/build/crown/firmware.bin`, version in `kVersion`) and the station-side version check / auto-update (not implemented).
-- [ ] **Q13 (M) Transducer drive rating.** ~22 Vpp differential bursts (8 cycles, 16 / s): confirm the chosen transducer's maximum drive voltage from its datasheet before ordering (EU10AIF40H07T/R or the Ø 14 mm alternative).
+- [x] **Q12 (H) Crown production programming.** PARTIAL: no SWD fixture is needed — a factory-blank STM32 enters its ROM I²C bootloader when the station raises BOOT0 (RM0440 default option bytes), so the station flashes it (`POST /api/crown/firmware`, CALIBRATION.md step 2); SWD is a Tag-Connect TC2030-NL footprint (`J12`) for debug / recovery. OPEN: release the crown image with each station release and add a station-side version check / auto-update (not implemented).
+  - **Status:** DONE: the station embeds the crown image (`CrownImage.hpp`, `station/scripts/pack_crown_image.py`, crown fw 0.2.0) and at boot reflashes a crown with another version or a blank one (one attempt per boot, result in `/api/config` → `crown.auto_update`); decision host-tested. SWD via the TC2030-NL footprint `J12` for debug only. OPEN: confirm on the first board (Q2).
+- [x] **Q13 (M) Transducer drive rating.** ~22 Vpp differential bursts (8 cycles, 16 / s): confirm the chosen transducer's maximum drive voltage from its datasheet before ordering (EU10AIF40H07T/R or the Ø 14 mm alternative).
+  - **Status:** DONE: CUSA-TR65-065-2200-TH68 is rated 150 Vp-p; the ~22 Vp-p bursts are 15 % of that.
 - [x] **Q14 (M) Power-board hot loop after the Phase 2 re-route.** Re-measure SW-node copper on the final released `power.kicad_pcb`.
   - **Status:** DONE (measured on the release): LOGIC_SW / HEAT_SW pours 13.7 mm² each on F.Cu, 3.8 / 3.4 mm of residual 0.4 mm track, 1 via each (boot cap); VIN_PROT 22.4 mm², +5V 17.6 mm², +12V_HEAT 18.2 mm² pours — same as the Phase 1 hand layout.
-- [ ] **Q15 (D) Crown is a separate PCBA order.** 60 × 60 mm non-rectangular 4-layer board, double-sided assembly, 0.5 mm-pitch LQFP-64 on the bottom: quote it separately (see B5).
+- [x] **Q15 (D) Crown is a separate PCBA order.** 60 × 60 mm non-rectangular 4-layer board, double-sided assembly, 0.5 mm-pitch LQFP-64 on the bottom: quote it separately (see B5).
+  - **Status:** DONE: the crown is on the panel (right end, 3 rail tabs; both facing edges near the power board are too crowded for side tabs).
 - [x] **Q16 (M) Config migration.** New `StationConfig` fields used to reset the whole NVS config (Wi-Fi, location) on every firmware update (`len == sizeof`).
   - **Status:** DONE: fields are only appended; a shorter stored blob fills the prefix and new fields keep their defaults.
 
@@ -171,18 +183,26 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
 - [x] **B1 (B)** Crown cable listed as 10-core + SHR-10V; main J2 / crown J1 are **12-pin** (BM12B). Fix BOM: 12-core, SHR-12V, pin-1↔pin-1, real routed length (spec says 160 mm, BOM 260 mm).
   - **Status:** DONE (Phase 1): BOM = 12-conductor, OD <= 3.2 mm, SHR-12V both ends pin 1 <-> pin 1, 260 mm (+ note about threading through the strut nut).
 - [ ] **B2 (H)** LTR-390UV-01 and AS3935 show 0 stock at JLC → order from Digi-Key/Mouser and hand-fit (the AS3935 QFN-16 now sits on the crown, the MA5532-AE antenna too); plan hot-air rework for 2×2 mm / QFN-16.
+  - **Status:** PARTIAL (sourcing checked): AS3935-BQFT Digi-Key 1,279 in stock, $13.61 (brokers ~$6); MA5532-AE(B) Mouser 994-MA5532-AE ~831, $1.93 (Coilcraft direct ~1.18 EUR); LTR-390UV-01 0 at LCSC/JLC, ~3,400 at brokers ~$0.9-1.6 (one Chinese distributor lists it as discontinued: confirm with Lite-On / Mouser before buying); GUVB-C31SM ~2,300 at brokers ~$10.5 (-30..+85 C). Instead of hand rework, these can be bought into JLC by Global Sourcing or consigned, so JLC places them. OPEN: choose consign / global sourcing vs hand-fit; LTR-390 lifecycle.
 - [ ] **B3 (H)** JGS1 Ø18 dome with Ø20.5 flange is custom — get a quote + drawing before freezing crown CAD.
-- [ ] **B4 (M)** PMSA003I needs a custom 6-pin ZH → 2×5 1.27 mm harness; transducers need JST-SH pigtails. Define both with drawings.
-- [ ] **B5 (M)** Budget (re-quote at order time): two JLC PCBA orders — panel (61 BOM lines, 42 extended) and crown (37 lines, 23 extended: STM32G431RBT6 ≈ $5.77, 4× UCC27524 ≈ $0.25, 74HC4052 ≈ $0.17, TLV9062 ≈ $0.12, 8 MHz crystal ≈ $0.13) → ≈ 65 extended-part fees per batch; + hand parts (XIAO, PMSA003I ≈ $35–45, AS3935, MA5532-AE, LTR-390, GUVB, transducers, dome, prints) + ST-Link for the one-time crown flash.
+  - **Status:** PARTIAL: drawing ready (`enclosure/drawings/jgs1_dome.svg`). Custom flanged JGS1 domes are offered to drawing, MOQ 1, by e.g. VY Optoelectronics (made-in-china listing: stepped JGS1 dome from ~$5.6/pc at 10-99 pcs; larger flanged domes ~$27/pc + ~$100 sample), Coligh Optics and Felix Glass. OPEN: send the drawing for quotes; order 2-3 samples first.
+- [x] **B4 (M)** PMSA003I needs a custom 6-pin ZH → 2×5 1.27 mm harness; transducers need JST-SH pigtails. Define both with drawings.
+  - **Status:** DONE (docs): README section 4 harness table with pin-by-pin conductors for the crown cable, probe and power jumpers, PM harness, transducer and piezo pigtails.
+- [ ] **B5 (M)** Budget: one JLC PCBA panel + hand-fit parts + prints — re-quote at order time.
+  - **Status:** ESTIMATE (JLC price list Oct 2026 + supplier snapshot; re-quote at order time), 5 panels = 5 stations, Standard PCBA double-sided: parts ≈ $302 (minimum order quantities included), extended-part feeder loading 65 x $1.53 ≈ $99, setup $51.12 + stencil $16.42 + fixtures ≈ $16 + handling ≈ $15, joints (695 SMD + 42 THT per panel) ≈ $13 -> ≈ $510 assembly + parts (≈ $102 / station), + 4-layer ENIG 140.6 x 63.2 mm PCB fab (online quote). Hand / off-board parts per station ≈ $105-125: PMSA003I $40, 4x CUSA transducers ≈ $24, AS3935 ≈ $6-14, GUVB-C31SM ≈ $10.5, XIAO ESP32-C6 ≈ $5, dome ≈ $6-27, MA5532 ≈ $2, LTR-390 ≈ $1-2, cables / O-rings / fasteners / gland / gap filler ≈ $25; + MJF prints (8 plates, quote at JLC3DP).
 
 ## 8. Documentation consistency (single source = `hardware/product/spec.yaml`)
 
 - [x] **D1** AGENTS.md: main 41×56 → 32×52; BMP581 on main → BMP585 on probe; SCT2400 → 2× SCT2430 on `power`; reflector 4×100 Ω → 4×27 Ω; 5 boards / 126×56.1 → 6 boards / 124.5×55.7.
   - **Status:** DONE (rewritten for Phase 2: 12 V heater rail, crown v2, 5-board panel + separate crown). Re-check at each release.
-- [ ] **D2** README (PARTIAL: Phase 2 hardware, panel and ordering text updated; re-check the mechanical claims below): bolts r = 23 vs 20.5; strut bore Ø6.4 vs Ø6.0; O-ring count 6 vs 5 in `orings.stl`; antenna cradle; waterproof button; "M12 standard nut compatible"; "Ø25–34 mm poles"; "5-Board Breakaway Panel".
-- [ ] **D3** `assembly_parts.yaml`: dome retainer M22×1.0 vs M22×1.5; mast bolts M6×25 vs M6×35; transducer options.
-- [ ] **D4** `spec.yaml` stale comments/fields: M3/M4 fasteners, `terminals.power_in` (KF142R 2-pole), crown cable 160 mm.
-- [ ] **D5** Circuit docstrings: "SHT45" vs SHT40-AD1F, "LIS2MDL" vs MMC5603NJ, "10-pin crown", "41×56 crown/reflector".
+- [x] **D2** README (PARTIAL: Phase 2 hardware, panel and ordering text updated; re-check the mechanical claims below): bolts r = 23 vs 20.5; strut bore Ø6.4 vs Ø6.0; O-ring count 6 vs 5 in `orings.stl`; antenna cradle; waterproof button; "M12 standard nut compatible"; "Ø25–34 mm poles"; "5-Board Breakaway Panel".
+  - **Status:** DONE: no antenna-cradle / waterproof-button / 5-board-panel claims left; O-ring count 5, mast clamp 6x M6 in 3 rows, strut bore Ø 5.8-6.0 mm, pagoda bolts M6 DIN 7984 at r 20.5 (build docstring), poles Ø 24-34 mm.
+- [x] **D3** `assembly_parts.yaml`: dome retainer M22×1.0 vs M22×1.5; mast bolts M6×25 vs M6×35; transducer options.
+  - **Status:** DONE: dome retainer M22x1.5 everywhere, M6x35 clamp bolts, transducer options (Ø 10 / Ø 14 mm) in the BOM.
+- [x] **D4** `spec.yaml` stale comments/fields: M3/M4 fasteners, `terminals.power_in` (KF142R 2-pole), crown cable 160 mm.
+  - **Status:** DONE: M6 clamp bolts, `terminals.power_in` = KF250-3.5-4P (4 poles incl. RS-485), crown cable 260 mm.
+- [x] **D5** Circuit docstrings: "SHT45" vs SHT40-AD1F, "LIS2MDL" vs MMC5603NJ, "10-pin crown", "41×56 crown/reflector".
+  - **Status:** DONE: SHT40-AD1F (shares the SHT45 DFN-4 footprint), MMC5603NJ, 12-pin crown cable, current board sizes; library symbol / footprint names kept as identifiers.
 
 ## 9. Test-suite gaps to close (so these cannot regress)
 
@@ -190,8 +210,11 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
   - **Status:** DONE (Phase 1): DIN 7984 head + ISO 4032 nut + bolt tip in `test_boards_clear_enclosure_and_threads_truly_mesh`; printed M12 nut walls tested separately.
 - [x] **T2** O-ring gland squeeze check at the locked bayonet position for every seal.
   - **Status:** DONE (Phase 1): `test_bayonet_o_rings_are_squeezed_15_to_40_percent`.
-- [ ] **T3** Swept-cable clearance test for every harness (diameter + bend radius).
+- [x] **T3** Swept-cable clearance test for every harness (diameter + bend radius).
+  - **Status:** DONE: `test_crown_cable_and_probe_jumper_sweep_clear` (see M4).
 - [x] **T4** Released STEP/STL body count + min inter-body gap ≥ 0.5 mm (or split into separate files).
   - **Status:** DONE: print plates with every body ≥ 6 mm apart, `test_every_print_body_is_exported_separately_and_printable`.
-- [ ] **T5** Min wall thickness check (louvers, nuts, shelves) ≥ process minimum.
-- [ ] **T6** Electrical rule checks: comparator CMR, logic VIH/VIL across supply domains, part temperature ratings vs −40…+60 °C.
+- [x] **T5** Min wall thickness check (louvers, nuts, shelves) ≥ process minimum.
+  - **Status:** DONE: `test_printed_walls_are_at_least_the_process_minimum` (ray-cast median thickness of every planar / cylindrical / conical face on every print plate >= 0.75 mm). Fixed on the way: grille bars 0.4 -> 0.8 mm (base, crown_base), strut tongue / groove walls 0.48 -> 0.8 mm (mid tube r 5.65), louver inner knife edge trimmed, piezo locating rims 0.8 mm, probe-sleeve conduit / PCB-seat film wall and 0.54 mm tongue, M22 bore lead-in chamfer.
+- [x] **T6** Electrical rule checks: comparator CMR, logic VIH/VIL across supply domains, part temperature ratings vs −40…+60 °C.
+  - **Status:** DONE: `hardware/tests/test_electrical_rules.py`: every part rated to -40 C (JLC data, MLCC class, datasheet table) or justified in `ACCEPTED_COLD` (JST SH/ZH -25 C, B3U -25 C, TSL25911 -30 C, SCD41 heated, SGP41, XIAO and GUVB ratings to confirm); cross-domain logic levels and comparator / op-amp input ranges with >= 0.2 V margin.

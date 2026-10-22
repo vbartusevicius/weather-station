@@ -2,6 +2,7 @@
 // Crown (STM32G431) register blocks -> station pipeline types. Host-tested; the ESP-IDF I2C transport is
 // firmware/drivers/CrownLink.
 
+#include <cstddef>
 #include <cstdint>
 
 #include "../core/RawState.hpp"
@@ -25,6 +26,11 @@ bool to_tof_quad(const crown::WindBlock& w, wind::TofQuad& out, WindQuality& q);
 // peak - baseline, so the impact carries baseline 0 (= no capacitive wetness channel) and the deviation scaled by
 // `mv_scale` (StationConfig::rain_impact_scale, calibrated so its drop / hail thresholds match, see CALIBRATION.md).
 core::RainImpact to_rain_impact(const crown::RainEvent& e, std::uint32_t now_ms, float mv_scale = 1.0F);
+
+// Boot-time crown auto-update: reflash when an image is embedded and the crown is absent / blank (`version` null),
+// speaks another protocol, or runs another firmware version than the embedded one.
+bool crown_needs_update(const std::uint8_t* version /* 4 B: protocol, major, minor, patch, or nullptr */,
+                        const std::uint8_t image_version[3], std::size_t image_len);
 
 // Lightning strike (only kind 1 = lightning is a strike; disturbers / noise are diagnostics).
 bool to_strike(const crown::StrikeEvent& e, std::uint32_t now_ms, core::LightningStrike& out);

@@ -14,15 +14,19 @@ frame:
     SELV-PROBE:
       - { x0: 0.0, y0: 0.0, x1: 14.0, y1: 56.0 }
   isolators: []
-  power_nets: [HEAT_SW, CO2_HEAT_SW, CO2_HEAT_RTN, +12V_HEAT, +3V3]
+  power_nets: [HEAT_SW, CO2_HEAT_SW, CO2_HEAT_RTN, +12V_HEAT, +3V3_PROBE]
+  # Two milled thermal slots: SCD41 heater zone | SHT40 | J1 (base-bay side). Heat reaching the SHT40 through the
+  # board / In1 ground plane must pass the 2 mm side bridges (checklist P2).
   slots:
     - { x0: 3.0, y0: 18.8, x1: 11.0, y1: 20.0 }
+    - { x0: 3.0, y0: 9.0, x1: 11.0, y1: 10.2 }
   copper_keepout:
     - { x0: 2.5, y0: 18.3, x1: 11.5, y1: 20.5 }
+    - { x0: 2.5, y0: 8.5, x1: 11.5, y1: 10.7 }
   pours:
     - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 13.5, y1: 55.5 } }
   no_coat_keepouts:
-    - { x0: 4.2, y0: 12.2, x1: 6.8,  y1: 14.8, layer: F.SilkS }  # U3 SHT45 PTFE membrane window
+    - { x0: 4.2, y0: 12.2, x1: 6.8,  y1: 14.8, layer: F.SilkS }  # U3 SHT40 PTFE membrane window
     - { x0: 1.8, y0: 23.3, x1: 12.2, y1: 33.7, layer: F.SilkS }  # U1 SCD41 acoustic gas window
     - { x0: 2.4, y0: 36.4, x1: 5.6,  y1: 39.6, layer: F.SilkS }  # U2 SGP41 MOX hotplate aperture
     - { x0: 8.0, y0: 35.9, x1: 12.0, y1: 39.9, layer: F.SilkS }  # U5 BMP585 gel pressure port

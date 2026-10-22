@@ -14,7 +14,7 @@ frame:
     SELV-MAIN:
       - { x0: 0.0, y0: 0.0, x1: 32.0, y1: 52.0 }
   isolators: []
-  power_nets: [VIN_RAW, VIN_FUSED, VIN_PROT, HEAT_SW, HEAT_SENSE, CO2_HEAT_RTN, +5V, +12V_HEAT, +5V_XIAO]
+  power_nets: [VIN_RAW, VIN_FUSED, VIN_PROT, HEAT_SW, HEAT_SENSE, CO2_HEAT_RTN, +5V, +12V_HEAT, +5V_XIAO, +3V3_PROBE]
   pours:
     - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 31.5, y1: 51.5 } }
   no_coat_keepouts: []

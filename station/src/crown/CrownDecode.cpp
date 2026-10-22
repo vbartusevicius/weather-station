@@ -26,6 +26,17 @@ bool to_tof_quad(const crown::WindBlock& w, wind::TofQuad& out, WindQuality& q) 
     return true;
 }
 
+bool crown_needs_update(const std::uint8_t* version, const std::uint8_t image_version[3], std::size_t image_len) {
+    if (image_len == 0) {
+        return false;
+    }
+    if (version == nullptr) {
+        return true;
+    }
+    return version[0] != crown::kProtocolVersion || version[1] != image_version[0] || version[2] != image_version[1] ||
+           version[3] != image_version[2];
+}
+
 core::RainImpact to_rain_impact(const crown::RainEvent& e, std::uint32_t now_ms, float mv_scale) {
     core::RainImpact r{};
     r.t_ms = now_ms - e.age_ms;

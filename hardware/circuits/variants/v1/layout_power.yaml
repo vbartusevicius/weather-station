@@ -14,7 +14,7 @@ frame:
     SELV-POWER:
       - { x0: 0.0, y0: 0.0, x1: 28.5, y1: 21.5 }
   isolators: []
-  power_nets: [VIN_PROT, +5V, +12V_HEAT, LOGIC_SW, HEAT_SW]
+  power_nets: [VIN_PROT, +5V, +12V_HEAT, +3V3_PROBE, LOGIC_SW, HEAT_SW]
   power_track_width: 0.4          # 1 oz outer: ~1.3 A at 10 K rise; fits the 1.0 mm JST-SH J1 pitch
   pours:
     - { net: GND, layers: [In1.Cu, B.Cu], region: { x0: 0.5, y0: 0.5, x1: 28.0, y1: 21.0 } }
@@ -29,8 +29,9 @@ frame:
     - { net: VIN_PROT,  layers: [F.Cu], priority: 1, region: { x0: 0.4,  y0: 8.6,  x1: 4.9,   y1: 11.5 } }
   connector_labels: { J1: "MAIN" }   # destination board / port, placed next to each connector
   silk_labels:
-    - { text: "5V",      x: 15.0, y: 7.9,  layer: F.SilkS }
-    - { text: "5V HEAT", x: 6.0,  y: 17.5, layer: F.SilkS }
+    - { text: "5V LOGIC", x: 15.0, y: 7.9,  layer: F.SilkS }
+    - { text: "12V HEAT", x: 3.4, y: 16.6, layer: F.SilkS }
+    - { text: "3V3 PROBE", x: 10.2, y: 16.6, layer: F.SilkS }
 
 heights:
   default: 1.2
@@ -56,8 +57,13 @@ parts:
   # TPS54360 hot loop (SLVSBB4G layout guide): C_IN right at VIN (pin 2) / GND, catch diode D directly beside SW (pin 8)
   # with its anode on the F.Cu GND pour, inductor next, C_OUT at the inductor output.
   # J1 lies along the top edge (board 28.5 x 21.5 mm); its right half juts past main's edge (board x > 22.25).
-  # Plug the 8-pin cable in before main is fitted.
-  J1:  { x: 22.25, y: 18.6,  rot: 0,   block: int_main, locked: true }
+  # Plug the 10-pin cable in before main is fitted.
+  J1:  { x: 21.25, y: 18.6,  rot: 0,   block: int_main, locked: true }
+
+  # --- +3V3_PROBE LDO (bottom-left, y 17.5..20.5; >= 3.5 mm from the left edge clips) ---
+  C19: { x: 5.2,   y: 19.2,  rot: 0,   block: ldo_probe }
+  U3:  { x: 8.8,   y: 19.2,  rot: 0,   block: ldo_probe }
+  C20: { x: 11.9,  y: 19.2,  rot: 90,  block: ldo_probe }
 
   # --- +5V electronics buck (top row, y 0.3..7.3) ---
   C1:  { x: 1.3,   y: 3.8,   rot: 90,  block: buck_logic }

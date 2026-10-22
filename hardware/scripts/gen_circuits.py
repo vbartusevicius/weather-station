@@ -162,11 +162,11 @@ def collect_assembly_parts(variant, spec):
 
     # Off-board sensors & transducers
     items.append({
-        "item": "Waterproof 40 kHz Closed-Face Ultrasonic Transceivers + 2-Pin JST-SH Pigtails",
+        "item": "Waterproof 40 kHz Ultrasonic Transceivers (IP68) + 2-Pin JST-SH Pigtails",
         "qty": 4,
-        "part": "EITHER Ø 10.0 x 7.0 mm closed-face waterproof 40 kHz transceivers, e.g. EU10AIF40H07T/R (proven in the open-source QingStation V-path anemometer; default) fitted in the 4 printed transducer_adapters sleeves, OR Ø 14 x 9 mm closed waterproof 40 kHz transceivers straight in the Ø 14.6 mm barrels (no sleeves). All four must be the same type. + 4x 2-pin JST-SH (SHR-02V-S-B) pigtails (pin 1 = A, pin 2 = B; the transducer is driven differentially, neither lead is ground)",
-        "description": "4 inward-angled (29.0 deg V-beam) transceivers seated in the N/E/S/W covered barrels of crown_base.stl, locked from the back by slotted press-fit retaining rings (Ø 10 mm: the 4 small rings in struts.stl; Ø 14 mm: the 4 large rings in transducer_adapters.stl), plugged into crown J2..J5 (BM02B-SRSS-TB, LCSC C160388). Drive is ~22 Vpp (H-bridge from +12V_HEAT): check the chosen part's maximum drive voltage. Re-run the still-air calibration (us_delay_us) after changing the type",
-        "source": "AliExpress / Taobao (Ø 10 x 7 mm or Ø 14 x 9 mm closed type, >= 106 dB SPL @ 10 V, >= -75 dB sensitivity, >= 20 Vpp burst rating)",
+        "part": "Same Sky (CUI) CUSA-TR65-065-2200-TH68: Ø 14 x 9 mm aluminium, IP68, 40 kHz, 150 Vp-p rated, 2200 pF, 65 deg, -40..+80 C (Digi-Key / Mouser, ~$3-6) straight in the Ø 14.6 mm barrels, + 4x 2-pin JST-SH (SHR-02V-S-B) pigtails soldered to its pins (pin 1 = A, pin 2 = B; driven differentially, neither lead is ground). Alternatives with a rated drive voltage: PUI UTR-1440K-TT-R (Ø 14.4, 140 Vp-p), Multicomp MCUSD14A40S09RS (Ø 14, 160 Vp-p). Ø 10 x 7 mm parts (EU10AIF40H07T/R) fit with the printed sleeves but have no published drive rating",
+        "description": "4 inward-angled (29.0 deg V-beam) transceivers seated in the N/E/S/W covered barrels of crown_base.stl, locked from the back by the 4 slotted press-fit rings in transducer_adapters.stl, plugged into crown J2..J5 (BM02B-SRSS-TB, LCSC C160388). Drive is ~22 Vp-p H-bridge bursts from +12V_HEAT (15 % of the 150 Vp-p rating). All four must be the same type; re-run the still-air calibration (us_delay_us) after changing it",
+        "source": "Digi-Key 102-CUSA-TR65-065-2200-TH68 / Mouser / Same Sky",
     })
     items.append({
         "item": "20 mm Piezoelectric Haptic Rain Discs (4-Quadrant Symmetric Array)",
@@ -206,8 +206,8 @@ def collect_assembly_parts(variant, spec):
     items.append({
         "item": "Stainless Steel M6 Fastener Set (Pagoda Through-Bolts & Mast Clamp Bolts)",
         "qty": 1,
-        "part": "4x M6x55 DIN 7984 LOW-HEAD socket cap screws (head 10 x 3.5 mm; a standard ISO 4762 head hits the reflector board) + 4x ISO 4032 M6 nuts (pagoda stack) + 6x M6x35 hex bolts + 12x M6 washers (DIN 9021 large) + 6x M6 locknuts (mast clamp, 3 rows over the 50 mm pole engagement)",
-        "description": "A4-70 / 316 stainless steel fasteners clamping the 5-plate pagoda stack (through the Ø 6.2 mm column bores) and clamping the mast saddle: direct grip on Ø 32-34 mm poles, Ø 24-32 mm poles with the printed mast_shims (4 sizes, 50 mm tall)",
+        "part": "4x M6x55 DIN 7984 LOW-HEAD socket cap screws (head 10 x 3.5 mm; a standard ISO 4762 head hits the reflector board) + 4x ISO 4032 M6 nuts (pagoda stack) + 6x M6x35 hex bolts + 12x M6 washers (ISO 7089, Ø 12 mm: the 3 bolt rows are only 13 mm apart) + 6x M6 locknuts (40 mm tall mast clamp, 31 mm pole engagement)",
+        "description": "A4-70 / 316 stainless steel fasteners clamping the 5-plate pagoda stack (through the Ø 6.2 mm column bores) and clamping the mast saddle: direct grip on Ø 32-34 mm poles, Ø 24-32 mm poles with the printed mast_shims (4 sizes, 31 mm tall)",
         "source": "Local hardware / McMaster-Carr / Mouser",
     })
     items.append({
@@ -218,10 +218,17 @@ def collect_assembly_parts(variant, spec):
         "source": "Local hardware / McMaster-Carr / TPU 95A print",
     })
     items.append({
+        "item": "Silicone-free thermal gap filler (reflector heater -> wind_tunnel deck)",
+        "qty": 1,
+        "part": "Silicone-free (acrylic / non-silicone) thermal gap putty or 0.25-0.5 mm soft thermal pad, >= 1 W/mK, 24 x 24 mm",
+        "description": "Fills the nominal 0.08 mm (stack-up +/-0.3 mm) gap between the 4 reflector heater resistors and the underside of the wind_tunnel deck so the de-icing heat reaches the cone regardless of print tolerance. Must be silicone-free: siloxane vapour permanently poisons the SGP41 gas sensor",
+        "source": "Mouser / Digi-Key / Farnell (non-silicone gap filler)",
+    })
+    items.append({
         "item": "IP68 Waterproof Compression Cable Gland (M12x1.5 / PG7)",
         "qty": 1,
         "part": "M12x1.5 or PG7 IP68 Nylon Cable Gland with EPDM rubber seal & 15 mm hex locknut (Ø 3.5-6.5 mm cable)",
-        "description": "Mounts in the single center Ø 12.2 mm bulkhead hole of base.stl (locknut seats in the 15.4 mm internal hex recess; knurled compression dome sits inside the Ø 26 mm protected upper mast chamber above the pole stop)",
+        "description": "Mounts in the single center Ø 12.2 mm bulkhead hole of base.stl (locknut seats in the 15.4 mm internal hex recess; knurled compression dome sits inside the Ø 26 mm protected upper mast chamber above the pole stop). The dome nut reaches below the pole stop into the mast: the mast must be a hollow tube with >= 18 mm inside diameter (e.g. 33.7 x 3.2 mm steel pipe, ID 27.3 mm) and the supply / RS-485 cable runs down inside it",
         "source": "Mouser / Digi-Key / local electrical",
     })
     items.append({
@@ -232,10 +239,10 @@ def collect_assembly_parts(variant, spec):
         "source": "Mouser / Digi-Key / LCSC",
     })
     items.append({
-        "item": "3D-printed roof enclosure parts (11-part modular set)",
-        "qty": 11,
-        "part": "enclosure/print/<part>.stl (one print plate per part) — assembled-position references in enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,struts,crown_base,crown,mast_shims,transducer_adapters}.stl",
-        "description": "Order/print enclosure/print/<part>.stl: each part's bodies laid out >= 6 mm apart, so captive and stacked bodies (umbrella, reset button, louver plates, strut halves, nuts, shims) are never printed fused. MJF PA12 or UV-stabilised ASA (TPU 95A only if printing orings); clamped to the mast with 6x M6x35 bolts",
+        "item": "3D-printed roof enclosure parts (12 parts on 8 print plates)",
+        "qty": 8,
+        "part": "enclosure/print/<plate>.stl: base, orings, pagoda, wind_tunnel, probe_sleeve (front + back), mast_clamp (+ mast_shims), struts (+ transducer_adapters), crown (+ crown_base) — assembled-position references in enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,struts,crown_base,crown,mast_shims,transducer_adapters}.stl",
+        "description": "Order/print the 8 enclosure/print/<plate>.stl files: all bodies laid out >= 6 mm apart, so captive and stacked bodies (umbrella, reset button, louver plates, strut halves, nuts, shims) are never printed fused. MJF PA12 or UV-stabilised ASA (TPU 95A only if printing orings); clamped to the mast with 6x M6x35 bolts",
         "source": "printed",
     })
     items.append({

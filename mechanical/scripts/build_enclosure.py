@@ -58,6 +58,9 @@ LOUVER_T = 1.6            # pagoda louver blade thickness normal to its surface 
 # deck above (r 30.0..31.4, down to py + 5.0). The skirt bottom lies below the line from the lowest entry point
 # (blade top at r = 48, py - 2.2) over the rim top, so every ray that clears the rim hits the skirt.
 LOUVER_RIM = (24.2, 25.8, 7.0)      # r_in, r_out, top above plate y
+LOUVER_TIP_R = 20.4                 # blade underside thinner than 0.8 mm inside this radius (12.3 deg wedge): trimmed
+# Probe-sleeve rear conduit for the crown cable (OD <= 3.2 mm): 4.1 mm deep, >= 0.8 mm walls to the PCB seat and back
+REAR_CABLE_Z = (-5.6, -1.5)
 # Ultrasonic barrels (axis frame: s along the tilted barrel axis from the seat origin, face plane at s = XD_FACE_S).
 # The bore takes Ø 14 mm closed transducers directly; the printed `transducer_adapters` sleeve puts a Ø 10 mm
 # transducer on the same axis (its face 1.0 mm higher, on the sleeve's lip; same for all four paths -> us_delay_us).
@@ -69,8 +72,8 @@ XD_SLEEVE = {"r_in": 5.25, "r_out": 7.15, "lip_r": 4.45, "lip_t": 1.0, "top_s": 
 LOUVER_SKIRT = (30.0, 31.4, 5.0)    # r_in, r_out, bottom above the plate below
 CLAMP_TRAVEL = 2.0        # mast clamp closing travel left between the clamp and base faces on a Ø 34 pole
 CLAMP_EAR_T = 5.0         # clamp ear thickness (bolt seats at z = -8, clear of the PMSA003I floor slits at z <= -9.8)
-MAST_Y0 = SPEC["envelope"]["mast_socket"]["y_start"]   # -31: 50 mm pole engagement (pole stop at y = 19)
-CLAMP_BOLT_YS = (-22.0, -0.5, 20.5)   # 3 rows x 2 M6 bolts along the 59 mm tall clamp
+MAST_Y0 = SPEC["envelope"]["mast_socket"]["y_start"]   # -12: 40 mm clamp, 31 mm pole engagement (pole stop y = 19)
+CLAMP_BOLT_YS = (-5.5, 7.5, 20.5)     # 3 rows x 2 M6 bolts along the 40 mm tall clamp (13 mm pitch: ISO 7089 washers)
 CROWN_VENT_DEGS, CROWN_VENT_R = (45, 135, 225, 315), 14.0   # crown_base floor breather grilles (dome/cavity venting)
 # crown PCB edge clips (design-frame x, z, hook direction): W, N, S, E straight edges of the 60 x 60 mm board
 CROWN_CLIPS = ((-30.75, 15.0, (1, 0)), (-15.0, 30.75, (0, -1)), (-15.0, -30.75, (0, 1)), (30.75, -15.0, (-1, 0)))
@@ -236,7 +239,7 @@ def build_base(umbrella=True):
     mast_or = SPEC["envelope"]["mast_socket"]["outer_diameter"] / 2.0
 
     # 1. Rear half-moon mast cradle (y = 0..34, z >= -1.0) + solid flat clamping ears (x = -33..+33, y = 0..28, z = -1..+8.0)
-    #    The socket starts at MAST_Y0 (= -31): 50 mm of pole engagement up to the pole stop at y = 19.
+    #    The socket starts at MAST_Y0 (= -12): 31 mm of pole engagement up to the pole stop at y = 19.
     cradle_cyl = cone_y(MAST_Y0, 34.0, mast_or, mast_or).cut(box(-40.0, 40.0, MAST_Y0 - 0.5, 30.0, -40.0, -1.0))
     flange = box(-33.0, 33.0, MAST_Y0, 28.0, -1.0, 8.0)
     neck = cone_y(28.0, 35.0, mast_or, OUTER_R)
@@ -298,7 +301,7 @@ def build_base(umbrella=True):
     for deg in (30, 120, 240, 330):
         rad = math.radians(deg)
         sx, sz = 35.5 * math.cos(rad), 35.5 * math.sin(rad)
-        for offset in (-2.4, -0.8, 0.8, 2.4):
+        for offset in (-3.0, -1.0, 1.0, 3.0):   # 1.2 mm slits, 0.8 mm bars (printable minimum)
             slit = box(sx - 3.8, sx + 3.8, 30.5, 36.5, sz + offset - 0.6, sz + offset + 0.6)
             body = body.cut(slit)
         wx, wz = 41.8 * math.cos(rad), 41.8 * math.sin(rad)
@@ -427,7 +430,7 @@ MAST_SHIMS = (1.0, 2.0, 3.0, 4.0)   # shim wall t: bore Ø (34 - 2t); with 2.0 m
 
 def build_mast_shims():
     """Part 11: Printable split reducer shims for poles smaller than Ø 32 mm (one pair per size, 170-deg half
-    shells, 50 mm tall = the pole engagement of the mast bore). Laid out side by side next to the mast socket."""
+    shells, as tall as the pole engagement of the mast bore). Laid out side by side next to the mast socket."""
     mast_ir = SPEC["envelope"]["mast_socket"]["inner_diameter"] / 2.0
     out = None
     for k, t in enumerate(MAST_SHIMS):
@@ -455,7 +458,7 @@ def _build_probe_sleeve_cyl_ends(z_min, z_max):
     pcb_close_slot = box(-7.15, 7.15, 68.0, 76.5, -0.70, 0.70)
     # Blind internal pocket (`z = +0.6..+5.1 mm`, leaving a solid >2.5 mm front wall at z = +5.1..+10.4 mm!)
     j1_blind_pocket = box(-7.05, 7.05, 68.0, 76.25, 0.6, 5.1)
-    crown_cable_duct = box(-6.3, 6.3, 68.0, 76.5, -4.3, -0.95)
+    crown_cable_duct = box(-6.3, 6.3, 68.0, 76.5, *REAR_CABLE_Z)
     bot_cyl = bot_cyl.cut(pcb_close_slot).cut(j1_blind_pocket).cut(crown_cable_duct)
 
     # Top smooth press-fit cylindrical spigot (y = 113.5..118.0, r = 10.4 mm smooth, 0.4 mm lead-in taper at top, stop shoulder at y = 113.5..114.5)
@@ -464,7 +467,7 @@ def _build_probe_sleeve_cyl_ends(z_min, z_max):
                .union(cone_y(117.4, 118.0, 10.4, 10.0)))
     top_pcb_close = box(-7.15, 7.15, 113.0, 119.0, -0.70, 0.70)
     top_j2_window = box(-5.5, 5.5, 111.0, 119.0, 0.6, 3.4)
-    top_cable_duct = box(-6.3, 6.3, 113.0, 119.0, -4.3, -0.95)
+    top_cable_duct = box(-6.3, 6.3, 113.0, 119.0, *REAR_CABLE_Z)
     top_cyl = top_cyl.cut(top_pcb_close).cut(top_j2_window).cut(top_cable_duct)
 
     half_clip = box(-15.0, 15.0, 68.0, 119.5, z_min, z_max)
@@ -475,19 +478,25 @@ def build_probe_sleeve_back():
     return _build_probe_sleeve_back().translate((0, RAISE, 0))
 
 
+REAR_CABLE_CHANNEL = box(-6.3, 6.3, 68.0, 119.0, *REAR_CABLE_Z)
+
+
 def _build_probe_sleeve_back():
     """Part 4: Rear Clamshell Sleeve for `probe` PCB (y=68.5..118.0, z=-5.0..-0.05):
       - Between `y = 68.5..80.2 mm`, the inner wall hugs the `probe` PCB back face at `z = -0.70 mm`
         (`0.10 mm` gap from `z = -0.60 mm`!) with a grease/glue reservoir groove at `y = 77.2..79.2 mm`!
       - Dedicated `12.6 x 3.35 mm` Vertical Rear Cable Conduit (`x = -6.3..+6.3 mm, z = -4.3..-0.95 mm`) running
         the full height so a round 10-core cable passes through with or without its 10-pin JST-SH connector!"""
-    shell = box(-9.2, 9.2, 75.0, 114.0, -4.8, -0.05)
-    back_dead_air = box(-7.4, 7.4, 80.2, 113.0, -3.4, -0.70)
-    back_grease_groove = box(-7.0, 7.0, 77.2, 79.2, -1.8, -0.6)
+    # Mid section: box widened to x = +/-9.9 and a deeper back (z = -6.5 around the conduit), both trimmed to the
+    # r = 10.35 mm circle so it still passes the pagoda hub bore (r 10.58) when the sleeve is screwed in.
+    envelope = cone_y(75.0, 114.0, 10.35, 10.35)
+    shell = box(-9.9, 9.9, 75.0, 114.0, -4.8, -0.05).union(box(-7.1, 7.1, 75.0, 114.0, -6.5, -4.0)).intersect(envelope)
+    back_dead_air = box(-6.9, 6.9, 80.2, 113.0, -1.6, -0.70)     # merges with the conduit (no film wall)
+    back_grease_groove = box(-7.0, 7.0, 77.2, 79.2, -1.6, -0.6)
     pcb_seat = box(-7.15, 7.15, 68.0, 119.0, -0.70, 0.1)
-    rear_cable_channel = box(-6.3, 6.3, 68.0, 119.0, -4.3, -0.95)
-    left_groove = box(-8.5, -7.6, 75.5, 113.5, -1.2, 0.1)
-    right_groove = box(7.6, 8.5, 75.5, 113.5, -1.2, 0.1)
+    rear_cable_channel = REAR_CABLE_CHANNEL
+    left_groove = box(-8.95, -7.95, 75.5, 113.5, -1.2, 0.1)   # 0.8 mm land to the PCB seat
+    right_groove = box(7.95, 8.95, 75.5, 113.5, -1.2, 0.1)
     body = shell.cut(back_dead_air).cut(back_grease_groove).cut(pcb_seat).cut(left_groove).cut(right_groove)
     return body.union(_build_probe_sleeve_cyl_ends(-15.0, -0.05)).cut(pcb_seat).cut(rear_cable_channel).cut(back_grease_groove)
 
@@ -518,12 +527,12 @@ def _build_probe_sleeve_front():
     j1_blind_pocket = box(-7.05, 7.05, 68.0, 76.25, 0.6, 5.1)
     j2_top_clear = box(-5.5, 5.5, 111.0, 119.5, 0.6, 3.4)
     front_grease_groove = box(-7.0, 7.0, 77.2, 79.2, 0.6, 1.8)
-    upper_gas_chamber = box(-7.4, 7.4, 89.2, 113.0, 0.65, 7.5)
-    lower_sht_chamber = box(-7.4, 7.4, 80.2, 87.8, 0.65, 2.1)
+    upper_gas_chamber = box(-7.15, 7.15, 89.2, 113.0, 0.65, 7.5)   # flush with the PCB seat (no 0.25 mm ledge)
+    lower_sht_chamber = box(-7.15, 7.15, 80.2, 87.8, 0.65, 2.1)
     sht45_venturi = box(-3.8, 0.8, 80.2, 84.8, 0.65, 4.0).union(box(-9.5, 9.5, 80.5, 84.5, 0.8, 1.9))
 
-    left_tongue = box(-8.32, -7.78, 75.8, 113.2, -0.95, 0.25)
-    right_tongue = box(7.78, 8.32, 75.8, 113.2, -0.95, 0.25)
+    left_tongue = box(-8.85, -8.05, 75.8, 113.2, -0.95, 0.25)   # 0.8 mm tongue in the 1.0 mm back groove
+    right_tongue = box(8.05, 8.85, 75.8, 113.2, -0.95, 0.25)
 
     body = (
         shell
@@ -557,9 +566,8 @@ def _build_pagoda():
         Completely seals off `base.stl` below from wind-driven rain in the pagoda louvers above, supports the full
         weight of the upper station, and carries a Central M22x1.5 Internal Thread (`y = 68.5..73.5`) + O-Ring #5 Seat
         (`y = 73.4..74.4, r = 10.2..13.2 mm`) where the bottom of `probe_sleeve` screws in watertight!
-      - 4x M4 Stainless Steel Through-Bolt Columns (`r = 26.0 mm at 45/135/225/315 deg`, Ø 4.2 mm through-bores from
-        `y = 68.5..120.0 mm` with bottom M4 hex nut pockets at `y = 68.5..70.3` and top M4 socket-cap seats at `y = 118.2..120.2`)
-        clamping the entire pagoda stack into a rock-solid structure!
+      - 4x M6 x 55 DIN 7984 stainless through-bolt columns (`r = 20.5 mm at 45/135/225/315 deg`, Ø 6.2 mm bores, ISO 4032
+        nut pockets at the bottom and recessed low-head seats at the top) clamping the pagoda stack
       - Seamless Top Cap & M90x1.8 Threaded Collar (`y = 114.5..123.8`): The 5th louver merges seamlessly with zero gap
         into the top M90x1.8 threaded collar and central spider hub (`y = 114.5..116.0`), where the top M22x1.5 hex nut
         (`y = 115.8..118.4`) clamps the top of `probe_sleeve`!
@@ -575,6 +583,7 @@ def _build_pagoda():
     bot_hub = ring_cone_y(67.8, 74.4, 10.58, 15.0, 10.58, 15.0)
     bot_hub = cut_internal_thread_y(bot_hub, (69.8, 71.3, 72.8),
                                     r_minor=10.58, depth=0.65, half_base=0.45, half_crest=0.14, clearance=0.18)
+    bot_hub = bot_hub.cut(cone_y(67.7, 68.6, 11.4, 10.5))   # thread lead-in chamfer (no 0.6 mm lip at the bore mouth)
     bot_oring_seat = cone_y(73.4, 74.8, 13.6, 13.6)
     body = skirt.union(bot_deck).union(bot_shed_cone).union(bot_hub.cut(bot_oring_seat))
 
@@ -596,6 +605,8 @@ def _build_pagoda():
         dr = LOUVER_T / math.sin(math.atan(5.2 / 23.8))
         louver_blade = ring_cone_y(py - 2.2, py + 3.0, OUTER_R - dr, OUTER_R, 24.2 - dr, 24.2)
         drip_lip = ring_cone_y(py - 4.5, py - 2.0, OUTER_R - 1.8, OUTER_R, OUTER_R - 1.8, OUTER_R)
+        # the blade's inner underside tapers to a knife edge: trim it where it is < 0.8 mm (r < LOUVER_TIP_R)
+        louver_blade = louver_blade.cut(cone_y(py - 3.0, py + 3.5, LOUVER_TIP_R, LOUVER_TIP_R))
         rim = ring_cone_y(py + 2.0, py + LOUVER_RIM[2], LOUVER_RIM[0], LOUVER_RIM[1], LOUVER_RIM[0], LOUVER_RIM[1])
         plate_ring = louver_blade.union(drip_lip).union(rim)
         if idx > 0:   # skirt under this blade, reaching down toward the blade below
@@ -716,10 +727,10 @@ def _build_struts():
     all_struts = None
     for st in ef.strut_centres():
         sx, sz = st["x"], st["z"]
-        # Use a 2.12 mm thick wall (`r = 2.90..5.02 mm`) along the central unthreaded span (`y = 128.5..172.5 mm`)
+        # Use a 2.7 mm thick wall (`r = 2.90..5.65 mm`, still inside the r = 6.1 deck / tray bores) along the central unthreaded span (`y = 128.5..172.5 mm`)
         # so the C-shaped side walls have a deep, unmistakable 3-wall Male Tongue + Female U-Groove joint!
         tube_ends = ring_cone_y(123.3, 178.9, 3.00, 4.92, 3.00, 4.92).translate((sx, 0, sz))
-        tube_mid = ring_cone_y(128.5, 172.5, 2.90, 5.05, 2.90, 5.05).translate((sx, 0, sz))
+        tube_mid = ring_cone_y(128.5, 172.5, 2.90, 5.65, 2.90, 5.65).translate((sx, 0, sz))   # 5.65: >= 0.8 mm groove walls
         bot_stopper = ring_cone_y(127.2, 128.5, 3.00, 7.0, 3.00, 7.0).translate((sx, 0, sz))
         top_stopper = ring_cone_y(172.5, 174.0, 3.00, 7.0, 3.00, 7.0).translate((sx, 0, sz))
         strut = tube_ends.union(tube_mid).union(bot_stopper).union(top_stopper)
@@ -738,11 +749,11 @@ def _build_struts():
         split_slot = box(sx - 8.5, sx + 8.5, 122.8, 179.2, sz - 0.18, sz + 0.18)
         strut = strut.cut(split_slot)
         # -X wall: Female U-Groove in Back C-Half (`z < sz`) + Male Tongue on Front C-Half (`z > sz`)
-        fem_groove_negx = box(sx - 4.50, sx - 3.44, 128.55, 172.45, sz - 1.45, sz - 0.10)
-        male_tongue_negx = box(sx - 4.30, sx - 3.64, 128.80, 172.20, sz - 1.15, sz + 0.35)
+        fem_groove_negx = box(sx - 4.84, sx - 3.70, 128.55, 172.45, sz - 1.45, sz - 0.10)
+        male_tongue_negx = box(sx - 4.67, sx - 3.87, 128.80, 172.20, sz - 1.15, sz + 0.35)
         # +X wall: Female U-Groove in Front C-Half (`z > sz`) + Male Tongue on Back C-Half (`z < sz`)
-        fem_groove_posx = box(sx + 3.44, sx + 4.50, 128.55, 172.45, sz + 0.10, sz + 1.45)
-        male_tongue_posx = box(sx + 3.64, sx + 4.30, 128.80, 172.20, sz - 0.35, sz + 1.15)
+        fem_groove_posx = box(sx + 3.70, sx + 4.84, 128.55, 172.45, sz + 0.10, sz + 1.45)
+        male_tongue_posx = box(sx + 3.87, sx + 4.67, 128.80, 172.20, sz - 0.35, sz + 1.15)
         strut = (strut.cut(fem_groove_negx).cut(fem_groove_posx)
                  .union(male_tongue_negx).union(male_tongue_posx))
 
@@ -852,7 +863,7 @@ def _build_crown_base():
     # The JGS1 dome's inside is open to this cavity through the retainer bore, so the dome breathes with it and dries out
     # after a dew night instead of trapping moisture (same principle as the base bay grilles; rain cannot fall upward).
     for deg in CROWN_VENT_DEGS:
-        for off in (-1.6, 0.0, 1.6):
+        for off in (-2.0, 0.0, 2.0):   # 1.2 mm slits, 0.8 mm bars
             slit = box(-3.0, 3.0, 173.8, 176.0, CROWN_VENT_R + off - 0.6, CROWN_VENT_R + off + 0.6)
             body = body.cut(slit.rotate((0, 0, 0), (0, 1, 0), 90.0 - deg))
 
@@ -880,7 +891,7 @@ def _build_crown():
     """Part 10: Removable Top Piezo Rain & JGS1 UV Dome Cover (`crown.stl/.step`, y=185.8..198.0):
       - Open on the bottom with an Internal M90x1.8 Female Thread (y = 186.0..190.2) that screws onto `crown_base.stl`
         and compresses the full-perimeter O-Ring #3!
-      - Center (r = 9..13.5 mm): Beefy 2.8 mm-thick Top Retaining Shoulder (y = 195.2..198.0) with M22x1.0 internal threads
+      - Center (r = 9..13.5 mm): Beefy 2.8 mm-thick Top Retaining Shoulder (y = 195.2..198.0) with M22x1.5 internal threads
         holding O-Ring #4, the JGS1 Quartz Flange, and the M22 Threaded Retainer Nut
       - Smooth Taper into a 1.0 mm-Thin Acoustic Rain-Drum Diaphragm (r = 15..36.5 mm) above the 4x 20 mm Murata Piezos!
     """
@@ -906,12 +917,12 @@ def _build_crown():
         rad = math.radians(deg)
         px, pz = 25.0 * math.cos(rad), 25.0 * math.sin(rad)
         pad_boss = cone_y(193.8, 195.2, 10.3, 10.3).translate((px, 0, pz)).intersect(dome)
-        pad_rim = ring_cone_y(193.4, 193.8, 10.0, 10.5, 10.0, 10.5).translate((px, 0, pz))
+        pad_rim = ring_cone_y(193.0, 193.8, 10.0, 10.8, 10.0, 10.8).translate((px, 0, pz))   # 0.8 x 0.8 mm locating rim
         body = body.union(pad_boss).union(pad_rim)
 
     # Dead-center (0, 0) Heavy-Duty 2.8 mm Top Retaining Lip (y = 195.2..198.0) + Standard ISO M22x1.5 Internal Helical Thread
     win = ef.uv_window()
-    r_win = 9.0
+    r_win = 9.25   # Ø 18.5 top hole: 0.25 mm radial clearance around the Ø 18.0 +/-0.1 mm dome (drawings/jgs1_dome.svg)
     uv_collar = ring_cone_y(190.4, 198.0, r_win, r_win + 3.5, r_win, r_win + 5.5).translate((win["x"], 0, win["z"])).intersect(dome)
     uv_top_hole = cone_y(190.0, 198.5, r_win, r_win).translate((win["x"], 0, win["z"]))
     uv_inner_bore = cone_y(190.0, 195.2, 10.40, 10.40).translate((win["x"], 0, win["z"]))
@@ -947,10 +958,9 @@ def build_transducer_adapters():
     return _build_transducer_adapters().translate((0, UPPER, 0))
 
 
-def _build_transducer_adapters():
-    """Part 12: 4x Ø 10 mm transducer sleeves seated in the Ø 14.6 mm barrels (assembled position = the V1 Ø 10 mm
-    build; leave them out for Ø 14 mm transducers) + 4x slotted press-fit retaining rings for Ø 14 mm cans, laid out
-    beside the station like the mast shims."""
+def transducer_sleeves_in_barrels():
+    """The 4 optional Ø 10 mm transducer sleeves in their barrels (fit check; V1 default is the Ø 14 x 9 mm Same Sky
+    CUSA-TR65-065-2200-TH68 straight in the barrel, so the printed sleeves are laid out beside the station)."""
     tilt_deg = SPEC["envelope"]["wind_tunnel"].get("transducer_tilt_deg", 29.0)
     sl = XD_SLEEVE
     out = None
@@ -963,6 +973,19 @@ def _build_transducer_adapters():
                   .rotate((0, 0, 0), (0, 1, 0), 23.0)
                   .rotate((0, 0, 0), axis, tilt_deg)
                   .translate((tx, 176.2, tz)))
+        out = sleeve if out is None else out.union(sleeve)
+    return out
+
+
+def _build_transducer_adapters():
+    """Part 12: 4x slotted press-fit retaining rings for the default Ø 14 mm transducers + 4x optional Ø 10 mm
+    transducer sleeves (only for Ø 10 mm parts), all laid out beside the station like the mast shims."""
+    out = None
+    sl = XD_SLEEVE
+    for k in range(4):
+        sleeve = (ring_cone_y(0.0, sl["top_s"] - XD_FACE_S, sl["r_in"], sl["r_out"], sl["r_in"], sl["r_out"])
+                  .union(ring_cone_y(0.0, sl["lip_t"], sl["lip_r"], sl["r_out"], sl["lip_r"], sl["r_out"]))
+                  .translate((60.0 + 18.0 * k, 156.0, 0.0)))
         out = sleeve if out is None else out.union(sleeve)
     for k in range(4):
         ring = (ring_cone_y(0.0, 1.8, 5.1, XD_BORE_R - 0.05, 5.1, XD_BORE_R - 0.05)
@@ -1012,8 +1035,31 @@ def print_plate(solid):
     return cq.Workplane(obj=cq.Compound.makeCompound(placed))
 
 
+# Print plates combine parts that are printed / ordered together (one upload each); every other part has its own.
+PRINT_GROUPS = {
+    "crown": ("crown", "crown_base"),
+    "mast_clamp": ("mast_clamp", "mast_shims"),
+    "probe_sleeve": ("probe_sleeve_front", "probe_sleeve_back"),
+    "struts": ("struts", "transducer_adapters"),
+}
+
+
+def print_plates():
+    """(plate name, combined solid) for every print file in `print/`: the groups above + every ungrouped part."""
+    builders = dict(ALL_PARTS)
+    grouped = {p for parts in PRINT_GROUPS.values() for p in parts}
+    for name, _ in ALL_PARTS:
+        group = next((g for g, parts in PRINT_GROUPS.items() if parts[0] == name), None)
+        if group:
+            solids = [builders[p]() for p in PRINT_GROUPS[group]]
+            yield group, cq.Workplane(obj=cq.Compound.makeCompound([s for w in solids for v in w.vals() for s in v.Solids()]))
+        elif name not in grouped:
+            yield name, builders[name]()
+
+
 def export_parts(out_dir):
-    """Assembly-position STL/STEP per part, plus `print/<part>.stl`: the same bodies laid out flat for printing."""
+    """Assembly-position STL/STEP per part, plus `print/<plate>.stl`: the bodies laid out flat for printing
+    (grouped per PRINT_GROUPS)."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     print_dir = out_dir / "print"
@@ -1024,8 +1070,10 @@ def export_parts(out_dir):
         solid = builder()
         cq.exporters.export(solid, str(out_dir / f"{name}.stl"))
         cq.exporters.export(solid, str(out_dir / f"{name}.step"))
-        cq.exporters.export(print_plate(solid), str(print_dir / f"{name}.stl"))
-        print(f"Exported {name}.stl/.step + print plate ({len(print_bodies(solid))} bodies) -> {out_dir.relative_to(REPO)}")
+        print(f"Exported {name}.stl/.step -> {out_dir.relative_to(REPO)}")
+    for plate, solid in print_plates():
+        cq.exporters.export(print_plate(solid), str(print_dir / f"{plate}.stl"))
+        print(f"Exported print/{plate}.stl ({len(print_bodies(solid))} bodies)")
 
 
 if __name__ == "__main__":

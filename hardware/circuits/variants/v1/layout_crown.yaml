@@ -49,9 +49,8 @@ frame:
   copper_keepout:
     - { x0: 6.3, y0: 3.8, x1: 19.7, y1: 9.2, layers: [In1.Cu, In2.Cu] }   # no planes under the ferrite rod
     - { x0: 9.4, y0: 3.8, x1: 16.6, y1: 9.2, layers: [F.Cu, B.Cu] }       # no tracks between its end pads
-  connector_labels: { J1: "MAIN", J2: "N", J3: "E", J4: "S", J5: "W", J6: "PZ NE", J7: "PZ NW", J8: "PZ SW", J9: "PZ SE", J10: "DOME", J11: "HEAT" }
-  silk_labels:
-    - { text: "SWD", x: 4.3, y: 47.6, layer: B.SilkS }
+  connector_labels: { J1: "MAIN", J2: "N", J3: "E", J4: "S", J5: "W", J6: "PZ NE", J7: "PZ NW", J8: "PZ SW", J9: "PZ SE", J10: "DOME", J11: "HEAT", J12: "SWD" }
+  silk_labels: []
 
 heights:
   default: 1.2
@@ -151,11 +150,7 @@ parts:
   C8:  { x: 26.0, y: 21.5, rot: 0,   side: back, block: crown_power }
   C9:  { x: 29.3, y: 21.5, rot: 0,   side: back, block: crown_power }
   R27: { x: 32.6, y: 21.5, rot: 0,   side: back, block: crown_power }
-  TP1: { x: 3.0,  y: 40.0, rot: 0,   side: back, block: crown_mcu }
-  TP2: { x: 3.0,  y: 42.5, rot: 0,   side: back, block: crown_mcu }
-  TP3: { x: 3.0,  y: 45.0, rot: 0,   side: back, block: crown_mcu }
-  TP4: { x: 5.5,  y: 40.0, rot: 0,   side: back, block: crown_mcu }
-  TP5: { x: 5.5,  y: 42.5, rot: 0,   side: back, block: crown_mcu }
+  J12: { x: 4.0,  y: 43.0, rot: 90,  side: back, block: crown_mcu }   # SWD debug (Tag-Connect TC2030-NL)
 
   U10: { x: 44.0, y: 22.0, rot: 0,   side: back, block: crown_power }
   C1:  { x: 48.5, y: 19.3, rot: 90,  side: back, block: crown_power }

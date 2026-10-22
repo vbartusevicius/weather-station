@@ -251,7 +251,8 @@ def snapshot(*, cached=False):
                                                        "componentLibraryType")}
         data["record"]["attributes"] = [a for a in record.get("attributes") or []
                                          if a["attribute_name_en"] in ("Resistance", "Capacitance",
-                                                                       "Voltage Rating", "Voltage Rated")]
+                                                                       "Voltage Rating", "Voltage Rated",
+                                                                       "Operating Temperature")]
         parts[lcsc] = data
         raw = json.loads((CACHE / f"{lcsc}.easyeda.json").read_text())
         notice = raw["result"]["packageDetail"]["dataStr"]["head"].get("license")

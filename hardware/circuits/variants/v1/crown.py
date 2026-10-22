@@ -7,7 +7,7 @@
   - U9 + L1: AS3935 lightning detector (SPI) with its MA5532-AE ferrite-rod antenna
   - U6: MMC5603NJ compass (main I2C bus); U10: 3.3 V LDO (crown + dome)
   - J1: 12-pin JST-SH from main J2; J2..J5 transducers (1 = A, 2 = B); J6..J9 piezo discs; J10 dome riser;
-    J11 spare +12V_HEAT outlet; TP1..TP5 SWD pads
+    J11 spare +12V_HEAT outlet; J12 SWD debug port (Tag-Connect TC2030-NL footprint)
 """
 
 from blocks import crown_sensors

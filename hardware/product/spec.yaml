@@ -16,7 +16,7 @@ active_variant: v1
 envelope:
   outer_diameter: 96.0
   outer_radius: 48.0
-  total_height: 250.0          # y = -31 (bottom of the 50 mm mast socket) .. 219 (dome apex incl. both raises)
+  total_height: 231.0          # y = -12 (bottom of the 40 mm mast clamp) .. 219 (dome apex incl. both raises)
   # Everything above the base (pagoda, probe, reflector, struts, crown, dome) is designed in the original frame and
   # placed `above_base_raise` higher: the base bay grew by 15 mm (taller power/PM/main stack, more airflow room).
   above_base_raise: 15.0
@@ -26,10 +26,10 @@ envelope:
   above_pagoda_raise: 6.0
   wall: 2.0
   mast_socket:
-    y_start: -31.0           # socket extended 31 mm downward: 50 mm of pole engagement (pole stop at y = 19)
+    y_start: -12.0           # mast clamp 40 mm tall from the base underside (y = 28): 31 mm of pole engagement (pole stop at y = 19)
     y_end: 32.0
     outer_diameter: 44.0
-    inner_diameter: 34.0       # fits standard 25.4..34.0 mm (1" to 1-1/4") roof mast with M4 clamp bolts
+    inner_diameter: 34.0       # Ø 32..34 mm poles direct, Ø 24..32 mm with mast_shims; 6x M6 clamp bolts in 3 rows
     cable_pass_through_diameter: 10.0
   base_bay:
     y_start: 32.0
@@ -148,7 +148,7 @@ boards:
       cable_length_mm: 28.0
     - from: main
       to: probe
-      signals: [+12V_HEAT, +12V_HEAT, HEAT_SW, HEAT_SW, GND, NTC_SENSE, +3V3, CO2_HEAT_RTN, I2C_SDA, I2C_SCL]
+      signals: [+12V_HEAT, +12V_HEAT, HEAT_SW, HEAT_SW, GND, NTC_SENSE, +3V3_PROBE, CO2_HEAT_RTN, I2C_SDA, I2C_SCL]
       refs: { main: J3, probe: J1 }
       domain: SELV-MAIN
       type: cable
@@ -157,11 +157,11 @@ boards:
       cable_length_mm: 60.0
     - from: main
       to: power
-      signals: [VIN_PROT, VIN_PROT, GND, GND, +5V, +5V, +12V_HEAT, +12V_HEAT]
+      signals: [VIN_PROT, VIN_PROT, GND, GND, +5V, +5V, +12V_HEAT, +12V_HEAT, GND, +3V3_PROBE]
       refs: { main: J5, power: J1 }
       domain: SELV-MAIN
       type: cable
-      pins: 8
+      pins: 10
       connector_pitch: 1.0
       cable_length_mm: 60.0
     - from: probe
@@ -177,10 +177,10 @@ boards:
 terminals:
   power_in:
     board: main
-    poles: 2
-    pitch: 5.08
-    type: push-in-spring (Cixi Kefa KF142R-5.08-2P)
-    labels: [VIN_12_32V, GND]
+    poles: 4
+    pitch: 3.5
+    type: push-in-spring (Cixi Kefa KF250-3.5-4P-1, C475156)
+    labels: [VIN_12_32V, GND, RS485_A, RS485_B]
   pm_sensor:
     board: main
     poles: 6
@@ -244,6 +244,7 @@ derived:
       SELV-MAIN:
       - GND
       - +3V3
+      - +3V3_PROBE
       - +5V
       - +5V_XIAO
       - VIN_ADC
@@ -330,7 +331,7 @@ derived:
     probe:
       SELV-PROBE:
       - GND
-      - +3V3
+      - +3V3_PROBE
       - +12V_HEAT
       - HEAT_SW
       - CO2_HEAT_SW
@@ -347,13 +348,14 @@ derived:
       - CO2_HEAT_SW
       - CO2_HEAT_RTN
       - +12V_HEAT
-      - +3V3
+      - +3V3_PROBE
     power:
       SELV-POWER:
       - GND
       - VIN_PROT
       - +5V
       - +12V_HEAT
+      - +3V3_PROBE
       - LOGIC_*
       - HEAT_*
       - Net-*
@@ -361,6 +363,7 @@ derived:
       - VIN_PROT
       - +5V
       - +12V_HEAT
+      - +3V3_PROBE
       - LOGIC_SW
       - HEAT_SW
 # --- END GENERATED ---

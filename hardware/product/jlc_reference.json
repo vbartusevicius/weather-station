@@ -48,57 +48,6 @@
         "2": "2"
       }
     },
-    "C10428": {
-      "record": {
-        "componentModelEn": "SN74LVC2G04DBVR",
-        "componentBrandEn": "Texas Instruments",
-        "componentSpecificationEn": "SOT-23-6",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_1811092004_Texas-Instruments-SN74LVC2G04DBVR_C10428.pdf",
-        "componentLibraryType": "expand",
-        "attributes": []
-      },
-      "footprint": "SOT-23-6_L2.9-W1.6-P0.95-LS2.8-BR",
-      "pads": [
-        [
-          "3",
-          1.350010000000014,
-          0.9499600000000601
-        ],
-        [
-          "2",
-          1.350010000000014,
-          -0.0
-        ],
-        [
-          "1",
-          1.350010000000014,
-          -0.9499599999999445
-        ],
-        [
-          "6",
-          -1.350010000000014,
-          -0.9499599999999445
-        ],
-        [
-          "5",
-          -1.350010000000014,
-          -0.0
-        ],
-        [
-          "4",
-          -1.350010000000014,
-          0.9499600000000601
-        ]
-      ],
-      "pin_names": {
-        "1": "1A",
-        "2": "GND",
-        "3": "2A",
-        "4": "2Y",
-        "5": "VCC",
-        "6": "1Y"
-      }
-    },
     "C106222": {
       "record": {
         "componentModelEn": "CC0603KRX7R9BB223",
@@ -220,7 +169,13 @@
         "componentSpecificationEn": "SOIC-16",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2407241025_Nexperia-74HC4052D-653_C11350.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C11350",
+            "attribute_value_name": "-40℃~+125℃"
+          }
+        ]
       },
       "footprint": "SOIC-16_L9.9-W3.9-P1.27-LS6.0-BL",
       "pads": [
@@ -369,7 +324,13 @@
         "componentSpecificationEn": "DO-214AC(SMA)",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2407101109_MDD-Microdiode-Semiconductor-SMAJ36A_C113967.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C113967",
+            "attribute_value_name": "-65℃~+150℃"
+          }
+        ]
       },
       "footprint": "SMA_L4.3-W2.6-LS5.2-RD",
       "pads": [
@@ -550,6 +511,11 @@
         "componentLibraryType": "expand",
         "attributes": [
           {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C160388",
+            "attribute_value_name": "-25℃~+85℃"
+          },
+          {
             "attribute_name_en": "Voltage Rating",
             "component_code": "C160388",
             "attribute_value_name": "50V"
@@ -594,6 +560,11 @@
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_JST-BM08B-SRSS-TB-LF-SN_C160394.pdf",
         "componentLibraryType": "expand",
         "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C160394",
+            "attribute_value_name": "-25℃~+85℃"
+          },
           {
             "attribute_name_en": "Voltage Rating",
             "component_code": "C160394",
@@ -675,6 +646,11 @@
         "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2010231234_JST-BM10B-SRSS-TB-LF-SN_C160396.pdf",
         "componentLibraryType": "expand",
         "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C160396",
+            "attribute_value_name": "-25℃~+85℃"
+          },
           {
             "attribute_name_en": "Voltage Rating",
             "component_code": "C160396",
@@ -768,6 +744,11 @@
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_JST-BM12B-SRSS-TB-LF-SN_C160398.pdf",
         "componentLibraryType": "expand",
         "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C160398",
+            "attribute_value_name": "-25℃~+85℃"
+          },
           {
             "attribute_name_en": "Voltage Rating",
             "component_code": "C160398",
@@ -865,82 +846,6 @@
         "14": "14"
       }
     },
-    "C1622": {
-      "record": {
-        "componentModelEn": "CL10B473KB8NNNC",
-        "componentBrandEn": "Samsung Electro-Mechanics",
-        "componentSpecificationEn": "0603",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Samsung-Electro-Mechanics-CL10B473KB8NNNC_C1622.pdf",
-        "componentLibraryType": "base",
-        "attributes": [
-          {
-            "attribute_name_en": "Voltage Rating",
-            "component_code": "C1622",
-            "attribute_value_name": "50V"
-          },
-          {
-            "attribute_name_en": "Capacitance",
-            "component_code": "C1622",
-            "attribute_value_name": "47nF"
-          }
-        ]
-      },
-      "footprint": "C0603",
-      "pads": [
-        [
-          "2",
-          0.700023999999964,
-          -0.0
-        ],
-        [
-          "1",
-          -0.700023999999964,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "1": "1",
-        "2": "2"
-      }
-    },
-    "C1647": {
-      "record": {
-        "componentModelEn": "CL10C180JB8NNNC",
-        "componentBrandEn": "Samsung Electro-Mechanics",
-        "componentSpecificationEn": "0603",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Samsung-Electro-Mechanics-CL10C180JB8NNNC_C1647.pdf",
-        "componentLibraryType": "base",
-        "attributes": [
-          {
-            "attribute_name_en": "Voltage Rating",
-            "component_code": "C1647",
-            "attribute_value_name": "50V"
-          },
-          {
-            "attribute_name_en": "Capacitance",
-            "component_code": "C1647",
-            "attribute_value_name": "18pF"
-          }
-        ]
-      },
-      "footprint": "C0603",
-      "pads": [
-        [
-          "2",
-          0.700023999999964,
-          -0.0
-        ],
-        [
-          "1",
-          -0.700023999999964,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "1": "1",
-        "2": "2"
-      }
-    },
     "C1663": {
       "record": {
         "componentModelEn": "CL10C330JB8NNNC",
@@ -1024,7 +929,13 @@
         "componentSpecificationEn": "DFN-6(2x2.2)",
         "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2211030200_Advanced-Monolithic-Systems-TSL25911FN_C176812.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C176812",
+            "attribute_value_name": "-30℃~+70℃"
+          }
+        ]
       },
       "footprint": "DFN-6_L2.4-W2.0-P0.65-BL",
       "pads": [
@@ -1080,6 +991,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C177475",
             "attribute_value_name": "4.7MΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C177475",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1101,39 +1017,6 @@
         "1": "1"
       }
     },
-    "C17909": {
-      "record": {
-        "componentModelEn": "1206W4F1200T5E",
-        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
-        "componentSpecificationEn": "1206",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010145_UNI-ROYAL-Uniroyal-Elec-1206W4F1200T5E_C17909.pdf",
-        "componentLibraryType": "base",
-        "attributes": [
-          {
-            "attribute_name_en": "Resistance",
-            "component_code": "C17909",
-            "attribute_value_name": "120Ω"
-          }
-        ]
-      },
-      "footprint": "R1206",
-      "pads": [
-        [
-          "2",
-          1.4787880000000295,
-          -0.0
-        ],
-        [
-          "1",
-          -1.4787880000000295,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "2": "2",
-        "1": "1"
-      }
-    },
     "C18184976": {
       "record": {
         "componentModelEn": "BMP585",
@@ -1141,7 +1024,13 @@
         "componentSpecificationEn": "LGA-9(3.3x3.3)",
         "dataManualUrl": null,
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C18184976",
+            "attribute_value_name": "-40℃~+85℃"
+          }
+        ]
       },
       "footprint": "LGA-9_L3.3-W3.3-P1.10-TL",
       "pads": [
@@ -1210,7 +1099,13 @@
         "componentSpecificationEn": "SOIC-8",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_1912261832_Texas-Instruments-UCC27524ADR_C185857.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C185857",
+            "attribute_value_name": "-40℃~+140℃"
+          }
+        ]
       },
       "footprint": "SOIC-8_L4.9-W3.9-P1.27-LS6.0-BL",
       "pads": [
@@ -1311,7 +1206,13 @@
         "componentSpecificationEn": "SOT-23",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_1811081213_Alpha---Omega-Semicon-AO3400A_C20917.pdf",
         "componentLibraryType": "base",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C20917",
+            "attribute_value_name": "-55℃~+150℃"
+          }
+        ]
       },
       "footprint": "SOT-23-3_L2.9-W1.3-P1.90-LS2.4-BR",
       "pads": [
@@ -1349,6 +1250,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C21190",
             "attribute_value_name": "1kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C21190",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1382,6 +1288,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C22772",
             "attribute_value_name": "10.2kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C22772",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1415,6 +1326,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C22787",
             "attribute_value_name": "120Ω"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C22787",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1448,6 +1364,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C22795",
             "attribute_value_name": "130kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C22795",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1481,6 +1402,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C22859",
             "attribute_value_name": "10Ω"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C22859",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1514,6 +1440,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C22875",
             "attribute_value_name": "140kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C22875",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1547,6 +1478,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C22935",
             "attribute_value_name": "1MΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C22935",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1580,6 +1516,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C22936",
             "attribute_value_name": "1Ω"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C22936",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1613,6 +1554,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C22984",
             "attribute_value_name": "30kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C22984",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1646,6 +1592,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C23074",
             "attribute_value_name": "53.6kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C23074",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1679,6 +1630,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C23088",
             "attribute_value_name": "6.49kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C23088",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1708,6 +1664,11 @@
         "dataManualUrl": "",
         "componentLibraryType": "expand",
         "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C231329",
+            "attribute_value_name": "-25℃~+70℃"
+          },
           {
             "attribute_name_en": "Voltage Rating",
             "component_code": "C231329",
@@ -1745,6 +1706,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C23138",
             "attribute_value_name": "330Ω"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C23138",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1778,6 +1744,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C23151",
             "attribute_value_name": "390Ω"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C23151",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1811,6 +1782,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C23162",
             "attribute_value_name": "4.7kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C23162",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1844,6 +1820,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C23178",
             "attribute_value_name": "470kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C23178",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1877,6 +1858,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C23194",
             "attribute_value_name": "511kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C23194",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1910,6 +1896,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C23212",
             "attribute_value_name": "6.8kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C23212",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -1943,6 +1934,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C23251",
             "attribute_value_name": "82.5kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C23251",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -2036,6 +2032,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C25334",
             "attribute_value_name": "100mΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C25334",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -2069,6 +2070,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C25803",
             "attribute_value_name": "100kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C25803",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -2102,6 +2108,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C25804",
             "attribute_value_name": "10kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C25804",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -2135,6 +2146,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C25819",
             "attribute_value_name": "47kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C25819",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -2232,39 +2248,6 @@
         "2": "2"
       }
     },
-    "C2791259": {
-      "record": {
-        "componentModelEn": "HP122WJ0270T4E",
-        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
-        "componentSpecificationEn": "2512",
-        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2304140030_UNI-ROYAL-Uniroyal-Elec-HP122WJ0270T4E_C2791259.pdf",
-        "componentLibraryType": "expand",
-        "attributes": [
-          {
-            "attribute_name_en": "Resistance",
-            "component_code": "C2791259",
-            "attribute_value_name": "27Ω"
-          }
-        ]
-      },
-      "footprint": "RES-SMD_L6.4-W3.2-R2512",
-      "pads": [
-        [
-          "1",
-          -3.0662880000000294,
-          -0.0
-        ],
-        [
-          "2",
-          3.0662880000000294,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "2": "2",
-        "1": "1"
-      }
-    },
     "C279936": {
       "record": {
         "componentModelEn": "SDNT1608X103F3950FTF",
@@ -2272,7 +2255,13 @@
         "componentSpecificationEn": "0603",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2110081430_Sunlord-SDNT1608X103F3950FTF_C279936.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C279936",
+            "attribute_value_name": "-55℃~+125℃"
+          }
+        ]
       },
       "footprint": "R0603",
       "pads": [
@@ -2337,7 +2326,13 @@
         "componentSpecificationEn": "SC-70-6",
         "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2205311630_Texas-Instruments-LM66100DCKR_C2869734.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C2869734",
+            "attribute_value_name": "-40℃~+125℃"
+          }
+        ]
       },
       "footprint": "SC-70-6_L2.0-W1.3-P0.65-LS2.1-BL",
       "pads": [
@@ -2510,6 +2505,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C31850",
             "attribute_value_name": "22kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C31850",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -2538,7 +2538,13 @@
         "componentSpecificationEn": "SOT-23",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_1811061632_ProTek-Devices-PSM712-LF-T7_C32677.pdf",
         "componentLibraryType": "base",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C32677",
+            "attribute_value_name": "-55℃~+150℃"
+          }
+        ]
       },
       "footprint": "SOT-23-3_L3.0-W1.7-P0.95-LS2.9-BR",
       "pads": [
@@ -2571,7 +2577,13 @@
         "componentSpecificationEn": "LGA-20",
         "dataManualUrl": "https://datasheet.lcsc.com/lcsc/2312280726_Sensirion-SCD41-D-R2_C3659294.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C3659294",
+            "attribute_value_name": "-10℃~+60℃"
+          }
+        ]
       },
       "footprint": "LGA-20_L10.1-W10.1-P1.25-TL_SCD41-D-R2",
       "pads": [
@@ -2769,7 +2781,13 @@
         "componentSpecificationEn": "VSSOP-10",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_1809192322_Texas-Instruments-ADS1115IDGSR_C37593.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C37593",
+            "attribute_value_name": "-40℃~+125℃"
+          }
+        ]
       },
       "footprint": "MSOP-10_L3.0-W3.0-P0.50-LS5.0-BL",
       "pads": [
@@ -2844,7 +2862,13 @@
         "componentSpecificationEn": "SOIC-8",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Texas-Instruments-TLV9062IDR_C398355.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C398355",
+            "attribute_value_name": "-40℃~+125℃"
+          }
+        ]
       },
       "footprint": "SOIC-8_L5.0-W4.0-P1.27-LS6.0-BL",
       "pads": [
@@ -2907,7 +2931,13 @@
         "componentSpecificationEn": "WLP-4(0.8x0.8)",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_1912111437_MEMSIC-MMC5603NJ_C404328.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C404328",
+            "attribute_value_name": "-40℃~+85℃"
+          }
+        ]
       },
       "footprint": "FLIPCHIP-4_L0.8-W0.8-R2-C2-P0.40-TL",
       "pads": [
@@ -2946,7 +2976,13 @@
         "componentSpecificationEn": "SMD,P=2.54mm(Staggered pins)",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2411220032_hanxia-HX-PZ2-54-1x4P-TP-YQ_C41417361.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C41417361",
+            "attribute_value_name": "-40℃~+105℃"
+          }
+        ]
       },
       "footprint": "CONN-SMD_HX-PZ2.54-1X4P-TP-YQ",
       "pads": [
@@ -2978,39 +3014,6 @@
         "4": "4"
       }
     },
-    "C4184": {
-      "record": {
-        "componentModelEn": "0603WAF2002T5E",
-        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
-        "componentSpecificationEn": "0603",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010230_UNI-ROYAL-Uniroyal-Elec-0603WAF2002T5E_C4184.pdf",
-        "componentLibraryType": "base",
-        "attributes": [
-          {
-            "attribute_name_en": "Resistance",
-            "component_code": "C4184",
-            "attribute_value_name": "20kΩ"
-          }
-        ]
-      },
-      "footprint": "R0603",
-      "pads": [
-        [
-          "2",
-          0.7533639999999732,
-          -0.0
-        ],
-        [
-          "1",
-          -0.7533639999999732,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "2": "2",
-        "1": "1"
-      }
-    },
     "C4190": {
       "record": {
         "componentModelEn": "0603WAF2201T5E",
@@ -3023,6 +3026,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C4190",
             "attribute_value_name": "2.2kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C4190",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -3051,7 +3059,13 @@
         "componentSpecificationEn": "SMD,P=2.54mm(Staggered pins)",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2411121402_hanxia-HX-PM2-54-1x4P-TP-YQ_C42379197.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C42379197",
+            "attribute_value_name": "-40℃~+105℃"
+          }
+        ]
       },
       "footprint": "HDR-SMD_HX-PM2.54-1X4P-TP-YQ",
       "pads": [
@@ -3090,7 +3104,13 @@
         "componentSpecificationEn": "LQFP-64(10x10)",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_1912111437_STMicroelectronics-STM32G431RBT6_C431633.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C431633",
+            "attribute_value_name": "-40℃~+85℃"
+          }
+        ]
       },
       "footprint": "LQFP-64_L10.0-W10.0-P0.50-LS12.0-BL",
       "pads": [
@@ -3489,7 +3509,13 @@
         "componentSpecificationEn": "SOIC-8-EP",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_1810261107_Texas-Instruments-TPS54360DDAR_C44377.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C44377",
+            "attribute_value_name": "-40℃~+150℃@(TJ)"
+          }
+        ]
       },
       "footprint": "SOIC-8_L5.0-W4.0-P1.27-LS6.0-BL-EP2.0",
       "pads": [
@@ -3599,6 +3625,11 @@
         "componentLibraryType": "expand",
         "attributes": [
           {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C471473",
+            "attribute_value_name": "-25℃~+85℃"
+          },
+          {
             "attribute_name_en": "Voltage Rating",
             "component_code": "C471473",
             "attribute_value_name": "50V"
@@ -3666,7 +3697,13 @@
         "componentSpecificationEn": "Plugin,P=3.5mm",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Cixi-Kefa-Elec-KF250-3-5-4P-1_C475156.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C475156",
+            "attribute_value_name": "-40℃~+105℃"
+          }
+        ]
       },
       "footprint": "CONN-TH_4P-P3.50_KF250-3.5-4P-1",
       "pads": [
@@ -3710,6 +3747,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C48533685",
             "attribute_value_name": "680Ω"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C48533685",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -3738,7 +3780,13 @@
         "componentSpecificationEn": "SMD-6P,2x2mm",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2011051106_Lite-On-LTR-390UV-01_C492374.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C492374",
+            "attribute_value_name": "-40℃~+85℃"
+          }
+        ]
       },
       "footprint": "SENSOR-SMD_LTR-390UV-01",
       "pads": [
@@ -3789,7 +3837,13 @@
         "componentSpecificationEn": "2920",
         "dataManualUrl": null,
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C49318488",
+            "attribute_value_name": "-40℃~+85℃"
+          }
+        ]
       },
       "footprint": "F2920",
       "pads": [
@@ -3809,6 +3863,57 @@
         "2": "2"
       }
     },
+    "C51118": {
+      "record": {
+        "componentModelEn": "AP2112K-3.3TRG1",
+        "componentBrandEn": "Diodes Incorporated",
+        "componentSpecificationEn": "SOT-25-5",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Diodes-Incorporated-AP2112K-3-3TRG1_C51118.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C51118",
+            "attribute_value_name": "-40℃~+85℃@(Ta)"
+          }
+        ]
+      },
+      "footprint": "SOT-25-5_L2.9-W1.6-P0.95-LS2.8-BL",
+      "pads": [
+        [
+          "4",
+          0.9496805999999569,
+          1.2999719999999844
+        ],
+        [
+          "5",
+          -0.9497313999999442,
+          1.2999719999999844
+        ],
+        [
+          "1",
+          -0.9497313999999442,
+          -1.2999719999999844
+        ],
+        [
+          "2",
+          -0.0005334000000393644,
+          -1.2999719999999844
+        ],
+        [
+          "3",
+          0.9496805999999569,
+          -1.2999719999999844
+        ]
+      ],
+      "pin_names": {
+        "1": "VIN",
+        "2": "GND",
+        "3": "EN",
+        "4": "NC",
+        "5": "VOUT"
+      }
+    },
     "C5181477": {
       "record": {
         "componentModelEn": "3225 8M 20PF 10PPM",
@@ -3816,7 +3921,13 @@
         "componentSpecificationEn": "SMD3225-4P",
         "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2209271730_SST-3225-8M-20PF-10PPM_C5181477.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C5181477",
+            "attribute_value_name": "-40℃~+80℃"
+          }
+        ]
       },
       "footprint": "CRYSTAL-SMD_4P-L3.2-W2.5-BL",
       "pads": [
@@ -3882,7 +3993,13 @@
         "componentSpecificationEn": "SOT-23-3L",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Torex-Semicon-XC6206P332MR-G_C5446.pdf",
         "componentLibraryType": "base",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C5446",
+            "attribute_value_name": "-40℃~+85℃@(Ta)"
+          }
+        ]
       },
       "footprint": "SOT-23-3_L2.9-W1.6-P1.90-LS2.8-BR",
       "pads": [
@@ -3915,7 +4032,13 @@
         "componentSpecificationEn": "SOIC-8",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2011261733_onsemi-LM2903DR2G_C57474.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C57474",
+            "attribute_value_name": "-40℃~+105℃"
+          }
+        ]
       },
       "footprint": "SOIC-8_L4.9-W3.9-P1.27-LS6.0-BL",
       "pads": [
@@ -3971,155 +4094,6 @@
         "7": "OUTB"
       }
     },
-    "C64705": {
-      "record": {
-        "componentModelEn": "CL10B224KB8NNNC",
-        "componentBrandEn": "Samsung Electro-Mechanics",
-        "componentSpecificationEn": "0603",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Samsung-Electro-Mechanics-CL10B224KB8NNNC_C64705.pdf",
-        "componentLibraryType": "expand",
-        "attributes": [
-          {
-            "attribute_name_en": "Voltage Rating",
-            "component_code": "C64705",
-            "attribute_value_name": "50V"
-          },
-          {
-            "attribute_name_en": "Capacitance",
-            "component_code": "C64705",
-            "attribute_value_name": "220nF"
-          }
-        ]
-      },
-      "footprint": "C0603",
-      "pads": [
-        [
-          "2",
-          0.700023999999964,
-          -0.0
-        ],
-        [
-          "1",
-          -0.700023999999964,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "1": "1",
-        "2": "2"
-      }
-    },
-    "C6521": {
-      "record": {
-        "componentModelEn": "CD4052BM96",
-        "componentBrandEn": "Texas Instruments",
-        "componentSpecificationEn": "SOIC-16",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Texas-Instruments-CD4052BM96_C6521.pdf",
-        "componentLibraryType": "expand",
-        "attributes": []
-      },
-      "footprint": "SOIC-16_L9.9-W3.9-P1.27-LS6.0-BL",
-      "pads": [
-        [
-          "1",
-          -4.445,
-          -2.7355799999999952
-        ],
-        [
-          "2",
-          -3.175,
-          -2.7355799999999952
-        ],
-        [
-          "3",
-          -1.905,
-          -2.7355799999999952
-        ],
-        [
-          "4",
-          -0.635,
-          -2.7355799999999952
-        ],
-        [
-          "5",
-          0.635,
-          -2.7355799999999952
-        ],
-        [
-          "6",
-          1.905,
-          -2.7355799999999952
-        ],
-        [
-          "7",
-          3.175,
-          -2.7355799999999952
-        ],
-        [
-          "8",
-          4.445,
-          -2.7355799999999952
-        ],
-        [
-          "16",
-          -4.445,
-          2.7355799999999952
-        ],
-        [
-          "15",
-          -3.175,
-          2.7355799999999952
-        ],
-        [
-          "14",
-          -1.905,
-          2.7355799999999952
-        ],
-        [
-          "13",
-          -0.635,
-          2.7355799999999952
-        ],
-        [
-          "12",
-          0.635,
-          2.7355799999999952
-        ],
-        [
-          "11",
-          1.905,
-          2.7355799999999952
-        ],
-        [
-          "10",
-          3.175,
-          2.7355799999999952
-        ],
-        [
-          "9",
-          4.445,
-          2.7355799999999952
-        ]
-      ],
-      "pin_names": {
-        "1": "Y_CH_0_IN/OUT",
-        "2": "Y_CH_2_IN/OUT",
-        "3": "Y_COMOUT/IN",
-        "4": "Y_CH_3_IN/OUT",
-        "5": "Y_CH_1_IN/OUT",
-        "6": "INH",
-        "7": "VEE",
-        "8": "VSS",
-        "9": "B",
-        "10": "A",
-        "11": "X_CH_3_IN/OUT",
-        "12": "X_CH_0_IN/OUT",
-        "13": "X_COMIN/OUT",
-        "14": "X_CH_1_IN/OUT",
-        "15": "X_CH_2_IN/OUT",
-        "16": "VDD"
-      }
-    },
     "C7276687": {
       "record": {
         "componentModelEn": "RC2512FK-7W120RL",
@@ -4132,6 +4106,11 @@
             "attribute_name_en": "Resistance",
             "component_code": "C7276687",
             "attribute_value_name": "120Ω"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C7276687",
+            "attribute_value_name": "-55℃~+155℃"
           }
         ]
       },
@@ -4232,7 +4211,13 @@
         "componentSpecificationEn": "SOIC-8",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_MaxLinear-SP3485EN-L-TR_C8963.pdf",
         "componentLibraryType": "base",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C8963",
+            "attribute_value_name": "-40℃~+85℃"
+          }
+        ]
       },
       "footprint": "SOIC-8_L5.0-W4.0-P1.27-LS6.0-BL",
       "pads": [
@@ -4360,7 +4345,13 @@
         "componentSpecificationEn": "LGA-14(2.5x3)",
         "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2409291604_STMicroelectronics-LSM6DS3TR-C_C967633.pdf",
         "componentLibraryType": "expand",
-        "attributes": []
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C967633",
+            "attribute_value_name": "-40℃~+85℃"
+          }
+        ]
       },
       "footprint": "LGA-14_L3.0-W2.5-P0.50-TL",
       "pads": [

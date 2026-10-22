@@ -1,5 +1,6 @@
 """CadQuery BRep geometry, PCB clearance, and true thread-meshing verification."""
 
+import itertools
 import math
 import sys
 from pathlib import Path
@@ -113,7 +114,7 @@ def test_boards_clear_enclosure_and_threads_truly_mesh():
             assert pagoda.intersect(comp_box).val().Volume() < 1e-3, f"probe:{b['ref']} clashes with pagoda!"
 
     # 6. Dismountable Round 10-Core Cable + 12.0x3.0 mm JST-SH Plug Pass-Through Verification inside `probe_sleeve_back`:
-    jst_plug_gauge = be.box(-6.0, 6.0, 68.5 + ef.RAISE, 118.0 + ef.RAISE, -4.1, -1.1)
+    jst_plug_gauge = be.box(-6.0, 6.0, 68.5 + ef.RAISE, 118.0 + ef.RAISE, be.REAR_CABLE_Z[0] + 0.5, be.REAR_CABLE_Z[0] + 3.6)
     assert sleeve_back.intersect(jst_plug_gauge).val().Volume() < 1e-3
     assert sleeve_front.intersect(jst_plug_gauge).val().Volume() < 1e-3
     assert pagoda.intersect(jst_plug_gauge).val().Volume() < 1e-3
@@ -121,7 +122,7 @@ def test_boards_clear_enclosure_and_threads_truly_mesh():
     # 7. Crown Base 29.0-deg Inward-Looking (V-Beam) Ultrasonic Barrels, both transducer options:
     #    Ø 14 x 9 mm can straight in the Ø 14.6 mm bore, or Ø 10 x 7 mm can on the printed adapter sleeve.
     tilt_deg = ef.SPEC["envelope"]["wind_tunnel"].get("transducer_tilt_deg", 29.0)
-    adapters = be.build_transducer_adapters()
+    adapters = be.transducer_sleeves_in_barrels().translate((0, ef.UPPER, 0))
     fs, sl = be.XD_FACE_S, be.XD_SLEEVE
     for tp in ef.transducer_pockets():
         tx, tz = tp["x"], tp["z"]
@@ -326,10 +327,13 @@ def test_printed_strut_nuts_keep_a_wall_at_the_flats():
 
 
 def test_print_plates_keep_every_body_apart():
-    """Each part's print plate (`print/<part>.stl`) holds all its bodies (captive umbrella/button, louver plates, strut
-    halves, nuts, shims) on the bed, >= PLATE_GAP apart so none can fuse; no body is a sliver."""
-    for name, builder in be.ALL_PARTS:
-        solid = builder()
+    """Each print plate (`print/<plate>.stl`, parts grouped per PRINT_GROUPS) holds all bodies of its parts (captive
+    umbrella/button, louver plates, strut halves, nuts, shims, sleeves) on the bed, >= PLATE_GAP apart so none can
+    fuse; no body is a sliver; every part is on exactly one plate."""
+    names = [n for n, _ in be.print_plates()]
+    covered = [p for n in names for p in be.PRINT_GROUPS.get(n, (n,))]
+    assert sorted(covered) == sorted(n for n, _ in be.ALL_PARTS), "a part is missing from / duplicated on the plates"
+    for name, solid in be.print_plates():
         bodies = be.print_bodies(solid)
         plate = [s for v in be.print_plate(solid).vals() for s in v.Solids()]
         assert bodies and len(plate) == len(bodies), f"{name}: plate lost bodies"
@@ -365,3 +369,104 @@ def test_radiation_labyrinth_blocks_every_line_of_sight_to_the_probe():
                 if BRepExtrema_DistShapeShape(sec, ray).Value() > 1e-6:
                     leaks.append((az, elev, yt))
     assert not leaks, f"{len(leaks)} rays reach the probe core, e.g. (azimuth, elevation, y) {leaks[:5]}"
+
+
+def _cable_tube(points, od, bend_r, margin=0.3):
+    """Swept clearance tube of a round cable (od + margin) along a polyline filleted to bend_r, as a chain of short
+    capsules (robust where OCC pipe sweeps distort the profile)."""
+    import cadquery as cq
+
+    path = cq.Wire.makePolygon([cq.Vector(*p) for p in points]).fillet(bend_r)
+    n = max(2, int(path.Length() / 1.5))
+    samples = [path.positionAt(i / n) for i in range(n + 1)]
+    r = (od + margin) / 2
+    solids = []
+    for a, b in itertools.pairwise(samples):
+        d = b - a
+        solids += [cq.Solid.makeCylinder(r, d.Length, a, d.normalized()), cq.Solid.makeSphere(r, b)]
+    return cq.Workplane(obj=cq.Compound.makeCompound(solids)), path.Length()
+
+
+def test_crown_cable_and_probe_jumper_sweep_clear():
+    """Checklist M4 / T3: the 12-core crown cable (OD <= 3.2 mm, 10 mm bend radius) from main J2 up through the base
+    umbrella window, the probe_sleeve rear conduit, the pagoda / wind_tunnel gap, the NE strut channel and past the
+    crown PCB's NE chamfer to crown J1, and the 10-core probe jumper (main J3 -> probe J1 pocket), clear every
+    enclosure part and PCB. Path length must fit the BOM cable."""
+    u, r = ef.UPPER, ef.RAISE
+    st = next(s for s in ef.strut_centres() if s["deg"] == ef.SPEC["envelope"]["wind_tunnel"]["cable_conduit_strut_deg"])
+    sx, sz = st["x"], st["z"]
+    cz = sum(be.REAR_CABLE_Z) / 2   # rear conduit centre
+    crown = [(23, 62, 22), (23, 75, 22), (8, 80, 3), (0, 69 + r, cz), (0, 123.5 + r, cz), (17, 120 + u, 17),
+             (sx, 126 + u, sz), (sx, 180 + u, sz), (sx, 187.5 + u, sz), (14, 191 + u, 13)]
+    probe = [(24, 62, 16.5), (24, 70, 16.5), (6, 76, 3), (0, 66 + r, 2.8)]
+    parts = {n: b() for n, b in be.ALL_PARTS if n not in ("mast_shims", "mast_clamp")}
+    boards = _board_solids()
+    for name, pts, od, bend in (("crown cable", crown, 3.2, 10.0), ("probe jumper", probe, 3.0, 8.0)):
+        tube, length = _cable_tube(pts, od, bend)
+        for pname, solid in list(parts.items()) + [(f"board {b}", s) for b, s in boards.items()]:
+            v = solid.intersect(tube).val().Volume()
+            assert v < 0.05, f"{name} hits {pname} ({v:.2f} mm3)"
+        if name == "crown cable":
+            bom = next(i["cable_length_mm"] for i in ef.SPEC["boards"]["interconnects"]
+                       if {i["from"], i["to"]} == {"main", "crown"})
+            assert length + 20.0 <= bom, f"crown cable path {length:.0f} mm + 20 mm plugs / slack > BOM {bom} mm"
+
+
+MIN_WALL_MM = 0.75   # MJF / SLS PA12 printable wall (checklist T5); O-rings are bought or TPU-printed separately
+
+
+def _face_thickness(shape, face):
+    """Median material thickness behind a planar / cylindrical / conical face: rays cast inward (against the face
+    normal) from a 3 x 3 grid of interior points to the next boundary. Medians ignore wedge tips and knife edges;
+    helical thread faces (B-splines) are skipped."""
+    from OCP.BRepAdaptor import BRepAdaptor_Surface
+    from OCP.BRepClass import BRepClass_FaceClassifier
+    from OCP.BRepGProp import BRepGProp_Face
+    from OCP.BRepIntCurveSurface import BRepIntCurveSurface_Inter
+    from OCP.GeomAbs import GeomAbs_Cone, GeomAbs_Cylinder, GeomAbs_Plane
+    from OCP.gp import gp_Dir, gp_Lin, gp_Pnt, gp_Pnt2d, gp_Vec
+    from OCP.TopAbs import TopAbs_IN
+
+    ad = BRepAdaptor_Surface(face.wrapped)
+    if ad.GetType() not in (GeomAbs_Plane, GeomAbs_Cylinder, GeomAbs_Cone) or face.Area() < 1.0:
+        return None, None
+    u0, u1, v0, v1 = ad.FirstUParameter(), ad.LastUParameter(), ad.FirstVParameter(), ad.LastVParameter()
+    vals, where = [], None
+    for fu in (0.25, 0.5, 0.75):
+        for fv in (0.25, 0.5, 0.75):
+            u, v = u0 + fu * (u1 - u0), v0 + fv * (v1 - v0)
+            if BRepClass_FaceClassifier(face.wrapped, gp_Pnt2d(u, v), 1e-6).State() != TopAbs_IN:
+                continue
+            p, n = gp_Pnt(), gp_Vec()
+            BRepGProp_Face(face.wrapped).Normal(u, v, p, n)
+            if n.Magnitude() < 1e-9:
+                continue
+            d = gp_Dir(-n.X(), -n.Y(), -n.Z())
+            it = BRepIntCurveSurface_Inter()
+            it.Init(shape, gp_Lin(gp_Pnt(p.X() + d.X() * 1e-3, p.Y() + d.Y() * 1e-3, p.Z() + d.Z() * 1e-3), d), 1e-6)
+            best = None
+            while it.More():
+                if it.W() > 1e-4 and (best is None or it.W() < best):
+                    best = it.W()
+                it.Next()
+            if best is not None:
+                vals.append(best + 1e-3)
+                where = (round(p.X(), 1), round(p.Y(), 1), round(p.Z(), 1))
+    if len(vals) < 3:
+        return None, None
+    return sorted(vals)[len(vals) // 2], where
+
+
+def test_printed_walls_are_at_least_the_process_minimum():
+    """Checklist T5: no printed wall thinner than MIN_WALL_MM on any print plate (louvers, grille bars, strut
+    tongue / groove, sleeve conduit walls, piezo rims, clips...)."""
+    thin = []
+    for plate, solid in be.print_plates():
+        if plate == "orings":
+            continue
+        for i, body in enumerate(be.print_bodies(solid)):
+            for face in body.Faces():
+                t, where = _face_thickness(body.wrapped, face)
+                if t is not None and t < MIN_WALL_MM:
+                    thin.append((plate, i, round(t, 2), where))
+    assert not thin, f"{len(thin)} faces back walls < {MIN_WALL_MM} mm, e.g. {thin[:6]}"

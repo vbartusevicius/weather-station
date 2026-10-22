@@ -20,7 +20,7 @@
 
 namespace {
 
-constexpr crown::FirmwareVersion kVersion{0, 1, 0};
+constexpr crown::FirmwareVersion kVersion{0, 2, 0};   // 0.2: protocol v2 (status CRC, burst pause)
 constexpr std::size_t kEchoN = 1400;          // 0.7 ms at 2 MSPS (latest arrival: 60 m/s head wind at -40 C)
 constexpr float kFs = 2.0e6F;
 constexpr std::uint32_t kTimerHz = 170000000U;

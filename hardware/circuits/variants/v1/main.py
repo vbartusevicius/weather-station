@@ -1,6 +1,7 @@
 """V1 main board (32.0 x 52.0 mm, 4 layers, 1.2 mm, horizontal in the lower bay):
   - J1: KF250-3.5-4P push-in roof terminal (12-32 V + RS-485) + 60 V PTC + SMAJ36A TVS + SS16 Schottky + 100 V MLCC
-  - J5: 8-pin JST-SH to the `power` board (VIN_PROT out, +5V / +12V_HEAT in from two TPS54360 bucks)
+  - J5: 10-pin JST-SH to the `power` board (VIN_PROT out, +5V / +12V_HEAT from two TPS54360 bucks, +3V3_PROBE from
+    its LDO straight through to the probe connector J3)
   - Q1: AO3400A low-side PWM de-icing heater MOSFET switch + SS16 flyback diode
   - U2, U3: LM66100 ideal diode + Seeed XIAO ESP32-C6 on 5 mm female headers + SW1 service button
   - U7/D4: SP3485 RS-485 (UART1 TX / RX + RTS-driven DE), 390R fail-safe bias, SM712 surge TVS, optional 120R (R26)
@@ -24,7 +25,8 @@ CROWN_LINK = ("+12V_HEAT", "+12V_HEAT", "GND", "GND", "+5V", "GND", "I2C_SDA", "
 # Both heaters run from +12V_HEAT (12 V regulated, never the raw 12-32 V input): 2 contacts each for +12V_HEAT and
 # HEAT_SW (reflector heater 0.4 A), the probe heater (35 mA) returns over CO2_HEAT_RTN to the main-board shunt, and
 # logic GND needs only one contact (heater currents return over HEAT_SW / CO2_HEAT_RTN).
-PROBE_LINK = ("+12V_HEAT", "+12V_HEAT", "HEAT_SW", "HEAT_SW", "GND", "NTC_SENSE", "+3V3", "CO2_HEAT_RTN", "I2C_SDA", "I2C_SCL")
+# The probe sensors run from the dedicated +3V3_PROBE LDO on the power board (not the XIAO 3V3 regulator).
+PROBE_LINK = ("+12V_HEAT", "+12V_HEAT", "HEAT_SW", "HEAT_SW", "GND", "NTC_SENSE", "+3V3_PROBE", "CO2_HEAT_RTN", "I2C_SDA", "I2C_SCL")
 
 
 def jst_sh12(value, ref, source):
@@ -63,7 +65,7 @@ def build():
     nets = {
         "GND": gnd, "+3V3": v3, "+5V": v5, "+12V_HEAT": pwr["heat5"],
         "VIN_PROT": vin_prot, "HEAT_SW": heat_sw, "CO2_HEAT_RTN": co2_heat_rtn,
-        "NTC_SENSE": ntc_sense,
+        "NTC_SENSE": ntc_sense, "+3V3_PROBE": Net("+3V3_PROBE"),
         "I2C_SDA": sda, "I2C_SCL": scl,
         "CROWN_IRQ": mcu["crown_irq"], "CROWN_NRST": mcu["crown_nrst"], "CROWN_BOOT0": mcu["crown_boot0"],
     }
@@ -72,17 +74,15 @@ def build():
     block("int_probe")
     wire(jst_sh10("Probe board", "J3", "10-pin JST-SH cable to pagoda probe board J1"), PROBE_LINK, nets)
     block("int_power")
-    from variants.v1.power import JST_SH8, POWER_LINK
-    j5 = part("Connector", "Conn_01x08_Pin", "Power board", JST_SH8,
-              src(mpn="BM08B-SRSS-TB(LF)(SN)", mfr="JST", lcsc="C160394",
-                  source="8-pin JST-SH power cable from the power board J1 (VIN_PROT out, +5V / +12V_HEAT in)"),
-              ref="J5")
+    from variants.v1.power import POWER_LINK
+    j5 = jst_sh10("Power board", "J5",
+                  "10-pin JST-SH power cable from the power board J1 (VIN_PROT out, +5V / +12V_HEAT / +3V3_PROBE in)")
     wire(j5, POWER_LINK, nets)
 
 
 NET_CLASSES = {
     "SELV-MAIN": [
-        "GND", "+3V3", "+5V", "+5V_XIAO", "VIN_ADC", "NTC_SENSE",
+        "GND", "+3V3", "+3V3_PROBE", "+5V", "+5V_XIAO", "VIN_ADC", "NTC_SENSE",
         "HEAT_PWM", "HEAT_GATE", "I2C_SDA", "I2C_SCL", "CROWN_IRQ", "CROWN_NRST", "CROWN_BOOT0",
         "RS485_TX", "RS485_RX", "RS485_DE", "RS485_A", "RS485_B",
         "+12V_HEAT", "HEAT_SENSE", "CO2_HEAT_RTN", "MON_REFL", "MON_PROBE", "MON_5V", "MON_5V_LOGIC", "Net-*",

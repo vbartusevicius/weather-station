@@ -516,6 +516,10 @@
       },
       {
         "netclass": "POWER-Power",
+        "pattern": "+3V3_PROBE"
+      },
+      {
+        "netclass": "POWER-Power",
         "pattern": "+5V"
       },
       {

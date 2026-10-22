@@ -516,7 +516,7 @@
       },
       {
         "netclass": "PROBE-Power",
-        "pattern": "+3V3"
+        "pattern": "+3V3_PROBE"
       },
       {
         "netclass": "SELV-PROBE",

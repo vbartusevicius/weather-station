@@ -28,17 +28,20 @@ a closed cardboard box that fits over the upper station (still-air hood), a refe
 | `+12V_HEAT` regulated | 24 V input → `heater.rail_heat_v` | 11.7–12.3 V |
 | `+12V_HEAT` pass-through | 12.0 V input → `rail_heat_v` | 10.3–11.2 V (input − ≈ 1 V) and no buck whine / ripple > 0.3 V on a scope |
 | Heater check | action `heater_check` → `heater.reflector_status` | `check-pass` (2 W pulse, 41.7 % duty at 12 V) |
+| `+3V3` (XIAO) and `+3V3_PROBE` (power-board LDO) | scope both at main J5 / J3 pin 7 while Wi-Fi transmits and the SCD41 measures (every 5 s) | each 3.2–3.4 V, dips < 100 mV |
 | Reverse polarity | swap VIN/GND at J1 briefly | nothing happens, station recovers |
 
 ## 2. Crown firmware and link
 
-1. Flash the crown once over SWD (pads TP1 3V3, TP2 SWDIO, TP3 SWCLK, TP4 NRST, TP5 GND):
-   `docker compose --profile lint run --rm -T cpp-lint "pio run -d crown -e crown"` then program
-   `crown/.pio/build/crown/firmware.bin` at `0x08000000` with STM32CubeProgrammer / `st-flash`.
+1. First flash (a factory-blank STM32 is fine: its ROM I²C bootloader is always present). Build the image with
+   `docker compose --profile lint run --rm -T cpp-lint "pio run -d crown -e crown"`, then let the station flash it:
+   `curl -s -X POST --data-binary @crown/.pio/build/crown/firmware.bin $S/api/crown/firmware` (the ESP32 raises
+   BOOT0, resets the crown into the ROM bootloader, erases, writes and verifies). SWD is only needed for debugging or
+   if that fails: Tag-Connect TC2030-CTX-NL cable on `J12` (crown bottom, label `SWD`; 1 VCC, 2 SWDIO, 3 NRST,
+   4 SWCLK, 5 GND) + ST-Link, program `firmware.bin` at `0x08000000` with STM32CubeProgrammer / `st-flash`.
 2. `/api/config` → `crown.present = true`, `crown.diag_ok = true`, `crown.bursts_per_s ≈ 16`, `crown.i2c_errors` not
    increasing.
-3. Field-update path (once per design, confirms checklist Q2): `curl -s -X POST --data-binary
-   @crown/.pio/build/crown/firmware.bin $S/api/crown/firmware` → `{"ok":true,...,"crown_present":true}`. If it reports
+3. Step 1's flash confirms checklist Q2 (`{"ok":true,...,"crown_present":true}`). If it reports
    `NoBootloader`, the STM32 ROM did not answer at 0x52 or 0x56: check BOOT0 (main GPIO2) with a scope during the
    reset pulse and note the address that works.
 4. AS3935 antenna: `crown.as3935_lco_hz` within 482 500–517 500 Hz (500 kHz ± 3.5 %) and `crown.as3935_tun_cap`

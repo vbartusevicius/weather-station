@@ -46,7 +46,7 @@ FP_AS3935 = "gateway_fp:ScioSense_AS3935_QFN-16"
 FP_SOT23 = "Package_TO_SOT_SMD:SOT-23"
 FP_XTAL = "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm"
 L_MA5532 = "RF_Antenna:Coilcraft_MA5532-AE_RFID"
-TP_PAD = "TestPoint:TestPoint_Pad_D1.0mm"
+TC2030 = "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical"
 
 AXES = ("N", "E", "S", "W")
 # STM32G431RBT6 LQFP-64 pin -> net name (None = unused, left unconnected). Pin functions per DS12589 / KiCad symbol.
@@ -168,12 +168,15 @@ def build(nets):
     y1[4] += gnd
     two(cap("33p C0G 50V", "HSE load capacitor (2 x (CL 20 pF - 5 pF stray))", "C11"), n["XTAL_IN"], gnd)
     two(cap("33p C0G 50V", "HSE load capacitor", "C12"), n["XTAL_OUT"], gnd)
-    # SWD programming / debug pads (bench recovery; field updates go through the ROM I2C bootloader)
-    for ref, net, what in (("TP1", "+3V3", "3V3"), ("TP2", "SWDIO", "SWDIO"), ("TP3", "SWCLK", "SWCLK"),
-                           ("TP4", "CROWN_NRST", "NRST"), ("TP5", "GND", "GND")):
-        tp = part("Connector", "TestPoint", what, TP_PAD,
-                  src(source=f"SWD programming pad ({what})", board_only=True), ref=ref)
-        tp[1] += n[net]
+    # SWD debug port J12: Tag-Connect TC2030-NL footprint (copper pads + 3 alignment holes, nothing to buy or place;
+    # mates with the TC2030-CTX-NL cable on an ST-Link / J-Link, ARM 10-pin adapter). Standard TC2030 Cortex pinout:
+    # 1 VCC (target sense), 2 SWDIO, 3 NRST, 4 SWCLK, 5 GND, 6 SWO (not used: PB3 is the AS3935 SPI clock).
+    # Production does NOT need it: a blank STM32 is flashed by the station over I2C (BOOT0 + ROM bootloader).
+    swd = part("Connector_Generic", "Conn_02x03_Odd_Even", "SWD", TC2030,
+               src(source="SWD debug port, Tag-Connect TC2030-NL footprint (board-only)", board_only=True), ref="J12")
+    for pin, net in ((1, "+3V3"), (2, "SWDIO"), (3, "CROWN_NRST"), (4, "SWCLK"), (5, "GND")):
+        swd[pin] += n[net]
+    swd[6] += NC
 
     # ---------------------------------------------------------------- ultrasonic TX (H-bridge per transducer)
     block("us_tx")

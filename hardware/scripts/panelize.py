@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import itertools
 import json
 import re
 import shutil
@@ -18,9 +19,8 @@ TAB_H = 3.2
 HOLE_DIA = 0.5
 HOLE_Y_OFFS = (-0.9, -0.3, 0.3, 0.9)
 
-# Boards ordered on their own instead of in the panel: the 60 x 60 mm notched crown v2 outline does not fit the
-# rectangular row layout below (its per-board release has Gerbers, BOM and CPL).
-SEPARATE_BOARDS = ("crown",)
+# Boards ordered on their own instead of in the panel (none: all six pack into one panel, see pack_columns).
+SEPARATE_BOARDS: tuple[str, ...] = ()
 
 BOARD_REF_OFFSET = {
     "main": 0,
@@ -83,28 +83,211 @@ def add_mouse_bite_holes(pcb: pcbnew.BOARD, coords: list[tuple[float, float]]) -
     pcb.Add(fp)
 
 
-def is_vertical_edge_at_x(drw: pcbnew.BOARD_ITEM, x_target: float, y_min: float = -1e6, y_max: float = 1e6) -> bool:
-    if drw.GetLayer() != pcbnew.Edge_Cuts or not isinstance(drw, pcbnew.PCB_SHAPE):
-        return False
-    if drw.GetShape() != pcbnew.SHAPE_T_SEGMENT:
-        return False
-    sx = pcbnew.ToMM(drw.GetStart().x)
-    ex = pcbnew.ToMM(drw.GetEnd().x)
-    sy = pcbnew.ToMM(drw.GetStart().y)
-    ey = pcbnew.ToMM(drw.GetEnd().y)
-    return abs(sx - x_target) < 0.08 and abs(ex - x_target) < 0.08 and min(sy, ey) >= y_min - 0.2 and max(sy, ey) <= y_max + 0.2
+def edge_segments(pcb: pcbnew.BOARD, horizontal: bool, coord: float, lo: float, hi: float) -> list:
+    """Edge.Cuts line segments lying on y = coord (horizontal) or x = coord, overlapping [lo, hi]: (item, a, b)."""
+    out = []
+    for d in pcb.GetDrawings():
+        if d.GetLayer() != pcbnew.Edge_Cuts or not isinstance(d, pcbnew.PCB_SHAPE) or d.GetShape() != pcbnew.SHAPE_T_SEGMENT:
+            continue
+        sx, sy = pcbnew.ToMM(d.GetStart().x), pcbnew.ToMM(d.GetStart().y)
+        ex, ey = pcbnew.ToMM(d.GetEnd().x), pcbnew.ToMM(d.GetEnd().y)
+        if horizontal and abs(sy - coord) < 0.08 and abs(ey - coord) < 0.08:
+            a, b = sorted((sx, ex))
+        elif not horizontal and abs(sx - coord) < 0.08 and abs(ex - coord) < 0.08:
+            a, b = sorted((sy, ey))
+        else:
+            continue
+        if b > lo - 0.2 and a < hi + 0.2:
+            out.append((d, round(a, 4), round(b, 4)))
+    return out
 
 
-def is_horizontal_edge_at_y(drw: pcbnew.BOARD_ITEM, y_target: float, x_min: float, x_max: float) -> bool:
-    if drw.GetLayer() != pcbnew.Edge_Cuts or not isinstance(drw, pcbnew.PCB_SHAPE):
-        return False
-    if drw.GetShape() != pcbnew.SHAPE_T_SEGMENT:
-        return False
-    sy = pcbnew.ToMM(drw.GetStart().y)
-    ey = pcbnew.ToMM(drw.GetEnd().y)
-    sx = pcbnew.ToMM(drw.GetStart().x)
-    ex = pcbnew.ToMM(drw.GetEnd().x)
-    return abs(sy - y_target) < 0.08 and abs(ey - y_target) < 0.08 and min(sx, ex) >= x_min - 0.2 and max(sx, ex) <= x_max + 0.2
+def cut_edge(pcb: pcbnew.BOARD, horizontal: bool, coord: float, centre: float, hw: float) -> bool:
+    """Open a TAB_H gap at `centre` in the edge segment covering it (with 0.3 mm margin); False if none does."""
+    for d, a, b in edge_segments(pcb, horizontal, coord, centre - hw, centre + hw):
+        if a <= centre - hw - 0.3 and b >= centre + hw + 0.3:
+            pcb.Delete(d)
+            if horizontal:
+                add_edge_line(pcb, a, coord, centre - hw, coord)
+                add_edge_line(pcb, centre + hw, coord, b, coord)
+            else:
+                add_edge_line(pcb, coord, a, coord, centre - hw)
+                add_edge_line(pcb, coord, centre + hw, coord, b)
+            return True
+    return False
+
+
+def part_boxes(pcb: pcbnew.BOARD) -> list[tuple[float, float, float, float]]:
+    """Part extents (x0, y0, x1, y1) in mm from the pads (+0.3 mm body overhang), panel helpers excluded."""
+    out = []
+    for fp in pcb.GetFootprints():
+        if fp.GetReference() in ("MOUSE_BITES", "TOOLING") or fp.GetReference().startswith("FID"):
+            continue
+        pads = list(fp.Pads())
+        if not pads:
+            continue
+        bbs = [p.GetBoundingBox() for p in pads]   # copper extent + 0.3 mm for the part body overhang
+        out.append((min(pcbnew.ToMM(b.GetLeft()) for b in bbs) - 0.3, min(pcbnew.ToMM(b.GetTop()) for b in bbs) - 0.3,
+                    max(pcbnew.ToMM(b.GetRight()) for b in bbs) + 0.3, max(pcbnew.ToMM(b.GetBottom()) for b in bbs) + 0.3))
+    return out
+
+
+def tab_clearance(boxes, horizontal: bool, coord: float, centre: float, margin: float = 1.0) -> float:
+    """Distance from a tab (its TAB_H mouth on an edge at `coord`) to the nearest part, 0 if within `margin`."""
+    hw = TAB_H / 2
+    if horizontal:   # tab mouth along x at y = coord
+        mx0, mx1, my0, my1 = centre - hw, centre + hw, coord, coord
+    else:
+        mx0, mx1, my0, my1 = coord, coord, centre - hw, centre + hw
+    best = 1e9
+    for x0, y0, x1, y1 in boxes:
+        dx = max(x0 - mx1, mx0 - x1, 0.0)
+        dy = max(y0 - my1, my0 - y1, 0.0)
+        best = min(best, (dx * dx + dy * dy) ** 0.5)
+    return 0.0 if best < margin else best
+
+
+def pick_tabs(boxes, horizontal: bool, coords: tuple[float, ...], a: float, b: float, n: int) -> list[float]:
+    """Up to n tab centres in [a, b] whose mouths on every edge in `coords` are clear of parts, spread apart."""
+    step = 0.25
+    cands = [a + i * step for i in range(int((b - a) / step) + 1)]
+    ok = [c for c in cands if all(tab_clearance(boxes, horizontal, k, c) > 0.0 for k in coords)]
+    if not ok:
+        return []
+    if n == 1 or len(ok) == 1:
+        return [round(min(ok, key=lambda c: abs(c - (a + b) / 2.0)), 4)]
+    picks = [round(min(ok, key=lambda c: abs(c - (a + 0.2 * (b - a)))), 4),
+             round(min(ok, key=lambda c: abs(c - (a + 0.8 * (b - a)))), 4)]
+    return picks if picks[1] - picks[0] >= TAB_H + 2.0 else picks[:1]
+
+
+def bridge(pcb: pcbnew.BOARD, horizontal: bool, c: float, a: float, b: float, mb: list) -> None:
+    """Mouse-bite tab of width TAB_H centred at `c` across the gap between two facing straight edges at a and b
+    (horizontal edges at y = a / y = b, or vertical edges at x = a / x = b), with 4 breakaway holes on each side."""
+    hw = TAB_H / 2
+    if not (cut_edge(pcb, horizontal, a, c, hw) and cut_edge(pcb, horizontal, b, c, hw)):
+        raise RuntimeError(f"tab at {c:.2f} does not land on both edges ({a:.2f}, {b:.2f})")
+    s = 1.0 if b > a else -1.0
+    for side in (-hw, hw):
+        if horizontal:
+            add_edge_line(pcb, c + side, a, c + side, b)
+        else:
+            add_edge_line(pcb, a, c + side, b, c + side)
+    for d in HOLE_Y_OFFS:
+        mb += [(c + d, a + s * 0.15), (c + d, b - s * 0.15)] if horizontal else \
+              [(a + s * 0.15, c + d), (b - s * 0.15, c + d)]
+
+
+def pack_columns(sizes: dict[str, tuple[float, float]]) -> dict[str, tuple[float, float, bool]]:
+    """Smallest-area column packing of the boards: every 0 / 90 deg rotation combination, panel heights from the
+    tallest board's short side up, first-fit-decreasing into columns of that height (SLOT_W gaps).
+    Returns name -> (x0, y0, rotated)."""
+    names = list(sizes)
+    hi = sum(max(w, h) for w, h in sizes.values())
+    best = None
+    for bits in range(2 ** len(names)):
+        dims = {n: (sizes[n][1], sizes[n][0]) if bits >> i & 1 else sizes[n] for i, n in enumerate(names)}
+        tallest = max(h for _w, h in dims.values())
+        for step in range(int((min(hi, tallest + 40.0) - tallest) / 0.1) + 1):
+            height = round(tallest + 0.1 * step, 1)
+            cols: list[list] = []   # [width, used height, [names]]
+            for n in sorted(names, key=lambda n: (-dims[n][1], -dims[n][0])):
+                w, h = dims[n]
+                col = next((c for c in cols if c[1] + SLOT_W + h <= height + 1e-6), None)
+                if col:
+                    col[0], col[1] = max(col[0], w), col[1] + SLOT_W + h
+                    col[2].append(n)
+                else:
+                    cols.append([w, h, [n]])
+            width = sum(c[0] for c in cols) + SLOT_W * (len(cols) - 1)
+            used = max(c[1] for c in cols)
+            area = width * used
+            if best is None or area < best[0] - 1e-6:
+                best = (area, cols, dims, bits)
+    _area, cols, dims, bits = best
+    return [(w, members) for w, _used, members in cols], {n: bool(bits >> names.index(n) & 1) for n in names}
+
+
+def place_columns(cols, dims) -> dict[str, tuple[float, float, float, float]]:
+    """Column structure -> board rectangles (x0, y0, x1, y1), columns left to right, boards stacked top down."""
+    out, x = {}, 0.0
+    for width, members in cols:
+        y = 0.0
+        for n in members:
+            w, h = dims[n]
+            out[n] = (round(x, 4), round(y, 4), round(x + w, 4), round(y + h, 4))
+            y += h + SLOT_W
+        x += width + SLOT_W
+    return out
+
+
+def board_geometry(brd: pcbnew.BOARD):
+    """Straight outline segments and part boxes of a loaded board, relative to its outline's top-left corner."""
+    x0, y0, _w, _h = board_edge_bounds(brd)
+    segs = []
+    for d in brd.GetDrawings():
+        if d.GetLayer() != pcbnew.Edge_Cuts or not isinstance(d, pcbnew.PCB_SHAPE) or d.GetShape() != pcbnew.SHAPE_T_SEGMENT:
+            continue
+        sx, sy = pcbnew.ToMM(d.GetStart().x) - x0, pcbnew.ToMM(d.GetStart().y) - y0
+        ex, ey = pcbnew.ToMM(d.GetEnd().x) - x0, pcbnew.ToMM(d.GetEnd().y) - y0
+        if abs(sy - ey) < 0.05:
+            segs.append((True, sy, min(sx, ex), max(sx, ex)))
+        elif abs(sx - ex) < 0.05:
+            segs.append((False, sx, min(sy, ey), max(sy, ey)))
+    boxes = [(bx0 - x0, by0 - y0, bx1 - x0, by1 - y0) for bx0, by0, bx1, by1 in part_boxes(brd)]
+    return segs, boxes
+
+
+def flip_geometry(g, dims):
+    """Board geometry (segments, part boxes) turned 180 deg inside its w x h outline box."""
+    w, h = dims
+    segs = [(hz, (h if hz else w) - c, (w if hz else h) - b, (w if hz else h) - a) for hz, c, a, b in g[0]]
+    boxes = [(w - x1, h - y1, w - x0, h - y0) for x0, y0, x1, y1 in g[1]]
+    return segs, boxes
+
+
+def tab_plan(rects, geo) -> tuple[list, list[str]]:
+    """Tabs for a board arrangement: (horizontal, centre, edge a, edge b, board a, board b) for every facing pair
+    of straight edges with part-free tab positions, and the boards left loose."""
+    boxes = [(bx0 + r[0], by0 + r[1], bx1 + r[0], by1 + r[1])
+             for n, r in rects.items() for bx0, by0, bx1, by1 in geo[n][1]]
+
+    def segs(n, horizontal, coord):
+        r = rects[n]
+        off_c, off_s = (r[1], r[0]) if horizontal else (r[0], r[1])
+        return [(a + off_s, b + off_s) for h, c, a, b in geo[n][0] if h == horizontal and abs(c + off_c - coord) < 0.08]
+
+    parent = {n: n for n in rects}
+
+    def root(n):
+        while parent[n] != n:
+            n = parent[n]
+        return n
+
+    tabs = []
+    for a, (ax0, ay0, ax1, ay1) in rects.items():
+        for b, (bx0, by0, bx1, by1) in rects.items():
+            if a == b:
+                continue
+            if 0.0 < bx0 - ax1 <= 6.0 and min(ay1, by1) - max(ay0, by0) > TAB_H:     # b right of a
+                horizontal, ea, eb, lo, hi = False, ax1, bx0, max(ay0, by0), min(ay1, by1)
+            elif 0.0 < by0 - ay1 <= 6.0 and min(ax1, bx1) - max(ax0, bx0) > TAB_H:   # b below a
+                horizontal, ea, eb, lo, hi = True, ay1, by0, max(ax0, bx0), min(ax1, bx1)
+            else:
+                continue
+            spans = [(max(a1, a2, lo) + TAB_H / 2 + 0.5, min(b1, b2, hi) - TAB_H / 2 - 0.5)
+                     for a1, b1 in segs(a, horizontal, ea) for a2, b2 in segs(b, horizontal, eb)]
+            spans = sorted(((s0, s1) for s0, s1 in spans if s1 >= s0), key=lambda s: s[0] - s[1])
+            placed = []
+            for s0, s1 in spans:
+                for c in pick_tabs(boxes, horizontal, (ea, eb), s0, s1, 2 if s1 - s0 > 20.0 else 1):
+                    if len(placed) < 2 and all(abs(c - q) > TAB_H + 2.0 for q in placed):
+                        tabs.append((horizontal, c, ea, eb, a, b))
+                        placed.append(c)
+            if placed:
+                parent[root(a)] = root(b)
+    first = next(iter(rects))
+    return tabs, sorted(n for n in rects if root(n) != root(first))
 
 
 def rotate_board_deg(brd: pcbnew.BOARD, deg: float) -> None:
@@ -142,261 +325,105 @@ def build_panel(
     shutil.rmtree(panel_dir, ignore_errors=True)
     panel_dir.mkdir(parents=True)
 
+    sizes = {}
+    for bname in boards:
+        _x0, _y0, w, h = board_edge_bounds(pcbnew.LoadBoard(str(REPO / "hardware/layout" / variant / bname / f"{bname}.kicad_pcb")))
+        sizes[bname] = (w, h)
+    cols, rotated = pack_columns(sizes)
+
     loaded: dict[str, tuple[pcbnew.BOARD, float, float, float, float]] = {}
     for bname in boards:
-        bpath = REPO / "hardware/layout" / variant / bname / f"{bname}.kicad_pcb"
-        brd = pcbnew.LoadBoard(str(bpath))
-        if bname == "probe":
-            # Rotate probe 90 deg so it is 50.0 x 14.0 mm and nests horizontally above crown!
+        brd = pcbnew.LoadBoard(str(REPO / "hardware/layout" / variant / bname / f"{bname}.kicad_pcb"))
+        if rotated[bname]:
             rotate_board_deg(brd, -90.0)
-        x0, y0, w, h = board_edge_bounds(brd)
-        loaded[bname] = (brd, x0, y0, w, h)
+        loaded[bname] = (brd, *board_edge_bounds(brd))
+    dims = {n: (v[3], v[4]) for n, v in loaded.items()}
+    geo = {n: board_geometry(v[0]) for n, v in loaded.items()}
+    # neither the column order nor the order inside a column changes the area: take the arrangement whose tabs
+    # hold every board (parts sit too close to some board edges for mouse-bites), then the most boards with >= 2
+    best = None
+    variants = [list(itertools.permutations(members)) for _w, members in cols]
+    for stacks in itertools.product(*variants):
+        for order in itertools.permutations(zip((w for w, _m in cols), stacks)):
+            rects = place_columns(order, dims)
+            tabs, loose = tab_plan(rects, geo)
+            per_board = {n: sum(n in (tb[4], tb[5]) for tb in tabs) for n in rects}
+            score = (-len(loose), min(per_board.values()), sum(v >= 2 for v in per_board.values()), len(tabs))
+            if best is None or score > best[0]:
+                best = (score, rects, tabs, loose)
+    # then try each board turned 180 deg (other edges face the neighbours: parts sit close to some edges)
+    flipped = set()
+    for n in list(geo):
+        trial = dict(geo)
+        trial[n] = flip_geometry(geo[n], dims[n])
+        tabs, loose = tab_plan(best[1], trial)
+        per_board = {m: sum(m in (tb[4], tb[5]) for tb in tabs) for m in best[1]}
+        score = (-len(loose), min(per_board.values()), sum(v >= 2 for v in per_board.values()), len(tabs))
+        if score > best[0]:
+            geo, best = trial, (score, best[1], tabs, loose)
+            flipped ^= {n}
+    for n in flipped:
+        rotate_board_deg(loaded[n][0], 180.0)
+        loaded[n] = (loaded[n][0], *board_edge_bounds(loaded[n][0]))
+    _score, rects, tabs, loose = best
+    if loose:
+        raise RuntimeError(f"no column order holds every board with part-free tabs: {loose} loose")
+    layout = {n: (r[0], r[1], rotated[n]) for n, r in rects.items()}
 
     base_name = boards[0]
     base_path = REPO / "hardware/layout" / variant / base_name / f"{base_name}.kicad_pcb"
     for suffix in (".kicad_pro", ".kicad_dru"):
         shutil.copy(base_path.with_suffix(suffix), panel_dir / f"panel{suffix}")
+    panel = loaded[base_name][0]
 
-    panel, x0_0, y0_0, w0, h0 = loaded[base_name]
-    placements: list[tuple[str, float, float, float, float, float, float]] = [
-        (base_name, 0.0, 0.0, x0_0, y0_0, w0, h0)
-    ]
-    cur_right = x0_0 + w0
-
+    placements: list[tuple[str, float, float, float, float, float, float]] = []
     combined_parts: list[dict] = []
-    for p in json.loads((REPO / "hardware/build" / variant / base_name / "parts.json").read_text()):
-        cp = dict(p)
-        cp["ref"] = offset_ref(base_name, p["ref"])
-        combined_parts.append(cp)
-
-    for bname in boards[1:]:
-        net_prefix = f"{bname.upper()}_"
+    for bname in boards:
         src, bx0, by0, bw, bh = loaded[bname]
-
-        if bname == "dome" and any(p[0] == "reflector" for p in placements):
-            # Stack the round `dome` PCB directly ABOVE `reflector` in the same column
-            _, _, _, ref_x0, ref_y0, ref_w, _ref_h = next(p for p in placements if p[0] == "reflector")
-            target_x0 = round(ref_x0 + (ref_w - bw) / 2.0, 4)
-            target_y1 = round(ref_y0 - SLOT_W, 4)
-            dx = round(target_x0 - bx0, 4)
-            dy = round(target_y1 - (by0 + bh), 4)
-            target_y0 = round(by0 + dy, 4)
-            advance_right = False
-        elif bname == "probe" and any(p[0] == "crown" for p in placements):
-            # Place rotated 90-deg `probe` (50.0 x 14.0 mm) horizontally ABOVE `crown` and `SLOT_W` (2.0 mm) above `dome`!
-            _, _, _, cr_x0, _cr_y0, _cr_w, _cr_h = next(p for p in placements if p[0] == "crown")
-            dome_p = next((p for p in placements if p[0] == "dome"), None)
-            target_x0 = round(cr_x0, 4)
-            target_y1 = round(dome_p[4] - SLOT_W, 4) if dome_p else round(y0_0 + bh, 4)
-            dx = round(target_x0 - bx0, 4)
-            dy = round(target_y1 - (by0 + bh), 4)
-            target_y0 = round(by0 + dy, 4)
-            advance_right = False
-        else:
-            target_x0 = round(cur_right + SLOT_W, 4)
-            dx = round(target_x0 - bx0, 4)
-            dy = round((y0_0 + h0) - (by0 + bh), 4)
-            target_y0 = round(by0 + dy, 4)
-            advance_right = True
+        target_x0, target_y0, _rot = layout[bname]
+        dx, dy = round(target_x0 - bx0, 4), round(target_y0 - by0, 4)
         vec = pcbnew.VECTOR2I_MM(dx, dy)
-
-        net_map = {"": panel.FindNet("")}
-        for net_name in src.GetNetInfo().NetsByName():
-            sname = str(net_name)
-            if not sname:
-                continue
-            pname = f"{net_prefix}{sname}"
-            existing = panel.FindNet(pname)
-            if not existing:
-                ni = pcbnew.NETINFO_ITEM(panel, pname)
-                panel.Add(ni)
-                existing = panel.FindNet(pname)
-            net_map[sname] = existing
-
-        for fp in list(src.GetFootprints()):
-            src.Remove(fp)
-            fp.SetReference(offset_ref(bname, fp.GetReference()))
-            for pad in fp.Pads():
-                orig_net = pad.GetNetname()
-                if net_map.get(orig_net):
-                    pad.SetNet(net_map[orig_net])
-            fp.Move(vec)
-            panel.Add(fp)
-
-        for trk in list(src.GetTracks()):
-            src.Remove(trk)
-            orig_net = trk.GetNetname()
-            if net_map.get(orig_net):
-                trk.SetNet(net_map[orig_net])
-            trk.Move(vec)
-            panel.Add(trk)
-
-        for zone in list(src.Zones()):
-            src.Remove(zone)
-            orig_net = zone.GetNetname()
-            if net_map.get(orig_net):
-                zone.SetNet(net_map[orig_net])
-            zone.Move(vec)
-            panel.Add(zone)
-
-        for drw in list(src.GetDrawings()):
-            src.Remove(drw)
-            drw.Move(vec)
-            panel.Add(drw)
-
+        if bname == base_name:   # the panel is the first board's own PCB: move its items in place
+            for item in [*src.GetFootprints(), *src.GetTracks(), *src.Zones(), *src.GetDrawings()]:
+                item.Move(vec)
+        else:
+            net_prefix = f"{bname.upper()}_"
+            net_map = {"": panel.FindNet("")}
+            for net_name in src.GetNetInfo().NetsByName():
+                sname = str(net_name)
+                if not sname:
+                    continue
+                pname = f"{net_prefix}{sname}"
+                if not panel.FindNet(pname):
+                    panel.Add(pcbnew.NETINFO_ITEM(panel, pname))
+                net_map[sname] = panel.FindNet(pname)
+            for fp in list(src.GetFootprints()):
+                src.Remove(fp)
+                fp.SetReference(offset_ref(bname, fp.GetReference()))
+                for pad in fp.Pads():
+                    if net_map.get(pad.GetNetname()):
+                        pad.SetNet(net_map[pad.GetNetname()])
+                fp.Move(vec)
+                panel.Add(fp)
+            for item in list(src.GetTracks()) + list(src.Zones()):
+                src.Remove(item)
+                if net_map.get(item.GetNetname()):
+                    item.SetNet(net_map[item.GetNetname()])
+                item.Move(vec)
+                panel.Add(item)
+            for drw in list(src.GetDrawings()):
+                src.Remove(drw)
+                drw.Move(vec)
+                panel.Add(drw)
         placements.append((bname, dx, dy, target_x0, target_y0, bw, bh))
-        if advance_right:
-            cur_right = target_x0 + bw
-
         for p in json.loads((REPO / "hardware/build" / variant / bname / "parts.json").read_text()):
             cp = dict(p)
             cp["ref"] = offset_ref(bname, p["ref"])
             combined_parts.append(cp)
 
     mb_coords: list[tuple[float, float]] = []
-    # 1. Horizontal mouse-bite tabs along bottom row: main <-> crown <-> reflector <-> power
-    horiz_placements = [p for p in placements if p[0] in ("main", "crown", "reflector", "power")
-                        or p[0] == "probe" and not any(q[0] == "crown" for q in placements)]
-    for i in range(len(horiz_placements) - 1):
-        l_name, _, _, lx0, ly0, lw, lh = horiz_placements[i]
-        _, _, _, rx0, ry0, _rw, rh = horiz_placements[i + 1]
-        lx1 = round(lx0 + lw, 4)
-        ly1 = round(ly0 + lh, 4)
-        ry1 = round(ry0 + rh, 4)
-        l_ys, r_ys = [], []
-        for drw in list(panel.GetDrawings()):
-            if is_vertical_edge_at_x(drw, lx1, ly0, ly1):
-                l_ys.extend((round(pcbnew.ToMM(drw.GetStart().y), 4), round(pcbnew.ToMM(drw.GetEnd().y), 4)))
-                panel.Delete(drw)
-            elif is_vertical_edge_at_x(drw, rx0, ry0, ry1):
-                r_ys.extend((round(pcbnew.ToMM(drw.GetStart().y), 4), round(pcbnew.ToMM(drw.GetEnd().y), 4)))
-                panel.Delete(drw)
-        ly_s0, ly_s1 = (min(l_ys), max(l_ys)) if l_ys else (ly0, ly1)
-        ry_s0, ry_s1 = (min(r_ys), max(r_ys)) if r_ys else (ry0, ry1)
-        ov_y0 = max(ly_s0, ry_s0)
-        ov_y1 = min(ly_s1, ry_s1)
-        ov_h = ov_y1 - ov_y0
-        hw = TAB_H / 2
-        t1 = round(ov_y0 + ov_h * 0.28, 4)
-        t2 = round(ov_y0 + ov_h * 0.72, 4)
-        t_centres = (t1, t2)
-
-        # If left board is `main` and `probe` is above `crown`, also add a mouse-bite tab from `main` to `probe`!
-        probe_pl = next((p for p in placements if p[0] == "probe"), None)
-        if l_name == "main" and probe_pl and any(q[0] == "crown" for q in placements):
-            _, _, _, px0, py0, _pw, ph = probe_pl
-            py1 = round(py0 + ph, 4)
-            for drw in list(panel.GetDrawings()):
-                if is_vertical_edge_at_x(drw, px0, py0, py1):
-                    panel.Delete(drw)
-            tp = round(py0 + ph / 2.0, 4)
-            add_edge_line(panel, lx1, ly_s0, lx1, tp - hw)
-            add_edge_line(panel, lx1, tp + hw, lx1, t1 - hw)
-            add_edge_line(panel, lx1, t1 + hw, lx1, t2 - hw)
-            add_edge_line(panel, lx1, t2 + hw, lx1, ly_s1)
-            add_edge_line(panel, px0, py0, px0, tp - hw)
-            add_edge_line(panel, px0, tp + hw, px0, py1)
-            add_edge_line(panel, lx1, tp - hw, px0, tp - hw)
-            add_edge_line(panel, lx1, tp + hw, px0, tp + hw)
-            for dy_h in HOLE_Y_OFFS:
-                mb_coords.append((lx1 + 0.15, tp + dy_h))
-                mb_coords.append((px0 - 0.15, tp + dy_h))
-        else:
-            add_edge_line(panel, lx1, ly_s0, lx1, t1 - hw)
-            add_edge_line(panel, lx1, t1 + hw, lx1, t2 - hw)
-            add_edge_line(panel, lx1, t2 + hw, lx1, ly_s1)
-
-        add_edge_line(panel, rx0, ry_s0, rx0, t1 - hw)
-        add_edge_line(panel, rx0, t1 + hw, rx0, t2 - hw)
-        add_edge_line(panel, rx0, t2 + hw, rx0, ry_s1)
-
-        hole_off_x = 0.15
-        for tc in t_centres:
-            add_edge_line(panel, lx1, tc - hw, rx0, tc - hw)
-            add_edge_line(panel, lx1, tc + hw, rx0, tc + hw)
-            for dy_h in HOLE_Y_OFFS:
-                mb_coords.append((lx1 + hole_off_x, tc + dy_h))
-                mb_coords.append((rx0 - hole_off_x, tc + dy_h))
-
-    # 2. Vertical mouse-bite tabs connecting `probe` (bottom edge) down to BOTH `crown` (top flat edge) AND `dome` (top flat chord)!
-    probe_pl = next((p for p in placements if p[0] == "probe"), None)
-    crown_pl = next((p for p in placements if p[0] == "crown"), None)
-    dome_pl = next((p for p in placements if p[0] == "dome"), None)
-    refl_pl = next((p for p in placements if p[0] == "reflector"), None)
-    if probe_pl and crown_pl and dome_pl:
-        _, _, _, px0, py0, pw, ph = probe_pl
-        _, _, _, cx0, cy0, cw, _ch = crown_pl
-        _, _, _, dx0, dy0, dw, dh = dome_pl
-        py1 = round(py0 + ph, 4)
-        top_xs, cr_xs, dm_top_xs = [], [], []
-        for drw in list(panel.GetDrawings()):
-            if is_horizontal_edge_at_y(drw, py1, px0, px0 + pw):
-                top_xs.extend((round(pcbnew.ToMM(drw.GetStart().x), 4), round(pcbnew.ToMM(drw.GetEnd().x), 4)))
-                panel.Delete(drw)
-            elif is_horizontal_edge_at_y(drw, cy0, cx0, cx0 + cw):
-                cr_xs.extend((round(pcbnew.ToMM(drw.GetStart().x), 4), round(pcbnew.ToMM(drw.GetEnd().x), 4)))
-                panel.Delete(drw)
-            elif is_horizontal_edge_at_y(drw, dy0, dx0, dx0 + dw):
-                dm_top_xs.extend((round(pcbnew.ToMM(drw.GetStart().x), 4), round(pcbnew.ToMM(drw.GetEnd().x), 4)))
-                panel.Delete(drw)
-        tx0, tx1 = (min(top_xs), max(top_xs)) if top_xs else (px0, px0 + pw)
-        bx0_c, bx1_c = (min(cr_xs), max(cr_xs)) if cr_xs else (cx0 + 7.0, cx0 + cw - 7.0)
-        bx0_d, bx1_d = (min(dm_top_xs), max(dm_top_xs)) if dm_top_xs else (dx0 + 4.6, dx0 + dw - 4.6)
-
-        xc_crown = round(cx0 + cw / 2.0, 4)
-        xc_dome = round(dx0 + dw / 2.0, 4)
-        hw = TAB_H / 2
-
-        # Split probe's bottom horizontal edge at BOTH xc_crown and xc_dome!
-        add_edge_line(panel, tx0, py1, xc_crown - hw, py1)
-        add_edge_line(panel, xc_crown + hw, py1, xc_dome - hw, py1)
-        add_edge_line(panel, xc_dome + hw, py1, tx1, py1)
-
-        # Tab 2A: probe <-> crown top flat edge
-        add_edge_line(panel, bx0_c, cy0, xc_crown - hw, cy0)
-        add_edge_line(panel, xc_crown + hw, cy0, bx1_c, cy0)
-        add_edge_line(panel, xc_crown - hw, py1, xc_crown - hw, cy0)
-        add_edge_line(panel, xc_crown + hw, py1, xc_crown + hw, cy0)
-        for dx_h in HOLE_Y_OFFS:
-            mb_coords.append((xc_crown + dx_h, py1 + 0.15))
-            mb_coords.append((xc_crown + dx_h, cy0 - 0.15))
-
-        # Tab 2B: probe <-> dome top flat chord (anchors probe's right tip to dome's top!)
-        add_edge_line(panel, bx0_d, dy0, xc_dome - hw, dy0)
-        add_edge_line(panel, xc_dome + hw, dy0, bx1_d, dy0)
-        add_edge_line(panel, xc_dome - hw, py1, xc_dome - hw, dy0)
-        add_edge_line(panel, xc_dome + hw, py1, xc_dome + hw, dy0)
-        for dx_h in HOLE_Y_OFFS:
-            mb_coords.append((xc_dome + dx_h, py1 + 0.15))
-            mb_coords.append((xc_dome + dx_h, dy0 - 0.15))
-
-    # 3. Vertical mouse-bite tab connecting `dome` (bottom chord) to the top edge of `reflector`
-    if dome_pl and refl_pl:
-        _, _, _, dx0, dy0, dw, dh = dome_pl
-        _, _, _, rx0, ry0, rw, _rh = refl_pl
-        dy1 = round(dy0 + dh, 4)
-        top_xs, bot_xs = [], []
-        for drw in list(panel.GetDrawings()):
-            if is_horizontal_edge_at_y(drw, dy1, dx0, dx0 + dw):
-                top_xs.extend((round(pcbnew.ToMM(drw.GetStart().x), 4), round(pcbnew.ToMM(drw.GetEnd().x), 4)))
-                panel.Delete(drw)
-            elif is_horizontal_edge_at_y(drw, ry0, rx0, rx0 + rw):
-                bot_xs.extend((round(pcbnew.ToMM(drw.GetStart().x), 4), round(pcbnew.ToMM(drw.GetEnd().x), 4)))
-                panel.Delete(drw)
-        tx0, tx1 = (min(top_xs), max(top_xs)) if top_xs else (dx0 + 4.6, dx0 + dw - 4.6)
-        bx0_s, bx1_s = (min(bot_xs), max(bot_xs)) if bot_xs else (rx0, rx0 + rw)
-        xc = round(dx0 + dw / 2.0, 4)
-        hw = TAB_H / 2
-        add_edge_line(panel, tx0, dy1, xc - hw, dy1)
-        add_edge_line(panel, xc + hw, dy1, tx1, dy1)
-        add_edge_line(panel, bx0_s, ry0, xc - hw, ry0)
-        add_edge_line(panel, xc + hw, ry0, bx1_s, ry0)
-        add_edge_line(panel, xc - hw, dy1, xc - hw, ry0)
-        add_edge_line(panel, xc + hw, dy1, xc + hw, ry0)
-        for dx_h in HOLE_Y_OFFS:
-            y_arc = round(dy0 + dh / 2.0 + (6.65 ** 2 - dx_h ** 2) ** 0.5, 4)
-            mb_coords.append((xc + dx_h, y_arc))
-            mb_coords.append((xc + dx_h, ry0 - 0.15))
+    for horizontal, c, ea, eb, _a, _b in tabs:
+        bridge(panel, horizontal, c, ea, eb, mb_coords)
 
     panel_checks = jp.check_board(panel, combined_parts)
     add_mouse_bite_holes(panel, mb_coords)
@@ -434,9 +461,9 @@ def build_panel(
     renders_dir = panel_dir / "renders"
     renders_dir.mkdir(exist_ok=True)
     run("kicad-cli", "pcb", "export", "svg", "--output", str(renders_dir / "top.svg"),
-        "--layers", "F.Cu,F.Mask,F.SilkS,Edge.Cuts", "--page-size-mode", "2", str(panel_pcb_path))
+        "--layers", "F.Cu,F.Mask,F.SilkS,Edge.Cuts", "--exclude-drawing-sheet", "--fit-page-to-board", str(panel_pcb_path))
     run("kicad-cli", "pcb", "export", "svg", "--output", str(renders_dir / "bottom.svg"),
-        "--layers", "B.Cu,B.Mask,B.SilkS,Edge.Cuts", "--mirror", "--page-size-mode", "2", str(panel_pcb_path))
+        "--layers", "B.Cu,B.Mask,B.SilkS,Edge.Cuts", "--mirror", "--exclude-drawing-sheet", "--fit-page-to-board", str(panel_pcb_path))
 
     by_ref = {p["ref"]: p for p in combined_parts}
     groups: dict[tuple[str, str, str], list[str]] = {}

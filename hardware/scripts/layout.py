@@ -693,7 +693,7 @@ def without_plane_layers(dsn_text, frame):
         dsn_text = re.sub(rf"    \(layer {layer}\n.*?\n    \)\n", "", dsn_text,
                           count=1, flags=re.DOTALL)
         dsn_text = re.sub(rf"[ \t]*\(shape \(\w+ {layer} [^()]*\)\)\n", "", dsn_text)
-        dsn_text = re.sub(rf'[ \t]*\(keepout "" \(polygon {layer} [^()]*\)\)\n', "", dsn_text)
+        dsn_text = re.sub(rf'[ \t]*\(keepout "" \((?:polygon|circle) {layer} [^()]*\)\)\n', "", dsn_text)
     if any(layer in dsn_text for layer in frame.get("plane_layers", [])):
         sys.exit("plane layer still referenced in DSN")
     index = iter(range(100))

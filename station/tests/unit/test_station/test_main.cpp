@@ -893,6 +893,17 @@ void test_crown_blocks_decode_into_pipeline_types(void) {
     ev.pulse_width_us = 2000;     // long ring = mast knock, still rejected
     TEST_ASSERT_EQUAL_FLOAT(0.0F, hr.process_impact(ev));
 
+    // boot-time auto-update decision
+    const std::uint8_t img[3] = {0, 2, 0};
+    const std::uint8_t same[4] = {crown::kProtocolVersion, 0, 2, 0};
+    const std::uint8_t older[4] = {crown::kProtocolVersion, 0, 1, 0};
+    const std::uint8_t old_proto[4] = {static_cast<std::uint8_t>(crown::kProtocolVersion - 1), 0, 2, 0};
+    TEST_ASSERT_FALSE(station::crown_link::crown_needs_update(same, img, 32000));
+    TEST_ASSERT_TRUE(station::crown_link::crown_needs_update(older, img, 32000));
+    TEST_ASSERT_TRUE(station::crown_link::crown_needs_update(old_proto, img, 32000));
+    TEST_ASSERT_TRUE(station::crown_link::crown_needs_update(nullptr, img, 32000));    // blank / absent crown
+    TEST_ASSERT_FALSE(station::crown_link::crown_needs_update(nullptr, img, 0));       // nothing embedded
+
     crown::StrikeEvent se{};
     se.kind = 1;
     se.distance_km = 14;

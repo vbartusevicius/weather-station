@@ -25,6 +25,7 @@
 #include "../wind/WindCalibration.hpp"
 #include "Board.hpp"
 #include "ButtonController.hpp"
+#include "CrownImage.hpp"
 #include "WebAssets.hpp"
 #include "drivers/Analog.hpp"
 #include "drivers/CrownLink.hpp"
@@ -80,6 +81,7 @@ wind::StillAirCalibrator g_wind_cal;
 bool g_wind_cal_running = false;
 std::uint32_t g_wind_cal_start_ms = 0;
 std::string g_wind_cal_status = "never run";
+std::string g_crown_update = "not needed";   // boot-time crown auto-update result (/api/config "crown")
 // Crown diagnostics for commissioning (/api/config "crown"): refreshed by task_crown
 crown::DiagBlock g_crown_diag{};
 bool g_crown_diag_ok = false;
@@ -667,6 +669,11 @@ esp_err_t handle_config_get(httpd_req_t* req) {
         Lock l;
         JsonObject cr = doc["crown"].to<JsonObject>();
         cr["present"] = g_crown.present();
+        cr["auto_update"] = g_crown_update.c_str();
+        char img[16];
+        std::snprintf(img, sizeof img, "%u.%u.%u", firmware::kCrownImageVersion[0], firmware::kCrownImageVersion[1],
+                      firmware::kCrownImageVersion[2]);
+        cr["embedded_fw"] = firmware::kCrownImageLen ? img : "none";
         cr["bursts"] = g_crown_bursts;
         cr["diag_ok"] = g_crown_diag_ok;
         cr["uptime_s"] = g_crown_diag.uptime_s;
@@ -682,7 +689,7 @@ esp_err_t handle_config_get(httpd_req_t* req) {
     }
     {
         Lock l;
-        doc["wind_cal_status"] = g_wind_cal_running ? "running" : g_wind_cal_status.c_str();
+        doc["wind_cal_status"] = g_wind_cal_running ? std::string("running") : g_wind_cal_status;   // copied
     }
     doc["guvb_counts_per_uvi"] = c.guvb_counts_per_uvi;
     doc["guvb_factory_b_scale"] = g_guvb.factory_b_scale();
@@ -912,7 +919,23 @@ extern "C" void app_main(void) {
     g_ltr.begin(g_i2c, b::i2c_addr_ltr390);
     g_tsl.begin(g_i2c, b::i2c_addr_tsl25911);
     g_guvb.begin(g_i2c, b::i2c_addr_guvb_c31sm);
-    if (g_crown.begin(g_i2c, b::crown_irq_pin, b::crown_nrst_pin, b::crown_boot0_pin)) {
+    const bool crown_up = g_crown.begin(g_i2c, b::crown_irq_pin, b::crown_nrst_pin, b::crown_boot0_pin);
+    {
+        // Keep the crown on the firmware this station release was built with; a factory-blank crown (no answer at
+        // 0x2A) is programmed here through BOOT0 + the ROM I2C bootloader. One attempt per boot.
+        std::uint8_t ver[4]{};
+        const bool have_ver = crown_up && g_crown.version(ver);
+        if (crown_link::crown_needs_update(have_ver ? ver : nullptr, firmware::kCrownImageVersion,
+                                           firmware::kCrownImageLen)) {
+            const auto r = g_crown.flash(firmware::kCrownImage, firmware::kCrownImageLen);
+            char msg[64];
+            std::snprintf(msg, sizeof msg, "%s -> %u.%u.%u (result %d)", have_ver ? "updated" : "programmed",
+                          firmware::kCrownImageVersion[0], firmware::kCrownImageVersion[1],
+                          firmware::kCrownImageVersion[2], static_cast<int>(r));
+            g_crown_update = msg;
+        }
+    }
+    if (g_crown.present()) {
         crown::ConfigBlock cc{};
         cc.quads_per_s = 4;
         cc.burst_cycles = 8;

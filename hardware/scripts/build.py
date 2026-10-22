@@ -59,9 +59,11 @@ def run_eda(boards, *, fresh=False, do_release=False, do_test=False):
 def run_cad(*, do_test=False):
     sys.path.insert(0, str(REPO / "mechanical/scripts"))
     import build_enclosure
+    import drawings
     import render_assembly3d
 
     build_enclosure.export_parts(REPO / "mechanical/build" / build_enclosure.VARIANT)
+    drawings.export_drawings(REPO / "mechanical/build" / build_enclosure.VARIANT)
     render_assembly3d.main()
     if do_test:
         subprocess.run([
