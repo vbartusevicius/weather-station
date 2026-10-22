@@ -68,8 +68,14 @@ std::size_t RegisterBank::read(std::uint8_t reg, std::uint8_t* out, std::size_t 
             std::memcpy(out, v, n);
             return n;
         }
-        case kStatus:
-            return copy_out(status_, out, max);
+        case kStatus: {
+            // read together with burst-time crosstalk on the cable, so it is CRC-protected like the blocks
+            const std::uint8_t s[3] = {static_cast<std::uint8_t>(status_), static_cast<std::uint8_t>(status_ >> 8),
+                                       crc8(reinterpret_cast<const std::uint8_t*>(&status_), 2)};
+            const std::size_t n = std::min<std::size_t>(3, max);
+            std::memcpy(out, s, n);
+            return n;
+        }
         case kWind:
             status_ &= static_cast<std::uint16_t>(~kStWindNew);
             return copy_out(wind_, out, max);
@@ -129,7 +135,7 @@ void RegisterBank::write(const std::uint8_t* data, std::size_t len) {
     } else if (reg == kConfig && len - 1 == sizeof(ConfigBlock)) {
         ConfigBlock c{};
         std::memcpy(&c, data + 1, sizeof(c));
-        if (valid(c) && c.quads_per_s >= 1 && c.quads_per_s <= 10 && c.burst_cycles >= 4 && c.burst_cycles <= 16) {
+        if (valid(c) && c.quads_per_s <= 10 && c.burst_cycles >= 4 && c.burst_cycles <= 16) {
             config_ = c;
         }
     }

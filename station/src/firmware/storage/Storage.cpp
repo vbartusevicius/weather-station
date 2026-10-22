@@ -40,7 +40,9 @@ bool Storage::load_config(core::StationConfig& cfg) {
     }
     core::StationConfig tmp{};
     std::size_t len = sizeof(tmp);
-    const bool ok = nvs_get_blob(h, kCfgKey, &tmp, &len) == ESP_OK && len == sizeof(tmp);
+    // Fields are only ever appended to StationConfig: a shorter blob from older firmware fills the prefix and the
+    // new fields keep their defaults (instead of losing Wi-Fi / location on every firmware update).
+    const bool ok = nvs_get_blob(h, kCfgKey, &tmp, &len) == ESP_OK && len > 0 && len <= sizeof(tmp);
     nvs_close(h);
     if (ok) {
         tmp.tz_posix[sizeof(tmp.tz_posix) - 1] = '\0';

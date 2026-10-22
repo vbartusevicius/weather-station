@@ -21,10 +21,10 @@ struct WindQuality {
 // Times of flight (ps) -> wind::TofQuad (us). Returns false (and leaves `out` untouched) when any path is unusable.
 bool to_tof_quad(const crown::WindBlock& w, wind::TofQuad& out, WindQuality& q);
 
-// Rain impact -> core::RainImpact. The crown sends the charge-amplifier deviation; the station's HapticRain
-// expects peak and baseline, so the deviation sits on the nominal dry baseline (kRainBaselineMv).
-constexpr std::uint16_t kRainBaselineMv = 206;
-core::RainImpact to_rain_impact(const crown::RainEvent& e, std::uint32_t now_ms);
+// Rain impact -> core::RainImpact. The crown sends the charge-amplifier deviation; HapticRain works on
+// peak - baseline, so the impact carries baseline 0 (= no capacitive wetness channel) and the deviation scaled by
+// `mv_scale` (StationConfig::rain_impact_scale, calibrated so its drop / hail thresholds match, see CALIBRATION.md).
+core::RainImpact to_rain_impact(const crown::RainEvent& e, std::uint32_t now_ms, float mv_scale = 1.0F);
 
 // Lightning strike (only kind 1 = lightning is a strike; disturbers / noise are diagnostics).
 bool to_strike(const crown::StrikeEvent& e, std::uint32_t now_ms, core::LightningStrike& out);

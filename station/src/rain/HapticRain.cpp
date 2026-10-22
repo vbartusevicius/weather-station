@@ -24,14 +24,21 @@ float HapticRainProcessor::estimate_hail_diameter_mm(int net_mv, std::uint16_t p
 }
 
 float HapticRainProcessor::process_impact(const RainImpactEvent& ev, float gain) {
-    metrics_.surface_wet = (ev.baseline_mv >= kWetSurfaceBaselineMv);
+    // baseline_mv == 0: the V1 crown charge amplifier has no capacitive wetness channel; the surface then counts as
+    // wet while a rain event is running (tick_second), and only the long-pulse rule rejects mast vibration.
+    const bool has_baseline = ev.baseline_mv != 0;
+    if (has_baseline) {
+        metrics_.surface_wet = (ev.baseline_mv >= kWetSurfaceBaselineMv);
+    } else {
+        activity_wetness_ = true;
+    }
 
     const int net_mv = static_cast<int>(ev.peak_mv) - static_cast<int>(ev.baseline_mv);
     if (net_mv < static_cast<int>(kDropThresholdMv)) {
         return 0.0F;
     }
 
-    if (ev.imu_vibration_g > kMaxMastShakeG && (!metrics_.surface_wet || ev.pulse_width_us > 850)) {
+    if (ev.imu_vibration_g > kMaxMastShakeG && ((has_baseline && !metrics_.surface_wet) || ev.pulse_width_us > 850)) {
         ++metrics_.rejected_vibrations;
         return 0.0F;
     }
@@ -92,6 +99,9 @@ float HapticRainProcessor::tick_second() {
     if (dry_seconds_ >= kDryMinutesToEndEvent * 60U) {
         metrics_.is_raining = false;
         metrics_.event_mm = 0.0F;
+    }
+    if (activity_wetness_) {
+        metrics_.surface_wet = metrics_.is_raining;
     }
 
     if (metrics_.hail_rate_mm_h > 0.0F) {

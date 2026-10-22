@@ -191,6 +191,9 @@ void test_register_bank_protocol(void) {
     w.flags[kEW] = kPathLowCorr;
     bank.publish_wind(w);
     TEST_ASSERT_TRUE(bank.irq_level());
+    TEST_ASSERT_EQUAL(3, bank.read(kStatus, buf, sizeof buf));   // status LE + CRC-8
+    TEST_ASSERT_EQUAL_HEX8(kStWindNew, buf[0] & kStWindNew);
+    TEST_ASSERT_EQUAL_HEX8(crc8(buf, 2), buf[2]);
     const std::size_t n = bank.read(kWind, buf, sizeof buf);
     WindBlock got{};
     TEST_ASSERT_TRUE(decode(buf, n, got));
@@ -229,11 +232,16 @@ void test_register_bank_protocol(void) {
     std::memcpy(wr + 1, &c, sizeof c);
     bank.write(wr, sizeof wr);
     TEST_ASSERT_EQUAL_UINT8(8, bank.config().quads_per_s);
+    c.quads_per_s = 0;   // bursts paused is a valid setting
+    seal(c);
+    std::memcpy(wr + 1, &c, sizeof c);
+    bank.write(wr, sizeof wr);
+    TEST_ASSERT_EQUAL_UINT8(0, bank.config().quads_per_s);
     c.quads_per_s = 50;
     seal(c);
     std::memcpy(wr + 1, &c, sizeof c);
     bank.write(wr, sizeof wr);
-    TEST_ASSERT_EQUAL_UINT8(8, bank.config().quads_per_s);
+    TEST_ASSERT_EQUAL_UINT8(0, bank.config().quads_per_s);
 
     const std::uint8_t cmd[2] = {kCommand, kCmdEnterBootloader};
     bank.write(cmd, 2);

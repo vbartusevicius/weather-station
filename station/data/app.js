@@ -740,6 +740,10 @@ function loadConfig() {
     set("cfg-us-delay", c.us_delay_us);
     set("cfg-pcoef", c.pressure_wind_coef);
     set("cfg-rain-gain", c.rain_gain);
+    set("cfg-rain-scale", c.rain_impact_scale);
+    set("cfg-wind-gain", c.wind_speed_gain);
+    set("cfg-rs485-addr", c.rs485_address);
+    setText("wind-cal-status", `Wind calibration: ${c.wind_cal_status || "—"}`);
     set("cfg-tuncap", c.as3935_tun_cap);
     set("cfg-ssid", c.wifi_ssid);
     set("cfg-mqtt", c.mqtt_uri);
@@ -791,7 +795,15 @@ el("btn-save-cfg").addEventListener("click", () => {
     declination_deg: num("cfg-decl"), dt_ns_offset_us: num("cfg-dt-ns"), dt_ew_offset_us: num("cfg-dt-ew"),
     us_delay_us: num("cfg-us-delay"), pressure_wind_coef: num("cfg-pcoef"), rain_gain: num("cfg-rain-gain"),
     as3935_tun_cap: parseInt(el("cfg-tuncap").value, 10),
+    rain_impact_scale: num("cfg-rain-scale"), wind_speed_gain: num("cfg-wind-gain"), rs485_address: parseInt(el("cfg-rs485-addr").value, 10) || 0,
   }).then(() => setText("cfg-save-status", "Saved ✓")).catch(() => {});
+});
+
+el("btn-wind-cal").addEventListener("click", () => {
+  if (!confirm("Cover the station (closed box) or make sure the air is completely still for 60 s, then press OK.")) return;
+  postJson("/api/action", { action: "wind_calibrate" })
+    .then(() => setText("wind-cal-status", "Wind calibration: running (60 s) — reload Settings afterwards"))
+    .catch(() => {});
 });
 
 el("btn-reset-rain").addEventListener("click", () => {

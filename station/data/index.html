@@ -729,11 +729,16 @@
             <label>Ultrasonic AFE delay (µs)<input type="number" id="cfg-us-delay" step="0.1" /></label>
             <label>Barometer port coefficient<input type="number" id="cfg-pcoef" step="0.01" /></label>
             <label>Rain gain<input type="number" id="cfg-rain-gain" step="0.01" /></label>
+            <label>Wind speed gain<input type="number" id="cfg-wind-gain" step="0.001" min="0.5" max="2" /></label>
+            <label>Rain impact scale<input type="number" id="cfg-rain-scale" step="0.01" min="0.05" /></label>
+            <label>RS-485 address (0 = single)<input type="number" id="cfg-rs485-addr" step="1" min="0" max="247" /></label>
             <label>AS3935 tuning cap (0–15)<input type="number" id="cfg-tuncap" step="1" min="0" max="15" /></label>
           </div>
           <div class="btn-row">
             <button class="btn-primary" id="btn-save-cfg">Save calibration</button>
+            <button class="btn-secondary" id="btn-wind-cal">Still-air wind calibration (60 s)</button>
           </div>
+          <p class="muted-xs" id="wind-cal-status">Wind calibration: —</p>
         </div>
 
         <div class="card">

@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -40,6 +41,7 @@
 #include "../../../src/rs485/Rs485Protocol.hpp"
 #include "../../../src/telemetry/HomeAssistantMqtt.hpp"
 #include "../../../src/wind/UltrasonicWind.hpp"
+#include "../../../src/wind/WindCalibration.hpp"
 
 using station::airquality::AirQualityEvaluator;
 using station::airquality::AirQualityInput;
@@ -689,6 +691,19 @@ void test_rs485_command_parsing(void) {
     TEST_ASSERT_EQUAL(CommandType::RequestState, Rs485Protocol::parse_command_frame("STATE?\n", 7));
     TEST_ASSERT_EQUAL(CommandType::ResetDailyRain, Rs485Protocol::parse_command_frame("RESET_RAIN", 10));
     TEST_ASSERT_EQUAL(CommandType::None, Rs485Protocol::parse_command_frame("BAD", 3));
+    // multi-drop addressing
+    TEST_ASSERT_EQUAL(CommandType::RequestState, Rs485Protocol::parse_command("7:STATE?\r\n", 10, 7));
+    TEST_ASSERT_EQUAL(CommandType::None, Rs485Protocol::parse_command("8:STATE?", 8, 7));
+    TEST_ASSERT_EQUAL(CommandType::None, Rs485Protocol::parse_command("STATE?", 6, 7));   // bare: not for station 7
+    TEST_ASSERT_EQUAL(CommandType::RequestState, Rs485Protocol::parse_command("0:STATE?", 8, 0));
+    TEST_ASSERT_EQUAL(CommandType::None, Rs485Protocol::parse_command("7:STATE?", 8, 0));
+    // PONG carries a real CRC-16/MODBUS and the station address
+    const std::string pong = Rs485Protocol::encode_pong(7);
+    TEST_ASSERT_EQUAL_STRING_LEN("$AM7,PONG*", pong.c_str(), 10);
+    char want[8];
+    std::snprintf(want, sizeof want, "%04X", static_cast<unsigned>(Rs485Protocol::crc16_modbus("$AM7,PONG", 9)));
+    TEST_ASSERT_EQUAL_STRING_LEN(want, pong.c_str() + 10, 4);
+    TEST_ASSERT_EQUAL_STRING("\r\n", pong.c_str() + 14);
     // Fields without a valid value are left empty rather than sending fake numbers
     DerivedState d{};
     d.uptime_s = 120;
@@ -858,10 +873,25 @@ void test_crown_blocks_decode_into_pipeline_types(void) {
     re.age_ms = 40;
     re.peak_mv = 512;
     re.width_us = 900;
-    const auto imp = station::crown_link::to_rain_impact(re, 10000);
+    const auto imp = station::crown_link::to_rain_impact(re, 10000, 1.5F);
     TEST_ASSERT_EQUAL_UINT32(9960, imp.t_ms);
-    TEST_ASSERT_EQUAL_UINT16(512 + station::crown_link::kRainBaselineMv, imp.peak_mv);
-    TEST_ASSERT_EQUAL_UINT16(station::crown_link::kRainBaselineMv, imp.baseline_mv);
+    TEST_ASSERT_EQUAL_UINT16(768, imp.peak_mv);     // 512 mV x rain_impact_scale 1.5
+    TEST_ASSERT_EQUAL_UINT16(0, imp.baseline_mv);   // no capacitive wetness channel on crown v2
+
+    // HapticRain with crown impacts: dry until rain is detected, wet while the event runs, mast shake does not
+    // reject ordinary short drop pulses
+    HapticRainProcessor hr;
+    TEST_ASSERT_FALSE(hr.metrics().surface_wet);
+    station::rain::RainImpactEvent ev{};
+    ev.peak_mv = 600;
+    ev.baseline_mv = 0;
+    ev.pulse_width_us = 300;
+    ev.imu_vibration_g = 0.3F;   // windy mast
+    TEST_ASSERT_TRUE(hr.process_impact(ev) > 0.0F);
+    hr.tick_second();
+    TEST_ASSERT_TRUE(hr.metrics().surface_wet);
+    ev.pulse_width_us = 2000;     // long ring = mast knock, still rejected
+    TEST_ASSERT_EQUAL_FLOAT(0.0F, hr.process_impact(ev));
 
     crown::StrikeEvent se{};
     se.kind = 1;
@@ -988,6 +1018,55 @@ void test_crown_rom_bootloader_flashes_and_verifies(void) {
     TEST_ASSERT_FALSE(absent.boot0);
 }
 
+void test_still_air_wind_calibration(void) {
+    using station::wind::StillAirCalibrator;
+    using station::wind::TofQuad;
+    // 18 C, 60 % RH, 1005 hPa; true crown delay 57.3 us, reciprocal asymmetries +0.8 us (N-S) / -0.3 us (E-W)
+    const float c = StillAirCalibrator::sound_speed_m_s(18.0F, 60.0F, 1005.0F);
+    const float t0 = StillAirCalibrator::path_length_m() / c * 1e6F + 57.3F;
+    StillAirCalibrator cal;
+    for (int i = 0; i < 200; ++i) {
+        const float jitter = 0.05F * std::sin(static_cast<float>(i) * 1.3F);   // still air: tiny scatter
+        TofQuad q{};
+        q.t_ns_us = t0 + 0.4F + jitter;
+        q.t_sn_us = t0 - 0.4F - jitter;
+        q.t_ew_us = t0 - 0.15F;
+        q.t_we_us = t0 + 0.15F;
+        cal.add(q);
+    }
+    const auto r = cal.result(18.0F, 60.0F, 1005.0F);
+    TEST_ASSERT_TRUE(r.ok);
+    TEST_ASSERT_FLOAT_WITHIN(0.02F, 57.3F, r.us_delay_us);
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 0.8F, r.zero.dt_ns_offset_us);
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, -0.3F, r.zero.dt_ew_offset_us);
+    // applying the result: still air reads 0 m/s and the acoustic temperature is the virtual temperature
+    // (18 C, e = 12.4 hPa: Tv = 291.15 K x (1 + 0.32 x 12.4 / 1005) = 19.15 C)
+    TofQuad q{};
+    q.t_ns_us = t0 + 0.4F - r.us_delay_us;
+    q.t_sn_us = t0 - 0.4F - r.us_delay_us;
+    q.t_ew_us = t0 - 0.15F - r.us_delay_us;
+    q.t_we_us = t0 + 0.15F - r.us_delay_us;
+    const auto s = station::wind::UltrasonicWindSolver::solve(q, station::wind::ImuCompassReading{}, r.zero);
+    TEST_ASSERT_TRUE(s.valid);
+    TEST_ASSERT_FLOAT_WITHIN(0.06F, 0.0F, s.speed_m_s);
+    TEST_ASSERT_FLOAT_WITHIN(0.1F, 19.15F, s.acoustic_temp_c);
+
+    // moving air (reciprocal differences scattering by several us) is refused instead of calibrating a wind in
+    StillAirCalibrator windy;
+    for (int i = 0; i < 200; ++i) {
+        TofQuad w{};
+        const float gust = (i % 2 ? 3.0F : -3.0F);
+        w.t_ns_us = t0 + gust;
+        w.t_sn_us = t0 - gust;
+        w.t_ew_us = w.t_we_us = t0;
+        windy.add(w);
+    }
+    TEST_ASSERT_FALSE(windy.result(18.0F, 60.0F, 1005.0F).ok);
+    StillAirCalibrator few;
+    few.add(TofQuad{});
+    TEST_ASSERT_FALSE(few.result(18.0F, 60.0F, 1005.0F).ok);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ultrasonic_zero_wind_and_virtual_temp);
@@ -1013,5 +1092,6 @@ int main(void) {
     RUN_TEST(test_heater_power_monitor_and_heat_check);
     RUN_TEST(test_crown_blocks_decode_into_pipeline_types);
     RUN_TEST(test_crown_rom_bootloader_flashes_and_verifies);
+    RUN_TEST(test_still_air_wind_calibration);
     return UNITY_END();
 }

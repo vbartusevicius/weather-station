@@ -8,8 +8,9 @@ only the LQFP-64 package bonds out).
    - TX: TIM8_CH1 / CH1N (complementary, dead-time) drive INA / INB of four UCC27524 dual low-side drivers (one per
      transducer, 4.5-18 V) powered from +12V_HEAT through a 10R / 22 uF filter. Each transducer sits between OUTA and
      OUTB (H-bridge): 2 x 12 V = 24 Vpp minus the isolation diodes (~21 Vpp). Only the driver whose EN is high fires;
-     EN has a 10k pull-down (the UCC27524 EN pins are weakly pulled up to VDD internally) so all drivers are off while
-     the STM32 is in reset or being flashed.
+     the UCC27524 EN pins are pulled up to VDD (12 V) through 200 kOhm (SLUSFA9, typ.), so a 4.7k pull-down holds an
+     undriven EN at 12 V x 4.7k / 204.7k = 0.28 V (< 0.8 V min low threshold) and all drivers stay off while the STM32
+     is in reset or being flashed; the STM32 drives EN to 3.3 V (> 2.3 V max high threshold) and sinks <= 60 uA.
    - T/R isolation: a BAV99 wired anti-parallel (pins 1+2 tied) in series with every driver output: the drive pulse
      passes with ~0.7 V loss, the millivolt echo on the listening transducer cannot reach its idle (low) driver.
      The transducer B terminal is referenced to GND through 330R during receive.
@@ -190,7 +191,8 @@ def build(nets):
                          ("7", n[f"XD_{ax}_OUT_A"]), ("5", n[f"XD_{ax}_OUT_B"])):
             drv[pin] += net   # 1 ENA, 8 ENB, 2 INA, 4 INB, 6 VDD, 3 GND, 7 OUTA, 5 OUTB
         two(cap("1u 50V", f"UCC27524 {ax} local VDD decoupling", f"C{14 + i}"), n["VDRV"], gnd)
-        two(res("10k", f"{ax} driver enable pull-down (drivers off in reset / bootloader)", f"R{13 + i}"), en, gnd)
+        two(res("4k7", f"{ax} driver enable pull-down vs the 200k internal pull-up to 12 V (off in reset)", f"R{13 + i}"),
+            en, gnd)
         for j, side in enumerate(("A", "B")):
             d = bav99(f"D{1 + 2 * i + j}",
                       f"Anti-parallel T/R isolation diodes (BAV99 pins 1+2 tied) in the {ax} transducer {side} lead")

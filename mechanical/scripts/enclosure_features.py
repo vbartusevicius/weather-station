@@ -177,9 +177,9 @@ def part_boxes():
         rad = math.radians(deg)
         tx, tz = tr_r * math.cos(rad), tr_r * math.sin(rad)
         boxes.append({
-            "board": "crown", "ref": f"XD_{name}", "side": "back", "footprint": "ULTRASONIC_10MM",
-            "x0": tx - 5.0, "x1": tx + 5.0, "y0": TUNNEL_Y1 + UPPER, "y1": crown_bot_y,
-            "z0": tz - 5.0, "z1": tz + 5.0,
+            "board": "crown", "ref": f"XD_{name}", "side": "back", "footprint": "ULTRASONIC_14MM",
+            "x0": tx - 7.3, "x1": tx + 7.3, "y0": TUNNEL_Y1 + UPPER, "y1": crown_bot_y,
+            "z0": tz - 7.3, "z1": tz + 7.3,
         })
     # Off-board Plantower PMSA003I particulate module lying face-down on its duct chambers (left half of the bay)
     boxes.append({

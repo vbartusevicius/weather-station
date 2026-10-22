@@ -53,6 +53,20 @@ LUG_PLAY = 0.20           # pocket floor (y0 + 1.45) to lug bottom (y0 + 1.65)
 M6_HEAD_D, M6_HEAD_K = 10.0, 3.5
 M6_NUT_AF, M6_NUT_M = 10.0, 5.2
 LOUVER_T = 1.6            # pagoda louver blade thickness normal to its surface (was 0.71 mm)
+# Radiation labyrinth between louvers (no straight line of sight from outside to the probe, for sky AND roof rays):
+# an upturned rim on each blade's inner edge (r 24.2..25.8, up to py + 7.0) and a down-skirt under the blade / top
+# deck above (r 30.0..31.4, down to py + 5.0). The skirt bottom lies below the line from the lowest entry point
+# (blade top at r = 48, py - 2.2) over the rim top, so every ray that clears the rim hits the skirt.
+LOUVER_RIM = (24.2, 25.8, 7.0)      # r_in, r_out, top above plate y
+# Ultrasonic barrels (axis frame: s along the tilted barrel axis from the seat origin, face plane at s = XD_FACE_S).
+# The bore takes Ø 14 mm closed transducers directly; the printed `transducer_adapters` sleeve puts a Ø 10 mm
+# transducer on the same axis (its face 1.0 mm higher, on the sleeve's lip; same for all four paths -> us_delay_us).
+XD_FACE_S = -1.80
+XD_BORE_R = 7.30          # Ø 14.6 mm seat (Ø 14 mm cans +/- 0.2)
+XD_SHROUD_R = 8.80        # 1.5 mm barrel wall
+XD_APERTURE_R = 6.00      # Ø 12 mm opening in front of the radiating face
+XD_SLEEVE = {"r_in": 5.25, "r_out": 7.15, "lip_r": 4.45, "lip_t": 1.0, "top_s": 7.2}   # for Ø 10 mm cans
+LOUVER_SKIRT = (30.0, 31.4, 5.0)    # r_in, r_out, bottom above the plate below
 CLAMP_TRAVEL = 2.0        # mast clamp closing travel left between the clamp and base faces on a Ø 34 pole
 CLAMP_EAR_T = 5.0         # clamp ear thickness (bolt seats at z = -8, clear of the PMSA003I floor slits at z <= -9.8)
 MAST_Y0 = SPEC["envelope"]["mast_socket"]["y_start"]   # -31: 50 mm pole engagement (pole stop at y = 19)
@@ -582,7 +596,12 @@ def _build_pagoda():
         dr = LOUVER_T / math.sin(math.atan(5.2 / 23.8))
         louver_blade = ring_cone_y(py - 2.2, py + 3.0, OUTER_R - dr, OUTER_R, 24.2 - dr, 24.2)
         drip_lip = ring_cone_y(py - 4.5, py - 2.0, OUTER_R - 1.8, OUTER_R, OUTER_R - 1.8, OUTER_R)
-        plate_ring = louver_blade.union(drip_lip)
+        rim = ring_cone_y(py + 2.0, py + LOUVER_RIM[2], LOUVER_RIM[0], LOUVER_RIM[1], LOUVER_RIM[0], LOUVER_RIM[1])
+        plate_ring = louver_blade.union(drip_lip).union(rim)
+        if idx > 0:   # skirt under this blade, reaching down toward the blade below
+            below = SPEC["envelope"]["pagoda_shield"]["plate_ys"][idx - 1]
+            plate_ring = plate_ring.union(ring_cone_y(below + LOUVER_SKIRT[2], py + 1.5, LOUVER_SKIRT[0],
+                                                      LOUVER_SKIRT[1], LOUVER_SKIRT[0], LOUVER_SKIRT[1]))
         y_bot = 74.35 if idx == 0 else (py - 0.65)
         y_top_shoulder = (py + 10.2) if idx < 3 else 115.35
         for deg in (45, 135, 225, 315):
@@ -616,6 +635,9 @@ def _build_pagoda():
                .union(ring_cone_y(114.6, 118.4, 10.55, 13.4, 10.55, 13.4))
                .cut(top_oring_groove)
                .union(top_spigot))
+    top_skirt_py = SPEC["envelope"]["pagoda_shield"]["plate_ys"][3]
+    top_cap = top_cap.union(ring_cone_y(top_skirt_py + LOUVER_SKIRT[2], 117.5, LOUVER_SKIRT[0], LOUVER_SKIRT[1],
+                                        LOUVER_SKIRT[0], LOUVER_SKIRT[1]))
     top_cap = add_external_bayonet_y(top_cap, 120.1, r_root=44.0, r_lug=45.15, n_lugs=8)
     top_cap = cut_lock_triangles_y(top_cap, y_base=115.7, y_tip=118.1)
     body = body.union(top_cap)
@@ -791,28 +813,30 @@ def _build_crown_base():
         #   2. Right/outward horizontal face (`barrel_above_floor`, clipped flat at the `y = 174.00 mm` underside floor
         #      of `crown_base.stl` so nothing hangs below `y = 174.00 mm` on the right side while filling the barrel above `y = 174.00 mm`!)
         axis = (tz, 0, -tx) if (tx != 0 or tz != 0) else (1, 0, 0)
-        barrel_angled = (cone_y(-2.80, 4.2, 6.80, 6.80)
+        barrel_angled = (cone_y(XD_FACE_S - 1.0, 4.2, XD_SHROUD_R, XD_SHROUD_R)
                          .rotate((0, 0, 0), (0, 1, 0), 23.0)
                          .rotate((0, 0, 0), axis, tilt_deg)
                          .translate((tx, 176.2, tz)))
-        barrel_above_floor = (cone_y(-7.5, 4.2, 6.80, 6.80)
+        barrel_above_floor = (cone_y(-7.5, 4.2, XD_SHROUD_R, XD_SHROUD_R)
                               .rotate((0, 0, 0), (0, 1, 0), 23.0)
                               .rotate((0, 0, 0), axis, tilt_deg)
                               .translate((tx, 176.2, tz))
                               .intersect(box(-42.0, 42.0, 174.0, 185.0, -42.0, 42.0)))
-        barrel_shroud = barrel_angled.union(barrel_above_floor)
-        upper_seat_cup = (cone_y(-1.80, 8.0, 5.25, 5.25)
+        # nothing of the barrel rises into the crown PCB plane (its notches clear the cans, not the shroud)
+        barrel_shroud = barrel_angled.union(barrel_above_floor).cut(box(-45.0, 45.0, crown_bot_y - 0.3, 190.0, -45.0, 45.0))
+        upper_seat_cup = (cone_y(XD_FACE_S, 9.5, XD_BORE_R, XD_BORE_R)
                           .rotate((0, 0, 0), (0, 1, 0), 23.0)
                           .rotate((0, 0, 0), axis, tilt_deg)
                           .translate((tx, 176.2, tz)))
-        lower_aperture = (cone_y(-9.0, 8.0, 4.45, 4.45)
+        lower_aperture = (cone_y(-9.0, 8.0, XD_APERTURE_R, XD_APERTURE_R)
                           .rotate((0, 0, 0), (0, 1, 0), 23.0)
                           .rotate((0, 0, 0), axis, tilt_deg)
                           .translate((tx, 176.2, tz)))
         body = body.union(barrel_shroud).cut(upper_seat_cup).cut(lower_aperture)
-    # Trim the sharp lowest barrel corner horizontally at `y = 171.05 mm` (leaving `1.03 mm` of solid plastic
-    # directly below the sensor's deepest corner at `y = 172.08 mm`!):
-    body = body.cut(box(-45.0, 45.0, 160.0, 171.05, -45.0, 45.0))
+    # Trim the sharp lowest barrel corner horizontally 1.0 mm below the deepest corner of a Ø 14 mm can face
+    # (face centre 1.8 mm below the seat origin along the 29-deg axis, rim 7.0 mm further down the tilt).
+    face_low_y = 176.2 + XD_FACE_S * math.cos(math.radians(tilt_deg)) - 7.0 * math.sin(math.radians(tilt_deg))
+    body = body.cut(box(-45.0, 45.0, 160.0, face_low_y - 1.0, -45.0, 45.0))
 
     for st in ef.strut_centres():
         sx, sz = st["x"], st["z"]
@@ -919,6 +943,35 @@ def build_orings():
     return ring_base.union(ring_probe_bot).union(ring_refl).union(ring_crown).union(ring_uv).translate((0, RAISE, 0))
 
 
+def build_transducer_adapters():
+    return _build_transducer_adapters().translate((0, UPPER, 0))
+
+
+def _build_transducer_adapters():
+    """Part 12: 4x Ø 10 mm transducer sleeves seated in the Ø 14.6 mm barrels (assembled position = the V1 Ø 10 mm
+    build; leave them out for Ø 14 mm transducers) + 4x slotted press-fit retaining rings for Ø 14 mm cans, laid out
+    beside the station like the mast shims."""
+    tilt_deg = SPEC["envelope"]["wind_tunnel"].get("transducer_tilt_deg", 29.0)
+    sl = XD_SLEEVE
+    out = None
+    for tp in ef.transducer_pockets():
+        tx, tz = tp["x"], tp["z"]
+        axis = (tz, 0, -tx) if (tx != 0 or tz != 0) else (1, 0, 0)
+        sleeve = (ring_cone_y(XD_FACE_S, sl["top_s"], sl["r_in"], sl["r_out"], sl["r_in"], sl["r_out"])
+                  .union(ring_cone_y(XD_FACE_S, XD_FACE_S + sl["lip_t"], sl["lip_r"], sl["r_out"], sl["lip_r"],
+                                     sl["r_out"]))
+                  .rotate((0, 0, 0), (0, 1, 0), 23.0)
+                  .rotate((0, 0, 0), axis, tilt_deg)
+                  .translate((tx, 176.2, tz)))
+        out = sleeve if out is None else out.union(sleeve)
+    for k in range(4):
+        ring = (ring_cone_y(0.0, 1.8, 5.1, XD_BORE_R - 0.05, 5.1, XD_BORE_R - 0.05)
+                .cut(box(-1.3, 1.3, -0.5, 2.5, 0.0, 9.0))
+                .translate((60.0 + 18.0 * k, 176.0, 0.0)))
+        out = out.union(ring)
+    return out
+
+
 ALL_PARTS = (
     ("base", build_base),
     ("mast_clamp", build_mast_clamp),
@@ -931,6 +984,7 @@ ALL_PARTS = (
     ("crown_base", build_crown_base),
     ("crown", build_crown),
     ("mast_shims", build_mast_shims),
+    ("transducer_adapters", build_transducer_adapters),
 )
 
 

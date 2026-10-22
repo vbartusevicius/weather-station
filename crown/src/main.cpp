@@ -587,8 +587,9 @@ int main() {
     for (;;) {
         HAL_IWDG_Refresh(&hiwdg);
         const std::uint32_t now = HAL_GetTick();
-        const std::uint32_t period = 1000U / (g_bank.config().quads_per_s ? g_bank.config().quads_per_s : 4U);
-        if (now - last_quad >= period) {
+        const std::uint8_t qps = g_bank.config().quads_per_s;   // 0 = bursts paused
+        const std::uint32_t period = qps ? 1000U / qps : 1000U;
+        if (qps && now - last_quad >= period) {
             last_quad = now;
             measure_quad(++seq);
             bursts += 4;

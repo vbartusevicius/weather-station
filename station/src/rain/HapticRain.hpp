@@ -68,6 +68,7 @@ private:
     float ring_hail_[60]{};
     std::uint8_t head_{0};
     std::uint16_t dry_seconds_{0};
+    bool activity_wetness_{false};   // no capacitive baseline (crown v2): wet = rain event running
 };
 
 const char* precipitation_type_name(PrecipitationType type);

@@ -67,15 +67,15 @@ def realistic_part(b):
     x0, x1, y0, y1, z0, z1 = b["x0"], b["x1"], b["y0"], b["y1"], b["z0"], b["z1"]
     cx, cy, cz = (x0 + x1) / 2.0, (y0 + y1) / 2.0, (z0 + z1) / 2.0
 
-    if fp == "ULTRASONIC_10MM":
+    if fp == "ULTRASONIC_14MM":   # rendered as the V1 Ø 10 mm transducer on its adapter sleeve (face 1 mm higher)
         tilt_deg = ef.SPEC["envelope"]["wind_tunnel"].get("transducer_tilt_deg", 29.0)
         # Rotate around `axis = (cz, 0, -cx)` by `+tilt_deg` (29.0 deg) so the transducer face tilts INWARD (`V-beam`)!
         # Seats against the 1.0+ mm bottom resting shoulder (`s = -1.80 mm`) with the Press-Fit Rear Retaining Ring behind it!
         axis = (cz, 0, -cx) if (cx != 0 or cz != 0) else (1, 0, 0)
-        can = be.cone_y(-1.75, 3.4, 5.0, 5.0).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.UPPER, cz))
-        face = be.cone_y(-1.80, -1.3, 4.3, 4.3).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.UPPER, cz))
-        ret_ring = be.ring_cone_y(3.4, 4.8, 3.0, 5.2, 3.0, 5.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.UPPER, cz))
-        pigtail = be.cone_y(3.4, 5.8, 1.2, 1.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.UPPER, cz))
+        can = be.cone_y(-0.75, 4.4, 5.0, 5.0).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.UPPER, cz))
+        face = be.cone_y(-0.80, -0.3, 4.3, 4.3).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.UPPER, cz))
+        ret_ring = be.ring_cone_y(4.4, 5.8, 3.0, 5.2, 3.0, 5.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.UPPER, cz))
+        pigtail = be.cone_y(4.4, 6.8, 1.2, 1.2).rotate((0, 0, 0), axis, tilt_deg).translate((cx, 176.2 + ef.UPPER, cz))
         return [(can, ALU), (face, (0.25, 0.28, 0.32)), (ret_ring, (0.94, 0.45, 0.22)), (pigtail, GOLD)]
     if fp in ("PIEZO_27MM", "PIEZO_20MM"):
         d = 20.0 if fp == "PIEZO_20MM" else 27.0
@@ -216,6 +216,7 @@ STL_COLOURS = {
     "wind_tunnel": (0.52, 0.60, 0.76),        # Cool Indigo-Silver
     "struts": (0.92, 0.42, 0.28),             # Coral Orange (Double-C Split Threaded Struts & Hex Nuts)
     "crown_base": (0.48, 0.68, 0.86),         # Sky Steel Blue (Lower Ultrasonic & Crown PCB Tray)
+    "transducer_adapters": (0.94, 0.45, 0.22),  # Orange (Ø 10 mm transducer sleeves + Ø 14 mm retaining rings)
     "crown": (0.76, 0.86, 0.95),              # Arctic Ice Blue (Top Piezo Rain & JGS1 UV Dome Lid)
 }
 

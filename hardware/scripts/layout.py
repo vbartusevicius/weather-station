@@ -670,7 +670,22 @@ def with_inset_boundary(dsn_text, frame):
         points = list(shrunk.exterior.coords)
         return match.group(1) + "  ".join(f"{x:.0f} {y:.0f}" for x, y in points) + ")"
 
-    return re.sub(r"(\(boundary\s+\(path pcb 0\s+)([-\d.\s]+)\)", rewrite, dsn_text, count=1)
+    match = re.search(r"\(boundary\s+\(path pcb 0\s+([-\d.\s]+)\)", dsn_text)
+    dsn_text = re.sub(r"(\(boundary\s+\(path pcb 0\s+)([-\d.\s]+)\)", rewrite, dsn_text, count=1)
+    if "outline" not in frame or not match:
+        return dsn_text
+    # Concave outlines (crown notches): Freerouting does not reliably honour the boundary in inner corners, so the
+    # area outside the outline, grown by the edge clearance, is also a keepout on every routing layer.
+    nums = [float(n) for n in match.group(1).split()]
+    board = Polygon(list(zip(nums[::2], nums[1::2])))
+    pockets = board.envelope.difference(board)          # notches / chamfers: hole-free pieces touching the bbox
+    parts = [p.buffer(inset, join_style="mitre").intersection(board.envelope)
+             for p in getattr(pockets, "geoms", [pockets])]
+    layers = re.findall(r"\(layer (\S+)\n\s+\(type signal\)", dsn_text)
+    keepouts = "".join(
+        f'    (keepout "" (polygon {layer} 0  ' + "  ".join(f"{x:.0f} {y:.0f}" for x, y in part.exterior.coords) + "))\n"
+        for part in parts if part.area > 0 for layer in layers)
+    return re.sub(r"(\(boundary\s+\(path pcb 0[^)]*\)\s*\)\n)", lambda m: m.group(1) + keepouts, dsn_text, count=1)
 
 
 def without_plane_layers(dsn_text, frame):

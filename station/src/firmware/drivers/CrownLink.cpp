@@ -44,8 +44,8 @@ bool CrownLink::irq() const {
 
 bool CrownLink::read_status(std::uint16_t& status) {
     if (flashing()) return false;
-    std::uint8_t b[2];
-    if (!dev_.read_regs(crown::kStatus, b, 2)) return false;
+    std::uint8_t b[3];
+    if (!dev_.read_regs(crown::kStatus, b, 3) || crown::crc8(b, 2) != b[2]) return false;
     status = static_cast<std::uint16_t>(b[0] | (b[1] << 8));
     return true;
 }

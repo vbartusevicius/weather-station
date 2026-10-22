@@ -164,9 +164,9 @@ def collect_assembly_parts(variant, spec):
     items.append({
         "item": "Waterproof 40 kHz Closed-Face Ultrasonic Transceivers + 2-Pin JST-SH Pigtails",
         "qty": 4,
-        "part": "Ø 10.0 x 7.0 mm closed-face aluminium waterproof 40 kHz transceiver, e.g. EU10AIF40H07T/R (the part proven in the open-source QingStation V-path anemometer) + 4x 2-pin JST-SH (SHR-02V-S-B) pigtails. Only Ø 10 mm parts fit the Ø 10.5 mm barrels: do NOT buy Ø 14/16 mm types",
-        "description": "4 inward-angled (29.0 deg V-beam) transceivers seated in the N/E/S/W covered barrels of crown_base.stl, locked from the back by the 4 slotted press-fit retaining rings (in struts.stl), and plugged into crown J2..J5 (BM02B-SRSS-TB, LCSC C160388)",
-        "source": "AliExpress / Taobao (EU10AIF40H07T/R or equivalent Ø 10 x 7 mm, >= 106 dB SPL @ 10 V, >= -75 dB sensitivity)",
+        "part": "EITHER Ø 10.0 x 7.0 mm closed-face waterproof 40 kHz transceivers, e.g. EU10AIF40H07T/R (proven in the open-source QingStation V-path anemometer; default) fitted in the 4 printed transducer_adapters sleeves, OR Ø 14 x 9 mm closed waterproof 40 kHz transceivers straight in the Ø 14.6 mm barrels (no sleeves). All four must be the same type. + 4x 2-pin JST-SH (SHR-02V-S-B) pigtails (pin 1 = A, pin 2 = B; the transducer is driven differentially, neither lead is ground)",
+        "description": "4 inward-angled (29.0 deg V-beam) transceivers seated in the N/E/S/W covered barrels of crown_base.stl, locked from the back by slotted press-fit retaining rings (Ø 10 mm: the 4 small rings in struts.stl; Ø 14 mm: the 4 large rings in transducer_adapters.stl), plugged into crown J2..J5 (BM02B-SRSS-TB, LCSC C160388). Drive is ~22 Vpp (H-bridge from +12V_HEAT): check the chosen part's maximum drive voltage. Re-run the still-air calibration (us_delay_us) after changing the type",
+        "source": "AliExpress / Taobao (Ø 10 x 7 mm or Ø 14 x 9 mm closed type, >= 106 dB SPL @ 10 V, >= -75 dB sensitivity, >= 20 Vpp burst rating)",
     })
     items.append({
         "item": "20 mm Piezoelectric Haptic Rain Discs (4-Quadrant Symmetric Array)",
@@ -234,7 +234,7 @@ def collect_assembly_parts(variant, spec):
     items.append({
         "item": "3D-printed roof enclosure parts (11-part modular set)",
         "qty": 11,
-        "part": "enclosure/print/<part>.stl (one print plate per part) — assembled-position references in enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,struts,crown_base,crown,mast_shims}.stl",
+        "part": "enclosure/print/<part>.stl (one print plate per part) — assembled-position references in enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,struts,crown_base,crown,mast_shims,transducer_adapters}.stl",
         "description": "Order/print enclosure/print/<part>.stl: each part's bodies laid out >= 6 mm apart, so captive and stacked bodies (umbrella, reset button, louver plates, strut halves, nuts, shims) are never printed fused. MJF PA12 or UV-stabilised ASA (TPU 95A only if printing orings); clamped to the mast with 6x M6x35 bolts",
         "source": "printed",
     })

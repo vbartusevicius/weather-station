@@ -118,24 +118,38 @@ def test_boards_clear_enclosure_and_threads_truly_mesh():
     assert sleeve_front.intersect(jst_plug_gauge).val().Volume() < 1e-3
     assert pagoda.intersect(jst_plug_gauge).val().Volume() < 1e-3
 
-    # 7. Crown Base 29.0-deg Inward-Looking (V-Beam) Ultrasonic Barrel Seat + Unobstructed Bore + Press-Fit Ring Verification:
+    # 7. Crown Base 29.0-deg Inward-Looking (V-Beam) Ultrasonic Barrels, both transducer options:
+    #    Ø 14 x 9 mm can straight in the Ø 14.6 mm bore, or Ø 10 x 7 mm can on the printed adapter sleeve.
     tilt_deg = ef.SPEC["envelope"]["wind_tunnel"].get("transducer_tilt_deg", 29.0)
+    adapters = be.build_transducer_adapters()
+    fs, sl = be.XD_FACE_S, be.XD_SLEEVE
     for tp in ef.transducer_pockets():
         tx, tz = tp["x"], tp["z"]
         axis = (tz, 0, -tx) if (tx != 0 or tz != 0) else (1, 0, 0)
-        xd_can = be.cone_y(-1.75, 3.4, 5.0, 5.0).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2 + ef.UPPER, tz))
-        ret_ring = be.ring_cone_y(3.4, 4.8, 3.0, 5.2, 3.0, 5.2).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2 + ef.UPPER, tz))
-        # Verify the Ø 8.9 mm (`r = 4.43 mm`) acoustic aperture bore is 100% round and unobstructed from s = -10.0 to +8.0 mm!
-        bore_gauge = be.cone_y(-10.0, 8.0, 4.43, 4.43).rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2 + ef.UPPER, tz))
-        assert crown_base.intersect(bore_gauge).val().Volume() < 1e-3, f"XD_{tp['name']} aperture has a chord blockage!"
-        assert crown_base.intersect(xd_can).val().Volume() < 1e-3
-        assert crown_base.intersect(ret_ring).val().Volume() < 1e-3
-        assert plates["crown"].intersect(xd_can).val().Volume() < 1e-3
-        assert plates["crown"].intersect(ret_ring).val().Volume() < 1e-3
+
+        def along(solid, axis=axis, tx=tx, tz=tz):
+            return solid.rotate((0, 0, 0), axis, tilt_deg).translate((tx, 176.2 + ef.UPPER, tz))
+
+        can14 = along(be.cone_y(fs + 0.05, fs + 9.0, 7.0, 7.0))
+        ring14 = along(be.ring_cone_y(fs + 9.05, fs + 10.85, 5.1, 7.25, 5.1, 7.25))
+        bore14 = along(be.cone_y(-10.0, fs, be.XD_APERTURE_R - 0.02, be.XD_APERTURE_R - 0.02))
+        can10 = along(be.cone_y(fs + sl["lip_t"] + 0.05, fs + sl["lip_t"] + 5.15, 5.0, 5.0))
+        ring10 = along(be.ring_cone_y(fs + sl["lip_t"] + 5.2, fs + sl["lip_t"] + 6.6, 3.1, 5.2, 3.1, 5.2))
+        bore10 = along(be.cone_y(-10.0, fs + sl["lip_t"], sl["lip_r"] - 0.02, sl["lip_r"] - 0.02))
+        name = tp["name"]
+        assert crown_base.intersect(bore14).val().Volume() < 1e-3, f"XD_{name}: Ø 12 mm aperture blocked"
+        assert crown_base.intersect(can14).val().Volume() < 1e-3, f"XD_{name}: Ø 14 mm can does not fit the bore"
+        assert crown_base.intersect(ring14).val().Volume() < 1e-3
+        assert plates["crown"].intersect(can14).val().Volume() < 1e-3, f"XD_{name}: Ø 14 mm can hits the crown PCB"
+        assert plates["crown"].intersect(ring14).val().Volume() < 1e-3
+        assert crown_base.intersect(adapters).val().Volume() < 1e-3, "adapter sleeves do not fit the barrels"
+        for solid, what in ((can10, "can"), (ring10, "ring"), (bore10, "aperture")):
+            assert adapters.intersect(solid).val().Volume() < 1e-3, f"XD_{name}: Ø 10 mm {what} hits its sleeve"
+            assert crown_base.intersect(solid).val().Volume() < 1e-3, f"XD_{name}: Ø 10 mm {what} hits the barrel"
         for b in ef.part_boxes():
             if b["board"] == "crown" and not b["ref"].startswith(("XD_", "PIEZO_")):
                 comp_box = be.box(b["x0"], b["x1"], b["y0"], b["y1"], b["z0"], b["z1"])
-                assert xd_can.intersect(comp_box).val().Volume() < 1e-3, f"XD_{tp['name']} clashes with crown:{b['ref']}!"
+                assert can14.intersect(comp_box).val().Volume() < 1e-3, f"XD_{name} clashes with crown:{b['ref']}!"
 
     for b in ef.part_boxes():
         if b["board"] == "crown" and not b["ref"].startswith(("XD_", "PIEZO_")):
@@ -328,3 +342,26 @@ def test_print_plates_keep_every_body_apart():
                 a, b = boxes[i], boxes[j]
                 gap = max(b.xmin - a.xmax, a.xmin - b.xmax, b.zmin - a.zmax, a.zmin - b.zmax)
                 assert gap >= be.PLATE_GAP - 0.01, f"{name}: plate bodies {i} and {j} only {gap:.2f} mm apart"
+
+
+def test_radiation_labyrinth_blocks_every_line_of_sight_to_the_probe():
+    """No straight ray from outside reaches the probe core through the pagoda (checklist M9): sun from above, horizontal
+    sky, and roof-reflected / roof-emitted rays from below (-75..+75 deg elevation), in radial sections clear of the
+    columns. Without the rims / skirts this finds ~90 leaking rays per section."""
+    import cadquery as cq
+    from OCP.BRepExtrema import BRepExtrema_DistShapeShape
+
+    pag = be._build_pagoda()
+    plate_ys = ef.SPEC["envelope"]["pagoda_shield"]["plate_ys"]
+    leaks = []
+    for az in (0.0, 20.0):
+        sec = pag.rotate((0, 0, 0), (0, 1, 0), az).intersect(be.box(0, 62, 60, 130, -0.05, 0.05)).val().wrapped
+        for elev in range(-75, 80, 5):
+            # shielded zone: bottom deck top (plate 1 + 2) up to the top deck underside (plate 4 + 8.5)
+            for i in range(int((plate_ys[-2] + 8.5 - plate_ys[0] - 2.0) / 0.5) + 1):
+                yt = plate_ys[0] + 2.0 + 0.5 * i
+                y0 = yt - 47.0 * math.tan(math.radians(elev))
+                ray = cq.Edge.makeLine(cq.Vector(60.0, y0, 0.0), cq.Vector(13.0, yt, 0.0)).wrapped
+                if BRepExtrema_DistShapeShape(sec, ray).Value() > 1e-6:
+                    leaks.append((az, elev, yt))
+    assert not leaks, f"{len(leaks)} rays reach the probe core, e.g. (azimuth, elevation, y) {leaks[:5]}"

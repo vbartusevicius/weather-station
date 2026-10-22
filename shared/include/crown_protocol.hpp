@@ -15,7 +15,7 @@ namespace crown {
 
 constexpr std::uint8_t kI2cAddress = 0x2A;
 constexpr std::uint8_t kWhoAmIValue = 0xC7;
-constexpr std::uint8_t kProtocolVersion = 1;
+constexpr std::uint8_t kProtocolVersion = 2;   // v2: kStatus carries a CRC
 
 // STM32G431 ROM bootloader on I2C2 (PC4 / PA8), entered with BOOT0 high during reset (AN2606, AN4221).
 // AN2606 lists the 7-bit address per device family; the station scans both candidates before flashing.
@@ -25,7 +25,7 @@ constexpr std::uint8_t kBootloaderAddrB = 0x56;
 enum Reg : std::uint8_t {
     kWhoAmI = 0x00,      // 1 B  = kWhoAmIValue
     kVersion = 0x01,     // 4 B  = protocol, fw major, fw minor, fw patch
-    kStatus = 0x02,      // 2 B  = StatusBits (read-only)
+    kStatus = 0x02,      // 3 B  = StatusBits (LE) + CRC-8 (read-only)
     kWind = 0x10,        // sizeof(WindBlock)
     kRainCount = 0x30,   // 1 B  = rain events waiting in the FIFO
     kRainPop = 0x31,     // sizeof(RainEvent): oldest rain event (removes it)
@@ -105,7 +105,7 @@ struct DiagBlock {
 };
 
 struct ConfigBlock {
-    std::uint8_t quads_per_s;      // 1..10 (default 4)
+    std::uint8_t quads_per_s;      // 1..10 (default 4); 0 = bursts paused (lightning interference test)
     std::uint8_t burst_cycles;     // 4..16 (default 8)
     std::uint8_t as3935_outdoor;   // 1 = outdoor AFE gain
     std::uint8_t as3935_min_strikes;

@@ -22,6 +22,7 @@
 #include "../rs485/Rs485Protocol.hpp"
 #include "../telemetry/HomeAssistantMqtt.hpp"
 #include "../wind/UltrasonicWind.hpp"
+#include "../wind/WindCalibration.hpp"
 #include "Board.hpp"
 #include "ButtonController.hpp"
 #include "WebAssets.hpp"
@@ -72,6 +73,19 @@ firmware::Ltr390 g_ltr;
 firmware::Tsl2591 g_tsl;
 firmware::GuvbC31sm g_guvb;
 firmware::CrownLink g_crown;
+std::string g_rs485_frame;   // latest $AM telemetry frame, answered on STATE?
+// Still-air wind calibration (`wind_calibrate` action): raw quads are collected for kWindCalS seconds
+constexpr std::uint32_t kWindCalS = 60;
+wind::StillAirCalibrator g_wind_cal;
+bool g_wind_cal_running = false;
+std::uint32_t g_wind_cal_start_ms = 0;
+std::string g_wind_cal_status = "never run";
+// Crown diagnostics for commissioning (/api/config "crown"): refreshed by task_crown
+crown::DiagBlock g_crown_diag{};
+bool g_crown_diag_ok = false;
+crown::RainEvent g_last_rain{};
+std::uint32_t g_rain_events = 0, g_strike_events = 0, g_disturber_events = 0;
+bool g_crown_bursts = true;
 firmware::AnalogFrontEnd g_adc;
 firmware::HeaterPwm g_heater;
 firmware::Storage g_storage;
@@ -272,6 +286,38 @@ void task_slow_i2c(void*) {
 // ------------------------------------------------------------------------------------------------
 // Acquisition: crown STM32 (wind quads 4/s, rain impacts, lightning) over I2C + CROWN_IRQ
 // ------------------------------------------------------------------------------------------------
+// Feeds the still-air calibrator with raw quads and finishes it after kWindCalS seconds (task_crown context).
+void wind_calibration_step(const wind::TofQuad& raw) {
+    Lock l;
+    if (!g_wind_cal_running) {
+        return;
+    }
+    g_wind_cal.add(raw);
+    if (now_ms() - g_wind_cal_start_ms < kWindCalS * 1000U) {
+        return;
+    }
+    g_wind_cal_running = false;
+    const std::uint32_t t = now_ms();
+    if (!g_raw.thermo.temp_c.fresh(t, 10000) || !g_raw.thermo.rh_pct.fresh(t, 10000)) {
+        g_wind_cal_status = "failed: no SHT40 temperature / humidity";
+        return;
+    }
+    const float p = g_raw.baro.pressure_hpa.fresh(t, 10000) ? g_raw.baro.pressure_hpa.value : 1013.25F;
+    const auto r = g_wind_cal.result(g_raw.thermo.temp_c.value, g_raw.thermo.rh_pct.value, p);
+    char msg[160];
+    std::snprintf(msg, sizeof msg, "%s: %lu quads, delay %.2f us, dt_ns %.3f us, dt_ew %.3f us, spread %.3f us",
+                  r.ok ? "ok" : r.reason, static_cast<unsigned long>(r.quads), static_cast<double>(r.us_delay_us),
+                  static_cast<double>(r.zero.dt_ns_offset_us), static_cast<double>(r.zero.dt_ew_offset_us),
+                  static_cast<double>(r.dt_spread_us));
+    g_wind_cal_status = msg;
+    if (r.ok) {
+        g_cfg.us_delay_us = r.us_delay_us;
+        g_cfg.dt_ns_offset_us = r.zero.dt_ns_offset_us;
+        g_cfg.dt_ew_offset_us = r.zero.dt_ew_offset_us;
+        g_storage.save_config(g_cfg);
+    }
+}
+
 void task_crown(void*) {
     conditioning::WindSecondAccumulator acc;
     TickType_t wake = xTaskGetTickCount();
@@ -294,15 +340,17 @@ void task_crown(void*) {
                 crown_link::WindQuality wq{};
                 if (g_crown.read_wind(w) && w.seq != last_seq && crown_link::to_tof_quad(w, q, wq)) {
                     last_seq = w.seq;
+                    wind_calibration_step(q);
                     wind::ImuCompassReading orient{};
                     wind::ZeroWindCalibration cal{};
-                    float delay_us = 0.0F;
+                    float delay_us = 0.0F, gain = 1.0F;
                     {
                         Lock l;
                         orient = g_orientation;
                         cal.dt_ns_offset_us = g_cfg.dt_ns_offset_us;
                         cal.dt_ew_offset_us = g_cfg.dt_ew_offset_us;
                         delay_us = g_cfg.us_delay_us;
+                        gain = g_cfg.wind_speed_gain;
                     }
                     q.t_ns_us -= delay_us;
                     q.t_sn_us -= delay_us;
@@ -310,7 +358,8 @@ void task_crown(void*) {
                     q.t_we_us -= delay_us;
                     const auto s = wind::UltrasonicWindSolver::solve(q, orient, cal);
                     if (s.valid) {
-                        acc.add(s.v_east_m_s, s.v_north_m_s, s.speed_m_s, s.sound_speed_m_s, s.acoustic_temp_c);
+                        const float g = gain;
+                        acc.add(g * s.v_east_m_s, g * s.v_north_m_s, g * s.speed_m_s, s.sound_speed_m_s, s.acoustic_temp_c);
                     }
                 }
             }
@@ -318,8 +367,10 @@ void task_crown(void*) {
                 crown::RainEvent ev[16];
                 const int n = g_crown.pop_rain(ev, 16);
                 Lock l;
+                g_rain_events += static_cast<std::uint32_t>(n);
+                if (n > 0) g_last_rain = ev[n - 1];
                 for (int i = 0; i < n; ++i) {
-                    g_events.rain.push(crown_link::to_rain_impact(ev[i], t_now));
+                    g_events.rain.push(crown_link::to_rain_impact(ev[i], t_now, g_cfg.rain_impact_scale));
                 }
             }
             if (status & crown::kStStrikePending) {
@@ -328,11 +379,19 @@ void task_crown(void*) {
                 Lock l;
                 for (int i = 0; i < n; ++i) {
                     core::LightningStrike ls{};
+                    (ev[i].kind == 1 ? g_strike_events : g_disturber_events)++;
                     if (crown_link::to_strike(ev[i], t_now, ls)) {
                         g_events.lightning.push(ls);
                     }
                 }
             }
+        }
+        if (tick % 50 == 0) {   // every 5 s: crown diagnostics
+            crown::DiagBlock dg{};
+            const bool ok = g_crown.read_diag(dg);
+            Lock l;
+            g_crown_diag_ok = ok;
+            if (ok) g_crown_diag = dg;
         }
         const std::uint32_t t = now_ms();
         if (t - last_second >= 1000U) {
@@ -394,15 +453,40 @@ void init_rs485() {
     uart_set_mode(UART_NUM_1, UART_MODE_RS485_HALF_DUPLEX);
 }
 
-void rs485_service(const core::DerivedState& d) {
-    char rx[64];
-    const int n = uart_read_bytes(UART_NUM_1, rx, sizeof(rx) - 1, 0);
-    if (n > 0) {
-        rx[n] = '\0';
-        const auto cmd = rs485::Rs485Protocol::parse_command_frame(rx, static_cast<std::size_t>(n));
+// Poll / response only (the station never talks unsolicited, so it can share a bus with a polling master):
+// one command per line; STATE? returns the latest telemetry frame, PING returns PONG.
+void task_rs485(void*) {
+    char line[64];
+    std::size_t len = 0;
+    for (;;) {
+        char c = 0;
+        if (uart_read_bytes(UART_NUM_1, &c, 1, pdMS_TO_TICKS(200)) != 1) {
+            continue;
+        }
+        if (c != '\n') {
+            len = (len < sizeof(line) - 1) ? len + 1 : 0;   // overlong garbage: start over
+            if (len) line[len - 1] = c;
+            continue;
+        }
+        std::uint8_t address = 0;
+        {
+            Lock l;
+            address = g_cfg.rs485_address;
+        }
+        const auto cmd = rs485::Rs485Protocol::parse_command(line, len, address);
+        len = 0;
         if (cmd == rs485::CommandType::Ping) {
-            static constexpr char kPong[] = "$AM,PONG*0000\r\n";
-            uart_write_bytes(UART_NUM_1, kPong, sizeof(kPong) - 1);
+            const std::string pong = rs485::Rs485Protocol::encode_pong(address);
+            uart_write_bytes(UART_NUM_1, pong.c_str(), pong.size());
+        } else if (cmd == rs485::CommandType::RequestState) {
+            std::string frame;
+            {
+                Lock l;
+                frame = g_rs485_frame;
+            }
+            if (!frame.empty()) {
+                uart_write_bytes(UART_NUM_1, frame.c_str(), frame.size());
+            }
         } else if (cmd == rs485::CommandType::ResetDailyRain) {
             Lock l;
             g_pipeline.reset_rain_today();
@@ -411,8 +495,6 @@ void rs485_service(const core::DerivedState& d) {
             g_pipeline.request_heater_check();
         }
     }
-    const std::string frame = rs485::Rs485Protocol::encode_telemetry_frame(d);
-    uart_write_bytes(UART_NUM_1, frame.c_str(), frame.size());
 }
 
 void ws_broadcast(const std::string& json) {
@@ -481,7 +563,10 @@ void task_pipeline(void*) {
         g_heater.set_duty_pct(d.controls.heater_duty_pct);
         state = telemetry::TelemetryFormatter::build_state_json(d, STATION_FW_VERSION, g_net.wifi_info());
         ws_broadcast(state);
-        rs485_service(d);
+        {
+            Lock l;
+            g_rs485_frame = rs485::Rs485Protocol::encode_telemetry_frame(d, g_cfg.rs485_address);
+        }
         core::StationConfig cfg{};
         {
             Lock l;
@@ -575,6 +660,30 @@ esp_err_t handle_config_get(httpd_req_t* req) {
     doc["us_delay_us"] = c.us_delay_us;
     doc["pressure_wind_coef"] = c.pressure_wind_coef;
     doc["rain_gain"] = c.rain_gain;
+    doc["rain_impact_scale"] = c.rain_impact_scale;
+    doc["rs485_address"] = c.rs485_address;
+    doc["wind_speed_gain"] = c.wind_speed_gain;
+    {
+        Lock l;
+        JsonObject cr = doc["crown"].to<JsonObject>();
+        cr["present"] = g_crown.present();
+        cr["bursts"] = g_crown_bursts;
+        cr["diag_ok"] = g_crown_diag_ok;
+        cr["uptime_s"] = g_crown_diag.uptime_s;
+        cr["bursts_per_s"] = g_crown_diag.bursts_per_s;
+        cr["as3935_tun_cap"] = g_crown_diag.tun_cap;
+        cr["as3935_lco_hz"] = static_cast<std::uint32_t>(g_crown_diag.lco_hz10) * 10U;
+        cr["i2c_errors"] = g_crown_diag.i2c_errors;
+        cr["rain_events"] = g_rain_events;
+        cr["last_rain_peak_mv"] = g_last_rain.peak_mv;
+        cr["last_rain_width_us"] = g_last_rain.width_us;
+        cr["strikes"] = g_strike_events;
+        cr["disturbers"] = g_disturber_events;
+    }
+    {
+        Lock l;
+        doc["wind_cal_status"] = g_wind_cal_running ? "running" : g_wind_cal_status.c_str();
+    }
     doc["guvb_counts_per_uvi"] = c.guvb_counts_per_uvi;
     doc["guvb_factory_b_scale"] = g_guvb.factory_b_scale();
     doc["as3935_tun_cap"] = c.as3935_tun_cap;
@@ -622,6 +731,15 @@ esp_err_t handle_config_post(httpd_req_t* req) {
     if (in["us_delay_us"].is<float>()) c.us_delay_us = in["us_delay_us"].as<float>();
     if (in["pressure_wind_coef"].is<float>()) c.pressure_wind_coef = in["pressure_wind_coef"].as<float>();
     if (in["rain_gain"].is<float>()) c.rain_gain = in["rain_gain"].as<float>();
+    if (in["rain_impact_scale"].is<float>()) c.rain_impact_scale = std::max(0.05F, in["rain_impact_scale"].as<float>());
+    if (in["wind_speed_gain"].is<float>()) {
+        const float g = in["wind_speed_gain"].as<float>();
+        if (g > 0.5F && g < 2.0F) c.wind_speed_gain = g;
+    }
+    if (in["rs485_address"].is<int>()) {
+        const int a = in["rs485_address"].as<int>();
+        if (a >= 0 && a <= 247) c.rs485_address = static_cast<std::uint8_t>(a);
+    }
     if (in["guvb_counts_per_uvi"].is<float>()) c.guvb_counts_per_uvi = std::max(0.0F, in["guvb_counts_per_uvi"].as<float>());
     if (in["as3935_tun_cap"].is<int>()) c.as3935_tun_cap = static_cast<std::uint8_t>(in["as3935_tun_cap"].as<int>() & 0x0F);
     if (in["mqtt_uri"].is<const char*>()) {
@@ -657,6 +775,25 @@ esp_err_t handle_action(httpd_req_t* req) {
     } else if (std::strcmp(action, "heater_check") == 0) {
         Lock l;
         g_pipeline.request_heater_check();
+    } else if (std::strcmp(action, "wind_calibrate") == 0) {
+        // still air required (station covered by a closed box or calm room) for kWindCalS seconds
+        Lock l;
+        g_wind_cal.reset();
+        g_wind_cal_start_ms = now_ms();
+        g_wind_cal_running = true;
+    } else if (std::strcmp(action, "crown_bursts_off") == 0 || std::strcmp(action, "crown_bursts_on") == 0) {
+        // lightning-interference test (CALIBRATION.md): pause / resume the ultrasonic bursts
+        const bool on = std::strcmp(action, "crown_bursts_on") == 0;
+        crown::ConfigBlock cc{};
+        cc.quads_per_s = on ? 4 : 0;
+        cc.burst_cycles = 8;
+        cc.as3935_outdoor = g_cfg.as3935_indoor ? 0 : 1;
+        cc.as3935_min_strikes = 1;
+        cc.rain_trigger_mv = 40;
+        if (g_crown.send_config(cc)) {
+            Lock l;
+            g_crown_bursts = on;
+        }
     } else if (std::strcmp(action, "set_time") == 0) {
         firmware::Network::set_clock_from_browser(in["unix"] | static_cast<std::int64_t>(0));
     } else if (std::strcmp(action, "reboot") == 0) {
@@ -793,6 +930,7 @@ extern "C" void app_main(void) {
     xTaskCreate(task_analog, "analog", 4096, nullptr, 7, nullptr);
     xTaskCreate(task_fast_i2c, "fast_i2c", 4096, nullptr, 6, nullptr);
     xTaskCreate(task_crown, "crown", 4096, nullptr, 5, nullptr);
+    xTaskCreate(task_rs485, "rs485", 3072, nullptr, 4, nullptr);
     xTaskCreate(task_slow_i2c, "slow_i2c", 6144, nullptr, 4, nullptr);
     xTaskCreate(task_pipeline, "pipeline", 12288, nullptr, 3, nullptr);
 }

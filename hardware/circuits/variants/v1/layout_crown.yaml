@@ -1,34 +1,32 @@
 frame:
   size: { x: 60.0, y: 60.0 }
   # 60 x 60 mm crown v2 (centre 30, 30 = enclosure axis; +y = North, +x = East):
-  #  - 15 mm wide notches at N / E / S / W reach in to r = 17.5 mm so the four 29-deg tilted transducer barrels
-  #    (r = 25.5 mm) and their pigtails pass the board edge; the pigtails plug into J2..J5 at the notch bottoms.
+  #  - 16 mm wide notches at N / E / S / W reach in to r = 17.5 mm so the four 29-deg tilted transducer barrels
+  #    (r = 25.5 mm, Ø 14.6 mm bore for Ø 14 mm cans) and their pigtails pass the board edge; the pigtails plug into J2..J5 at the notch bottoms.
   #  - The NE corner is chamfered to 26.9 mm from the axis so the crown cable rises past it from the NE strut
   #    (wire column r = 31 +/- 3 mm); the other three corners only lose 7 mm (r <= 38 mm, inside the crown lid).
   outline:
     - [7.0,  0.0]
-    - [22.5, 0.0]
-    - [22.5, 12.5]
-    - [37.5, 12.5]
-    - [37.5, 0.0]
+    - [22.0, 0.0]
+    - [22.0, 12.5]
+    - [38.0, 12.5]
+    - [38.0, 0.0]
     - [53.0, 0.0]
     - [60.0, 7.0]
-    - [60.0, 22.5]
-    - [47.5, 22.5]
-    - [47.5, 37.5]
-    - [60.0, 37.5]
+    - [60.0, 22.0]
+    - [47.5, 22.0]
+    - [47.5, 38.0]
     - [60.0, 38.0]
     - [38.0, 60.0]
-    - [37.5, 60.0]
-    - [37.5, 47.5]
-    - [22.5, 47.5]
-    - [22.5, 60.0]
+    - [38.0, 47.5]
+    - [22.0, 47.5]
+    - [22.0, 60.0]
     - [7.0,  60.0]
     - [0.0,  53.0]
-    - [0.0,  37.5]
-    - [12.5, 37.5]
-    - [12.5, 22.5]
-    - [0.0,  22.5]
+    - [0.0,  38.0]
+    - [12.5, 38.0]
+    - [12.5, 22.0]
+    - [0.0,  22.0]
     - [0.0,  7.0]
   copper_layers: 4
   thickness: 1.2
@@ -105,8 +103,8 @@ parts:
   C25: { x: 16.8, y: 13.5, rot: 90,  block: lightning }
   C26: { x: 16.8, y: 17.5, rot: 90,  block: lightning }
   C27: { x: 5.0,  y: 6.5,  rot: 90,  block: lightning }   # tank caps at the AS_INP end (L1 pin 1, x = 8.35)
-  C28: { x: 7.2,  y: 11.5, rot: 0,   block: lightning }
-  R26: { x: 12.5, y: 17.8, rot: 0,   block: lightning }
+  C28: { x: 7.2,  y: 11.1, rot: 0,   block: lightning }
+  R26: { x: 13.3, y: 17.8, rot: 0,   block: lightning }
 
   # Transducer H-bridge drivers + T/R isolation diodes, one group per corner near its connector
   U2:  { x: 17.0, y: 51.0, rot: 0,   block: us_tx }    # N
@@ -120,7 +118,7 @@ parts:
   D3:  { x: 52.5, y: 11.5, rot: 0,   block: us_tx }
   D4:  { x: 46.5, y: 13.0, rot: 0,   block: us_tx }
   C15: { x: 47.3, y: 17.0, rot: 90,  block: us_tx }
-  R14: { x: 52.5, y: 21.3, rot: 0,   block: us_tx }
+  R14: { x: 52.5, y: 20.8, rot: 0,   block: us_tx }
   R2:  { x: 56.8, y: 11.5, rot: 90,  block: us_tx }
 
   U4:  { x: 43.0, y: 8.0,  rot: 0,   block: us_tx }    # S
@@ -130,11 +128,11 @@ parts:
   R15: { x: 39.3, y: 14.8, rot: 0,   block: us_tx }
   R3:  { x: 55.5, y: 6.5,  rot: 0,   block: us_tx }
 
-  U5:  { x: 4.5,  y: 16.5, rot: 90,  block: us_tx }    # W
+  U5:  { x: 4.5,  y: 15.9, rot: 90,  block: us_tx }    # W
   D7:  { x: 3.5,  y: 9.8,  rot: 0,   block: us_tx }
-  D8:  { x: 9.5,  y: 20.5, rot: 0,   block: us_tx }
+  D8:  { x: 9.5,  y: 20.0, rot: 0,   block: us_tx }
   C17: { x: 8.3,  y: 16.5, rot: 90,  block: us_tx }
-  R16: { x: 4.5,  y: 21.3, rot: 0,   block: us_tx }
+  R16: { x: 4.5,  y: 20.7, rot: 0,   block: us_tx }
   R4:  { x: 13.0, y: 21.0, rot: 0,   block: us_tx }
 
   # ======================= BOTTOM (B.Cu, faces the crown_base floor) =======================
@@ -160,7 +158,7 @@ parts:
   TP5: { x: 5.5,  y: 42.5, rot: 0,   side: back, block: crown_mcu }
 
   U10: { x: 44.0, y: 22.0, rot: 0,   side: back, block: crown_power }
-  C1:  { x: 48.5, y: 20.5, rot: 90,  side: back, block: crown_power }
+  C1:  { x: 48.5, y: 19.3, rot: 90,  side: back, block: crown_power }
   C2:  { x: 44.0, y: 17.5, rot: 0,   side: back, block: crown_power }
   C13: { x: 41.5, y: 30.0, rot: 90,  side: back, block: us_tx }
   R17: { x: 44.5, y: 30.0, rot: 90,  side: back, block: us_tx }
@@ -182,15 +180,15 @@ parts:
   R10: { x: 9.0,  y: 40.6, rot: 90,  side: back, block: us_rx }
   R11: { x: 20.2, y: 37.2, rot: 0,   side: back, block: us_rx }
   R12: { x: 20.2, y: 39.0, rot: 0,   side: back, block: us_rx }
-  U8:  { x: 15.5, y: 53.0, rot: 90,  side: back, block: us_rx }
-  C23: { x: 21.2, y: 51.0, rot: 90,  side: back, block: us_rx }
+  U8:  { x: 15.1, y: 53.0, rot: 90,  side: back, block: us_rx }
+  C23: { x: 20.2, y: 51.0, rot: 90,  side: back, block: us_rx }
   R20: { x: 9.0,  y: 51.0, rot: 90,  side: back, block: us_rx }
   C19: { x: 9.0,  y: 47.5, rot: 90,  side: back, block: us_rx }
-  R21: { x: 21.2, y: 54.5, rot: 90,  side: back, block: us_rx }
-  C20: { x: 21.2, y: 57.8, rot: 90,  side: back, block: us_rx }
+  R21: { x: 20.2, y: 54.5, rot: 90,  side: back, block: us_rx }
+  C20: { x: 20.2, y: 57.6, rot: 90,  side: back, block: us_rx }
   R18: { x: 11.5, y: 57.8, rot: 0,   side: back, block: us_rx }
   R19: { x: 15.0, y: 57.8, rot: 0,   side: back, block: us_rx }
-  C18: { x: 18.0, y: 49.0, rot: 0,   side: back, block: us_rx }
+  C18: { x: 17.7, y: 49.0, rot: 0,   side: back, block: us_rx }
 
   # Rain charge amplifier (U8B) passives + piezo clamp (NE quadrant)
   R22: { x: 41.0, y: 41.0, rot: 0,   side: back, block: rain_afe }

@@ -26,11 +26,12 @@ bool to_tof_quad(const crown::WindBlock& w, wind::TofQuad& out, WindQuality& q) 
     return true;
 }
 
-core::RainImpact to_rain_impact(const crown::RainEvent& e, std::uint32_t now_ms) {
+core::RainImpact to_rain_impact(const crown::RainEvent& e, std::uint32_t now_ms, float mv_scale) {
     core::RainImpact r{};
     r.t_ms = now_ms - e.age_ms;
-    r.baseline_mv = kRainBaselineMv;
-    r.peak_mv = static_cast<std::uint16_t>(std::min<std::uint32_t>(65535U, kRainBaselineMv + e.peak_mv));
+    r.baseline_mv = 0;
+    const float mv = std::max(0.0F, mv_scale) * static_cast<float>(e.peak_mv);
+    r.peak_mv = static_cast<std::uint16_t>(std::min(65535.0F, mv + 0.5F));
     r.width_us = e.width_us;
     return r;
 }
