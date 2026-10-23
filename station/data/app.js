@@ -17,8 +17,14 @@ const UNIT_SYSTEMS = [
 let unitIdx = 0;
 let lastState = null;
 let minuteHist = null;      // /api/history/minutes: 60 x 1-minute chart series for the cards
-let trendTier = "minute";   // Trends tab: minute (1 h) | hour (24 h) | day (31 d)
+// Trends ranges: firmware tier + number of closed intervals (RAM: 60 min; flash: 14 d of hours, 6 months of days)
+const TREND_RANGES = { "1h": ["minute", 60], "24h": ["hour", 24], "7d": ["hour", 168], "14d": ["hour", 336], "31d": ["day", 31], "6mo": ["day", 183] };
+let trendRange = "1h";
+let trendTier = "minute";   // tier of trendRange
+let trendN = 60;
 let trendData = null;       // /api/history?tier=...
+let dailyData = null, recordsData = null, roseData = null;   // Trends: day tier, records, wind rose
+let trendsTimer = null;
 let rain31d = null;
 let stationCfg = null;
 let clockPushed = false;
@@ -57,6 +63,8 @@ const conv = {
   d: (v) => (isNum(v) ? v * UNIT_SYSTEMS[unitIdx].dMul : null),
   h: (v) => (isNum(v) ? v * UNIT_SYSTEMS[unitIdx].hMul : null),
 };
+// Failed requests / renders: logged (the LIVE badge shows a lost connection), never silently dropped
+const logErr = (e) => console.error("AeroMet UI:", e);
 const postJson = (url, body) =>
   fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json());
 
@@ -67,7 +75,8 @@ document.querySelectorAll("[data-trange]").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll("[data-trange]").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    trendTier = btn.dataset.trange;
+    trendRange = btn.dataset.trange;
+    [trendTier, trendN] = TREND_RANGES[trendRange] || ["minute", 60];
     loadTrends();
   });
 });
@@ -90,7 +99,12 @@ document.querySelectorAll("[data-trange]").forEach((btn) => {
 function showTab(name) {
   document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
-  if (name === "trends") loadTrends();
+  clearInterval(trendsTimer);
+  trendsTimer = null;
+  if (name === "trends") {
+    loadTrends();
+    trendsTimer = setInterval(loadTrends, 60000);   // a new minute / hour closes
+  }
   if (name === "settings") loadConfig();
   clearInterval(setupTimer);
   setupTimer = name === "settings" ? setInterval(loadSetupStatus, 5000) : null;   // live MQTT / RS-485 status
@@ -103,7 +117,6 @@ function showTab(name) {
   }
 }
 document.querySelectorAll(".tab").forEach((btn) => btn.addEventListener("click", () => showTab(btn.dataset.tab)));
-if (location.hash && document.querySelector(`.tab[data-tab="${location.hash.slice(1)}"]`)) showTab(location.hash.slice(1));   // deep link, e.g. /#calibration
 el("loc-banner-btn").addEventListener("click", () => showTab("calibration"));
 
 el("unit-toggle").addEventListener("click", () => {
@@ -126,7 +139,7 @@ el("scenario-select").addEventListener("change", (ev) => {
     .then(() => Promise.all([loadMinuteHistory(), loadRain31d(), loadTrends()]))
     .then(() => fetch("/api/state").then(r => r.json()))
     .then(applyTelemetry)
-    .catch(() => {});
+    .catch(logErr);
 });
 
 document.querySelectorAll(".card.clickable").forEach((card) => {
@@ -420,69 +433,525 @@ function renderLightningTimeline(d) {
 }
 
 // Trends tab: tier history from /api/history (null slots break the line).
-function renderLineChart(svgId, seriesList, yUnit) {
-  const svg = el(svgId);
+// ---------------------------------------------------------------------------------------------
+// Trends: history charts (firmware history tiers: 60 x 1 min, 24 x 1 h, 31 x 1 day + the running interval).
+// The browser only scales, labels and draws what /api/history returns (incl. min / max bands and "cum" totals).
+// ---------------------------------------------------------------------------------------------
+const U = () => UNIT_SYSTEMS[unitIdx];
+const same = (v) => v;
+// Every plottable series. `lane` = unit group: series with the same lane share one y axis (one lane per unit,
+// stacked under a shared time axis, meteogram style). type: line | bars | dots; band: shade the interval's min..max.
+const LANES = {
+  temp: { unit: () => (U().id === "imperial" ? "°F" : "°C"), conv: (v) => conv.t(v), span: 3 },
+  pct: { unit: () => "%", conv: same, span: 10, lo: 0, hi: 100 },
+  speed: { unit: () => U().wUnit, conv: (v) => conv.w(v), span: 2, lo: 0 },
+  dir: { unit: () => "from", conv: same, fixed: [0, 360] },
+  mm: { unit: () => U().rUnit, conv: (v) => conv.r(v), span: 1, lo: 0 },
+  mmh: { unit: () => `${U().rUnit}/h`, conv: (v) => conv.r(v), span: 1, lo: 0 },
+  press: { unit: () => U().pUnit, conv: (v) => conv.p(v), span: 3 },
+  wm2: { unit: () => "W/m²", conv: same, span: 100, lo: 0 },
+  uv: { unit: () => "UV", conv: same, span: 1, lo: 0 },
+  lux: { unit: () => "lx", conv: same, span: 100, lo: 0 },
+  ugm3: { unit: () => "µg/m³", conv: same, span: 5, lo: 0 },
+  ppm: { unit: () => "ppm", conv: same, span: 30 },
+  idx: { unit: () => "index", conv: same, span: 30, lo: 0 },
+  count: { unit: () => "strikes", conv: same, span: 2, lo: 0 },
+  km: { unit: () => U().dUnit, conv: (v) => conv.d(v), span: 10, lo: 0 },
+  volt: { unit: () => "V", conv: same, span: 1 },
+  watt: { unit: () => "W", conv: same, span: 1, lo: 0 },
+  mms: { unit: () => "mm/s", conv: same, span: 0.05, lo: 0 },
+  cms2: { unit: () => "cm/s²", conv: same, span: 0.5, lo: 0 },
+};
+const TREND_FAMILIES = [
+  { id: "temperature", label: "🌡 Temperature", series: [
+    { id: "temp", key: "temp_c", lane: "temp", label: "Temperature", color: "#38bdf8", band: true, dec: 1, on: true },
+    { id: "dew", key: "dew_point_c", lane: "temp", label: "Dew point", color: "#22c55e", dash: "5 3", dec: 1, on: true },
+    { id: "rh", key: "rh_pct", lane: "pct", label: "Humidity", color: "#a78bfa", dec: 0, on: true }] },
+  { id: "wind", label: "💨 Wind", series: [
+    { id: "wind", key: "wind_m_s", lane: "speed", label: "Wind (mean)", color: "#38bdf8", band: true, dec: 1, on: true },
+    { id: "gust", key: "wind_m_s", field: "max", lane: "speed", label: "Gust", color: "#f59e0b", width: 1.4, dec: 1, on: true },
+    { id: "dir", key: "wind_dir_deg", lane: "dir", label: "Direction", color: "#94a3b8", type: "dots", dec: 0, on: true },
+    { id: "rose", rose: true, label: "Wind rose", color: "#0ea5e9", on: true }] },
+  { id: "rain", label: "🌧 Rain", series: [
+    { id: "rain", key: "rain_mm", lane: "mm", label: "Rain", color: "#60a5fa", type: "bars", dec: 1, on: true },
+    { id: "raintot", key: "rain_mm", field: "cum", lane: "mm", label: "Rain total", color: "#1d4ed8", dec: 1, on: true },
+    { id: "rainrate", key: "rain_rate_mm_h", lane: "mmh", label: "Rain rate (peak)", color: "#0ea5e9", dec: 1 },
+    { id: "hail", key: "hail_mm", lane: "mm", label: "Hail", color: "#e2e8f0", type: "bars", dec: 1 }] },
+  { id: "pressure", label: "⏲ Pressure", series: [
+    { id: "qnh", key: "qnh_hpa", lane: "press", label: "Sea-level pressure", color: "#a855f7", band: true, dec: 1, on: true }] },
+  { id: "sun", label: "☀ Sun & UV", series: [
+    { id: "solar", key: "solar_w_m2", lane: "wm2", label: "Sunlight", color: "#f59e0b", band: true, dec: 0, on: true },
+    { id: "uv", key: "uv_index", lane: "uv", label: "UV index", color: "#c084fc", dec: 1, on: true },
+    { id: "lux", key: "lux", lane: "lux", label: "Illuminance", color: "#fde047", dec: 0 },
+    { id: "cloud", key: "cloud_pct", lane: "pct", label: "Cloud cover", color: "#94a3b8", dec: 0 }] },
+  { id: "air", label: "🍃 Air quality", series: [
+    { id: "pm1", key: "pm1", lane: "ugm3", label: "PM1.0", color: "#a3e635", dec: 1 },
+    { id: "pm25", key: "pm25", lane: "ugm3", label: "PM2.5", color: "#22c55e", dec: 1, on: true },
+    { id: "pm10", key: "pm10", lane: "ugm3", label: "PM10", color: "#84cc16", dash: "5 3", dec: 1, on: true },
+    { id: "co2", key: "co2_ppm", lane: "ppm", label: "CO₂", color: "#f97316", dec: 0, on: true },
+    { id: "voc", key: "voc_index", lane: "idx", label: "VOC index", color: "#eab308", dec: 0 },
+    { id: "nox", key: "nox_index", lane: "idx", label: "NOx index", color: "#ef4444", dec: 0 }] },
+  { id: "lightning", label: "⚡ Lightning", series: [
+    { id: "strikes", key: "strikes", lane: "count", label: "Strikes", color: "#facc15", type: "bars", dec: 0, on: true },
+    { id: "strikekm", key: "lightning_km", lane: "km", label: "Closest strike", color: "#f472b6", type: "dots", dec: 0, on: true }] },
+  { id: "station", label: "🔋 Station", series: [
+    { id: "vin", key: "vin_v", lane: "volt", label: "Supply", color: "#38bdf8", dec: 1, on: true },
+    { id: "heater", key: "heater_w", lane: "watt", label: "Heater power", color: "#f59e0b", dec: 1, on: true },
+    { id: "ppv", key: "ppv_mm_s", lane: "mms", label: "Vibration (PPV)", color: "#94a3b8", type: "bars", dec: 3 },
+    { id: "pga", key: "pga_cm_s2", lane: "cms2", label: "Acceleration (PGA)", color: "#64748b", type: "bars", dec: 2 }] },
+];
+const TREND_SERIES = TREND_FAMILIES.flatMap((f) => f.series.map((s) => ({ ...s, family: f.id })));
+const MAX_LANES = 6;
+let trendSel = (() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem("aeromet.trendSel") || "null");
+    if (Array.isArray(saved) && saved.length) return saved.filter((i) => TREND_SERIES.some((s) => s.id === i));
+  } catch (_) { /* default below */ }
+  return ["temp", "dew", "rh"];
+})();
+let explorer = null;   // geometry + values of the drawn chart (hover read-out)
+
+// Lane series (the wind rose is a picker entry too, but drawn as a polar panel beside the lanes)
+const selectedSeries = () => TREND_SERIES.filter((s) => trendSel.includes(s.id) && !s.rose);
+const roseSelected = () => trendSel.includes("rose");
+const trendMetricKeys = () => [...new Set(selectedSeries().map((s) => s.key))];
+function saveSel() {
+  try { localStorage.setItem("aeromet.trendSel", JSON.stringify(trendSel)); } catch (_) { /* private mode */ }
+}
+
+// Picker (dashboard pattern: preset menu + removable chips + "Add metric" popover with search and grouped checkboxes).
+// The chips are also the legend. Families can be added whole from the popover; presets replace the selection.
+const TREND_PRESETS = [
+  { id: "overview", label: "Overview", series: ["temp", "rh", "wind", "gust", "raintot", "qnh"] },
+  ...TREND_FAMILIES.map((f) => ({ id: f.id, label: f.label, series: f.series.filter((s) => s.on).map((s) => s.id) })),
+];
+let addFilter = "";
+
+function canAdd(sid, sel = trendSel) {
+  const def = TREND_SERIES.find((x) => x.id === sid);
+  if (!def || def.rose) return true;
+  const lanes = new Set(TREND_SERIES.filter((x) => sel.includes(x.id) && !x.rose).map((x) => x.lane));
+  return lanes.has(def.lane) || lanes.size < MAX_LANES;
+}
+
+function setSelection(next) {
+  trendSel = next;
+  saveSel();
+  renderPicker();
+  loadTrendSeries();
+  if (roseSelected()) loadRose();
+}
+
+function renderPicker() {
+  const chips = el("trend-chips"), list = el("add-list"), menu = el("preset-menu");
+  if (!chips || !list) return;
+  const sel = TREND_SERIES.filter((s) => trendSel.includes(s.id));
+  chips.innerHTML = sel.length ? sel.map((s) => `<span class="sel-chip"><i style="background:${s.color}"></i>${s.label}` +
+    `<button class="chip-x" data-remove="${s.id}" title="Remove ${s.label}">×</button></span>`).join("")
+    : `<span class="muted-xs">Nothing selected: pick a preset or add a metric</span>`;
+  if (menu) menu.innerHTML = TREND_PRESETS.map((p) => `<button class="dd-item" data-preset="${p.id}">${p.label}</button>`).join("");
+  const q = addFilter.trim().toLowerCase();
+  list.innerHTML = TREND_FAMILIES.map((f) => {
+    const items = f.series.filter((s) => !q || s.label.toLowerCase().includes(q) || f.label.toLowerCase().includes(q));
+    if (!items.length) return "";
+    const on = f.series.filter((s) => trendSel.includes(s.id)).length;
+    const famState = on === 0 ? "" : (on === f.series.length ? " all" : " some");
+    return `<div class="add-group"><button class="add-fam${famState}" data-family="${f.id}"><span class="box"></span>${f.label}` +
+      `<span class="add-count">${on ? `${on}/${f.series.length}` : "add all"}</span></button>` +
+      items.map((s) => {
+        const checked = trendSel.includes(s.id);
+        const blocked = !checked && !canAdd(s.id);
+        return `<button class="add-item${checked ? " all" : ""}" data-series="${s.id}" ${blocked ? 'disabled title="Up to 6 different units at a time"' : ""}>` +
+          `<span class="box"></span><i style="background:${s.color}"></i>${s.label}</button>`;
+      }).join("") + "</div>";
+  }).join("") || `<div class="muted-xs">No metric matches “${addFilter}”</div>`;
+  const units = new Set(selectedSeries().map((s) => s.lane)).size;
+  setText("add-note", `${units} of ${MAX_LANES} units in use${units >= MAX_LANES ? " · remove one to add another unit" : ""}`);
+}
+
+function pickerClick(ev) {
+  const t = ev.target;
+  const rm = t.closest("[data-remove]"), pr = t.closest("[data-preset]"), fam = t.closest("[data-family]"), it = t.closest("[data-series]");
+  if (rm) {
+    setSelection(trendSel.filter((x) => x !== rm.dataset.remove));
+  } else if (pr) {
+    setSelection(TREND_PRESETS.find((x) => x.id === pr.dataset.preset).series.slice());
+    closeMenus();
+  } else if (fam) {   // whole family: add every series that still fits, or remove them all when all are shown
+    const f = TREND_FAMILIES.find((x) => x.id === fam.dataset.family);
+    const ids = f.series.map((x) => x.id);
+    if (ids.every((x) => trendSel.includes(x))) {
+      setSelection(trendSel.filter((x) => !ids.includes(x)));
+    } else {
+      const next = trendSel.slice();
+      ids.forEach((x) => { if (!next.includes(x) && canAdd(x, next)) next.push(x); });
+      setSelection(next);
+    }
+  } else if (it && !it.disabled) {
+    const sid = it.dataset.series;
+    if (trendSel.includes(sid)) setSelection(trendSel.filter((x) => x !== sid));
+    else if (canAdd(sid)) setSelection([...trendSel, sid]);
+  }
+}
+
+function closeMenus() {
+  document.querySelectorAll(".dd.open").forEach((d) => d.classList.remove("open"));
+}
+function toggleMenu(id) {
+  const d = el(id);
+  const open = !d.classList.contains("open");
+  closeMenus();
+  if (open) {
+    d.classList.add("open");
+    if (id === "add-dd") { el("add-search").value = addFilter; el("add-search").focus(); }
+  }
+}
+
+// Local wall-clock label for a unix time (the station's UTC offset, not the browser's)
+function localDate(unix) {
+  const off = lastState && isNum(lastState.utc_offset_s) ? lastState.utc_offset_s : 0;
+  return new Date((unix + off) * 1000);
+}
+function timeLabel(unix, tier, long) {
+  const t = localDate(unix);
+  const hh = String(t.getUTCHours()).padStart(2, "0"), mm = String(t.getUTCMinutes()).padStart(2, "0");
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  if (tier === "day") return `${t.getUTCDate()} ${MON[t.getUTCMonth()]}`;
+  if (tier === "hour") return long ? `${t.getUTCDate()} ${MON[t.getUTCMonth()]} ${hh}:00` : `${hh}:00`;
+  return `${hh}:${mm}`;
+}
+
+// Time-axis label at round times for the selected range (null = no tick here)
+function axisTick(t) {
+  const d = localDate(t);
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const hh = d.getUTCHours(), mm = d.getUTCMinutes(), day = d.getUTCDate();
+  switch (trendRange) {
+    case "1h": return mm % 10 === 0 ? timeLabel(t, "minute") : null;
+    case "24h": return hh % 4 === 0 ? `${String(hh).padStart(2, "0")}:00` : null;
+    case "7d": return hh === 0 ? `${day} ${MON[d.getUTCMonth()]}` : null;
+    case "14d": return hh === 0 && day % 2 === 0 ? `${day} ${MON[d.getUTCMonth()]}` : null;
+    case "31d": return (day - 1) % 5 === 0 ? `${day} ${MON[d.getUTCMonth()]}` : null;
+    default: return day === 1 ? MON[d.getUTCMonth()] : null;   // 6 months
+  }
+}
+
+function laneRange(lane, values) {
+  const L = LANES[lane];
+  if (L.fixed) return L.fixed;
+  if (!values.length) return null;
+  let lo = Math.min(...values), hi = Math.max(...values);
+  const span = Math.abs(L.conv(L.span) - L.conv(0)) || L.span;
+  if (L.lo === 0 && lo >= 0) lo = 0;
+  if (hi - lo < span) {
+    if (L.lo === 0 && lo === 0) {
+      hi = span;
+    } else {
+      const mid = (hi + lo) / 2;
+      lo = mid - span / 2;
+      hi = mid + span / 2;
+    }
+  }
+  const pad = (hi - lo) * 0.08;
+  const top = isNum(L.hi) ? Math.min(L.hi, hi + pad) : hi + pad;   // a humidity axis never shows 103 %
+  return [L.lo === 0 && lo === 0 ? 0 : lo - pad, top];
+}
+
+function renderExplorer() {
+  const svg = el("trend-chart");
   if (!svg) return;
-  const all = [];
-  seriesList.forEach(s => s.values.forEach(v => { if (isNum(v)) all.push(v); }));
-  if (all.length < 2) {
-    svg.innerHTML = `<text x="280" y="92" fill="#8ea2c6" font-size="11" text-anchor="middle">No history yet</text>`;
+  const sel = selectedSeries();
+  const S = trendData && trendData.series ? trendData.series : {};
+  const lanes = [...new Set(sel.map((s) => s.lane))];
+  // layout first (it sets the chart width): lanes only, lanes + rose side by side, or the rose alone
+  const body = el("trend-body");
+  if (body) body.className = `trend-body${roseSelected() ? (sel.length ? " with-rose" : " rose-only") : ""}`;
+  // drawn 1:1 in CSS pixels, so text stays the same size on any screen
+  const W = Math.max(360, Math.round(svg.getBoundingClientRect().width || 600));
+  const L = 50, R = 14, laneH = lanes.length <= 1 ? 240 : (lanes.length === 2 ? 170 : (lanes.length === 3 ? 130 : 105)), gap = 12, B = 22;
+  const H = lanes.length * laneH + (lanes.length - 1) * gap + B + 6;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Math.max(120, H)}`);
+  if (!sel.length && roseSelected()) { svg.innerHTML = ""; explorer = null; return; }
+  const conv1 = (s, v) => (isNum(v) ? LANES[s.lane].conv(v) : null);
+  const vals = sel.map((s) => ((S[s.key] && S[s.key][s.field || "v"]) || []).map((v) => conv1(s, v)));
+  const lows = sel.map((s) => (s.band && S[s.key] && S[s.key].min ? S[s.key].min.map((v) => conv1(s, v)) : null));
+  const highs = sel.map((s) => (s.band && S[s.key] && S[s.key].max ? S[s.key].max.map((v) => conv1(s, v)) : null));
+  const n = Math.max(0, ...vals.map((v) => v.length));
+  if (!sel.length || n < 2 || !vals.some((v) => v.some(isNum))) {
+    svg.setAttribute("viewBox", `0 0 ${W} 120`);
+    svg.innerHTML = `<text x="${W / 2}" y="64" class="ch-empty" text-anchor="middle">${sel.length ? "No data in this period yet" : "Pick a family or metric above"}</text>`;
+    explorer = null;
     return;
   }
-  const minV = Math.min(...all), maxV = Math.max(...all);
-  const span = Math.max(1.0, maxV - minV);
-  let html = "";
-  for (let g = 0; g <= 3; g++) {
-    const y = 18 + (g / 3) * 136;
-    const val = maxV - (g / 3) * span;
-    html += `<line x1="42" y1="${y}" x2="548" y2="${y}" stroke="rgba(142,162,198,0.14)" stroke-dasharray="3 3"/>`;
-    html += `<text x="38" y="${y + 4}" fill="#8ea2c6" font-size="9.5" text-anchor="end">${val.toFixed(1)}${yUnit}</text>`;
-  }
-  seriesList.forEach(s => {
-    const n = s.values.length;
-    let seg = [];
-    const flush = () => {
-      if (seg.length > 1) {
-        html += `<polyline fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" ${s.dash ? `stroke-dasharray="${s.dash}"` : ""} points="${seg.join(" ")}"/>`;
+  const PW = W - L - R;
+  const xs = [...Array(n).keys()].map((i) => L + (i / (n - 1)) * PW);
+  const times = [...Array(n).keys()].map((i) => trendData.end_unix - (n - 1 - i) * trendData.step_s);
+  const top = (li) => 6 + li * (laneH + gap);
+  let h = "";
+  // night shading (24-h view), across all lanes
+  const astro = lastState && lastState.astronomy;
+  if (trendTier === "hour" && astro && isNum(astro.sunrise_min) && isNum(astro.sunset_min)) {
+    times.forEach((t, i) => {
+      const d = localDate(t);
+      const mid = d.getUTCHours() * 60 + 30;
+      if (mid < astro.sunrise_min || mid > astro.sunset_min) {
+        const w = PW / (n - 1);
+        h += `<rect x="${(xs[i] - w / 2).toFixed(1)}" y="6" width="${w.toFixed(1)}" height="${H - B - 12}" class="ch-night"/>`;
       }
-      seg = [];
-    };
-    s.values.forEach((v, i) => {
-      if (!isNum(v)) { flush(); return; }
-      const x = 44 + (i / Math.max(1, n - 1)) * 502;
-      const y = 154 - ((v - minV) / span) * 136;
-      seg.push(`${x.toFixed(1)},${y.toFixed(1)}`);
     });
-    flush();
+  }
+  lanes.forEach((lane, li) => {
+    const idx = sel.map((s, i) => [s, i]).filter(([s]) => s.lane === lane);
+    const all = [];
+    idx.forEach(([, i]) => {
+      vals[i].forEach((v) => isNum(v) && all.push(v));
+      if (lows[i]) lows[i].forEach((v) => isNum(v) && all.push(v));
+      if (highs[i]) highs[i].forEach((v) => isNum(v) && all.push(v));
+    });
+    const r = laneRange(lane, all);
+    const y0 = top(li);
+    h += `<rect x="${L}" y="${y0}" width="${PW}" height="${laneH}" class="lane-bg"/>`;
+    h += `<text x="${W - R - 6}" y="${y0 + 13}" class="lane-unit" text-anchor="end">${LANES[lane].unit()}</text>`;
+    if (!r) return;
+    const yOf = (v) => y0 + laneH - ((v - r[0]) / (r[1] - r[0])) * laneH;
+    const ticks = lanes.length <= 2 ? 4 : 2;
+    for (let g = 0; g <= ticks; g++) {
+      const y = y0 + (g / ticks) * laneH;
+      const v = r[1] - (g / ticks) * (r[1] - r[0]);
+      const step = (r[1] - r[0]) / ticks;
+      const dec = Math.min(Math.abs(r[1]) >= 100 ? 1 : 3, step < 0.05 ? 3 : (step < 0.5 ? 2 : (step < 5 ? 1 : 0)));
+      const txt = LANES[lane].fixed ? ["N", "W", "S", "E", "N"][Math.round((g / ticks) * 4)] : (Math.abs(v) < 0.5 * 10 ** -dec ? (0).toFixed(dec) : v.toFixed(dec));
+      const ty = g === 0 ? y + 9 : (g === ticks ? y - 2 : y + 3.5);   // edge labels stay inside their lane
+      h += `<line x1="${L}" y1="${y}" x2="${W - R}" y2="${y}" class="ch-grid"/><text x="${L - 5}" y="${ty}" class="ch-tick" text-anchor="end">${txt}</text>`;
+    }
+    idx.forEach(([s, i]) => {
+      if (s.band && lows[i]) {
+        const up = [], dn = [];
+        lows[i].forEach((lo, k) => {
+          const hi = highs[i][k];
+          if (isNum(lo) && isNum(hi)) { up.push(`${xs[k].toFixed(1)},${yOf(hi).toFixed(1)}`); dn.unshift(`${xs[k].toFixed(1)},${yOf(lo).toFixed(1)}`); }
+        });
+        if (up.length > 1) h += `<polygon points="${up.concat(dn).join(" ")}" fill="${s.color}" opacity="0.14"/>`;
+      }
+      if (s.type === "bars") {
+        const bw = Math.max(1.5, (PW / n) * 0.7);
+        vals[i].forEach((v, k) => {
+          if (!isNum(v) || v <= 0) return;
+          const y = yOf(v), yb = yOf(Math.max(r[0], 0));
+          h += `<rect x="${(xs[k] - bw / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0.8, yb - y).toFixed(1)}" fill="${s.color}" opacity="0.85" rx="1"/>`;
+        });
+        return;
+      }
+      if (s.type === "dots") {
+        vals[i].forEach((v, k) => { if (isNum(v)) h += `<circle cx="${xs[k].toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="1.9" fill="${s.color}"/>`; });
+        return;
+      }
+      let seg = [];
+      const flush = () => {
+        if (seg.length > 1) h += `<polyline fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" stroke-linejoin="round" ${s.dash ? `stroke-dasharray="${s.dash}"` : ""} points="${seg.join(" ")}"/>`;
+        seg = [];
+      };
+      vals[i].forEach((v, k) => { if (!isNum(v)) { flush(); return; } seg.push(`${xs[k].toFixed(1)},${yOf(v).toFixed(1)}`); });
+      flush();
+    });
   });
-  const lbl = { minute: ["-60 min", "-30 min", "Now"], hour: ["-24 h", "-12 h", "Now"], day: ["-31 d", "-15 d", "Today"] }[trendTier];
-  html += `<text x="44" y="172" fill="#8ea2c6" font-size="9.5">${lbl[0]}</text><text x="296" y="172" fill="#8ea2c6" font-size="9.5" text-anchor="middle">${lbl[1]}</text><text x="546" y="172" fill="#8ea2c6" font-size="9.5" text-anchor="end">${lbl[2]}</text>`;
-  svg.innerHTML = html;
+  // shared time axis
+  const axisY = H - B + 2;
+  times.forEach((t, i) => {
+    const lbl = axisTick(t);
+    if (lbl && xs[n - 1] - xs[i] > 52) {
+      h += `<line x1="${xs[i]}" y1="6" x2="${xs[i]}" y2="${axisY - 8}" class="ch-vgrid"/>`;
+      h += `<text x="${xs[i]}" y="${axisY + 8}" class="ch-tick" text-anchor="middle">${lbl}</text>`;
+    }
+  });
+  h += `<text x="${xs[n - 1]}" y="${axisY + 8}" class="ch-tick ch-now" text-anchor="end">now</text>`;
+  h += `<line class="ch-cross" id="trend-cross" x1="0" x2="0" y1="6" y2="${axisY - 8}" style="display:none"/>`;
+  h += `<rect class="ch-hit" x="${L}" y="0" width="${PW}" height="${H}" fill="transparent"/>`;
+  svg.innerHTML = h;
+  explorer = { xs, times, sel, vals, lows, highs, W };
+  const hit = svg.querySelector(".ch-hit");
+  const move = (clientX) => {
+    const box = svg.getBoundingClientRect();
+    const x = ((clientX - box.left) / box.width) * W;
+    showHover(Math.max(0, Math.min(n - 1, Math.round(((x - L) / PW) * (n - 1)))));
+  };
+  hit.addEventListener("mousemove", (ev) => move(ev.clientX));
+  hit.addEventListener("touchmove", (ev) => { if (ev.touches[0]) move(ev.touches[0].clientX); }, { passive: true });
+  hit.addEventListener("mouseleave", hideHover);
+}
+
+function showHover(k) {
+  const st = explorer, tip = el("trend-tip"), cross = el("trend-cross");
+  if (!st || !tip || !cross || k >= st.xs.length) return;
+  cross.setAttribute("x1", st.xs[k]);
+  cross.setAttribute("x2", st.xs[k]);
+  cross.style.display = "";
+  const rows = st.sel.map((s, i) => {
+    const v = st.vals[i][k];
+    const unit = LANES[s.lane].unit();
+    const val = isNum(v) ? (s.lane === "dir" ? `${v.toFixed(0)}° ${degToCardinal(v)}` : `${v.toFixed(s.dec)} ${unit}`) : "—";
+    const range = st.lows[i] && isNum(st.lows[i][k]) ? ` <span class="tip-range">${st.lows[i][k].toFixed(s.dec)}…${st.highs[i][k].toFixed(s.dec)}</span>` : "";
+    return `<div><i style="background:${s.color}"></i>${s.label} <b>${val}</b>${range}</div>`;
+  }).join("");
+  tip.innerHTML = `<div class="tip-time">${timeLabel(st.times[k], trendTier, true)}${k === st.xs.length - 1 ? " (so far)" : ""}</div>${rows}`;
+  tip.style.display = "block";
+  const frac = st.xs[k] / st.W;
+  tip.style.left = frac > 0.6 ? "" : `${(frac * 100 + 2).toFixed(1)}%`;
+  tip.style.right = frac > 0.6 ? `${((1 - frac) * 100 + 2).toFixed(1)}%` : "";
+}
+function hideHover() {
+  const tip = el("trend-tip"), cross = el("trend-cross");
+  if (tip) tip.style.display = "none";
+  if (cross) cross.style.display = "none";
 }
 
 function renderTrends() {
-  if (!trendData || !trendData.series) return;
-  const u = UNIT_SYSTEMS[unitIdx];
-  const S = trendData.series;
-  const arr = (key, f = "v") => (S[key] && S[key][f]) ? S[key][f] : [];
-  const lbl = { minute: "Last Hour", hour: "Last 24 h", day: "Last 31 Days" }[trendTier];
-  setText("chart-temp-title", `Temperature & Dew Point (${lbl})`);
-  setText("chart-wind-title", `Wind Mean & Gust (${lbl})`);
-  setText("chart-baro-title", `Sea-Level Pressure (${lbl})`);
-  renderLineChart("chart-temp", [
-    { values: arr("temp_c").map(conv.t), color: "#38bdf8", width: 2.3 },
-    { values: arr("dew_point_c").map(conv.t), color: "#22c55e", dash: "5 3", width: 1.8 },
-  ], u.tUnit);
-  renderLineChart("chart-wind", [
-    { values: arr("wind_m_s", "max").map(conv.w), color: "#f59e0b", width: 2.0 },
-    { values: arr("wind_m_s").map(conv.w), color: "#38bdf8", width: 2.3 },
-  ], "");
-  renderLineChart("chart-baro-rain", [{ values: arr("qnh_hpa").map(conv.p), color: "#a855f7", width: 2.3 }], "");
+  renderPicker();
+  renderExplorer();
+  const csv = el("trend-csv");
+  if (csv) csv.setAttribute("href", `/api/history.csv?tier=${trendTier}&n=${trendN}&metrics=${trendMetricKeys().join(",")}`);
+  renderDaily();
+  renderRecords();
+  renderRose();
 }
+
+// ---- daily summary (day tier) ----
+function renderDaily() {
+  const t = el("daily-table");
+  if (!t || !dailyData || !dailyData.series) return;
+  const S = dailyData.series;
+  const g = (k, f = "v") => (S[k] && S[k][f]) ? S[k][f] : [];
+  const n = g("temp_c").length;
+  const u = U();
+  const T = (v) => (isNum(v) ? `${conv.t(v).toFixed(1)}${u.tUnit}` : "—");
+  const head = `<tr><th>Day</th><th>High</th><th>Low</th><th>Mean</th><th>Rain</th><th>Max gust</th><th>Mean wind</th><th>Pressure</th><th>UV max</th><th>Sun max</th><th>Strikes</th></tr>`;
+  let rows = "";
+  for (let i = n - 1; i >= 0; i--) {
+    const day = dailyData.end_unix - (n - 1 - i) * 86400;
+    const rain = g("rain_mm")[i], gust = g("wind_m_s", "max")[i], wind = g("wind_m_s")[i], dir = g("wind_dir_deg")[i];
+    const pLo = g("qnh_hpa", "min")[i], pHi = g("qnh_hpa", "max")[i];
+    const pd = u.pUnit === "inHg" ? 2 : 0;
+    rows += `<tr${i === n - 1 ? ' class="today"' : ""}><td>${i === n - 1 ? "Today" : timeLabel(day, "day")}</td>` +
+      `<td class="hot">${T(g("temp_c", "max")[i])}</td><td class="cold">${T(g("temp_c", "min")[i])}</td><td>${T(g("temp_c")[i])}</td>` +
+      `<td>${isNum(rain) ? `${conv.r(rain).toFixed(1)} ${u.rUnit}` : "—"}</td>` +
+      `<td>${isNum(gust) ? `${conv.w(gust).toFixed(1)} ${u.wUnit}` : "—"}</td>` +
+      `<td>${isNum(wind) ? `${conv.w(wind).toFixed(1)} ${u.wUnit}${isNum(dir) ? ` ${degToCardinal(dir)}` : ""}` : "—"}</td>` +
+      `<td>${isNum(pLo) && isNum(pHi) ? `${conv.p(pLo).toFixed(pd)}–${conv.p(pHi).toFixed(pd)} ${u.pUnit}` : "—"}</td>` +
+      `<td>${fv(g("uv_index", "max")[i], 1)}</td><td>${fv(g("solar_w_m2", "max")[i], 0, " W/m²")}</td><td>${fv(g("strikes")[i], 0)}</td></tr>`;
+  }
+  t.innerHTML = head + rows;
+}
+
+// ---- records (firmware: /api/records) ----
+const RECORD_ROWS = [
+  ["temp_max", "Highest temperature", "t"], ["temp_min", "Lowest temperature", "t"],
+  ["rh_max", "Highest humidity", "%"], ["rh_min", "Lowest humidity", "%"],
+  ["qnh_max", "Highest pressure", "p"], ["qnh_min", "Lowest pressure", "p"],
+  ["gust_max", "Strongest gust", "w"], ["rain_rate_max", "Heaviest rain", "rr"], ["rain_day_max", "Wettest day", "r"],
+  ["uv_max", "Highest UV index", "uv"], ["solar_max", "Strongest sun", "sun"], ["pm25_max", "Highest PM2.5", "pm"],
+];
+function recordValue(v, kind) {
+  const u = U();
+  switch (kind) {
+    case "t": return `${conv.t(v).toFixed(1)}${u.tUnit}`;
+    case "p": return `${conv.p(v).toFixed(u.pUnit === "inHg" ? 2 : 1)} ${u.pUnit}`;
+    case "w": return `${conv.w(v).toFixed(1)} ${u.wUnit}`;
+    case "r": return `${conv.r(v).toFixed(1)} ${u.rUnit}`;
+    case "rr": return `${conv.r(v).toFixed(1)} ${u.rUnit}/h`;
+    case "%": return `${v.toFixed(0)} %`;
+    case "uv": return v.toFixed(1);
+    case "sun": return `${v.toFixed(0)} W/m²`;
+    default: return `${v.toFixed(1)} µg/m³`;
+  }
+}
+function renderRecords() {
+  const t = el("records-table");
+  if (!t || !recordsData || !recordsData.records) return;
+  const P = [["today", "Today"], ["yesterday", "Yesterday"], ["month", "This month"], ["all_time", "All time"]];
+  t.innerHTML = `<tr><th></th>${P.map(([, l]) => `<th>${l}</th>`).join("")}</tr>` + RECORD_ROWS.map(([key, label, kind]) => {
+    const r = recordsData.records[key] || {};
+    return `<tr><td>${label}</td>${P.map(([p]) => {
+      const e = r[p];
+      if (!e) return "<td>—</td>";
+      const when = timeLabel(e.unix, p === "today" || p === "yesterday" ? "minute" : "day");
+      return `<td><b>${recordValue(e.v, kind)}</b><span class="rec-when">${when}</span></td>`;
+    }).join("")}</tr>`;
+  }).join("");
+  const vs = recordsData.vs_yesterday || {};
+  const u = U();
+  const chip = (k, label, f, unit, dec) => {
+    const o = vs[k];
+    if (!o) return "";
+    const dlt = Number((f(o.now) - f(o.then)).toFixed(dec));
+    const cls = dlt === 0 ? "" : (dlt > 0 ? "up" : "down");
+    const txt = dlt === 0 ? "±0" : `${dlt > 0 ? "+" : "−"}${Math.abs(dlt).toFixed(dec)}`;
+    return `<span class="vs-chip ${cls}"><b>${label}</b>${txt}${unit}</span>`;
+  };
+  el("vs-yesterday").innerHTML = `<span class="vs-head">vs. this time yesterday</span>` +
+    chip("temp_c", "Temperature", (v) => conv.t(v), u.tUnit, 1) + chip("dew_point_c", "Dew point", (v) => conv.t(v), u.tUnit, 1) +
+    chip("rh_pct", "Humidity", same, " %", 0) + chip("qnh_hpa", "Pressure", (v) => conv.p(v), ` ${u.pUnit}`, u.pUnit === "inHg" ? 2 : 1) +
+    chip("wind_m_s", "Wind", (v) => conv.w(v), ` ${u.wUnit}`, 1);
+}
+
+// ---- wind rose (firmware: /api/windrose), stacked by speed class ----
+const ROSE_COLORS = ["#bae6fd", "#7dd3fc", "#38bdf8", "#0ea5e9", "#0369a1", "#f59e0b"];
+function renderRose() {
+  const svg = el("rose-svg");
+  if (!svg || !roseSelected() || !roseData || !Array.isArray(roseData.pct)) return;
+  const RL = { "1h": "this hour", "24h": "last 24 hours", "7d": "last 7 days", "14d": "last 14 days", "31d": "last 31 days", "6mo": "last 6 months" };
+  setText("rose-title", `Wind rose · ${RL[trendRange] || ""}`);
+  const cx = 150, cy = 150, R0 = 18, R1 = 128;
+  const totals = roseData.pct.map((row) => row.reduce((a, b) => a + b, 0));
+  const maxT = Math.max(1, ...totals);
+  const ring = maxT > 20 ? 10 : (maxT > 8 ? 5 : 2);
+  const scale = (pct) => R0 + (pct / (Math.ceil(maxT / ring) * ring)) * (R1 - R0);
+  let h = "";
+  for (let p = ring; p <= Math.ceil(maxT / ring) * ring; p += ring) {
+    h += `<circle cx="${cx}" cy="${cy}" r="${scale(p).toFixed(1)}" class="rose-ring"/><text x="${cx + 3}" y="${(cy - scale(p) + 10).toFixed(1)}" class="ch-tick">${p} %</text>`;
+  }
+  roseData.pct.forEach((row, s) => {
+    let acc = 0;
+    const a0 = ((s * 22.5 - 9.5 - 90) * Math.PI) / 180, a1 = ((s * 22.5 + 9.5 - 90) * Math.PI) / 180;
+    row.forEach((pct, k) => {
+      if (pct <= 0) return;
+      const r0 = scale(acc), r1 = scale(acc + pct);
+      acc += pct;
+      const pt = (r, a) => `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`;
+      h += `<polygon points="${pt(r0, a0)} ${pt(r1, a0)} ${pt(r1, a1)} ${pt(r0, a1)}" fill="${ROSE_COLORS[k]}"><title>${COMPASS_16[s]}: ${pct.toFixed(1)} %</title></polygon>`;
+    });
+  });
+  ["N", "E", "S", "W"].forEach((c, i) => {
+    const a = ((i * 90 - 90) * Math.PI) / 180;
+    h += `<text x="${(cx + (R1 + 12) * Math.cos(a)).toFixed(1)}" y="${(cy + (R1 + 12) * Math.sin(a) + 4).toFixed(1)}" class="rose-card" text-anchor="middle">${c}</text>`;
+  });
+  h += `<circle cx="${cx}" cy="${cy}" r="${R0 - 2}" class="rose-calm"/><text x="${cx}" y="${cy + 4}" class="rose-calm-t" text-anchor="middle">${roseData.minutes ? `${roseData.calm_pct.toFixed(0)}%` : "—"}</text>`;
+  svg.innerHTML = h;
+  const e = roseData.edges_m_s || [];
+  const u = U();
+  el("rose-legend").innerHTML = `<span class="l-key"><i class="calm"></i>calm (centre)</span>` + e.map((lo, k) => {
+    const hi = e[k + 1];
+    const f = (v) => conv.w(v).toFixed(conv.w(v) < 10 ? 1 : 0);
+    return `<span class="l-key"><i style="background:${ROSE_COLORS[k]}"></i>${hi ? `${f(lo)}–${f(hi)}` : `≥ ${f(lo)}`} ${u.wUnit}</span>`;
+  }).join("") + `<span class="rose-n">${roseData.minutes ? `${roseData.minutes} minutes of data` : "no wind data yet"}</span>`;
+}
+
+// Connection badge: LIVE while station data keeps arriving (WebSocket ~1/s), OFFLINE when it stops
+let lastDataMs = 0;
+function updateLinkPill() {
+  const pill = el("pill-link");
+  if (!pill) return;
+  const age = (Date.now() - lastDataMs) / 1000;
+  const state = !lastDataMs ? "wait" : (age <= 15 ? "ok" : "bad");
+  pill.className = `pill ${state}`;
+  setText("pill-link-txt", state === "wait" ? "CONNECTING" : (state === "ok" ? "LIVE" : `OFFLINE · ${age < 120 ? `${Math.round(age)} s` : `${Math.round(age / 60)} min`}`));
+}
+setInterval(updateLinkPill, 2000);
 
 function applyTelemetry(d) {
   if (!d || !d.wind) return;
   lastState = d;
+  lastDataMs = Date.now();
+  updateLinkPill();
   const u = UNIT_SYSTEMS[unitIdx];
   const e = d.environment, w = d.wind, r = d.rain, s = d.solar, a = d.astronomy, q = d.air_quality;
   const pDec = u.pUnit === "inHg" ? 2 : 0;
@@ -492,7 +961,7 @@ function applyTelemetry(d) {
   // Browser clock fallback when the station has no internet time (SNTP) yet.
   if (d.clock_valid === false && !clockPushed) {
     clockPushed = true;
-    postJson("/api/action", { action: "set_time", unix: Math.floor(Date.now() / 1000) }).catch(() => {});
+    postJson("/api/action", { action: "set_time", unix: Math.floor(Date.now() / 1000) }).catch(logErr);
   }
   el("loc-banner").style.display = d.location_set ? "none" : "flex";
   setText("hdr-fw", `fw ${d.fw}`);
@@ -811,8 +1280,13 @@ function browserPosixTz() {
 function loadConfig() {
   return fetch("/api/config").then(r => r.json()).then(c => {
     stationCfg = c;
-    el("scenario-select").style.display = c.simulated ? "" : "none";
-    if (c.simulated && c.scenario) el("scenario-select").value = c.scenario;
+    // development simulator only (a station never reports "simulated"): scenario picker built from its list
+    const sc = el("scenario-select");
+    sc.hidden = !c.simulated;
+    if (c.simulated && Array.isArray(c.scenarios)) {
+      sc.innerHTML = c.scenarios.map((s) => `<option value="${s.id}">${s.label}</option>`).join("");
+      if (c.scenario) sc.value = c.scenario;
+    }
     const set = (id, v) => { if (el(id) && v !== undefined && v !== null) el(id).value = v; };
     set("cfg-lat", c.location_set ? c.latitude : "");
     set("cfg-lon", c.location_set ? c.longitude : "");
@@ -850,11 +1324,11 @@ function loadConfig() {
     if (el("cfg-ha-disc")) el("cfg-ha-disc").checked = c.ha_discovery !== false;
     setText("loc-status", c.location_set ? `${(+c.latitude).toFixed(4)}, ${(+c.longitude).toFixed(4)}` : "Not set");
     renderSetupStatus(c);
-  }).catch(() => {});
+  }).catch(logErr);
 }
 
 function loadSetupStatus() {
-  return fetch("/api/config").then(r => r.json()).then((c) => { stationCfg = c; renderSetupStatus(c); }).catch(() => {});
+  return fetch("/api/config").then(r => r.json()).then((c) => { stationCfg = c; renderSetupStatus(c); }).catch(logErr);
 }
 
 // Setup tab status: Wi-Fi, MQTT, RS-485 bus activity + the current frame decoded with the firmware's field list
@@ -966,7 +1440,7 @@ el("fw-drop").addEventListener("drop", (ev) => {
 function rebootPrompt(res, statusId) {
   if (res && res.reboot_required) {
     setText(statusId, "saved: reboot to apply");
-    if (confirm("Saved. Reboot the station now to apply it?")) postJson("/api/action", { action: "reboot" }).catch(() => {});
+    if (confirm("Saved. Reboot the station now to apply it?")) postJson("/api/action", { action: "reboot" }).catch(logErr);
   } else {
     setText(statusId, "saved ✓");
   }
@@ -1006,7 +1480,7 @@ el("btn-save-wifi").addEventListener("click", () => {
   const body = { wifi_ssid: ssid };
   // password: send a typed one; a new network without one is taken as open; otherwise keep the stored one
   if (pass || !stationCfg || ssid !== stationCfg.wifi_ssid) body.wifi_pass = pass;
-  postJson("/api/config", body).then((res) => rebootPrompt(res, "net-status")).catch(() => {});
+  postJson("/api/config", body).then((res) => rebootPrompt(res, "net-status")).catch(logErr);
 });
 
 el("btn-save-mqtt").addEventListener("click", () => {
@@ -1018,13 +1492,13 @@ el("btn-save-mqtt").addEventListener("click", () => {
     mqtt_interval_s: parseInt(el("cfg-mqtt-int").value, 10) || 10,
   };
   if (el("cfg-mqtt-pass").value) body.mqtt_pass = el("cfg-mqtt-pass").value;
-  postJson("/api/config", body).then((res) => rebootPrompt(res, "mqtt-status")).catch(() => {});
+  postJson("/api/config", body).then((res) => rebootPrompt(res, "mqtt-status")).catch(logErr);
 });
 
 el("btn-save-rs485").addEventListener("click", () => {
   const a = parseInt(el("cfg-rs485-addr").value, 10);
   if (!isNum(a) || a < 0 || a > 247) { setText("rs485-status", "address 0…247"); return; }
-  postJson("/api/config", { rs485_address: a }).then(() => { setText("rs485-status", "saved ✓"); loadSetupStatus(); }).catch(() => {});
+  postJson("/api/config", { rs485_address: a }).then(() => { setText("rs485-status", "saved ✓"); loadSetupStatus(); }).catch(logErr);
 });
 
 el("btn-save-cfg").addEventListener("click", () => {
@@ -1037,12 +1511,12 @@ el("btn-save-cfg").addEventListener("click", () => {
     optics_transmission: num("cfg-optics-tr"),
     heading_mode: parseInt(el("cfg-heading-mode").value, 10) || 0, heading_fixed_deg: num("cfg-heading-fixed"),
     heading_offset_deg: num("cfg-heading-off"), temp_offset_c: num("cfg-t-off"), rh_offset_pct: num("cfg-rh-off"),
-  }).then(() => setText("cfg-save-status", "Saved ✓")).catch(() => {});
+  }).then(() => setText("cfg-save-status", "Saved ✓")).catch(logErr);
 });
 
 el("btn-reset-compass").addEventListener("click", () => {
   if (!confirm("Forget the compass-spin fit (magnetometer offsets and scales)?")) return;
-  postJson("/api/config", { reset_compass: true }).then(() => setText("cfg-save-status", "Compass fit reset ✓")).catch(() => {});
+  postJson("/api/config", { reset_compass: true }).then(() => setText("cfg-save-status", "Compass fit reset ✓")).catch(logErr);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -1199,7 +1673,7 @@ function renderCal(st) {
 }
 
 function loadCal() {
-  return fetch("/api/calibration").then(r => r.json()).then(renderCal).catch(() => {});
+  return fetch("/api/calibration").then(r => r.json()).then(renderCal).catch(logErr);
 }
 
 document.querySelectorAll(".cal-proc").forEach((card) => card.addEventListener("click", (ev) => {
@@ -1213,7 +1687,7 @@ document.querySelectorAll(".cal-proc").forEach((card) => card.addEventListener("
       msg.textContent = b.dataset.act === "wind_calibrate" ? "Running (60 s)…" : `${b.textContent}: sent ✓`;
       msg.className = "cal-msg";
       if (b.dataset.act === "wind_calibrate") setTimeout(loadConfig, 63000);
-    }).catch(() => {});
+    }).catch(logErr);
     return;
   }
   const cmd = b.dataset.cmd;
@@ -1228,14 +1702,14 @@ document.querySelectorAll(".cal-proc").forEach((card) => card.addEventListener("
     }
   }
   if (cmd === "cancel" && calStatus && calStatus.kind !== kind) return;
-  postJson("/api/calibration", body).then((st) => { renderCal(st); if (cmd === "apply") loadConfig(); }).catch(() => {});
+  postJson("/api/calibration", body).then((st) => { renderCal(st); if (cmd === "apply") loadConfig(); }).catch(logErr);
 }));
 
 el("btn-reset-rain").addEventListener("click", () => {
-  postJson("/api/action", { action: "reset_rain" }).then(() => setText("ota-status", "Today's rain reset ✓")).catch(() => {});
+  postJson("/api/action", { action: "reset_rain" }).then(() => setText("ota-status", "Today's rain reset ✓")).catch(logErr);
 });
 el("btn-reboot").addEventListener("click", () => {
-  if (confirm("Reboot the station? History is saved first.")) postJson("/api/action", { action: "reboot" }).catch(() => {});
+  if (confirm("Reboot the station? History is saved first.")) postJson("/api/action", { action: "reboot" }).catch(logErr);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -1247,21 +1721,64 @@ function loadMinuteHistory() {
       minuteHist = m;
       if (lastState) applyTelemetry(lastState);
     }
-  }).catch(() => {});
+  }).catch(logErr);
+}
+
+function fetchTrendSeries() {
+  const keys = trendMetricKeys();
+  if (!keys.length) { trendData = null; return Promise.resolve(); }
+  return fetch(`/api/history?tier=${trendTier}&n=${trendN}&metrics=${keys.join(",")}`).then(r => r.json()).then((h) => { trendData = h; });
+}
+// Selection change: only the chart needs new data
+function loadTrendSeries() {
+  return fetchTrendSeries().catch(logErr).then(() => { renderExplorer(); renderTrends(); });
 }
 
 function loadTrends() {
-  return fetch(`/api/history?tier=${trendTier}&metrics=temp_c,dew_point_c,wind_m_s,qnh_hpa`).then(r => r.json()).then(h => {
-    trendData = h;
-    renderTrends();
-  }).catch(() => {});
+  const jobs = [
+    fetchTrendSeries(),
+    foldOpen("daily-fold") ? fetchDaily() : Promise.resolve(),
+    foldOpen("records-fold") ? fetchRecords() : Promise.resolve(),
+    roseSelected() ? fetchRose() : Promise.resolve(),
+  ].map((p) => p.catch(logErr));
+  return Promise.all(jobs).then(renderTrends);
+}
+
+["trend-chips", "add-list", "preset-menu"].forEach((pid) => { if (el(pid)) el(pid).addEventListener("click", pickerClick); });
+el("preset-btn").addEventListener("click", (ev) => { ev.stopPropagation(); toggleMenu("preset-dd"); });
+el("add-btn").addEventListener("click", (ev) => { ev.stopPropagation(); toggleMenu("add-dd"); });
+el("add-search").addEventListener("input", (ev) => { addFilter = ev.target.value; renderPicker(); });
+["add-menu", "preset-menu"].forEach((id) => el(id).addEventListener("click", (ev) => ev.stopPropagation()));
+document.addEventListener("click", closeMenus);
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeMenus(); });
+let resizeTimer = null;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderExplorer, 150); });
+
+// Records and the daily summary are collapsed by default and loaded only while open
+const foldOpen = (id) => !!(el(id) && el(id).open);
+function fetchDaily() {
+  return fetch("/api/history?tier=day&n=31&metrics=temp_c,rain_mm,wind_m_s,wind_dir_deg,qnh_hpa,uv_index,solar_w_m2,strikes")
+    .then(r => r.json()).then((h) => { dailyData = h; });
+}
+function fetchRecords() {
+  return fetch("/api/records").then(r => r.json()).then((r) => { recordsData = r; });
+}
+el("daily-fold").addEventListener("toggle", () => { if (foldOpen("daily-fold")) fetchDaily().then(renderDaily).catch(logErr); });
+el("records-fold").addEventListener("toggle", () => { if (foldOpen("records-fold")) fetchRecords().then(renderRecords).catch(logErr); });
+
+// Wind rose over the chart's range (firmware: /api/windrose)
+function fetchRose() {
+  return fetch(`/api/windrose?range=${trendRange}`).then(r => r.json()).then((r) => { roseData = r; });
+}
+function loadRose() {
+  return fetchRose().catch(logErr).then(renderRose);
 }
 
 function loadRain31d() {
   return fetch("/api/history?tier=day&metrics=rain_mm").then(r => r.json()).then(h => {
     const v = h.series && h.series.rain_mm ? h.series.rain_mm.v : [];
     rain31d = v.reduce((acc, x) => acc + (isNum(x) ? x : 0), 0);
-  }).catch(() => {});
+  }).catch(logErr);
 }
 
 function connectWs() {
@@ -1270,7 +1787,7 @@ function connectWs() {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${proto}//${location.host}/ws`);
     ws.onmessage = (ev) => {
-      try { applyTelemetry(JSON.parse(ev.data)); } catch (_) {}
+      try { applyTelemetry(JSON.parse(ev.data)); } catch (e) { console.error("telemetry", e); }
     };
     ws.onclose = () => setTimeout(connectWs, 2500);
   } catch (_) {}
@@ -1279,9 +1796,28 @@ function connectWs() {
 loadConfig()
   .then(() => Promise.all([loadMinuteHistory(), loadRain31d()]))
   .then(() => fetch("/api/state").then(r => r.json()).then(applyTelemetry))
-  .catch(() => {})
+  .catch(logErr)
   .then(() => {
     setInterval(loadMinuteHistory, 15000);
     setInterval(loadRain31d, 300000);
     connectWs();
   });
+
+// Deep link, last (every tab's code above is defined): /#calibration, or a shareable Trends view such as
+// /#trends?range=7d&metrics=temp,dew,wind,gust,rose
+(function deepLink() {
+  const [tab, query] = location.hash.slice(1).split("?");
+  if (!tab || !document.querySelector(`.tab[data-tab="${tab}"]`)) return;
+  if (tab === "trends" && query) {
+    const q = new URLSearchParams(query);
+    const range = q.get("range");
+    if (TREND_RANGES[range]) {
+      trendRange = range;
+      [trendTier, trendN] = TREND_RANGES[range];
+      document.querySelectorAll("[data-trange]").forEach((b) => b.classList.toggle("active", b.dataset.trange === range));
+    }
+    const ids = (q.get("metrics") || "").split(",").filter((x) => TREND_SERIES.some((s) => s.id === x));
+    if (ids.length) trendSel = ids.filter((x, i) => canAdd(x, ids.slice(0, i)));
+  }
+  showTab(tab);
+})();

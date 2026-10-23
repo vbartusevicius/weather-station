@@ -1,10 +1,14 @@
 #include "HomeAssistantMqtt.hpp"
 
+#include "../history/HistoryStore.hpp"
+
 #include <ArduinoJson.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <vector>
 
 #include "../quality/Quality.hpp"
 
@@ -75,31 +79,88 @@ constexpr HaSensor kHaSensors[] = {
 };
 constexpr std::size_t kHaSensorCount = sizeof(kHaSensors) / sizeof(kHaSensors[0]);
 
-void add_series(JsonObject series, const history::TieredHistory& h, history::Metric m, history::Tier tier) {
+std::size_t window_len(history::Tier tier, std::size_t n) {
+    if (n == 0) n = tier == history::Tier::Minute ? 60 : (tier == history::Tier::Hour ? 24 : 31);
+    return std::min(n, history::TieredHistory::span(tier));
+}
+
+void num(std::string& out, float v) {
+    char b[24];
+    std::snprintf(b, sizeof b, "%.2f", static_cast<double>(v));
+    std::size_t len = std::strlen(b);
+    while (len > 0 && b[len - 1] == '0') --len;   // 12.50 -> 12.5, 3.00 -> 3
+    if (len > 0 && b[len - 1] == '.') --len;
+    out.append(b, len);
+}
+
+// One series: "key":{"unit":..,"v":[..],"min":[..],"max":[..],"cum":[..]} over `n` closed intervals + the running one
+void append_series(std::string& out, const history::TieredHistory& h, history::Metric m, history::Tier tier, std::size_t n) {
     const auto& info = history::metric_info(m);
-    JsonObject o = series[info.key].to<JsonObject>();
-    o["unit"] = info.unit;
-    JsonArray v = o["v"].to<JsonArray>();
-    const bool range = info.agg == history::Agg::Mean;
-    JsonArray mn;
-    JsonArray mx;
-    if (range) {
-        mn = o["min"].to<JsonArray>();
-        mx = o["max"].to<JsonArray>();
+    std::vector<history::Slot> slots(n + 1);
+    std::vector<bool> ok(n + 1);
+    for (std::size_t i = 0; i <= n; ++i) ok[i] = h.long_slot(m, tier, n - i, slots[i]);   // oldest first
+    auto arr = [&](const char* name, int what) {
+        out += ",\"";
+        out += name;
+        out += "\":[";
+        float total = 0.0F;
+        for (std::size_t i = 0; i <= n; ++i) {
+            if (i) out += ',';
+            float x = 0.0F;
+            bool have = false;
+            if (ok[i]) {
+                if (what == 0) have = slots[i].value(info.agg, x);
+                if (what == 1) have = slots[i].min(info.agg, x);
+                if (what == 2) have = slots[i].max(info.agg, x);
+                if (what == 3 && slots[i].value(info.agg, x)) total += x;
+            }
+            if (what == 3) {
+                num(out, total);
+            } else if (have) {
+                num(out, x);
+            } else {
+                out += "null";
+            }
+        }
+        out += ']';
+    };
+    out += '"';
+    out += info.key;
+    out += "\":{\"unit\":\"";
+    out += info.unit;
+    out += '"';
+    arr("v", 0);
+    if (info.agg == history::Agg::Mean) {
+        arr("min", 1);
+        arr("max", 2);
     }
-    const std::size_t n = history::TieredHistory::size(tier);
-    for (std::size_t i = 0; i <= n; ++i) {
-        const history::Slot& s = (i < n) ? h.slot(m, tier, i) : h.current(m, tier);
-        float x = 0.0F;
-        if (s.value(info.agg, x)) {
-            v.add(round_to(x, 2));
-        } else {
-            v.add(nullptr);
+    if (info.agg == history::Agg::Sum) arr("cum", 3);   // running total over the window (rain total curve)
+    out += '}';
+}
+}  // namespace
+
+namespace {
+// Metric list "a,b,c" -> callback per known metric (empty = all).
+template <typename F>
+void for_metrics(const char* metrics, F fn) {
+    if (metrics == nullptr || metrics[0] == '\0') {
+        for (std::size_t i = 0; i < history::kMetricCount; ++i) fn(static_cast<history::Metric>(i));
+        return;
+    }
+    char key[32];
+    const char* p = metrics;
+    while (*p != '\0') {
+        std::size_t len = 0;
+        while (p[len] != '\0' && p[len] != ',' && len < sizeof(key) - 1) {
+            key[len] = p[len];
+            ++len;
         }
-        if (range) {
-            if (s.min(info.agg, x)) mn.add(round_to(x, 2)); else mn.add(nullptr);
-            if (s.max(info.agg, x)) mx.add(round_to(x, 2)); else mx.add(nullptr);
-        }
+        key[len] = '\0';
+        history::Metric m{};
+        if (history::metric_from_key(key, m)) fn(m);
+        p += len;
+        while (*p == ',') ++p;
+        if (len == sizeof(key) - 1) break;
     }
 }
 }  // namespace
@@ -362,37 +423,163 @@ std::string TelemetryFormatter::build_minute_history_json(const history::TieredH
 }
 
 std::string TelemetryFormatter::build_history_json(const history::TieredHistory& h, history::Tier tier, const char* metrics,
-                                                   std::int64_t now_unix) {
-    JsonDocument doc;
-    doc["tier"] = tier == history::Tier::Minute ? "minute" : (tier == history::Tier::Hour ? "hour" : "day");
-    doc["step_s"] = tier == history::Tier::Minute ? 60 : (tier == history::Tier::Hour ? 3600 : 86400);
-    doc["end_unix"] = now_unix;
-    JsonObject series = doc["series"].to<JsonObject>();
-    if (metrics == nullptr || metrics[0] == '\0') {
-        for (std::size_t i = 0; i < history::kMetricCount; ++i) {
-            add_series(series, h, static_cast<history::Metric>(i), tier);
+                                                   std::int64_t now_unix, std::size_t n) {
+    n = window_len(tier, n);
+    char head[120];
+    std::snprintf(head, sizeof head, "{\"tier\":\"%s\",\"step_s\":%d,\"end_unix\":%lld,\"points\":%u,\"series\":{",
+                  tier == history::Tier::Minute ? "minute" : (tier == history::Tier::Hour ? "hour" : "day"),
+                  tier == history::Tier::Minute ? 60 : (tier == history::Tier::Hour ? 3600 : 86400), static_cast<long long>(now_unix),
+                  static_cast<unsigned>(n + 1));
+    std::string out = head;
+    bool first = true;
+    for_metrics(metrics, [&](history::Metric m) {
+        if (!first) out += ',';
+        first = false;
+        append_series(out, h, m, tier, n);
+    });
+    out += "}}";
+    return out;
+}
+
+std::string TelemetryFormatter::build_history_csv(const history::TieredHistory& h, history::Tier tier, const char* metrics,
+                                                  std::int32_t utc_offset_s, std::size_t n) {
+    n = window_len(tier, n);
+    std::vector<history::Metric> ms;
+    for_metrics(metrics, [&ms](history::Metric m) { ms.push_back(m); });
+    std::string out = "time";
+    for (history::Metric m : ms) {
+        const auto& info = history::metric_info(m);
+        if (info.agg == history::Agg::Mean) {
+            out += std::string(",") + info.key + "_mean," + info.key + "_min," + info.key + "_max";
+        } else {
+            out += std::string(",") + info.key;
         }
-    } else {
-        char key[32];
-        const char* p = metrics;
-        while (*p != '\0') {
-            std::size_t len = 0;
-            while (p[len] != '\0' && p[len] != ',' && len < sizeof(key) - 1) {
-                key[len] = p[len];
-                ++len;
+    }
+    out += "\n";
+    for (std::size_t i = 0; i <= n; ++i) {
+        // local start time of the interval: minute indices are UTC, hour / day indices already local
+        std::int64_t local_s = 0;
+        const auto back = static_cast<std::int64_t>(n - i);
+        if (tier == history::Tier::Minute) {
+            local_s = (h.minute_idx() - back) * 60 + utc_offset_s;
+        } else if (tier == history::Tier::Hour) {
+            local_s = (h.hour_idx() - back) * 3600;
+        } else {
+            local_s = (h.day_idx() - back) * 86400;
+        }
+        const std::int64_t day = local_s >= 0 ? local_s / 86400 : (local_s - 86399) / 86400;
+        const std::int64_t sod = local_s - day * 86400;
+        int y = 0;
+        unsigned mo = 0, d = 0;
+        history::civil_from_days(day, y, mo, d);
+        char ts[24];
+        std::snprintf(ts, sizeof ts, "%04d-%02u-%02u %02d:%02d", y, mo, d, static_cast<int>(sod / 3600), static_cast<int>(sod % 3600 / 60));
+        out += ts;
+        for (history::Metric m : ms) {
+            const auto& info = history::metric_info(m);
+            history::Slot s{};
+            const bool have = h.long_slot(m, tier, n - i, s);
+            char cell[48];
+            float v = 0.0F, lo = 0.0F, hi = 0.0F;
+            const bool ok = have && s.value(info.agg, v);
+            if (info.agg == history::Agg::Mean) {
+                if (ok && s.min(info.agg, lo) && s.max(info.agg, hi)) {
+                    std::snprintf(cell, sizeof cell, ",%.2f,%.2f,%.2f", static_cast<double>(v), static_cast<double>(lo),
+                                  static_cast<double>(hi));
+                } else {
+                    std::snprintf(cell, sizeof cell, ",,,");
+                }
+            } else if (ok) {
+                std::snprintf(cell, sizeof cell, ",%.2f", static_cast<double>(v));
+            } else {
+                std::snprintf(cell, sizeof cell, ",");
             }
-            key[len] = '\0';
-            history::Metric m{};
-            if (history::metric_from_key(key, m)) {
-                add_series(series, h, m, tier);
+            out += cell;
+        }
+        out += "\n";
+    }
+    return out;
+}
+
+std::string TelemetryFormatter::build_records_json(const history::Climate& c, const history::TieredHistory& h,
+                                                   const core::DerivedState& d) {
+    JsonDocument doc;
+    JsonObject recs = doc["records"].to<JsonObject>();
+    for (std::size_t r = 0; r < history::kRecCount; ++r) {
+        JsonObject o = recs[history::rec_key(static_cast<history::Rec>(r))].to<JsonObject>();
+        for (std::size_t p = 0; p < history::kPeriodCount; ++p) {
+            const history::Record& rec = c.records().get(static_cast<history::Period>(p), static_cast<history::Rec>(r));
+            if (rec.unix_s == 0) {
+                o[history::period_key(static_cast<history::Period>(p))] = nullptr;
+            } else {
+                JsonObject e = o[history::period_key(static_cast<history::Period>(p))].to<JsonObject>();
+                e["v"] = round_to(rec.v, 2);
+                e["unix"] = rec.unix_s;
             }
-            p += len;
-            while (*p == ',') {
-                ++p;
-            }
-            if (len == sizeof(key) - 1) {
-                break;
-            }
+        }
+    }
+    // now vs the same hour yesterday (mean of the oldest closed hour slot, ~24 h ago)
+    JsonObject vs = doc["vs_yesterday"].to<JsonObject>();
+    auto cmp = [&](const char* key, history::Metric m, const core::Value<float>& now) {
+        float then = 0.0F;
+        const auto& info = history::metric_info(m);
+        if (!now.ok || !h.slot(m, history::Tier::Hour, 0).value(info.agg, then)) {
+            vs[key] = nullptr;
+            return;
+        }
+        JsonObject o = vs[key].to<JsonObject>();
+        o["now"] = round_to(now.v, 2);
+        o["then"] = round_to(then, 2);
+        o["delta"] = round_to(now.v - then, 2);
+    };
+    cmp("temp_c", history::Metric::TempC, d.thermo.temp_c);
+    cmp("dew_point_c", history::Metric::DewPointC, d.thermo.dew_point_c);
+    cmp("rh_pct", history::Metric::RhPct, d.thermo.rh_pct);
+    cmp("qnh_hpa", history::Metric::QnhHpa, d.baro.qnh_hpa);
+    cmp("wind_m_s", history::Metric::WindMs, d.wind.avg_10m_m_s);
+    std::string out;
+    serializeJson(doc, out);
+    return out;
+}
+
+std::string TelemetryFormatter::build_windrose_json(const history::TieredHistory& h, const history::Climate& c, const char* range) {
+    const bool days = std::strcmp(range, "31d") == 0 || std::strcmp(range, "6mo") == 0;
+    // "1h" = the running hour only; "24h" / "7d" / "14d" sum stored hours; "31d" / "6mo" stored days
+    const std::size_t n = std::strcmp(range, "1h") == 0    ? 0
+                          : std::strcmp(range, "7d") == 0  ? 168
+                          : std::strcmp(range, "14d") == 0 ? 336
+                          : std::strcmp(range, "31d") == 0 ? 31
+                          : std::strcmp(range, "6mo") == 0 ? 183
+                                                           : 24;
+    const history::Tier tier = days ? history::Tier::Day : history::Tier::Hour;
+    std::uint32_t counts[history::WindRose::kSectors][history::WindRose::kBins]{};
+    std::uint32_t calm = 0, total = 0;
+    auto add = [&](const history::WindRose::Bucket& b) {
+        for (std::size_t s = 0; s < history::WindRose::kSectors; ++s)
+            for (std::size_t k = 0; k < history::WindRose::kBins; ++k) counts[s][k] += b.c[s][k];
+        calm += b.calm;
+    };
+    add(c.rose().current(days));
+    const history::HistoryStore* store = h.store();
+    history::WindRose::Bucket b{};
+    const std::int64_t now_idx = days ? h.day_idx() : h.hour_idx();
+    for (std::size_t back = 1; store != nullptr && back <= n; ++back) {
+        if (store->read_rose(tier, now_idx - static_cast<std::int64_t>(back), b)) add(b);
+    }
+    total = calm;
+    for (auto& row : counts)
+        for (std::uint32_t v : row) total += v;
+    JsonDocument doc;
+    doc["range"] = range;
+    doc["minutes"] = total;
+    JsonArray edges = doc["edges_m_s"].to<JsonArray>();
+    for (float e : history::WindRose::kEdges) edges.add(e);
+    doc["calm_pct"] = total ? round_to(100.0F * static_cast<float>(calm) / static_cast<float>(total), 1) : 0.0F;
+    JsonArray pct = doc["pct"].to<JsonArray>();   // [sector][speed class], sector 0 = from N, clockwise
+    for (std::size_t s = 0; s < history::WindRose::kSectors; ++s) {
+        JsonArray row = pct.add<JsonArray>();
+        for (std::size_t k = 0; k < history::WindRose::kBins; ++k) {
+            row.add(total ? round_to(100.0F * static_cast<float>(counts[s][k]) / static_cast<float>(total), 2) : 0.0F);
         }
     }
     std::string out;

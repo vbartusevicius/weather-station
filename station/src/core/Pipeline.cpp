@@ -141,6 +141,27 @@ void Pipeline::step(const RawState& raw, EventQueues& events, const StationConfi
     }
     const bool new_minute = (hist_.minute_idx() >= 0 && m_idx != hist_.minute_idx());
     hist_.advance(m_idx, h_idx, day_idx);
+    if (new_minute) {   // wind rose: the minute that just closed (mean speed, vector-mean direction)
+        float sp = 0.0F, dir = 0.0F;
+        const auto& ws = hist_.slot(Metric::WindMs, Tier::Minute, history::TieredHistory::kMinutes - 1);
+        if (ws.value(history::metric_info(Metric::WindMs).agg, sp)) {
+            const bool dir_ok = hist_.slot(Metric::WindDirDeg, Tier::Minute, history::TieredHistory::kMinutes - 1)
+                                    .value(history::metric_info(Metric::WindDirDeg).agg, dir);
+            climate_.rose().add_minute(sp, dir_ok ? dir : NAN);
+        }
+    }
+    climate_.rose().advance(h_idx, day_idx);   // after the minute above, so it lands in the hour it belongs to
+    for (Tier t : {Tier::Hour, Tier::Day}) {      // closed intervals -> HistoryStore records (wall clock only)
+        history::ClosedInterval rec{};
+        std::int64_t rose_idx = -1;
+        history::WindRose::Bucket rose{};
+        const bool have_rose = climate_.rose().take_closed(t == Tier::Day, rose_idx, rose);
+        if (hist_.take_closed(t, rec.idx, rec.slots) && raw.clock.valid && n_pending_ < pending_.size()) {
+            if (have_rose && rose_idx == rec.idx) rec.rose = rose;
+            pending_[n_pending_] = rec;
+            pending_tier_[n_pending_++] = t;
+        }
+    }
     if (last_day_idx_ >= 0 && day_idx != last_day_idx_ && raw.clock.valid) {
         rain_.new_day();
     }
@@ -177,6 +198,27 @@ void Pipeline::step(const RawState& raw, EventQueues& events, const StationConfi
     d.controls.ambient_pressure_hpa = d.baro.station_hpa.ok ? d.baro.station_hpa.v : 0.0F;
     if (d.solar.lux.ok) d.solar.lux_behind_dome.set(d.solar.lux.v * cfg.optics_transmission);
     quality_.step(raw, cfg, d);   // QC flags + station health (read-only on the values above)
+    if (raw.clock.valid) {        // records need wall-clock time
+        history::RecordInputs ri{};
+        ri.temp_ok = d.thermo.temp_c.ok;
+        ri.temp_c = d.thermo.temp_c.v;
+        ri.rh_ok = d.thermo.rh_pct.ok;
+        ri.rh_pct = d.thermo.rh_pct.v;
+        ri.qnh_ok = d.baro.qnh_hpa.ok;
+        ri.qnh_hpa = d.baro.qnh_hpa.v;
+        ri.gust_ok = d.wind.speed_m_s.ok;
+        ri.gust_m_s = d.wind.speed_m_s.v;
+        ri.rain_ok = d.rain.sensor_ok;
+        ri.rain_rate_mm_h = d.rain.rate_mm_h;
+        ri.rain_today_mm = d.rain.today_mm;
+        ri.uv_ok = d.solar.uv_index.ok;
+        ri.uv_index = d.solar.uv_index.v;
+        ri.solar_ok = d.solar.irradiance_w_m2.ok;
+        ri.solar_w_m2 = d.solar.irradiance_w_m2.v;
+        ri.pm25_ok = d.air.pm25_ug_m3.ok;
+        ri.pm25_ug_m3 = d.air.pm25_ug_m3.v;
+        climate_.records().update(ri, raw.clock.unix_s, day_idx);
+    }
 
     record_history(d, last_rain_mm_, static_cast<std::uint16_t>(strikes_total_ - strikes_before));
     out = d;
@@ -752,6 +794,26 @@ void Pipeline::record_history(const DerivedState& d, float rain_mm, std::uint16_
     put(Metric::PgaCmS2, d.seismic.pga_cm_s2);
     hist_.add(Metric::HeaterW, d.heater.power_w);
     put(Metric::VinV, d.heater.vin_v);
+}
+
+bool Pipeline::take_record(history::Tier& tier, history::ClosedInterval& out) {
+    if (n_pending_ == 0) return false;
+    tier = pending_tier_[0];
+    out = pending_[0];
+    for (std::size_t i = 1; i < n_pending_; ++i) {
+        pending_[i - 1] = pending_[i];
+        pending_tier_[i - 1] = pending_tier_[i];
+    }
+    --n_pending_;
+    return true;
+}
+
+void Pipeline::restore(const history::HistoryStore& store) {
+    hist_.restore(store);
+    history::WindRose::Bucket b{};
+    for (std::int64_t h = hist_.day_idx() * 24; h < hist_.hour_idx(); ++h) {
+        if (store.read_rose(Tier::Hour, h, b)) climate_.rose().restore_day(b);
+    }
 }
 
 }  // namespace core

@@ -5,6 +5,7 @@
 #include <string>
 
 #include "../core/DerivedState.hpp"
+#include "../history/Climate.hpp"
 #include "../history/TieredHistory.hpp"
 
 namespace station {
@@ -33,8 +34,21 @@ public:
 
     // Generic tier export: {"tier":"hour","step_s":3600,"end_unix":..,"series":{"temp_c":{"v":[..],"min":[..],"max":[..]}}}
     // `metrics` is a comma-separated list of metric keys (empty = all).
+    // `n` closed intervals + the running one (0 = default: 60 min / 24 h / 31 d; capped at TieredHistory::span).
+    // Built as text (no JSON document): a 14-day request must not need tens of KB of heap.
     static std::string build_history_json(const history::TieredHistory& h, history::Tier tier, const char* metrics,
-                                          std::int64_t now_unix);
+                                          std::int64_t now_unix, std::size_t n = 0);
+
+    // Same data as CSV (Trends download): one row per interval with its local start time ("YYYY-MM-DD HH:MM"); mean
+    // metrics get _mean / _min / _max columns. `utc_offset_s` = current local offset.
+    static std::string build_history_csv(const history::TieredHistory& h, history::Tier tier, const char* metrics,
+                                         std::int32_t utc_offset_s, std::size_t n = 0);
+    // Records per period ({"records": {"temp_max": {"today": {"v", "unix"}, ...}}}) and the change since ~24 h ago.
+    static std::string build_records_json(const history::Climate& c, const history::TieredHistory& h,
+                                          const core::DerivedState& d);
+    // Wind rose over the last 24 h (`days` false) or 31 days: percent per sector x speed class, calm percent.
+    // range "1h" (running hour), "24h" | "7d" | "14d" (stored hours) or "31d" | "6mo" (stored days) + the running bucket.
+    static std::string build_windrose_json(const history::TieredHistory& h, const history::Climate& c, const char* range);
 
     // Home Assistant MQTT discovery for sensor index `i` (0 .. ha_sensor_count()-1).
     static std::size_t ha_sensor_count();

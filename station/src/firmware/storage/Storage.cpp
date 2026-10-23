@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include <esp_littlefs.h>
+#include <esp_partition.h>
 #include <nvs.h>
 #include <nvs_flash.h>
 
@@ -14,8 +14,7 @@ namespace firmware {
 namespace {
 constexpr const char* kNs = "aeromet";
 constexpr const char* kCfgKey = "cfg_v2";
-constexpr const char* kHistPath = "/data/history.bin";
-constexpr const char* kHistTmp = "/data/history.tmp";
+constexpr const char* kRecKey = "records";
 }  // namespace
 
 bool Storage::begin() {
@@ -24,12 +23,6 @@ bool Storage::begin() {
         nvs_flash_erase();
         ret = nvs_flash_init();
     }
-    // LittleFS: copy-on-write and power-loss safe (the station loses power whenever the roof feed does).
-    esp_vfs_littlefs_conf_t conf{};
-    conf.base_path = "/data";
-    conf.partition_label = "storage";
-    conf.format_if_mount_failed = true;
-    fs_ready_ = esp_vfs_littlefs_register(&conf) == ESP_OK;
     return ret == ESP_OK;
 }
 
@@ -101,46 +94,48 @@ bool Storage::load_voc_state(float& s0, float& s1, std::int64_t& unix_s) {
     return ok;
 }
 
-bool Storage::save_history(const history::TieredHistory& h) {
-    if (!fs_ready_) {
+bool Storage::save_records(const history::Climate& c) {
+    std::uint8_t buf[1024];
+    const std::size_t n = c.serialize(buf, sizeof buf);
+    nvs_handle_t h;
+    if (n == 0 || nvs_open(kNs, NVS_READWRITE, &h) != ESP_OK) {
         return false;
     }
-    const std::size_t n = h.serialized_size();
-    auto* buf = static_cast<std::uint8_t*>(std::malloc(n));
-    if (buf == nullptr) {
-        return false;
-    }
-    bool ok = h.serialize(buf, n, 0) == n;
-    if (ok) {
-        FILE* f = std::fopen(kHistTmp, "wb");
-        ok = f != nullptr && std::fwrite(buf, 1, n, f) == n;
-        if (f != nullptr) {
-            std::fclose(f);
-        }
-        // write-then-rename: LittleFS replaces the old file atomically, so a power cut keeps one valid copy
-        ok = ok && std::rename(kHistTmp, kHistPath) == 0;
-    }
-    std::free(buf);
+    const bool ok = nvs_set_blob(h, kRecKey, buf, n) == ESP_OK && nvs_commit(h) == ESP_OK;
+    nvs_close(h);
     return ok;
 }
 
-bool Storage::load_history(history::TieredHistory& h) {
-    if (!fs_ready_) {
+bool Storage::load_records(history::Climate& c) {
+    std::uint8_t buf[1024];
+    std::size_t len = sizeof buf;
+    nvs_handle_t h;
+    if (nvs_open(kNs, NVS_READONLY, &h) != ESP_OK) {
         return false;
     }
-    FILE* f = std::fopen(kHistPath, "rb");
-    if (f == nullptr) {
-        return false;
-    }
-    const std::size_t n = h.serialized_size();
-    auto* buf = static_cast<std::uint8_t*>(std::malloc(n));
-    bool ok = buf != nullptr && std::fread(buf, 1, n, f) == n;
-    std::fclose(f);
-    if (ok) {
-        ok = h.deserialize(buf, n, h.hour_idx(), h.day_idx());
-    }
-    std::free(buf);
-    return ok;
+    const bool ok = nvs_get_blob(h, kRecKey, buf, &len) == ESP_OK;
+    nvs_close(h);
+    return ok && c.deserialize(buf, len);
+}
+
+// ------------------------------------------------------------------------------------------------- PartitionFlash
+bool PartitionFlash::begin(const char* label) {
+    const esp_partition_t* p = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, label);
+    part_ = p;
+    size_ = p != nullptr ? p->size : 0;
+    return p != nullptr;
+}
+
+bool PartitionFlash::read(std::size_t offset, void* buf, std::size_t len) const {
+    return part_ != nullptr && esp_partition_read(static_cast<const esp_partition_t*>(part_), offset, buf, len) == ESP_OK;
+}
+
+bool PartitionFlash::write(std::size_t offset, const void* buf, std::size_t len) {
+    return part_ != nullptr && esp_partition_write(static_cast<const esp_partition_t*>(part_), offset, buf, len) == ESP_OK;
+}
+
+bool PartitionFlash::erase_sector(std::size_t offset) {
+    return part_ != nullptr && esp_partition_erase_range(static_cast<const esp_partition_t*>(part_), offset, kSector) == ESP_OK;
 }
 
 }  // namespace firmware

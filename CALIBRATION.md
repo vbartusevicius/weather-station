@@ -55,6 +55,20 @@ where both exist, the lab reference is the better one.
 
 ---
 
+## First flash of a new station (USB, once)
+
+Plug the XIAO ESP32-C6 into a computer (USB-C) and write the single merged image at address 0. Get it from the
+`aeromet-station-firmware` artifact of the GitHub CI run, or build it with `python3 station/scripts/release_firmware.py`
+(→ `station/build/firmware/`):
+
+```
+esptool.py --chip esp32c6 write_flash 0x0 usb-flash-firmware.bin
+```
+
+(or a browser flasher such as ESP Web Tools in Chrome / Edge). It contains the bootloader with automatic rollback,
+the partition table, OTA data and the application; the first start initialises the history area (a few seconds) and
+installs the crown firmware on the crown. Later updates use `firmware.bin` in **Setup → Firmware update**.
+
 ## 1. Power and heater rail (bench, crown and probe connected)
 
 | Check | How | Pass |

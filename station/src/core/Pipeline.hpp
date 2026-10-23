@@ -11,6 +11,8 @@
 #include "Config.hpp"
 #include "DerivedState.hpp"
 #include "RawState.hpp"
+#include "../history/Climate.hpp"
+#include "../history/HistoryStore.hpp"
 #include "../quality/Quality.hpp"
 
 namespace station {
@@ -56,6 +58,13 @@ public:
     void restore_voc_state(float s0, float s1) { gas_.restore_voc_state(s0, s1); }
     const history::TieredHistory& history() const { return hist_; }
     history::TieredHistory& history() { return hist_; }
+    // Records + wind rose (Trends tab); records persist in NVS, the rose in the HistoryStore records.
+    const history::Climate& climate() const { return climate_; }
+    history::Climate& climate() { return climate_; }
+    // Closed hours / days (wall-clock time only) waiting to be appended to the HistoryStore; false when none.
+    bool take_record(history::Tier& tier, history::ClosedInterval& out);
+    // After a reboot, once the wall clock is known: 24-h RAM cache, today's running day and wind rose from the store.
+    void restore(const history::HistoryStore& store);
 
 private:
     void process_wind(const RawState& raw, DerivedState& out);
@@ -74,6 +83,10 @@ private:
 
     wind::WmoWindAggregator wind_{};
     quality::QualityControl quality_{};
+    history::Climate climate_{};
+    std::array<history::ClosedInterval, 2> pending_{};
+    std::array<history::Tier, 2> pending_tier_{};
+    std::size_t n_pending_{0};
     rain::HapticRainProcessor rain_{};
     environment::EnvLongevityManager longevity_{};
     airquality::GasIndexPair gas_{};

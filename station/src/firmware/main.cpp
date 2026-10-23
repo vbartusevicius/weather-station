@@ -36,8 +36,9 @@
 #include "net/Network.hpp"
 #include "storage/Storage.hpp"
 
+// Injected by scripts/gen_version.py ($FW_VERSION or `git describe`); "dev" only if that script did not run.
 #ifndef STATION_FW_VERSION
-#define STATION_FW_VERSION "26.11.0"
+#define STATION_FW_VERSION "dev"
 #endif
 
 namespace {
@@ -99,6 +100,12 @@ bool g_crown_bursts = true;
 firmware::AnalogFrontEnd g_adc;
 firmware::HeaterPwm g_heater;
 firmware::Storage g_storage;
+firmware::PartitionFlash g_flash;   // "storage" data partition
+history::HistoryStore g_store;      // closed hours (14 d) and days (6 months) on raw flash
+// Records (highs / lows) to NVS; hours / days are appended to g_store as they close (caller holds the lock)
+void persist_history() {
+    g_storage.save_records(g_pipeline.climate());
+}
 firmware::Network g_net;
 firmware::ButtonController g_button;
 httpd_handle_t g_http = nullptr;
@@ -564,7 +571,6 @@ void task_pipeline(void*) {
     static core::EventQueues ev{};
     static core::DerivedState d{};
     TickType_t wake = xTaskGetTickCount();
-    std::int64_t last_saved_hour = -1;
     std::uint32_t seconds = 0;
     for (;;) {
         vTaskDelayUntil(&wake, pdMS_TO_TICKS(1000));
@@ -587,11 +593,11 @@ void task_pipeline(void*) {
             g_pipeline.step(raw, ev, g_cfg, d);
             g_derived = d;
             g_cal.add_sample(calibration::make_sample(raw, d, g_cfg, g_mag_raw_ok ? &g_mag_raw : nullptr), g_cfg);
-            // Restore persisted hour/day history once the wall clock is known.
+            // Once the wall clock is known: 24-h cache, today and the wind rose from the store, records from NVS.
             if (clock_ok && !g_history_loaded) {
                 g_history_loaded = true;
-                g_storage.load_history(g_pipeline.history());
-                last_saved_hour = g_pipeline.history().hour_idx();
+                g_pipeline.restore(g_store);
+                g_storage.load_records(g_pipeline.climate());
                 // Sensirion: resume the VOC learning state only after an interruption < 10 min.
                 float s0 = 0.0F, s1 = 0.0F;
                 std::int64_t saved = 0;
@@ -603,9 +609,12 @@ void task_pipeline(void*) {
             if (clock_ok && seconds % 300 == 0 && g_pipeline.voc_state(s0, s1)) {
                 g_storage.save_voc_state(s0, s1, unix_s);
             }
-            if (clock_ok && g_pipeline.history().hour_idx() != last_saved_hour) {
-                last_saved_hour = g_pipeline.history().hour_idx();
-                g_storage.save_history(g_pipeline.history());
+            // Closed hours / days -> flash (one ~630-byte record each); records follow every closed hour
+            history::Tier tier{};
+            history::ClosedInterval rec{};
+            while (g_pipeline.take_record(tier, rec)) {
+                g_store.append(tier, rec);
+                if (tier == history::Tier::Hour) persist_history();
             }
         }
         g_heater.set_duty_pct(d.controls.heater_duty_pct);
@@ -676,16 +685,71 @@ esp_err_t handle_history(httpd_req_t* req) {
     char query[256]{};
     char tier_s[12]{"hour"};
     char metrics[200]{};
+    char n_s[8]{};
     if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
         httpd_query_key_value(query, "tier", tier_s, sizeof(tier_s));
         httpd_query_key_value(query, "metrics", metrics, sizeof(metrics));
+        httpd_query_key_value(query, "n", n_s, sizeof(n_s));   // number of closed intervals (default 60 / 24 / 31)
     }
     const auto tier = std::strcmp(tier_s, "minute") == 0 ? history::Tier::Minute
                       : (std::strcmp(tier_s, "day") == 0 ? history::Tier::Day : history::Tier::Hour);
     std::string json;
     {
         Lock l;
-        json = telemetry::TelemetryFormatter::build_history_json(g_pipeline.history(), tier, metrics, g_derived.unix_s);
+        json = telemetry::TelemetryFormatter::build_history_json(g_pipeline.history(), tier, metrics, g_derived.unix_s,
+                                                                 static_cast<std::size_t>(std::atoi(n_s)));
+    }
+    return send_json(req, json);
+}
+
+// GET /api/history.csv?tier=minute|hour|day&metrics=a,b: the same history as a spreadsheet download.
+esp_err_t handle_history_csv(httpd_req_t* req) {
+    char query[256]{};
+    char tier_s[12]{"day"};
+    char metrics[200]{};
+    char n_s[8]{};
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        httpd_query_key_value(query, "tier", tier_s, sizeof(tier_s));
+        httpd_query_key_value(query, "metrics", metrics, sizeof(metrics));
+        httpd_query_key_value(query, "n", n_s, sizeof(n_s));
+    }
+    const auto tier = std::strcmp(tier_s, "minute") == 0 ? history::Tier::Minute
+                      : (std::strcmp(tier_s, "hour") == 0 ? history::Tier::Hour : history::Tier::Day);
+    std::string csv;
+    {
+        Lock l;
+        csv = telemetry::TelemetryFormatter::build_history_csv(g_pipeline.history(), tier, metrics, g_derived.utc_offset_s,
+                                                               static_cast<std::size_t>(std::atoi(n_s)));
+    }
+    char disp[64];
+    std::snprintf(disp, sizeof disp, "attachment; filename=\"aeromet-%s.csv\"", tier_s);
+    httpd_resp_set_type(req, "text/csv");
+    httpd_resp_set_hdr(req, "Content-Disposition", disp);
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_send(req, csv.c_str(), static_cast<ssize_t>(csv.size()));
+}
+
+// GET /api/records: highs / lows for today, yesterday, this month and all time + the change since ~24 h ago.
+esp_err_t handle_records(httpd_req_t* req) {
+    std::string json;
+    {
+        Lock l;
+        json = telemetry::TelemetryFormatter::build_records_json(g_pipeline.climate(), g_pipeline.history(), g_derived);
+    }
+    return send_json(req, json);
+}
+
+// GET /api/windrose?range=1h|24h|7d|14d|31d|6mo (the Trends ranges)
+esp_err_t handle_windrose(httpd_req_t* req) {
+    char query[64]{};
+    char range[8]{"24h"};
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        httpd_query_key_value(query, "range", range, sizeof(range));
+    }
+    std::string json;
+    {
+        Lock l;
+        json = telemetry::TelemetryFormatter::build_windrose_json(g_pipeline.history(), g_pipeline.climate(), range);
     }
     return send_json(req, json);
 }
@@ -943,11 +1007,13 @@ esp_err_t handle_action(httpd_req_t* req) {
     } else if (std::strcmp(action, "reboot") == 0) {
         {
             Lock l;
-            g_storage.save_history(g_pipeline.history());
+            persist_history();
         }
         send_json(req, "{\"ok\":true}");
         vTaskDelay(pdMS_TO_TICKS(200));
         esp_restart();
+    } else {
+        return send_json(req, "{\"ok\":false,\"error\":\"unknown action\"}");   // e.g. the simulator-only set_scenario
     }
     return send_json(req, std::string("{\"ok\":true,\"action\":\"") + action + "\"}");
 }
@@ -1014,7 +1080,7 @@ esp_err_t handle_firmware(httpd_req_t* req) {
     }
     {
         Lock l;
-        g_storage.save_history(g_pipeline.history());
+        persist_history();
     }
     send_json(req, "{\"ok\":true,\"reboot\":true}");
     vTaskDelay(pdMS_TO_TICKS(500));
@@ -1068,7 +1134,7 @@ esp_err_t handle_ws(httpd_req_t* req) {
 
 void start_http() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.max_uri_handlers = 15;
+    config.max_uri_handlers = 20;
     config.stack_size = 8192;
     if (httpd_start(&g_http, &config) != ESP_OK) {
         return;
@@ -1080,6 +1146,9 @@ void start_http() {
         {"/api/state", HTTP_GET, handle_state, nullptr, false, false, nullptr},
         {"/api/history/minutes", HTTP_GET, handle_minutes, nullptr, false, false, nullptr},
         {"/api/history", HTTP_GET, handle_history, nullptr, false, false, nullptr},
+        {"/api/history.csv", HTTP_GET, handle_history_csv, nullptr, false, false, nullptr},
+        {"/api/records", HTTP_GET, handle_records, nullptr, false, false, nullptr},
+        {"/api/windrose", HTTP_GET, handle_windrose, nullptr, false, false, nullptr},
         {"/api/config", HTTP_GET, handle_config_get, nullptr, false, false, nullptr},
         {"/api/config", HTTP_POST, handle_config_post, nullptr, false, false, nullptr},
         {"/api/action", HTTP_POST, handle_action, nullptr, false, false, nullptr},
@@ -1113,6 +1182,10 @@ extern "C" void app_main(void) {
     g_lock = xSemaphoreCreateMutex();
     g_storage.begin();
     g_storage.load_config(g_cfg);
+    // First start after LittleFS (or a layout change): the store erases and re-initialises the partition (~4 s once).
+    if (g_flash.begin() && g_store.begin(&g_flash)) {
+        g_pipeline.history().attach(&g_store);
+    }
     init_gpio();
     init_rs485();
 

@@ -2,25 +2,30 @@
 // fed with physically modelled raw sensor values for a demo scenario.
 //
 // Line protocol on stdin, one JSON line per reply on stdout:
-//   scenario <name>              reset + warm up 31 days of history, reply {"ok":true}
+//   scenario <name>              reset + warm up 183 days of history (RAM-flash HistoryStore), reply {"ok":true}
 //   tick                         advance one second, reply = state JSON (/api/state)
 //   minutes                      reply = /api/history/minutes JSON
-//   history <tier> [metrics]     reply = /api/history JSON (tier = minute|hour|day)
+//   history <tier> <metrics|-> [n] reply = /api/history JSON (tier = minute|hour|day, n closed intervals)
 //   config <lat> <lon> <alt_m>   set the location, reply {"ok":true}
 //   action reset_rain            reply {"ok":true}
 //   rs485                        reply = {"frame": "<current $AM frame>", "fields": [{key, label, unit}, ...]}
+//   records                      reply = /api/records JSON
+//   windrose <1h|24h|7d|14d|31d|6mo> reply = /api/windrose JSON
+//   csv <tier> <metrics|-> [n]   reply = /api/history.csv text, newlines escaped as \n on one line
 //   cal <json>                   home calibration command (/api/calibration POST body; "{}" = status), reply = status
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 
 #include "astro/Astronomy.hpp"
 #include "calibration/Calibration.hpp"
 #include "core/Pipeline.hpp"
+#include "history/HistoryStore.hpp"
 #include "rain/HapticRain.hpp"
 #include "rs485/Rs485Protocol.hpp"
 #include "telemetry/HomeAssistantMqtt.hpp"
@@ -175,6 +180,9 @@ public:
     void reset(const std::string& name) {
         sc_ = make(name);
         pipeline_ = core::Pipeline{};
+        flash_ = std::make_unique<history::MemFlash>(0x60000);   // same size as the firmware's "storage" partition
+        store_.begin(flash_.get());
+        pipeline_.history().attach(&store_);
         events_ = core::EventQueues{};
         raw_ = core::RawState{};
         derived_ = core::DerivedState{};
@@ -184,10 +192,13 @@ public:
         rain::HapticRainProcessor hp;
         hail_mm_ = hp.process_impact({1850, 180, 110, 0.01F, static_cast<float>(sc_.wind_ms), static_cast<float>(sc_.temp_c)});
         drop_acc_ = hail_acc_ = strike_acc_ = 0.0;
-        // Warm-up: 31 days at 60-s steps (fills day / hour tiers), then the last 20 min at 1 s.
+        // Warm-up: 183 days (older than 31 days at 5-min steps, then 60 s), then the last 20 min at 1 s.
         const std::int64_t fine = 20 * 60;
-        t_ = sc_.end_unix - 31 * 86400;
+        t_ = sc_.end_unix - 183 * 86400;
         mono_ms_ = 1000;
+        while (t_ < sc_.end_unix - 31 * 86400) {
+            step(300);
+        }
         while (t_ < sc_.end_unix - fine) {
             step(60);
         }
@@ -201,6 +212,9 @@ public:
         mono_ms_ += static_cast<std::uint32_t>(dt) * 1000U;
         fill_raw(dt);
         pipeline_.step(raw_, events_, cfg_, derived_);
+        history::Tier tier{};
+        history::ClosedInterval rec{};
+        while (pipeline_.take_record(tier, rec)) store_.append(tier, rec);   // as the firmware does
         // magnetometer: Earth's field (heading 20 deg, 17 / -47 uT) + a 6 / -4 uT hard-iron offset; the station
         // "turns" 8 deg/s while a compass spin runs so the procedure can be exercised in the browser
         if (cal_.running() && cal_.kind() == calibration::Kind::Compass) spin_deg_ += 8.0 * dt;
@@ -218,6 +232,18 @@ public:
         }
         return out + "]}";
     }
+    std::string records() const {
+        return telemetry::TelemetryFormatter::build_records_json(pipeline_.climate(), pipeline_.history(), derived_);
+    }
+    std::string windrose(const std::string& range) const {
+        return telemetry::TelemetryFormatter::build_windrose_json(pipeline_.history(), pipeline_.climate(), range.c_str());
+    }
+    std::string csv(history::Tier tier, const std::string& metrics, std::size_t n) const {
+        std::string c = telemetry::TelemetryFormatter::build_history_csv(pipeline_.history(), tier, metrics.c_str(), raw_.clock.utc_offset_s, n);
+        std::string out;
+        for (char ch : c) out += ch == '\n' ? std::string("\\n") : std::string(1, ch);
+        return out;
+    }
     std::string calibration(const std::string& body) {
         bool changed = false;
         return cal_.handle(body.c_str(), cfg_, t_, mono_ms_, changed);
@@ -231,8 +257,8 @@ public:
         return telemetry::TelemetryFormatter::build_state_json(derived_, "sim", w);
     }
     std::string minutes() const { return telemetry::TelemetryFormatter::build_minute_history_json(pipeline_.history()); }
-    std::string history(history::Tier tier, const std::string& metrics) const {
-        return telemetry::TelemetryFormatter::build_history_json(pipeline_.history(), tier, metrics.c_str(), t_);
+    std::string history(history::Tier tier, const std::string& metrics, std::size_t n) const {
+        return telemetry::TelemetryFormatter::build_history_json(pipeline_.history(), tier, metrics.c_str(), t_, n);
     }
     void set_location(double lat, double lon, float alt) {
         cfg_.location_set = true;
@@ -407,6 +433,8 @@ private:
         return c;
     }();
     core::Pipeline pipeline_{};
+    std::unique_ptr<history::MemFlash> flash_;
+    history::HistoryStore store_{};
     core::EventQueues events_{};
     core::RawState raw_{};
     core::DerivedState derived_{};
@@ -445,9 +473,11 @@ int main() {
             reply = sim.minutes();
         } else if (cmd == "history") {
             std::string tier, metrics;
-            in >> tier >> metrics;
+            std::size_t n = 0;
+            in >> tier >> metrics >> n;
+            if (metrics == "-") metrics.clear();
             const auto t = tier == "minute" ? history::Tier::Minute : (tier == "day" ? history::Tier::Day : history::Tier::Hour);
-            reply = sim.history(t, metrics);
+            reply = sim.history(t, metrics, n);
         } else if (cmd == "config") {
             double lat = 0, lon = 0;
             float alt = 0;
@@ -455,6 +485,19 @@ int main() {
                 sim.set_location(lat, lon, alt);
                 reply = "{\"ok\":true}";
             }
+        } else if (cmd == "records") {
+            reply = sim.records();
+        } else if (cmd == "windrose") {
+            std::string r = "24h";
+            in >> r;
+            reply = sim.windrose(r);
+        } else if (cmd == "csv") {
+            std::string tier, metrics;
+            std::size_t n = 0;
+            in >> tier >> metrics >> n;
+            if (metrics == "-") metrics.clear();
+            const auto t = tier == "minute" ? history::Tier::Minute : (tier == "hour" ? history::Tier::Hour : history::Tier::Day);
+            reply = sim.csv(t, metrics, n);
         } else if (cmd == "rs485") {
             reply = sim.rs485_frame();
         } else if (cmd == "cal") {

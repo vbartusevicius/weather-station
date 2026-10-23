@@ -9,6 +9,7 @@ modelled raw sensor readings, so the UI shows exactly what the station firmware 
 
 from __future__ import annotations
 
+import argparse
 import base64
 import hashlib
 import inspect
@@ -29,7 +30,20 @@ DATA_DIR = STATION / "data"
 SIM_SRC = STATION / "tools" / "sim" / "station_sim.cpp"
 SIM_BIN = STATION / "build" / "station_sim"
 JSON_INC = STATION / ".pio" / "libdeps" / "native" / "ArduinoJson" / "src"
-SCENARIOS = ("breeze", "storm", "freeze", "heatwave", "plume", "train", "night_dark", "night_moon")
+# scenario id -> label of the Web UI picker (the firmware has no scenarios; the page shows the picker only here)
+SCENARIO_LABELS = {
+    "breeze": "☀ Spring Breeze (Day)",
+    "storm": "⛈ Squall & Hail",
+    "freeze": "❄ Freezing Fog (-4 °C)",
+    "heatwave": "🔥 Heatwave (UV 10.2)",
+    "plume": "🌫 Urban Plume",
+    "train": "🚛 Freight Train & Tremor (24 Hz)",
+    "night_dark": "🌙 Clear Starry Night (Bortle 2)",
+    "night_moon": "🌕 Full Moon & Night Clouds",
+}
+SCENARIOS = tuple(SCENARIO_LABELS)
+PRODUCT_LOOK = False
+PORT = 8765
 
 
 def gas_index_dir() -> Path:
@@ -157,9 +171,27 @@ class Handler(BaseHTTPRequestHandler):
             q = parse_qs(url.query)
             tier = q.get("tier", ["hour"])[0]
             metrics = q.get("metrics", [""])[0].replace(" ", "")
-            self._send_raw_json(SIM.call(f"history {tier} {metrics}".strip()))
+            n = q.get("n", ["0"])[0]
+            self._send_raw_json(SIM.call(f"history {tier} {metrics or '-'} {int(n) if n.isdigit() else 0}"))
         elif url.path == "/api/calibration":
             self._send_raw_json(SIM.call("cal {}"))
+        elif url.path == "/api/records":
+            self._send_raw_json(SIM.call("records"))
+        elif url.path == "/api/windrose":
+            rng = parse_qs(url.query).get("range", ["24h"])[0]
+            self._send_raw_json(SIM.call(f"windrose {rng if rng in ('1h', '24h', '7d', '14d', '31d', '6mo') else '24h'}"))
+        elif url.path == "/api/history.csv":
+            q = parse_qs(url.query)
+            tier = q.get("tier", ["day"])[0]
+            metrics = q.get("metrics", [""])[0].replace(" ", "")
+            n = q.get("n", ["0"])[0]
+            csv = SIM.call(f"csv {tier} {metrics or '-'} {int(n) if n.isdigit() else 0}").replace("\\n", "\n").encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv")
+            self.send_header("Content-Disposition", f'attachment; filename="aeromet-{tier}.csv"')
+            self.send_header("Content-Length", str(len(csv)))
+            self.end_headers()
+            self.wfile.write(csv)
         elif url.path == "/api/config":
             self._send_json(
                 {
@@ -167,8 +199,8 @@ class Handler(BaseHTTPRequestHandler):
                     **SIM.location,
                     "tz": "EET-2EEST,M3.5.0/3,M10.5.0/4",
                     "scenario": SIM.scenario,
-                    "scenarios": SCENARIOS,
-                    "simulated": True,
+                    "scenarios": [{"id": k, "label": v} for k, v in SCENARIO_LABELS.items()],
+                    "simulated": not PRODUCT_LOOK,   # --product-look: the page looks like a station (no picker)
                     "wifi_ssid": "home-wifi",
                     "mqtt_uri": "mqtt://192.168.1.10:1883",
                     "mqtt_user": "aeromet",
@@ -226,12 +258,18 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    global SIM
+    global SIM, PRODUCT_LOOK, PORT
+    ap = argparse.ArgumentParser(description="AeroMet Web UI development server (real firmware pipeline via station_sim)")
+    ap.add_argument("--port", type=int, default=PORT)
+    ap.add_argument("--product-look", action="store_true",
+                    help="report simulated=false so the page looks like a station (no scenario picker; screenshots)")
+    args = ap.parse_args()
+    PRODUCT_LOOK, PORT = args.product_look, args.port
     build_sim()
     SIM = Sim()
     threading.Thread(target=ticker, daemon=True).start()
-    srv = ThreadingHTTPServer(("127.0.0.1", 8765), Handler)
-    print("AeroMet Web UI (real firmware pipeline via station_sim) on http://127.0.0.1:8765", flush=True)
+    srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    print(f"AeroMet Web UI (real firmware pipeline via station_sim) on http://127.0.0.1:{PORT}", flush=True)
     srv.serve_forever()
 
 

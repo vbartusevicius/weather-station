@@ -109,6 +109,8 @@ def main():
     parser.add_argument("--cad", action="store_true", help="run enclosure + fit + legend + 3MF/embossed + 3D renders")
     parser.add_argument("--release", action="store_true", help="run release.py")
     parser.add_argument("--test", action="store_true", help="run EDA + CAD pytest suites")
+    parser.add_argument("--firmware", action="store_true",
+                        help="build the station firmware release (firmware.bin + usb-flash-firmware.bin)")
     parser.add_argument("--fresh", action="store_true", help="re-place and re-route boards from scratch")
     parser.add_argument("--in-eda", action="store_true", help="run EDA steps directly inside the eda container")
     parser.add_argument("--in-cad", action="store_true", help="run CAD steps directly inside the cad container")
@@ -122,13 +124,17 @@ def main():
         run_cad(do_test=args.test)
         return
 
-    variants = [v for v in args.variants if v in ALL_VARIANTS] or list(ALL_VARIANTS)
-    with ThreadPoolExecutor(max_workers=len(variants)) as pool:
+    only_firmware = args.firmware and not (args.eda or args.cad or args.release or args.test)
+    variants = [] if only_firmware else ([v for v in args.variants if v in ALL_VARIANTS] or list(ALL_VARIANTS))
+    with ThreadPoolExecutor(max_workers=max(1, len(variants))) as pool:
         futures = [pool.submit(run_variant_on_host, v, args) for v in variants]
         for f in futures:
             f.result()
 
-    if args.test or not (args.eda or args.cad or args.release):
+    full = not (args.eda or args.cad or args.release or args.test or args.firmware)
+    if args.firmware or full:
+        subprocess.run([sys.executable, str(REPO / "station/scripts/release_firmware.py")], cwd=REPO, check=True)
+    if args.test or full:
         subprocess.run(["docker", "compose", "--profile", "lint", "run", "--rm", "-T", "lint", "check", "."],
                        cwd=REPO, check=True)
 

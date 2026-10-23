@@ -39,6 +39,8 @@
 #include "../../../src/environment/MetCalculations.hpp"
 #include "../../../src/firmware/ButtonController.hpp"
 #include "../../../src/heater/DeIcingHeater.hpp"
+#include "../../../src/history/Climate.hpp"
+#include "../../../src/history/HistoryStore.hpp"
 #include "../../../src/history/TieredHistory.hpp"
 #include "../../../src/quality/Quality.hpp"
 #include "../../../src/rain/HapticRain.hpp"
@@ -426,17 +428,95 @@ void test_tiered_history_rollup_gaps_and_persistence(void) {
     TEST_ASSERT_EQUAL_UINT16(0, h.slot(Metric::TempC, Tier::Minute, 51).n);
     TEST_ASSERT_EQUAL_UINT16(60, h.slot(Metric::TempC, Tier::Minute, 49).n);
 
-    // Hour + day tiers survive a reboot (saved at hour 2, restored 3 hours later -> shifted by 3)
-    static std::uint8_t buf[TieredHistory::kBytes];
-    const std::size_t n = h.serialize(buf, sizeof(buf), 0);
-    TEST_ASSERT_EQUAL(h.serialized_size(), n);
+    // Closed hours / days go to the flash store; after a reboot 3 hours later the 24-h RAM cache comes back from it
+    station::history::MemFlash flash(0x60000);
+    station::history::HistoryStore store;
+    TEST_ASSERT_TRUE(store.begin(&flash));
+    std::int64_t idx = 0;
+    std::array<station::history::Slot, station::history::kMetricCount> slots{};
+    TEST_ASSERT_TRUE(h.take_closed(Tier::Hour, idx, slots));   // hour 1 closed by the outage advance above
+    TEST_ASSERT_EQUAL_INT64(1, idx);
+    station::history::ClosedInterval rec{};
+    rec.idx = idx;
+    rec.slots = slots;
+    TEST_ASSERT_TRUE(store.append(Tier::Hour, rec));
+    TEST_ASSERT_FALSE(h.take_closed(Tier::Hour, idx, slots));  // handed out once
     TieredHistory r;
-    TEST_ASSERT_TRUE(r.deserialize(buf, n, 2 + 3, 0));
-    TEST_ASSERT_TRUE(r.slot(Metric::RainMm, Tier::Hour, 20).value(station::history::Agg::Sum, v));
+    r.advance(5 * 60, 5, 0);
+    r.attach(&store);
+    r.restore(store);
+    TEST_ASSERT_TRUE(r.slot(Metric::RainMm, Tier::Hour, 20).value(station::history::Agg::Sum, v));   // 4 hours back
     TEST_ASSERT_FLOAT_WITHIN(0.01F, 36.0F, v);
-    TEST_ASSERT_FALSE(r.deserialize(buf, n - 1, 5, 0));
-    // Memory budget for all 27 metrics x (60 + 24 + 31) slots
-    TEST_ASSERT_TRUE(TieredHistory::kBytes < 52 * 1024);
+    TEST_ASSERT_TRUE(r.current(Metric::RainMm, Tier::Day).value(station::history::Agg::Sum, v));      // today so far
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 36.0F, v);
+    station::history::Slot sl{};
+    TEST_ASSERT_TRUE(r.long_slot(Metric::RainMm, Tier::Hour, 4, sl));
+    TEST_ASSERT_FALSE(r.long_slot(Metric::RainMm, Tier::Hour, 30, sl));   // nothing stored that far back
+    // RAM budget: 60 minutes + 24 h cache + accumulators for all metrics
+    TEST_ASSERT_TRUE(TieredHistory::kBytes < 40 * 1024);
+}
+
+// Raw-flash history log: capacity, ring wrap, persistence across a reboot, torn writes, foreign data.
+void test_history_store_ring_wrap_power_loss_and_format(void) {
+    namespace hs = station::history;
+    TEST_ASSERT_TRUE(hs::HistoryStore::kSectorsNeeded * hs::FlashDevice::kSector <= 0x60000);   // fits the partition
+    hs::MemFlash flash(0x60000);
+    std::memset(flash.raw().data(), 0x5A, flash.raw().size());   // old LittleFS contents
+    hs::HistoryStore st;
+    TEST_ASSERT_TRUE(st.begin(&flash));
+    TEST_ASSERT_TRUE(st.formatted());
+    auto rec = [](std::int64_t i) {
+        hs::ClosedInterval r{};
+        r.idx = i;
+        r.slots[static_cast<std::size_t>(hs::Metric::TempC)].add(hs::Agg::Mean, static_cast<float>(i));
+        r.rose.calm = static_cast<std::uint16_t>(i % 60);
+        return r;
+    };
+    // 20 days of hours: the ring keeps at least 14 days, the oldest are overwritten
+    for (std::int64_t i = 1000; i < 1000 + 20 * 24; ++i) TEST_ASSERT_TRUE(st.append(hs::Tier::Hour, rec(i)));
+    TEST_ASSERT_TRUE(st.count(hs::Tier::Hour) >= hs::HistoryStore::kHourRecords);
+    const std::int64_t newest = 1000 + 20 * 24 - 1;
+    hs::Slot s{};
+    float v = 0.0F;
+    TEST_ASSERT_TRUE(st.read_slot(hs::Tier::Hour, newest - static_cast<std::int64_t>(hs::HistoryStore::kHourRecords) + 1, hs::Metric::TempC, s));
+    TEST_ASSERT_FALSE(st.read_slot(hs::Tier::Hour, 1000, hs::Metric::TempC, s));   // overwritten
+    for (std::int64_t d = 0; d < 200; ++d) st.append(hs::Tier::Day, rec(d));
+    TEST_ASSERT_TRUE(st.count(hs::Tier::Day) >= hs::HistoryStore::kDayRecords);
+    // reboot: the index is rebuilt from flash, appending continues after the newest record
+    hs::HistoryStore st2;
+    TEST_ASSERT_TRUE(st2.begin(&flash));
+    TEST_ASSERT_FALSE(st2.formatted());
+    TEST_ASSERT_TRUE(st2.read_slot(hs::Tier::Hour, newest, hs::Metric::TempC, s) && s.value(hs::Agg::Mean, v));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, static_cast<float>(newest), v);
+    hs::WindRose::Bucket b{};
+    TEST_ASSERT_TRUE(st2.read_rose(hs::Tier::Hour, newest, b));
+    TEST_ASSERT_EQUAL_UINT16(newest % 60, b.calm);
+    TEST_ASSERT_TRUE(st2.append(hs::Tier::Hour, rec(newest + 1)));
+    // power cut while writing: a half-programmed record is ignored and the next write skips its slot
+    hs::HistoryStore st3;
+    TEST_ASSERT_TRUE(st3.begin(&flash));
+    const std::uint32_t erases_before = flash.erases();
+    std::vector<std::uint8_t> snapshot = flash.raw();
+    TEST_ASSERT_TRUE(st3.append(hs::Tier::Hour, rec(newest + 2)));
+    std::vector<std::uint8_t>& raw = flash.raw();
+    std::size_t torn = 0;   // find the bytes the last write changed and undo the second half of them
+    for (std::size_t i = 0; i < raw.size(); ++i) if (raw[i] != snapshot[i]) torn = i;
+    for (std::size_t i = torn - 100; i <= torn; ++i) raw[i] = snapshot[i];
+    (void)erases_before;
+    hs::HistoryStore st4;
+    TEST_ASSERT_TRUE(st4.begin(&flash));
+    TEST_ASSERT_FALSE(st4.read_slot(hs::Tier::Hour, newest + 2, hs::Metric::TempC, s));   // torn record not used
+    TEST_ASSERT_TRUE(st4.read_slot(hs::Tier::Hour, newest + 1, hs::Metric::TempC, s));    // older ones intact
+    TEST_ASSERT_TRUE(st4.append(hs::Tier::Hour, rec(newest + 3)));
+    hs::HistoryStore st5;
+    TEST_ASSERT_TRUE(st5.begin(&flash));
+    TEST_ASSERT_TRUE(st5.read_slot(hs::Tier::Hour, newest + 3, hs::Metric::TempC, s) && s.value(hs::Agg::Mean, v));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, static_cast<float>(newest + 3), v);
+    // a day of 1-s samples overflows 16 bits: counts are 32-bit end to end
+    hs::Slot day{};
+    for (int i = 0; i < 86400; ++i) day.add(hs::Agg::Mean, 2.0F);
+    TEST_ASSERT_TRUE(day.value(hs::Agg::Mean, v));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 2.0F, v);
 }
 
 void test_conditioners_vibration_pressure_and_rain_pulses(void) {
@@ -1447,6 +1527,114 @@ void test_lightning_seismic_health_rs485_decode_and_mqtt_topic(void) {
     TEST_ASSERT_TRUE(payload.find("\"stat_t\":\"home/roof/state\"") != std::string::npos);
 }
 
+// Trends: records (today / yesterday / month / all time), speed-binned wind rose, persistence, CSV + JSON publishers.
+void test_trends_records_windrose_and_exports(void) {
+    namespace h = station::history;
+    int y = 0;
+    unsigned mo = 0, dd = 0;
+    h::civil_from_days(20000, y, mo, dd);   // 2024-10-04
+    TEST_ASSERT_EQUAL_INT(2024, y);
+    TEST_ASSERT_EQUAL_UINT32(10, mo);
+    TEST_ASSERT_EQUAL_UINT32(4, dd);
+
+    h::Climate c;
+    h::RecordInputs in{};
+    in.temp_ok = true;
+    const std::int64_t day0 = 20000;            // 2024-10-04 (local days)
+    const std::int64_t t0 = day0 * 86400;
+    in.temp_c = 12.0F;
+    c.records().update(in, t0 + 3600, day0);
+    in.temp_c = 18.5F;
+    c.records().update(in, t0 + 50000, day0);
+    in.temp_c = 9.0F;
+    c.records().update(in, t0 + 86400 + 100, day0 + 1);   // next day: today -> yesterday
+    const auto get = [&c](h::Period p, h::Rec r) { return c.records().get(p, r); };
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 18.5F, get(h::Period::Yesterday, h::Rec::TempMax).v);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 9.0F, get(h::Period::Today, h::Rec::TempMax).v);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 18.5F, get(h::Period::Month, h::Rec::TempMax).v);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 9.0F, get(h::Period::AllTime, h::Rec::TempMin).v);
+    TEST_ASSERT_TRUE(get(h::Period::AllTime, h::Rec::TempMax).unix_s == t0 + 50000);
+    in.temp_c = 25.0F;
+    c.records().update(in, (day0 + 30) * 86400, day0 + 30);   // November: month resets, all time keeps
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 25.0F, get(h::Period::Month, h::Rec::TempMin).v);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 9.0F, get(h::Period::AllTime, h::Rec::TempMin).v);
+    TEST_ASSERT_TRUE(get(h::Period::Yesterday, h::Rec::TempMax).unix_s == 0);   // a gap is not "yesterday"
+
+    // wind rose: hour 1000 = 30 min from N at 3 m/s + 30 min from E at 9 m/s (closed -> stored), hour 1001 = 60 calm
+    h::MemFlash fl(0x60000);
+    h::HistoryStore st;
+    TEST_ASSERT_TRUE(st.begin(&fl));
+    station::history::TieredHistory tw;
+    tw.attach(&st);
+    tw.advance(1001 * 60, 1001, 41);
+    h::WindRose& r = c.rose();
+    r.advance(1000, 41);
+    for (int i = 0; i < 30; ++i) r.add_minute(3.0F, 359.0F);
+    for (int i = 0; i < 30; ++i) r.add_minute(9.0F, 92.0F);
+    r.advance(1001, 41);
+    std::int64_t ridx = 0;
+    h::WindRose::Bucket bucket{};
+    TEST_ASSERT_TRUE(r.take_closed(false, ridx, bucket));
+    TEST_ASSERT_EQUAL_INT64(1000, ridx);
+    TEST_ASSERT_FALSE(r.take_closed(true, ridx, bucket));   // the day has not closed
+    h::ClosedInterval ci{};
+    ci.idx = 1000;
+    ci.rose = bucket;
+    TEST_ASSERT_TRUE(st.append(h::Tier::Hour, ci));
+    for (int i = 0; i < 60; ++i) r.add_minute(0.2F, 0.0F);
+    JsonDocument doc;
+    TEST_ASSERT_TRUE(deserializeJson(doc, TelemetryFormatter::build_windrose_json(tw, c, "24h")) == DeserializationError::Ok);
+    TEST_ASSERT_EQUAL_UINT32(120, doc["minutes"].as<std::uint32_t>());
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 50.0F, doc["calm_pct"].as<float>());
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 25.0F, doc["pct"][0][1].as<float>());   // N, 2-4 m/s
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 25.0F, doc["pct"][4][4].as<float>());   // E, 8-11 m/s
+    float sum = doc["calm_pct"].as<float>();
+    for (JsonArray row : doc["pct"].as<JsonArray>()) for (float v : row) sum += v;
+    TEST_ASSERT_FLOAT_WITHIN(0.2F, 100.0F, sum);
+    // > 24 h later (next day): the 24-h rose is empty, the 31-day rose sums the stored day
+    r.advance(1030, 42);
+    TEST_ASSERT_TRUE(r.take_closed(true, ridx, bucket));
+    ci = h::ClosedInterval{};
+    ci.idx = ridx;
+    ci.rose = bucket;
+    TEST_ASSERT_TRUE(st.append(h::Tier::Day, ci));
+    tw.advance(1030 * 60, 1030, 42);
+    TEST_ASSERT_TRUE(deserializeJson(doc, TelemetryFormatter::build_windrose_json(tw, c, "24h")) == DeserializationError::Ok);
+    TEST_ASSERT_EQUAL_UINT32(0, doc["minutes"].as<std::uint32_t>());
+    TEST_ASSERT_TRUE(deserializeJson(doc, TelemetryFormatter::build_windrose_json(tw, c, "31d")) == DeserializationError::Ok);
+    TEST_ASSERT_EQUAL_UINT32(120, doc["minutes"].as<std::uint32_t>());
+
+    // records persistence round trip (NVS blob)
+    std::vector<std::uint8_t> buf(c.serialized_size());
+    TEST_ASSERT_EQUAL_UINT32(buf.size(), c.serialize(buf.data(), buf.size()));
+    h::Climate back;
+    TEST_ASSERT_TRUE(back.deserialize(buf.data(), buf.size()));
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 9.0F, back.records().get(h::Period::AllTime, h::Rec::TempMin).v);
+    buf[0] ^= 0xFF;
+    TEST_ASSERT_FALSE(back.deserialize(buf.data(), buf.size()));
+
+    // publishers
+    station::history::TieredHistory th;
+    th.advance(100, 10, 1);
+    th.add(station::history::Metric::TempC, 10.0F);
+    th.add(station::history::Metric::RainMm, 0.4F);
+    th.advance(101, 10, 1);
+    th.add(station::history::Metric::RainMm, 0.2F);
+    station::core::DerivedState d{};
+    d.thermo.temp_c.set(11.0F);
+    TEST_ASSERT_TRUE(deserializeJson(doc, TelemetryFormatter::build_records_json(c, th, d)) == DeserializationError::Ok);
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 25.0F, doc["records"]["temp_max"]["today"]["v"].as<float>());
+    TEST_ASSERT_TRUE(doc["records"]["gust_max"]["today"].isNull());
+    TEST_ASSERT_TRUE(deserializeJson(doc, TelemetryFormatter::build_history_json(th, station::history::Tier::Minute, "rain_mm", 0)) ==
+                     DeserializationError::Ok);
+    JsonArray cum = doc["series"]["rain_mm"]["cum"].as<JsonArray>();
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 0.6F, cum[cum.size() - 1].as<float>());
+    const std::string csv = TelemetryFormatter::build_history_csv(th, station::history::Tier::Minute, "temp_c,rain_mm", 7200);
+    TEST_ASSERT_TRUE(csv.rfind("time,temp_c_mean,temp_c_min,temp_c_max,rain_mm\n", 0) == 0);
+    TEST_ASSERT_EQUAL_UINT32(1 + 61, static_cast<std::uint32_t>(std::count(csv.begin(), csv.end(), '\n')));
+    TEST_ASSERT_TRUE(csv.find("1970-01-01 03:40,10.00,10.00,10.00,0.40\n") != std::string::npos);   // minute 100 + 2 h
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ultrasonic_zero_wind_and_virtual_temp);
@@ -1463,6 +1651,7 @@ int main(void) {
     RUN_TEST(test_reboot_and_factory_reset_button_controller);
     RUN_TEST(test_astronomy_sun_moon_and_clear_sky);
     RUN_TEST(test_tiered_history_rollup_gaps_and_persistence);
+    RUN_TEST(test_history_store_ring_wrap_power_loss_and_format);
     RUN_TEST(test_conditioners_vibration_pressure_and_rain_pulses);
     RUN_TEST(test_pipeline_missing_sensors_publish_null_not_defaults);
     RUN_TEST(test_pipeline_three_hour_run_trends_history_and_publishers);
@@ -1479,5 +1668,6 @@ int main(void) {
     RUN_TEST(test_home_calibration_sample_undoes_corrections);
     RUN_TEST(test_quality_flags_and_station_health);
     RUN_TEST(test_lightning_seismic_health_rs485_decode_and_mqtt_topic);
+    RUN_TEST(test_trends_records_windrose_and_exports);
     return UNITY_END();
 }

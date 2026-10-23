@@ -1,5 +1,7 @@
 #include "TieredHistory.hpp"
 
+#include "HistoryStore.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -39,7 +41,9 @@ constexpr MetricInfo kMetrics[kMetricCount] = {
     {"vin_v", "V", Agg::Mean},
 };
 
-void merge(Agg agg, Slot& into, const Slot& s) {
+}  // namespace
+
+void merge_slot(Agg agg, Slot& into, const Slot& s) {
     if (s.n == 0) {
         return;
     }
@@ -67,8 +71,10 @@ void merge(Agg agg, Slot& into, const Slot& s) {
             into.b += s.b;
             break;
     }
-    into.n = static_cast<std::uint16_t>(std::min<std::uint32_t>(65535U, std::uint32_t{into.n} + s.n));
+    into.n += s.n;
 }
+
+namespace {
 
 template <std::size_t N>
 void close_into(Ring<N>& ring, Slot& acc, std::int64_t old_idx, std::int64_t new_idx) {
@@ -85,25 +91,6 @@ void close_into(Ring<N>& ring, Slot& acc, std::int64_t old_idx, std::int64_t new
     }
 }
 
-void put_slot(std::uint8_t*& p, const Slot& s) {
-    std::memcpy(p, &s.a, 4);
-    std::memcpy(p + 4, &s.b, 4);
-    std::memcpy(p + 8, &s.c, 4);
-    std::memcpy(p + 12, &s.n, 2);
-    p += 14;
-}
-
-Slot get_slot(const std::uint8_t*& p) {
-    Slot s{};
-    std::memcpy(&s.a, p, 4);
-    std::memcpy(&s.b, p + 4, 4);
-    std::memcpy(&s.c, p + 8, 4);
-    std::memcpy(&s.n, p + 12, 2);
-    p += 14;
-    return s;
-}
-constexpr std::size_t kHeaderBytes = 4 + 2 + 2 + 8 + 8;
-constexpr std::size_t kSlotBytes = 14;
 }  // namespace
 
 const MetricInfo& metric_info(Metric m) {
@@ -151,9 +138,7 @@ void Slot::add(Agg agg, float v) {
                 break;
         }
     }
-    if (n < 65535U) {
-        ++n;
-    }
+    ++n;
 }
 
 bool Slot::value(Agg agg, float& out) const {
@@ -203,14 +188,73 @@ void TieredHistory::add(Metric m, float v) {
 }
 
 void TieredHistory::advance(std::int64_t minute_idx, std::int64_t hour_idx, std::int64_t day_idx) {
+    // snapshot the hour / day that closes now (all metrics) for the long-term store
+    auto snapshot = [this](bool hour, std::int64_t old_idx, std::int64_t new_idx) {
+        if (old_idx < 0 || new_idx == old_idx) return;
+        auto& out = hour ? closed_hour_ : closed_day_;
+        bool any = false;
+        for (std::size_t i = 0; i < kMetricCount; ++i) {
+            out[i] = hour ? m_[i].acc_hour : m_[i].acc_day;
+            any = any || out[i].n > 0;
+        }
+        (hour ? closed_hour_idx_ : closed_day_idx_) = old_idx;
+        (hour ? closed_hour_ok_ : closed_day_ok_) = any;
+    };
+    snapshot(true, hour_idx_, hour_idx);
+    snapshot(false, day_idx_, day_idx);
     for (PerMetric& pm : m_) {
         close_into(pm.minutes, pm.acc_min, minute_idx_, minute_idx);
         close_into(pm.hours, pm.acc_hour, hour_idx_, hour_idx);
-        close_into(pm.days, pm.acc_day, day_idx_, day_idx);
+        if (day_idx_ >= 0 && day_idx != day_idx_) pm.acc_day = Slot{};
     }
     minute_idx_ = minute_idx;
     hour_idx_ = hour_idx;
     day_idx_ = day_idx;
+}
+
+bool TieredHistory::take_closed(Tier t, std::int64_t& idx, std::array<Slot, kMetricCount>& slots) {
+    bool& ok = t == Tier::Day ? closed_day_ok_ : closed_hour_ok_;
+    if (t == Tier::Minute || !ok) return false;
+    ok = false;
+    idx = t == Tier::Day ? closed_day_idx_ : closed_hour_idx_;
+    slots = t == Tier::Day ? closed_day_ : closed_hour_;
+    return true;
+}
+
+std::size_t TieredHistory::span(Tier t) {
+    return t == Tier::Minute ? kMinutes : (t == Tier::Hour ? HistoryStore::kHourRecords : HistoryStore::kDayRecords);
+}
+
+bool TieredHistory::long_slot(Metric m, Tier t, std::size_t back, Slot& out) const {
+    const PerMetric& pm = m_[static_cast<std::size_t>(m)];
+    if (back == 0) {
+        out = current(m, t);
+        return out.n > 0;
+    }
+    if (t == Tier::Minute) {
+        if (back > kMinutes) return false;
+        out = pm.minutes.slots[kMinutes - back];
+        return out.n > 0;
+    }
+    if (t == Tier::Hour && back <= kHours) {
+        out = pm.hours.slots[kHours - back];
+        return out.n > 0;
+    }
+    const std::int64_t idx = (t == Tier::Hour ? hour_idx_ : day_idx_) - static_cast<std::int64_t>(back);
+    return store_ != nullptr && store_->read_slot(t, idx, m, out) && out.n > 0;
+}
+
+void TieredHistory::restore(const HistoryStore& store) {
+    ClosedInterval rec{};
+    for (std::size_t back = 1; back <= kHours; ++back) {
+        if (!store.read(Tier::Hour, hour_idx_ - static_cast<std::int64_t>(back), rec)) continue;
+        for (std::size_t i = 0; i < kMetricCount; ++i) m_[i].hours.slots[kHours - back] = rec.slots[i];
+    }
+    // today so far = the stored hours since local midnight + what was sampled since this boot
+    for (std::int64_t h = day_idx_ * 24; h < hour_idx_; ++h) {
+        if (!store.read(Tier::Hour, h, rec)) continue;
+        for (std::size_t i = 0; i < kMetricCount; ++i) merge_slot(metric_info(static_cast<Metric>(i)).agg, m_[i].acc_day, rec.slots[i]);
+    }
 }
 
 const Slot& TieredHistory::current(Metric m, Tier t) const {
@@ -219,6 +263,7 @@ const Slot& TieredHistory::current(Metric m, Tier t) const {
 }
 
 const Slot& TieredHistory::slot(Metric m, Tier t, std::size_t i) const {
+    static const Slot kEmpty{};
     const PerMetric& pm = m_[static_cast<std::size_t>(m)];
     if (t == Tier::Minute) {
         return pm.minutes.slots[std::min(i, kMinutes - 1)];
@@ -226,11 +271,11 @@ const Slot& TieredHistory::slot(Metric m, Tier t, std::size_t i) const {
     if (t == Tier::Hour) {
         return pm.hours.slots[std::min(i, kHours - 1)];
     }
-    return pm.days.slots[std::min(i, kDays - 1)];
+    return kEmpty;
 }
 
 std::size_t TieredHistory::size(Tier t) {
-    return t == Tier::Minute ? kMinutes : (t == Tier::Hour ? kHours : kDays);
+    return t == Tier::Minute ? kMinutes : (t == Tier::Hour ? kHours : 0);
 }
 
 namespace {
@@ -240,7 +285,7 @@ Slot window(const TieredHistory& h, Metric m, Tier t, std::size_t n) {
     const std::size_t sz = TieredHistory::size(t);
     const std::size_t take = std::min(n, sz);
     for (std::size_t i = sz - take; i < sz; ++i) {
-        merge(agg, acc, h.slot(m, t, i));
+        merge_slot(agg, acc, h.slot(m, t, i));
     }
     return acc;
 }
@@ -256,75 +301,6 @@ bool TieredHistory::window_min(Metric m, Tier t, std::size_t n, float& out) cons
 
 bool TieredHistory::window_max(Metric m, Tier t, std::size_t n, float& out) const {
     return window(*this, m, t, n).max(metric_info(m).agg, out);
-}
-
-std::size_t TieredHistory::serialized_size() const {
-    return kHeaderBytes + kMetricCount * (kHours + kDays + 2) * kSlotBytes;
-}
-
-std::size_t TieredHistory::serialize(std::uint8_t* buf, std::size_t cap, std::int64_t /*unix_s*/) const {
-    const std::size_t need = serialized_size();
-    if (cap < need) {
-        return 0;
-    }
-    std::uint8_t* p = buf;
-    const std::uint32_t magic = kMagic;
-    const std::uint16_t ver = kVersion;
-    const std::uint16_t count = static_cast<std::uint16_t>(kMetricCount);
-    std::memcpy(p, &magic, 4);
-    std::memcpy(p + 4, &ver, 2);
-    std::memcpy(p + 6, &count, 2);
-    std::memcpy(p + 8, &hour_idx_, 8);
-    std::memcpy(p + 16, &day_idx_, 8);
-    p += kHeaderBytes;
-    for (const PerMetric& pm : m_) {
-        for (const Slot& s : pm.hours.slots) {
-            put_slot(p, s);
-        }
-        put_slot(p, pm.acc_hour);
-        for (const Slot& s : pm.days.slots) {
-            put_slot(p, s);
-        }
-        put_slot(p, pm.acc_day);
-    }
-    return need;
-}
-
-bool TieredHistory::deserialize(const std::uint8_t* buf, std::size_t len, std::int64_t now_hour_idx,
-                                std::int64_t now_day_idx) {
-    if (len != serialized_size()) {
-        return false;
-    }
-    std::uint32_t magic = 0;
-    std::uint16_t ver = 0;
-    std::uint16_t count = 0;
-    std::int64_t saved_hour = 0;
-    std::int64_t saved_day = 0;
-    std::memcpy(&magic, buf, 4);
-    std::memcpy(&ver, buf + 4, 2);
-    std::memcpy(&count, buf + 6, 2);
-    std::memcpy(&saved_hour, buf + 8, 8);
-    std::memcpy(&saved_day, buf + 16, 8);
-    if (magic != kMagic || ver != kVersion || count != kMetricCount || saved_hour > now_hour_idx ||
-        saved_day > now_day_idx) {
-        return false;
-    }
-    const std::uint8_t* p = buf + kHeaderBytes;
-    for (PerMetric& pm : m_) {
-        for (Slot& s : pm.hours.slots) {
-            s = get_slot(p);
-        }
-        pm.acc_hour = get_slot(p);
-        for (Slot& s : pm.days.slots) {
-            s = get_slot(p);
-        }
-        pm.acc_day = get_slot(p);
-        close_into(pm.hours, pm.acc_hour, saved_hour, now_hour_idx);
-        close_into(pm.days, pm.acc_day, saved_day, now_day_idx);
-    }
-    hour_idx_ = now_hour_idx;
-    day_idx_ = now_day_idx;
-    return true;
 }
 
 }  // namespace history

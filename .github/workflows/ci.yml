@@ -1,0 +1,153 @@
+# All AeroMet checks: lint, station + crown firmware tests and builds, Web UI smoke test against the simulator,
+# the firmware release artifacts, and the hardware / CAD pipeline with its tests. Every job uses the same
+# docker compose containers as local development (see AGENTS.md "Commands").
+# Release (after every job passed, on a push to main or a manual run): named after the UTC commit time,
+# yyyy.mm.dd.hhmm, which is also the firmware version. Assets: firmware.bin, usb-flash-firmware.bin, the hardware
+# package (committed hardware/releases/v1 + build / calibration docs) and SHA256SUMS.txt. Nothing is rebuilt.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (Python + C++)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build lint image
+        run: docker compose --profile lint build lint
+      - name: Lint
+        run: docker compose --profile lint run --rm -T lint check .
+
+  station:
+    name: Station firmware tests + Web UI smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build firmware toolchain image
+        run: docker compose --profile lint build cpp-lint
+      - name: Native unit tests
+        run: docker compose --profile lint run --rm -T cpp-lint "pio test -d station -e native"
+      - name: Native unit tests (ASan + UBSan)
+        run: docker compose --profile lint run --rm -T cpp-lint "pio test -d station -e native_sanitized"
+      - name: Start the simulator / mock Web UI server
+        run: |
+          # the simulator links ArduinoJson + the Sensirion algorithm from the native test build above
+          nohup python3 station/scripts/mock_webui_server.py > mock.log 2>&1 &
+          for i in $(seq 1 90); do
+            curl -sf http://127.0.0.1:8765/api/state > /dev/null && exit 0
+            sleep 2
+          done
+          cat mock.log
+          exit 1
+      - name: Web UI smoke test (all scenarios, both unit systems)
+        run: node station/tests/webui/smoke.mjs http://127.0.0.1:8765
+      - name: Simulator log
+        if: failure()
+        run: cat mock.log || true
+
+  crown:
+    name: Crown firmware tests + STM32 build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build firmware toolchain image
+        run: docker compose --profile lint build cpp-lint
+      - name: Native unit tests
+        run: docker compose --profile lint run --rm -T cpp-lint "pio test -d crown -e native"
+      - name: STM32G431 build
+        run: docker compose --profile lint run --rm -T cpp-lint "pio run -d crown -e crown"
+
+  firmware:
+    name: Station firmware release (firmware.bin + usb-flash-firmware.bin)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build firmware toolchain image
+        run: docker compose --profile lint build cpp-lint
+      - name: ESP32-C6 development build (debug)
+        run: docker compose --profile lint run --rm -T cpp-lint "cd station && pio run -e dev_c6"
+      - name: Release build + merged USB image (version = commit time, yyyy.mm.dd.hhmm)
+        run: python3 station/scripts/release_firmware.py
+      - name: Embedded crown image unchanged
+        run: git diff --exit-code station/src/firmware/CrownImage.hpp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aeromet-station-firmware
+          path: |
+            station/build/firmware/firmware.bin
+            station/build/firmware/usb-flash-firmware.bin
+          if-no-files-found: error
+
+  hardware:
+    name: Hardware + CAD pipeline and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space (KiCad + CadQuery images)
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - name: Build EDA + CAD images
+        run: docker compose --profile hardware build eda cad
+      # test_release_current checks the committed release against the regenerated boards (KiCad UUIDs differ per run)
+      - name: Circuits, layouts (incremental), DRC, renders, enclosure, release, tests
+        run: python3 hardware/scripts/build.py --eda --cad --release --test
+
+  release:
+    name: Publish GitHub release
+    needs: [lint, station, crown, firmware, hardware]
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: aeromet-station-firmware
+          path: dist
+      - name: Package the hardware release (committed files, verified by the hardware job)
+        run: |
+          rm -rf pkg && mkdir -p pkg/aeromet-hardware-v1/docs
+          cp -r hardware/releases/v1/. pkg/aeromet-hardware-v1/
+          cp CALIBRATION.md docs/hardware.md docs/building.md pkg/aeromet-hardware-v1/docs/
+          (cd pkg && zip -qr ../dist/aeromet-hardware-v1.zip aeromet-hardware-v1 -x "*.DS_Store")
+          (cd dist && sha256sum firmware.bin usb-flash-firmware.bin aeromet-hardware-v1.zip > SHA256SUMS.txt)
+          ls -la dist
+      - name: Create / update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # the UTC commit time: the same string the firmware reports as its version (station/scripts/gen_version.py)
+          TAG="$(date -u -d "@$(git show -s --format=%ct HEAD)" +%Y.%m.%d.%H%M)"
+          cat > notes.md <<'NOTES'
+          | File | Use |
+          | :--- | :--- |
+          | `usb-flash-firmware.bin` | First flash of a new station over USB: `esptool.py --chip esp32c6 write_flash 0x0 usb-flash-firmware.bin` |
+          | `firmware.bin` | Updates from the Web UI (Setup → Firmware update); includes the crown firmware |
+          | `aeromet-hardware-v1.zip` | Manufacturing package: panel + per-board Gerbers / BOM / CPL, enclosure STL / STEP / print plates, drawings, renders, assembly parts list, build and calibration guides |
+          | `SHA256SUMS.txt` | Checksums of the files above |
+          NOTES
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md --generate-notes
+          fi
+          gh release upload "$TAG" dist/firmware.bin dist/usb-flash-firmware.bin dist/aeromet-hardware-v1.zip dist/SHA256SUMS.txt --clobber
