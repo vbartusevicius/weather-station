@@ -62,20 +62,31 @@ LOUVER_TIP_R = 20.4                 # blade underside thinner than 0.8 mm inside
 # Probe-sleeve rear conduit for the crown cable (OD <= 3.2 mm): 4.1 mm deep, >= 0.8 mm walls to the PCB seat and back
 REAR_CABLE_Z = (-5.8, -1.7)
 # UV covers over the `dome` board (two interchangeable crown tops, same M22x1.5 nut thread):
-#  - `crown` (window): stock Ø 20 x 2 mm JGS1 disc. A thin 17 x 1.0 mm O-ring is squeezed between the window's top face
-#    and the lid's top lip, so the seal is lid <-> glass (water never reaches the nut thread); the printed nut pushes
-#    the window up from below (hand-tight: the thread sets the squeeze).
-#  - `crown_dome`: Ø 20 mm hollow JGS1 hemisphere, rim below the dome sensor tops and no raised border: the lid around
-#    the dome is flush at y 198.0, under the sensor tops, so the sensors see down to the horizon. A thin 19 x 1.0 mm
-#    O-ring sits in the triangular gland formed by the bore wall, the lip underside and the dome's sphere (lid <-> glass
-#    seal); the shorter nut pushes the rim up.
+#  - `crown` (default): low flush collar around a flanged PTFE diffuser dome, in two shapes with the same flange:
+#    UV_PTFE_LATHE (default: cylinder + flat top, turned from round rod) and UV_PTFE_CNC (hemisphere). The flange is
+#    flat on both faces: an 18 x 1.0 mm O-ring is squeezed flat (25 %) between the flange top and the collar lip
+#    (lid <-> dome face seal), and the dome nut pushes the flat flange bottom. The collar lip and the trimmed lid apex
+#    stay below the dome sensor tops, so the sensors see the sky down to (and slightly below) the horizon.
+#  - `crown_window` (backup): stock Ø 20 x 2 mm JGS1 disc under a raised boss; a thin 17 x 1.0 mm O-ring between the
+#    window top face and the 1.2 mm lip (lid <-> glass seal), window nut from below. The lip hides the sky below
+#    ~19-34 deg elevation.
 UV_WIN = {"d": 20.0, "t": 2.0, "y0": 199.3}    # window bottom face y (design frame, before UPPER); sensors top 198.8
 UV_ORING = {"cs": 1.0, "squeezed": 0.75}       # 1.0 mm cross-section, 25 % squeeze
 UV_NUT_TOP = UV_WIN["y0"]                       # window nut pushes on the window underside
 UV_LIP_Y = UV_WIN["y0"] + UV_WIN["t"] + UV_ORING["squeezed"]   # lip underside 202.05
 UV_BOSS = {"r": 12.6, "top": UV_LIP_Y + 1.2, "ap_r": 8.0, "ap_top_r": 9.6, "drain_h": 0.4}   # 1.2 mm lip
-UV_DOME = {"r_out": 10.0, "wall": 1.2, "rim_y": 193.6, "gland_y": 196.9, "lip_r": 9.65, "bore_r": 10.40, "top_y": 198.0}
-UV_DOME_NUT_TOP = UV_DOME["rim_y"]
+# Dome seat in the `crown` collar: Ø 20.8 bore (M22 nut thread) up to the lip underside `gland_y`, 0.9 mm lip with a
+# Ø 18.2 hole, lid apex trimmed to `top_y` (1.0 mm under the dome sensor tops at 198.8).
+UV_DOME = {"gland_y": 196.9, "lip_r": 9.1, "bore_r": 10.40, "top_y": 197.8}
+UV_DOME_ORING = {"id": 18.0, "cs": 1.0, "squeezed": 0.75}       # 18 x 1.0 mm face seal, 25 % squeeze
+# PTFE diffuser domes (virgin white PTFE, 0.8 mm wall: ~10-12 % diffuse transmission, spectrally flat 250-2500 nm).
+# Common flange: Ø 20.4 x 1.5 mm, flat on both faces; dome Ø 17.8 mm rising from the flange top through the lip hole.
+UV_PTFE = {"flange_r": 10.2, "flange_t": 1.5, "dome_r": 8.9, "wall": 0.8}
+UV_PTFE["flange_top"] = UV_DOME["gland_y"] - UV_DOME_ORING["squeezed"]   # O-ring face
+UV_PTFE["flange_bot"] = UV_PTFE["flange_top"] - UV_PTFE["flange_t"]      # on the dome nut
+UV_PTFE_LATHE = {"height": 6.0, "edge_r": 2.0}   # cylinder + flat top (2 mm edge radius), height above the flange top
+UV_PTFE_CNC = {}                                 # hemisphere centred on the flange top plane
+UV_DOME_NUT_TOP = UV_PTFE["flange_bot"]
 
 # Ultrasonic barrels (axis frame: s along the tilted barrel axis from the seat origin, face plane at s = XD_FACE_S).
 # The bore takes Ø 14 mm closed transducers directly; the printed `transducer_adapters` sleeve puts a Ø 10 mm
@@ -517,7 +528,7 @@ def _build_probe_sleeve_back():
     return body.union(_build_probe_sleeve_cyl_ends(-15.0, -0.05)).cut(pcb_seat).cut(rear_cable_channel).cut(back_grease_groove)
 
 
-PROBE_FRONT_SLOTS_Y = (93.0, 96.5, 100.0, 103.5, 107.0, 110.5)  # 3.5 mm grid: SCD41 (93..100), SGP41 + BMP585 (103.5..110.5)
+PROBE_FRONT_SLOTS_Y = (93.0, 96.5, 100.0, 103.5, 107.0, 110.5)  # 3.5 mm grid: SGP41 + BMP585 (96.5), SCD41 (103.5..110.5)
 PROBE_SIDE_SLOTS_Y = (92.0, 95.5, 99.0, 102.5, 106.0, 109.5)
 
 
@@ -531,9 +542,9 @@ def _build_probe_sleeve_front():
         so there is ZERO external notch or opening!
       - Immediately above `J1` (`y = 76.25..80.2 mm`, below `SHT40`), the inner wall hugs the `probe` PCB front face at `z = +0.70 mm`
         (`0.10 mm` gap from `z = +0.60 mm`!) with a grease/glue reservoir groove at `y = 77.2..79.2 mm`!
-      - Upper gas chamber (`y = 89.2..113.0 mm`) around the `SCD41`, `SGP41` and `BMP585`: one uniform grid of 6 front
-        slots (`12 x 1.2 mm`, 3.5 mm pitch; the slot at `y = 107.0` lies right over the SGP41 hot plate and the BMP585 gel
-        port), plus 6 side slots in each side wall so the shield airflow crosses the chamber."""
+      - Upper gas chamber (`y = 89.2..113.0 mm`) around the `SGP41`, `BMP585` and (topmost, heated) `SCD41`: one uniform
+        grid of 6 front slots (`12 x 1.2 mm`, 3.5 mm pitch; the slot at `y = 96.5` lies right over the SGP41 hot plate and
+        the BMP585 gel port), plus 6 side slots in each side wall so the shield airflow crosses the chamber."""
     j1_cover_shroud = box(-9.2, 9.2, 75.0, 77.4, 0.05, 6.5)
     lower_hood = box(-9.2, 9.2, 75.0, 89.2, 0.05, 3.4)
     upper_hood = box(-9.2, 9.2, 87.8, 114.0, 0.05, 8.8)
@@ -798,9 +809,9 @@ def _build_struts():
         assy = strut.union(bot_nut).union(top_nut)
         all_struts = assy if all_struts is None else all_struts.union(assy)
 
-    # Printable M22x1.5 UV-window retainer nut (hex y 189.8..191.0, thread at the bottom, smooth barrel up to UV_NUT_TOP
-    # around the dome board) inside `struts.stl` so the strut halves, strut locknuts and this nut print together.
-    uv_nut = uv_retainer_nut(UV_NUT_TOP).union(uv_retainer_nut(UV_DOME_NUT_TOP).translate((70.0, 0, 0)))   # + dome nut, aside
+    # Printable M22x1.5 UV-dome retainer nut (hex y 189.8..191.0, thread at the bottom, smooth barrel up to the dome rim
+    # around the dome board; the window nut for the backup `crown_window` top lies beside it) inside `struts.stl` so the strut halves, strut locknuts and this nut print together.
+    uv_nut = uv_retainer_nut(UV_DOME_NUT_TOP).union(uv_retainer_nut(UV_NUT_TOP).translate((70.0, 0, 0)))   # + window nut, aside
     # Also include 4x Printable Slotted Press-Fit Rear Retaining Rings (`for locking the 4 ultrasonic transducers
     # into their angled barrel seats from the back!`) arranged around the central M22 dome nut at r = 18.0 mm:
     for deg in (0, 90, 180, 270):
@@ -905,15 +916,23 @@ def _build_crown_base():
 
 
 def build_crown():
-    return _build_crown().translate((0, UPPER, 0))
+    """Part 10 (default crown top): flush collar for the flanged PTFE dome (lathe or CNC shape)."""
+    return _build_crown("dome").translate((0, UPPER, 0))
 
 
-def _build_crown(cover="window"):
-    """Part 10: Removable Top Piezo Rain & UV Window Cover (`crown.stl/.step`, y=185.8..202.3):
+def build_crown_window():
+    """Part 10b (backup crown top): raised boss for the stock Ø 20 x 2 mm JGS1 window."""
+    return _build_crown("window").translate((0, UPPER, 0))
+
+
+def _build_crown(cover="dome"):
+    """Part 10: Removable Top Piezo Rain & UV Cover (`crown.stl/.step` dome collar, `crown_window.stl/.step` window):
       - Open on the bottom with an Internal M90x1.8 Female Thread (y = 186.0..190.2) that screws onto `crown_base.stl`
         and compresses the full-perimeter O-Ring #3!
-      - Center: raised boss (r 12.6, top y 202.5) with a 1.2 mm top lip (Ø 16 mm aperture chamfered to Ø 19.2 mm) over
-        the stock Ø 20 x 2 mm JGS1 window, the 17 x 1.0 mm O-ring above it and the M22x1.5 retainer nut (thread y 191.2..192.7)
+      - Center, `dome`: Ø 20.8 bore for the PTFE dome flange + 18 x 1.0 mm face-seal O-ring under a 0.9 mm lip (Ø 18.2 hole), lid apex trimmed to the
+        lip top (y 197.8, 1.0 mm under the dome sensor tops) so nothing around the hemisphere rises into the sensors'
+        horizon; `window`: raised boss (r 12.6, top y 203.25) with a 1.2 mm lip (Ø 16 mm aperture chamfered to
+        Ø 19.2 mm) over the Ø 20 x 2 mm JGS1 window and its 17 x 1.0 mm O-ring; M22x1.5 nut thread y 191.2..192.7
       - Smooth Taper into a 1.0 mm-Thin Acoustic Rain-Drum Diaphragm (r = 15..36.5 mm) above the 4x 20 mm Murata Piezos!
     """
     skirt = ring_cone_y(186.5, 190.6, 44.18, OUTER_R, 44.18, OUTER_R)
@@ -944,14 +963,16 @@ def _build_crown(cover="window"):
     win = ef.uv_window()
     at = (win["x"], 0, win["z"])
     if cover == "dome":
-        # Flush collar (top y 198.0, under the dome sensor tops): Ø 20.8 bore up to the gland plane, 1.1 mm lip above
-        # it whose Ø 19.3 hole clears the sphere by >= 0.2 mm; the O-ring sits in the bore / lip-underside corner.
+        # Flush collar (top y 197.8, 1.0 mm under the dome sensor tops): Ø 20.8 bore up to the lip underside, 0.9 mm lip
+        # whose Ø 18.2 hole clears the Ø 17.8 dome; the O-ring is squeezed flat between the dome flange and the lip.
+        # The lid apex (198.0 at r 9) is trimmed to the lip top inside r 14 so the dome stands free of any rim.
         d = UV_DOME
-        collar = (cone_y(190.4, d["top_y"] - 0.6, 13.0, 13.0).union(cone_y(d["top_y"] - 0.6, d["top_y"], 13.0, 11.0))
+        collar = (cone_y(190.4, d["top_y"] - 0.5, 13.0, 13.0).union(cone_y(d["top_y"] - 0.5, d["top_y"], 13.0, 11.5))
                   .translate(at))
         cut = cone_y(190.0, d["gland_y"], d["bore_r"], d["bore_r"]).union(
             cone_y(d["gland_y"] - 0.01, d["top_y"] + 0.5, d["lip_r"], d["lip_r"]))
-        body = body.union(collar).cut(cut.translate(at))
+        body = body.union(collar).cut(cone_y(d["top_y"], d["top_y"] + 3.0, 14.5, 14.5).translate(at))
+        body = body.cut(cut.translate(at))
     else:
         # Window boss: Ø 20.8 bore (nut + window + thin O-ring) up to the lip underside, 1.2 mm lip with a chamfered
         # aperture, 4 drains through the lip just above the O-ring plane (they never cross the seal).
@@ -970,30 +991,58 @@ def _build_crown(cover="window"):
     return body
 
 
-def build_crown_dome():
-    """Part 10b: second crown top for the Ø 20 mm hollow JGS1 hemisphere (same lid, flush dome collar)."""
-    return _build_crown("dome").translate((0, UPPER, 0))
-
-
 def uv_dome_nut():
-    """Dome retainer nut in its assembled position (printed on the struts plate, laid out beside the window nut)."""
+    """Dome retainer nut in its assembled position (default; printed on the struts plate)."""
     return uv_retainer_nut(UV_DOME_NUT_TOP).translate((0, UPPER, 0))
 
 
+def uv_window_nut():
+    """Window retainer nut (backup `crown_window` top) in its assembled position (laid out beside it for printing)."""
+    return uv_retainer_nut(UV_NUT_TOP).translate((0, UPPER, 0))
+
+
 def uv_dome_oring():
-    """19 x 1.0 mm O-ring (uncompressed) in the crown_dome gland corner, assembled position."""
-    d, win = UV_DOME, ef.uv_window()
-    c = (d["bore_r"] - 0.5, d["gland_y"] - 0.5 + UPPER)
-    return cq.Workplane(obj=cq.Solid.makeTorus(c[0], 0.5, cq.Vector(win["x"], c[1], win["z"]), cq.Vector(0, 1, 0)))
+    """18 x 1.0 mm O-ring squeezed flat between the dome flange top and the collar lip, assembled position."""
+    d, o, win = UV_DOME, UV_DOME_ORING, ef.uv_window()
+    widen = o["cs"] * (o["cs"] / o["squeezed"] - 1.0)               # constant-area widening of the squeezed section,
+    r0, r1 = o["id"] / 2.0, o["id"] / 2.0 + o["cs"] + widen          # outward (the dome wall at r 8.9 centres the ID)
+    return ring_cone_y(d["gland_y"] - o["squeezed"] + UPPER, d["gland_y"] + UPPER, r0, r1, r0, r1).translate(
+        (win["x"], 0, win["z"]))
 
 
-def uv_dome20_glass():
-    """The Ø 20 mm hemisphere (1.2 mm wall) in its assembled position under the crown_dome top."""
-    d, win = UV_DOME, ef.uv_window()
-    y = d["rim_y"] + UPPER
-    shell = (cq.Workplane("XY", origin=(0, y, 0)).sphere(d["r_out"])
-             .cut(cq.Workplane("XY", origin=(0, y, 0)).sphere(d["r_out"] - d["wall"])))
-    return shell.intersect(box(-15, 15, y, y + 15, -15, 15)).translate((win["x"], 0, win["z"]))
+def ptfe_dome_profile(kind):
+    """Half section (x = radius, y up from the flange bottom) of the PTFE dome, `kind` = "lathe" or "cnc":
+    list of ("line", (x, y)) / ("arc", (mid), (end)) steps starting at (r_in, 0), closed back to the start."""
+    f = UV_PTFE
+    fr, tf, R, w = f["flange_r"], f["flange_t"], f["dome_r"], f["wall"]
+    ri = R - w
+    c45 = math.cos(math.radians(45.0))
+    steps = [("line", (fr, 0.0)), ("line", (fr, tf)), ("line", (R, tf))]
+    if kind == "lathe":
+        h, e = tf + UV_PTFE_LATHE["height"], UV_PTFE_LATHE["edge_r"]
+        ei = e - w
+        steps += [("line", (R, h - e)), ("arc", (R - e + e * c45, h - e + e * c45), (R - e, h)), ("line", (0.0, h)),
+                  ("line", (0.0, h - w)), ("line", (ri - ei, h - w)),
+                  ("arc", (ri - ei + ei * c45, h - w - ei + ei * c45), (ri, h - w - ei))]
+    else:
+        steps += [("arc", (R * c45, tf + R * c45), (0.0, tf + R)), ("line", (0.0, tf + ri)),
+                  ("arc", (ri * c45, tf + ri * c45), (ri, tf))]
+    return (ri, 0.0), steps
+
+
+def _ptfe_dome(kind):
+    """PTFE dome solid in its own (lathe) frame: flange bottom at y = 0, axis +y."""
+    start, steps = ptfe_dome_profile(kind)
+    wp = cq.Workplane("XY").moveTo(*start)
+    for step in steps:
+        wp = wp.lineTo(*step[1]) if step[0] == "line" else wp.threePointArc(step[1], step[2])
+    return wp.close().revolve(360.0, (0, 0, 0), (0, 1, 0))
+
+
+def uv_ptfe_dome(kind="lathe"):
+    """PTFE dome (`lathe` default, or `cnc` hemisphere) in its assembled position on the dome nut under the collar."""
+    win = ef.uv_window()
+    return _ptfe_dome(kind).translate((win["x"], UV_PTFE["flange_bot"] + UPPER, win["z"]))
 
 
 def build_orings():
@@ -1001,8 +1050,8 @@ def build_orings():
       1.-3. `base <-> pagoda`, `pagoda <-> wind_tunnel`, `crown_base <-> crown`: 88 x 2.0 mm O-rings, shown
             uncompressed on their gland floors (they overlap the mating skirt by the 0.5 mm design squeeze)
       4. Bottom Center `probe_sleeve <-> pagoda` waterproof bulkhead O-ring (y = 73.5..74.35, r = 10.6..13.1 mm)
-      5. Top center UV window O-ring 17 x 1.0 mm between the window top and the lid lip (squeezed, r = 8.5..9.5 mm)
-      6. UV dome O-ring 19 x 1.0 mm in the crown_dome groove on the hemisphere (shown beside the station)
+      5. UV dome O-ring 18 x 1.0 mm squeezed flat between the dome flange and the `crown` lip (assembled position)
+      6. UV window O-ring 17 x 1.0 mm for the backup `crown_window` top (shown beside the station)
     """
     def bayonet_ring(seat_y):   # uncompressed 88 x 2.0 mm O-ring resting on its gland floor
         y = seat_y + ORING_FLOOR_BELOW_SEAT + ORING_CS / 2.0
@@ -1013,10 +1062,9 @@ def build_orings():
     ring_probe_bot = ring_cone_y(73.5, 74.35, 10.6, 13.1, 10.6, 13.1)
     ring_refl = bayonet_ring(120.6)
     ring_crown = bayonet_ring(186.5).translate((0, TOP_RAISE, 0))
-    win = ef.uv_window()
     w_top = UV_WIN["y0"] + UV_WIN["t"]
-    ring_uv = ring_cone_y(w_top, UV_LIP_Y, 8.5, 9.5, 8.5, 9.5).translate((win["x"], TOP_RAISE, win["z"]))
-    ring_dome = cq.Workplane(obj=cq.Solid.makeTorus(10.0, 0.5, cq.Vector(70.0, 186.0 + TOP_RAISE, 0), cq.Vector(0, 1, 0)))
+    ring_uv = ring_cone_y(w_top, UV_LIP_Y, 8.5, 9.5, 8.5, 9.5).translate((70.0, TOP_RAISE - 13.0, 0.0))   # aside
+    ring_dome = uv_dome_oring().translate((0, -RAISE, 0))
     return (ring_base.union(ring_probe_bot).union(ring_refl).union(ring_crown).union(ring_uv).union(ring_dome)
             .translate((0, RAISE, 0)))
 
@@ -1075,7 +1123,7 @@ ALL_PARTS = (
     ("crown", build_crown),
     ("mast_shims", build_mast_shims),
     ("transducer_adapters", build_transducer_adapters),
-    ("crown_dome", build_crown_dome),
+    ("crown_window", build_crown_window),
 )
 
 
@@ -1105,7 +1153,7 @@ def print_plate(solid):
 
 # Print plates combine parts that are printed / ordered together (one upload each); every other part has its own.
 PRINT_GROUPS = {
-    "crown": ("crown", "crown_dome", "crown_base"),
+    "crown": ("crown", "crown_window", "crown_base"),
     "mast_clamp": ("mast_clamp", "mast_shims"),
     "probe_sleeve": ("probe_sleeve_front", "probe_sleeve_back"),
     "struts": ("struts", "transducer_adapters"),
@@ -1142,6 +1190,14 @@ def export_parts(out_dir):
     for plate, solid in print_plates():
         cq.exporters.export(print_plate(solid), str(print_dir / f"{plate}.stl"))
         print(f"Exported print/{plate}.stl ({len(print_bodies(solid))} bodies)")
+    # Turned (not printed) part: STEP in the lathe frame for the CNC quote, STL in the assembled position
+    for stale in ("ptfe_diffuser", "crown_dome", "ptfe_dome", "ptfe_dome_flanged"):
+        for ext in (".step", ".stl"):
+            (out_dir / f"{stale}{ext}").unlink(missing_ok=True)
+    for kind in ("lathe", "cnc"):
+        cq.exporters.export(_ptfe_dome(kind), str(out_dir / f"ptfe_dome_{kind}.step"))
+        cq.exporters.export(uv_ptfe_dome(kind), str(out_dir / f"ptfe_dome_{kind}.stl"))
+        print(f"Exported ptfe_dome_{kind}.step (lathe frame) / .stl (assembled) -> {out_dir.relative_to(REPO)}")
 
 
 if __name__ == "__main__":

@@ -42,6 +42,7 @@ IVORY = (0.92, 0.90, 0.84)
 GREEN_TERM = (0.12, 0.58, 0.28)
 ORANGE_BTN = (0.95, 0.45, 0.10)
 GLASS_UV = (0.35, 0.65, 0.92)
+PTFE_WHITE = (0.93, 0.93, 0.90)
 
 
 def board_plates():
@@ -317,15 +318,9 @@ def main():
     crown_base = be.build_crown_base()
     crown = be.build_crown()
     win = ef.uv_window()
-    # Stock Ø 20 x 2 mm JGS1 fused-silica UV window + 17 x 1.5 mm O-ring + M22x1.5 retainer nut (thread at the bottom):
-    w = be.UV_WIN
-    uv_lens = be.cone_y(w["y0"] + ef.UPPER, w["y0"] + w["t"] + ef.UPPER, w["d"] / 2, w["d"] / 2).translate((win["x"], 0, win["z"]))
-    uv_nut_hex = be.hex_prism_y(189.8 + ef.UPPER, 191.0 + ef.UPPER, across_flats=22.0, cx=win["x"], cz=win["z"]).cut(
-        be.cone_y(189.5 + ef.UPPER, 193.5 + ef.UPPER, 8.2, 8.2).translate((win["x"], 0, win["z"])))
-    uv_nut_barrel = be.ring_cone_y(190.4 + ef.UPPER, be.UV_NUT_TOP + ef.UPPER, 8.2, 10.20, 8.2, 10.20).translate((win["x"], 0, win["z"]))
-    uv_retainer_nut = be.add_external_thread_y(uv_nut_hex.union(uv_nut_barrel), (191.2 + ef.UPPER, 192.7 + ef.UPPER),
-                                               r_root=10.20, depth=0.70, half_base=0.45, half_crest=0.14,
-                                               cx=win["x"], cz=win["z"])
+    # Default UV cover: flanged PTFE dome, lathe version, in the flush `crown` collar + 18 x 1.0 mm O-ring + dome nut
+    uv_lens = be.uv_ptfe_dome("lathe")
+    uv_retainer_nut = be.uv_dome_nut()
     # Vertical 4-pin 2.54 mm board-to-board riser posts connecting `crown J10` (y=181.5) to round `dome J1` (y=196.0)
     b2b_riser = box(-5.1, 5.1, 181.5 + ef.UPPER, 196.0 + ef.UPPER, -1.25, 1.25)
     # 4x M6x55 mm Stainless Steel Through-Bolts + Bottom M6 Hex Nuts clamping the Pagoda stack through the Ø 6.2 mm bores (at r = 23.0 mm)
@@ -374,7 +369,7 @@ def main():
     full_parts = part_solids()
     parts = [(s, c, 1.0) for s, c, _, _ in full_parts]
     boards = [(s, c, 1.0) for s, c, _ in plates]
-    inside = boards + parts + [(b2b_riser, GOLD, 1.0), (uv_retainer_nut, BRASS, 1.0), (uv_lens, GLASS_UV, 0.28)]
+    inside = boards + parts + [(b2b_riser, GOLD, 1.0), (uv_retainer_nut, BRASS, 1.0), (uv_lens, PTFE_WHITE, 0.28)]
 
     MARKER_INK = (0.14, 0.18, 0.24)
     tri_markers = [
@@ -452,18 +447,18 @@ def main():
         + shifted([(crown_base, STL_COLOURS["crown_base"], 0.92)], 66)
         + shifted(crown_pcb_grp + [(b2b_riser, GOLD, 1.0)], 84)
         + shifted(dome_pcb_grp + [(uv_retainer_nut, BRASS, 1.0)], 98)
-        + shifted([(crown, STL_COLOURS["crown"], 0.95), (uv_lens, GLASS_UV, 0.35)], 118)
+        + shifted([(crown, STL_COLOURS["crown"], 0.95), (uv_lens, PTFE_WHITE, 0.35)], 118)
     )
     render("exploded", exploded, (360, 210, 360), focal=(0, 115, 0), zoom=0.98)
 
-    # Crown close-up from above showing transparent JGS1 UV window + elevated `dome` Micro-PCB + B2B riser + O-ring + nut + 4 Murata piezos + `crown` PCB + `crown_base` + `crown` meshing threads
+    # Crown close-up from above showing the flanged PTFE dome (lathe version) + elevated `dome` Micro-PCB + B2B riser + O-ring + nut + 4 Murata piezos + `crown` PCB + `crown_base` + `crown` meshing threads
     crown_inside_items = (
         [(crown_base.intersect(keep), STL_COLOURS["crown_base"], 0.55),
          (crown_base.cut(keep), STL_COLOURS["crown_base"], 0.14),
          (crown.intersect(keep), STL_COLOURS["crown"], 0.35),
          (crown.cut(keep), STL_COLOURS["crown"], 0.12),
-         (uv_lens.intersect(keep), GLASS_UV, 0.38),
-         (uv_lens.cut(keep), GLASS_UV, 0.16),
+         (uv_lens.intersect(keep), PTFE_WHITE, 0.38),
+         (uv_lens.cut(keep), PTFE_WHITE, 0.16),
          (uv_retainer_nut.intersect(keep), BRASS, 1.0),
          (uv_retainer_nut.cut(keep), BRASS, 0.35),
          (b2b_riser, GOLD, 1.0),
@@ -471,19 +466,35 @@ def main():
         + crown_pcb_grp
         + dome_pcb_grp
     )
-    # Same close-up for the Ø 20 mm hollow JGS1 hemisphere option: same lid, shorter `uv_nut_dome20`, same O-ring
-    glass_d20, nut_d20, crown_dome = be.uv_dome20_glass(), be.uv_dome_nut(), be.build_crown_dome()
-    ring_d20 = be.uv_dome_oring()
-    render("crown_dome20",
+    # Default top with the CNC (hemisphere) version of the flanged PTFE dome: same flange, O-ring and nut
+    render("crown_dome_cnc",
            [(crown_base.intersect(keep), STL_COLOURS["crown_base"], 0.55),
             (crown_base.cut(keep), STL_COLOURS["crown_base"], 0.14),
-            (crown_dome.intersect(keep), STL_COLOURS["crown"], 0.35),
-            (crown_dome.cut(keep), STL_COLOURS["crown"], 0.12),
-            (glass_d20.intersect(keep), GLASS_UV, 0.38),
-            (glass_d20.cut(keep), GLASS_UV, 0.16),
-            (nut_d20.intersect(keep), BRASS, 1.0),
-            (nut_d20.cut(keep), BRASS, 0.35),
-            (ring_d20, STL_COLOURS["orings"], 0.92),
+            (crown.intersect(keep), STL_COLOURS["crown"], 0.35),
+            (crown.cut(keep), STL_COLOURS["crown"], 0.12),
+            (be.uv_ptfe_dome("cnc"), PTFE_WHITE, 0.38),
+            (uv_retainer_nut.intersect(keep), BRASS, 1.0),
+            (uv_retainer_nut.cut(keep), BRASS, 0.35),
+            (b2b_riser, GOLD, 1.0),
+            (orings.intersect(box(-50, 50, 184 + ef.UPPER, 205 + ef.UPPER, -50, 50)), STL_COLOURS["orings"], 0.92)]
+           + crown_pcb_grp + dome_pcb_grp,
+           (68, 228 + ef.UPPER, 82), focal=(0, 190.5 + ef.UPPER, 0), zoom=2.15)
+    # Backup `crown_window` top: stock Ø 20 x 2 mm JGS1 disc under the raised boss + 17 x 1.0 mm O-ring + window nut
+    win_glass = be.cone_y(be.UV_WIN["y0"] + ef.UPPER, be.UV_WIN["y0"] + be.UV_WIN["t"] + ef.UPPER,
+                          be.UV_WIN["d"] / 2, be.UV_WIN["d"] / 2).translate((win["x"], 0, win["z"]))
+    win_ring = be.ring_cone_y(be.UV_WIN["y0"] + be.UV_WIN["t"] + ef.UPPER, be.UV_LIP_Y + ef.UPPER, 8.5, 9.5, 8.5,
+                              9.5).translate((win["x"], 0, win["z"]))
+    crown_window, nut_win = be.build_crown_window(), be.uv_window_nut()
+    render("crown_window",
+           [(crown_base.intersect(keep), STL_COLOURS["crown_base"], 0.55),
+            (crown_base.cut(keep), STL_COLOURS["crown_base"], 0.14),
+            (crown_window.intersect(keep), STL_COLOURS["crown"], 0.35),
+            (crown_window.cut(keep), STL_COLOURS["crown"], 0.12),
+            (win_glass.intersect(keep), GLASS_UV, 0.38),
+            (win_glass.cut(keep), GLASS_UV, 0.16),
+            (nut_win.intersect(keep), BRASS, 1.0),
+            (nut_win.cut(keep), BRASS, 0.35),
+            (win_ring, STL_COLOURS["orings"], 0.92),
             (b2b_riser, GOLD, 1.0),
             (orings.intersect(box(-50, 50, 184 + ef.UPPER, 196 + ef.UPPER, -50, 50)), STL_COLOURS["orings"], 0.92)]
            + crown_pcb_grp + dome_pcb_grp,

@@ -39,7 +39,7 @@ ACCEPTED_COLD = {
     "B6B-ZR-SM4-TF(LF)(SN)": "JST ZH -25 C: passive contacts in the base bay; S5",
     "B3U-1000P": "Omron B3U -25 C: service button, only pressed during maintenance",
     "TSL25911FN": "-30 C: optical sensor under the dome, measurement degrades only (S4)",
-    "SCD41-D-R2": "-10 C: probe heater holds the SCD41 zone at +8 C (S5)",
+    "SCD41-D-R2": "-10 C: probe heater holds the SCD41 zone at -7.6 C or warmer (S5)",
     "SGP41-D-R4": "datasheet -20 C: next to the heated SCD41 zone; readings flagged in deep cold (S5)",
     "GUVB-C31SM": "GenUV -30 C (distributor data): UV measurement only, inside the sun-warmed dome (S4)",
 }
@@ -103,7 +103,7 @@ LEVELS = [
 # (description, input node voltage, allowed input range low, high) for comparators / op-amps
 INPUT_RANGES = [
     # probe LM2903 on +12V_HEAT: CMR 0 .. VCC - 2.0 V over temperature (onsemi LM2903); worst VCC = 9 V heater UVLO
-    ("LM2903 NTC / setpoint node at 9 V supply", 2.27, 0.0, 9.0 - 2.0),
+    ("LM2903 NTC / setpoint node at 9 V supply", 2.76, 0.0, 9.0 - 2.0),
     # crown TLV9062 rail-to-rail inputs on +3V3A: VREF 1.65 V biased receive and charge amplifier
     ("TLV9062 receive / rain inputs", 1.65, -0.1, 3.3 + 0.1),
     # crown 74HC4052 analog inputs biased at VREF inside its 0 .. 3.3 V rails (AC-coupled receive)

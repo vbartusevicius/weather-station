@@ -3,7 +3,7 @@
     python3 hardware/sim/crown_us_link.py            -> prints the measurements, writes hardware/build/sim/crown_us_link.json
 
 What is modelled (one transmit / one receive pair, N -> S):
-  - +12V_HEAT -> 10R -> VDRV + 22 uF; each UCC27524 output as a push-pull switch pair (0.5 ohm on, 120 ns dead time
+  - +12V_HEAT -> 10R -> VDRV + 22 uF; each UCC27524 output as a push-pull switch pair (0.5 ohm on, 353 ns dead time
     ignored), OUTA / OUTB in anti-phase for 8 cycles at 40 kHz; the idle receive driver holds both outputs low.
   - BAV99 anti-parallel T/R isolation diodes (1N4148-class model) in every driver lead; 330R B-terminal reference.
   - Transducers: Butterworth-Van Dyke (C0 2 nF; motional 79 mH / 200 pF / 660 ohm -> 40.0 kHz, Q 30).
@@ -13,7 +13,8 @@ What is modelled (one transmit / one receive pair, N -> S):
     is an estimate - the prototype measurement replaces it; the electrical conclusions below do not depend on it.
   - Receive: 47k + 10 nF + 1M-to-VREF per channel (the transducers stay at 0 V DC so the T/R diodes stay off),
     74HC4052 input protection diodes to 3.3 V / 0 V, 100 ohm on-resistance, TLV9062 stage (G = 7.8, 1.6 kHz high-pass,
-    106 kHz low-pass) before the STM32 PGA (x2..x32).
+    106 kHz low-pass) before the STM32 PGA (x2..x32), modelled at its real DC level (VREF) into the PGA at x4 in
+    both modes: biased at VREF via VINM0 (used) and the plain gain-around-GND mode (pinned at the 3.3 V rail).
   - A copy of the receive transducer WITHOUT isolation diodes (leads straight to its idle, grounded driver) shows
     what the diodes buy.
 """
@@ -102,6 +103,11 @@ RHP ampi amph 1k
 CHP amph ampo 100n
 RLP ampo 0 22k
 CLP ampo 0 68p
+* preamp output at its real DC level (the stage has DC gain 1 around VREF) -> STM32 OPAMP1 PGA at the default x4,
+* clipped to the 0..3.3 V output / ADC span: "bias" mode (VINM0 = PA3 = VREF) and the plain mode (gain around GND)
+BAMPR ampr 0 V = v(ampo) + v(vref)
+BPGAB pgab 0 V = min(3.3, max(0, 4 * (v(ampr) - v(vref)) + v(vref)))
+BPGAN pgan 0 V = min(3.3, max(0, 4 * v(ampr)))
 * ---- comparison copy WITHOUT isolation diodes (receiver leads straight to its grounded idle driver)
 C0X xxa 0 2n
 L1X xxa m1x 79m
@@ -128,6 +134,11 @@ meas tran rx_nodiode_pp PP v(rxx) from=420u to=650u
 meas tran rx_leak_pp PP v(rxmux) from=30u to=250u
 meas tran rx_quiet_pp PP v(rxmux) from=250u to=285u
 meas tran emf_pp PP v(acd) from=420u to=650u
+meas tran pgab_max MAX v(pgab) from=420u to=650u
+meas tran pgab_min MIN v(pgab) from=420u to=650u
+meas tran pgab_avg AVG v(pgab) from=420u to=650u
+meas tran pgan_avg AVG v(pgan) from=420u to=650u
+meas tran pgan_pp PP v(pgan) from=420u to=650u
 .endc
 .end
 """
@@ -143,7 +154,7 @@ def run():
     for m in re.finditer(r"^\s*(\w+)\s*=\s*([-+0-9.eE]+)", text, re.MULTILINE):
         vals[m.group(1).lower()] = float(m.group(2))
     need = ("tx_pp", "drv_droop", "inj_max", "inj_min", "rx_pp", "amp_pp", "rx_nodiode_pp", "rx_leak_pp", "emf_pp",
-            "rx_quiet_pp")
+            "rx_quiet_pp", "pgab_max", "pgab_min", "pgab_avg", "pgan_avg", "pgan_pp")
     missing = [k for k in need if k not in vals]
     if missing:
         sys.exit(f"ngspice did not report {missing}:\n{text[-3000:]}")
@@ -157,6 +168,11 @@ def run():
         "rx_without_isolation_mvpp": 1e3 * vals["rx_nodiode_pp"],
         "rx_during_tx_mvpp": 1e3 * vals["rx_leak_pp"],
         "rx_before_echo_mvpp": 1e3 * vals["rx_quiet_pp"],
+        "pga_bias_max_v": vals["pgab_max"],
+        "pga_bias_min_v": vals["pgab_min"],
+        "pga_bias_mean_v": vals["pgab_avg"],
+        "pga_plain_mean_v": vals["pgan_avg"],
+        "pga_plain_mvpp": 1e3 * vals["pgan_pp"],
     }
     (OUT / "crown_us_link.json").write_text(json.dumps(res, indent=2))
     return res

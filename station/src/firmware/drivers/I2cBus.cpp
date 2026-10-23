@@ -16,7 +16,7 @@ bool I2cBus::init(int sda_gpio, int scl_gpio, std::uint32_t speed_hz) {
     cfg.scl_io_num = static_cast<gpio_num_t>(scl_gpio);
     cfg.clk_source = I2C_CLK_SRC_DEFAULT;
     cfg.glitch_ignore_cnt = 7;
-    cfg.flags.enable_internal_pullup = 1;  // board has external 4.7k pull-ups; internal ones are harmless
+    cfg.flags.enable_internal_pullup = 1;  // board has external 2.2k pull-ups; internal ones are harmless
     return mutex_ != nullptr && i2c_new_master_bus(&cfg, &bus_) == ESP_OK;
 }
 

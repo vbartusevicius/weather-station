@@ -25,7 +25,9 @@ public:
     void set_trigger_mv(float mv) { trigger_mv_ = mv; }
 
     // Feed one raw 12-bit sample taken at `t_us`. Returns true when an impact has just ended (`out` filled).
-    bool add(std::uint16_t raw, std::uint32_t t_us, RainImpact& out);
+    // `blanked`: the sample falls inside an ultrasonic burst / ring-down window. It can neither start nor extend an
+    // impact (one already running is discarded: it may be burst pickup) and does not move the baseline.
+    bool add(std::uint16_t raw, std::uint32_t t_us, RainImpact& out, bool blanked = false);
     float baseline_mv() const { return baseline_; }
 
 private:

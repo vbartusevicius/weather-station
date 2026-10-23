@@ -1,10 +1,10 @@
-"""V1 horizontal reflector de-icing heater board (34.0 x 56.0 mm, 4 layers, 1.6 mm,
-horizontal top bar of the T-assembly at y = 123.8 mm directly under the ultrasonic
-reflector cone):
-  - J1 (back side): 4-pin 2.54 mm female socket strip (KH-2.54FH-1X4P-H8.5, C2905415)
-    plugging directly onto the top 4-pin 2.54 mm male header (J2) of the vertical `probe` PCB
-  - R1, R2, R3, R4 (top side): 4x 120R 2512 2 W (YAGEO RC2512-7W) resistors wired 100% in PARALLEL on +12V_HEAT
-    (30 Ohm net, 4.8 W at 12 V / 100 % PWM, 1.2 W per resistor = 60 % of rating; 3.6 W on a weak 12 V supply)
+"""V1 horizontal reflector de-icing heater board (24.0 x 24.0 mm, 4 layers, 1.6 mm, horizontal top bar of the
+T-assembly directly under the ultrasonic reflector cone):
+  - J1 (back side): 4-pin 2.54 mm vertical SMD male header (HX PZ2.54-1x4P TP-YQ, C41417361)
+    plugging into the right-angle 4-pin SMD female socket (J2) at the top of the vertical `probe` PCB
+  - R1, R2, R3, R4 (top side): 4x 120R 2512 2 W (YAGEO RC2512FK-7W120RL) resistors wired 100% in PARALLEL on
+    +12V_HEAT (30 Ohm net, 4.8 W at 12 V / 100 % PWM, 1.2 W per resistor = 60 % of rating; the firmware regulates
+    4.5 W, 3.6 W max on a weak 12 V supply)
   - TH1 (top center): SDNT1608X103F3950FTF 10k 1% B=3950K NTC thermistor measuring the
     true temperature of the horizontal reflector plate
   - C1: 100n 50V NTC sense noise filter capacitor

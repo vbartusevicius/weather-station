@@ -552,92 +552,6 @@
         "4": "4"
       }
     },
-    "C160394": {
-      "record": {
-        "componentModelEn": "BM08B-SRSS-TB(LF)(SN)",
-        "componentBrandEn": "JST",
-        "componentSpecificationEn": "SMD,P=1mm",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_JST-BM08B-SRSS-TB-LF-SN_C160394.pdf",
-        "componentLibraryType": "expand",
-        "attributes": [
-          {
-            "attribute_name_en": "Operating Temperature",
-            "component_code": "C160394",
-            "attribute_value_name": "-25℃~+85℃"
-          },
-          {
-            "attribute_name_en": "Voltage Rating",
-            "component_code": "C160394",
-            "attribute_value_name": "50V"
-          }
-        ]
-      },
-      "footprint": "CONN-TH_BM08B-SRSS-TB-LF-SN",
-      "pads": [
-        [
-          "1",
-          3.497834000000047,
-          1.2617450000000507
-        ],
-        [
-          "2",
-          2.497836000000073,
-          1.2617450000000507
-        ],
-        [
-          "3",
-          1.4978380000000988,
-          1.2617450000000507
-        ],
-        [
-          "4",
-          0.4978400000000093,
-          1.2617450000000507
-        ],
-        [
-          "5",
-          -0.5019039999999132,
-          1.2617450000000507
-        ],
-        [
-          "6",
-          -1.5019020000000027,
-          1.2617450000000507
-        ],
-        [
-          "7",
-          -2.5021539999999134,
-          1.2617450000000507
-        ],
-        [
-          "8",
-          -3.502152000000003,
-          1.2617450000000507
-        ],
-        [
-          "9",
-          -4.800091999999919,
-          -1.2617449999999353
-        ],
-        [
-          "10",
-          4.800092000000035,
-          -1.2617449999999353
-        ]
-      ],
-      "pin_names": {
-        "1": "1",
-        "2": "2",
-        "3": "3",
-        "4": "4",
-        "5": "5",
-        "6": "6",
-        "7": "7",
-        "8": "8",
-        "9": "9",
-        "10": "10"
-      }
-    },
     "C160396": {
       "record": {
         "componentModelEn": "BM10B-SRSS-TB(LF)(SN)",
@@ -1862,6 +1776,44 @@
           {
             "attribute_name_en": "Operating Temperature",
             "component_code": "C23194",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0603",
+      "pads": [
+        [
+          "2",
+          0.7533639999999732,
+          -0.0
+        ],
+        [
+          "1",
+          -0.7533639999999732,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C23196": {
+      "record": {
+        "componentModelEn": "0603WAF5102T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0603",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010116_UNI-ROYAL-Uniroyal-Elec-0603WAF5102T5E_C23196.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C23196",
+            "attribute_value_name": "51kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C23196",
             "attribute_value_name": "-55℃~+155℃"
           }
         ]

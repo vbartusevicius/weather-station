@@ -1,6 +1,6 @@
 """Main-board sensors (the BMP585 barometer lives on the probe, the AS3935 lightning detector on the crown):
   - U4: TI ADS1115 16-bit I2C ADC (0x48) measuring both heaters: reflector heater current (R16 0.1 ohm),
-    probe heater current (R17 1 ohm in its CO2_HEAT_RTN return) and the +5V probe heater supply
+    probe heater current (R17 1 ohm in its CO2_HEAT_RTN return), the +12V_HEAT heater rail (1:4) and the +5V rail (1:2)
   - U5: ST LSM6DS3TR-C 6-axis IMU for mast tilt compensation & rain vibration filtering (I2C 0x6A)
   - J4: 6-pin JST-ZH connector (B6B-ZR-SM4-TF) for the Plantower PMSA003I PM1.0/2.5/10 module (harness)
 """

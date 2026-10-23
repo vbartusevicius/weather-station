@@ -3,7 +3,8 @@
 // Hardware (hardware/circuits/blocks/crown_sensors.py):
 //   TIM8 CH1 / CH1N (PC6 / PC10) -> UCC27524 INA / INB of all four drivers; XD_EN_N/E/S/W (PC7, PC8, PC9, PC11)
 //   select the transmitting transducer. MUX_S0/S1 (PB6, PB7) select the listening one on the 74HC4052.
-//   PA1 -> OPAMP1 PGA (x2..x32) -> ADC1 (internal VOPAMP1), triggered at exactly 2 MSPS by TIM6, DMA1 CH1.
+//   PA1 -> OPAMP1 PGA (x2..x32, biased at VREF through PA3 = VINM0) -> ADC1 (internal VOPAMP1), triggered at exactly
+//   2 MSPS by TIM6, DMA1 CH1.
 //   PA4 -> ADC2_IN17 rain charge amplifier, 50 kSPS by TIM7, circular DMA1 CH2.
 //   SPI1 (PB3 SCK, PB4 MISO, PB5 MOSI, PA15 CS) + PB9 IRQ -> AS3935.
 //   I2C2 (PC4 SCL, PA8 SDA) peripheral 0x2A; PC12 = CROWN_IRQ to main. HSE 8 MHz -> 170 MHz.
@@ -20,7 +21,11 @@
 
 namespace {
 
-constexpr crown::FirmwareVersion kVersion{0, 2, 0};   // 0.2: protocol v2 (status CRC, burst pause)
+constexpr crown::FirmwareVersion kVersion{0, 3, 0};   // 0.3: PGA biased at VREF, burst end fix, rain blanking
+// OPAMP1 PGA "inverting input used as bias" (VINM0 = PA3 = US_VREF): Vout = G (Vin - VREF) + VREF. These bits live in
+// the PGGAIN field together with the gain, so every gain change must keep them.
+constexpr std::uint32_t kPgaConnect = OPAMP_PGA_CONNECT_INVERTINGINPUT_IO0_BIAS;
+constexpr std::uint32_t kRainBlankTailSamples = 50;   // 1 ms ring-down after the capture (50 kSPS)
 constexpr std::size_t kEchoN = 1400;          // 0.7 ms at 2 MSPS (latest arrival: 60 m/s head wind at -40 C)
 constexpr float kFs = 2.0e6F;
 constexpr std::uint32_t kTimerHz = 170000000U;
@@ -48,6 +53,10 @@ volatile std::uint32_t g_lco_edges = 0;
 volatile bool g_lco_counting = false;
 std::uint32_t g_rain_us = 0;
 std::uint8_t g_gain[4] = {1, 1, 1, 1};   // x4: ~1.4 Vpp for the expected ~50 mV echo (hardware/sim)
+// Rain samples are counted from the start of the circular DMA; bursts blank [g_blank_from, g_blank_to).
+volatile std::uint32_t g_rain_full = 0;   // completed passes over g_rain_buf (256 samples each)
+std::uint32_t g_rain_index = 0;            // absolute index of the next sample handed to rain_process()
+volatile std::uint32_t g_blank_from = 0, g_blank_to = 0;
 __attribute__((section(".noinit"))) volatile std::uint32_t g_boot_flag;
 
 // I2C peripheral state
@@ -131,7 +140,7 @@ void gpio_init() {
 }
 
 void tim8_init() {
-    // 40 kHz complementary PWM, one-pulse mode with the repetition counter = burst length, ~120 ns dead time.
+    // 40 kHz complementary PWM, one-pulse mode with the repetition counter = burst length, 353 ns dead time.
     __HAL_RCC_TIM8_CLK_ENABLE();
     GPIO_InitTypeDef g{};
     g.Pin = GPIO_PIN_6 | GPIO_PIN_10;
@@ -158,7 +167,7 @@ void tim8_init() {
     TIM_BreakDeadTimeConfigTypeDef bdt{};
     bdt.OffStateRunMode = TIM_OSSR_ENABLE;
     bdt.OffStateIDLEMode = TIM_OSSI_ENABLE;
-    bdt.DeadTime = 20;                           // 20 / 170 MHz = 118 ns
+    bdt.DeadTime = 60;                           // 60 / 170 MHz = 353 ns: > update-IRQ latency (see below)
     bdt.BreakState = TIM_BREAK_DISABLE;
     bdt.Break2State = TIM_BREAK2_DISABLE;
     bdt.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
@@ -166,6 +175,12 @@ void tim8_init() {
     HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
     HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_1);
     __HAL_TIM_DISABLE(&htim8);
+    // When the one-pulse run ends the counter rests at 0 < CCR1, i.e. OC1REF active: CH1 would rise again (after the
+    // dead time) and hold OUTA high through the capture. The update interrupt (only on counter overflow: URS) drops
+    // MOE within the 353 ns dead time, so both driver inputs fall to their idle (low) state instead.
+    htim8.Instance->CR1 |= TIM_CR1_URS;
+    HAL_NVIC_SetPriority(TIM8_UP_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(TIM8_UP_IRQn);
 }
 
 void basic_timer(TIM_HandleTypeDef& h, TIM_TypeDef* inst, std::uint32_t hz) {
@@ -196,7 +211,7 @@ void adc_init() {
 
     // OPAMP1 PGA on PA1, output internal to ADC1 (VOPAMP1)
     GPIO_InitTypeDef g{};
-    g.Pin = GPIO_PIN_1 | GPIO_PIN_4;
+    g.Pin = GPIO_PIN_1 | GPIO_PIN_3 | GPIO_PIN_4;
     g.Mode = GPIO_MODE_ANALOG;
     HAL_GPIO_Init(GPIOA, &g);
     hopamp1.Instance = OPAMP1;
@@ -205,7 +220,7 @@ void adc_init() {
     hopamp1.Init.NonInvertingInput = OPAMP_NONINVERTINGINPUT_IO0;   // PA1
     hopamp1.Init.InternalOutput = ENABLE;
     hopamp1.Init.TimerControlledMuxmode = OPAMP_TIMERCONTROLLEDMUXMODE_DISABLE;
-    hopamp1.Init.PgaConnect = OPAMP_PGA_CONNECT_INVERTINGINPUT_NO;
+    hopamp1.Init.PgaConnect = kPgaConnect;                          // PA3 = US_VREF
     hopamp1.Init.PgaGain = OPAMP_PGA_GAIN_4_OR_MINUS_3;
     hopamp1.Init.UserTrimming = OPAMP_TRIMMING_FACTORY;
     if (HAL_OPAMP_Init(&hopamp1) != HAL_OK) error_loop();
@@ -399,7 +414,14 @@ void set_gain(std::uint8_t code) {
     static const std::uint32_t kGain[5] = {OPAMP_PGA_GAIN_2_OR_MINUS_1, OPAMP_PGA_GAIN_4_OR_MINUS_3,
                                           OPAMP_PGA_GAIN_8_OR_MINUS_7, OPAMP_PGA_GAIN_16_OR_MINUS_15,
                                           OPAMP_PGA_GAIN_32_OR_MINUS_31};
-    MODIFY_REG(OPAMP1->CSR, OPAMP_CSR_PGGAIN, kGain[code > 4 ? 4 : code]);
+    MODIFY_REG(OPAMP1->CSR, OPAMP_CSR_PGGAIN, kPgaConnect | kGain[code > 4 ? 4 : code]);
+}
+
+// Absolute index of the rain sample the ADC2 DMA is writing now (call with interrupts disabled).
+std::uint32_t rain_sample_now() {
+    const std::uint32_t pos = 256U - DMA1_Channel2->CNDTR;
+    const bool wrap_pending = (DMA1->ISR & DMA_ISR_TCIF2) != 0U && pos < 128U;
+    return (g_rain_full + (wrap_pending ? 1U : 0U)) * 256U + pos;
 }
 
 // One burst on `path`: returns the samples centred at 0 in `out`.
@@ -415,8 +437,12 @@ bool shoot(std::uint8_t path, std::int16_t* out) {
     HAL_Delay(1);                                 // mux / PGA settle, driver enable
     g_echo_done = false;
     HAL_ADC_Start_DMA(&hadc1, reinterpret_cast<std::uint32_t*>(g_echo_raw), kEchoN);
+    htim8.Instance->SR = ~TIM_SR_UIF;
+    htim8.Instance->DIER |= TIM_DIER_UIE;         // end of the burst -> TIM8_UP_IRQHandler drops MOE
     __disable_irq();                              // fixed instruction path: sample 0 <-> drive edge offset is constant
     g_burst_active = true;
+    g_blank_from = rain_sample_now();
+    g_blank_to = 0xFFFFFFFFU;                     // open until the capture ends
     htim6.Instance->CNT = 0;
     htim6.Instance->CR1 |= TIM_CR1_CEN;
     htim8.Instance->BDTR |= TIM_BDTR_MOE;
@@ -427,7 +453,11 @@ bool shoot(std::uint8_t path, std::int16_t* out) {
     }
     htim6.Instance->CR1 &= ~TIM_CR1_CEN;
     htim8.Instance->BDTR &= ~TIM_BDTR_MOE;
+    htim8.Instance->DIER &= ~TIM_DIER_UIE;
+    __disable_irq();
     g_burst_active = false;
+    g_blank_to = rain_sample_now() + kRainBlankTailSamples;
+    __enable_irq();
     HAL_GPIO_WritePin(GPIOC, kEnPin[tx], GPIO_PIN_RESET);
     HAL_ADC_Stop_DMA(&hadc1);
     if (!g_echo_done) {
@@ -483,9 +513,11 @@ void measure_quad(std::uint32_t seq) {
 
 void rain_process(const std::uint16_t* s, std::size_t n) {
     crown::RainImpact imp{};
-    for (std::size_t i = 0; i < n; ++i) {
+    const std::uint32_t from = g_blank_from, to = g_blank_to;
+    for (std::size_t i = 0; i < n; ++i, ++g_rain_index) {
         g_rain_us += 20U;
-        if (g_rain.add(s[i], g_rain_us, imp)) {
+        const bool blanked = g_rain_index - from < to - from;   // wrap-safe from <= index < to
+        if (g_rain.add(s[i], g_rain_us, imp, blanked)) {
             g_bank.set_now_ms(HAL_GetTick());
             g_bank.push_rain(imp);
         }
@@ -502,6 +534,10 @@ void DMA1_Channel2_IRQHandler() { HAL_DMA_IRQHandler(&hdma_adc2); }
 void I2C2_EV_IRQHandler() { HAL_I2C_EV_IRQHandler(&hi2c2); }
 void I2C2_ER_IRQHandler() { HAL_I2C_ER_IRQHandler(&hi2c2); }
 void EXTI9_5_IRQHandler() { HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9); }
+void TIM8_UP_IRQHandler() {
+    TIM8->BDTR &= ~TIM_BDTR_MOE;   // both outputs to their idle (low) state before CH1's dead time expires
+    TIM8->SR = ~TIM_SR_UIF;
+}
 
 void HAL_GPIO_EXTI_Callback(uint16_t pin) {
     if (pin != GPIO_PIN_9) return;
@@ -517,6 +553,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* h) {
     if (h == &hadc1) {
         g_echo_done = true;
     } else {
+        g_rain_full = g_rain_full + 1U;
         rain_process(g_rain_buf + 128, 128);
     }
 }

@@ -129,7 +129,7 @@ def collect_assembly_parts(variant, spec):
             "item": "UV-A/UV-B Index & High-Noon ALS sensor IC (hand-reflowed)",
             "qty": len(hand_by_mpn["LTR-390UV-01"]["locs"]),
             "part": "Lite-On LTR-390UV-01 (LCSC C492374)",
-            "description": f"2x2 mm 6-pin optical UV-A/UV-B + 157k lux ALS sensor ({locs}) under the top fused-silica UV window",
+            "description": f"2x2 mm 6-pin optical UV-A/UV-B + 157k lux ALS sensor ({locs}) under the PTFE dome diffuser",
             "source": "Digi-Key / Mouser / LCSC",
         })
     if "GUVB-C31SM" in hand_by_mpn:
@@ -176,10 +176,17 @@ def collect_assembly_parts(variant, spec):
         "source": "Murata / Mouser / Digi-Key / LCSC",
     })
     items.append({
-        "item": "JGS1 Fused Silica UV Window Ø 20 x 2 mm (uncoated)",
+        "item": "Flanged PTFE dome diffuser (default UV / light cover, turned part)",
         "qty": 1,
+        "part": "Turned virgin (unfilled, non-porous) white PTFE dome with a Ø 20.4 x 1.5 mm flange, flat on both faces, 0.8 mm wall, in one of two shapes: LATHE version (default: Ø 17.8 mm cylinder, flat top, 2 mm edge radius, 7.5 mm tall; plain turning + boring from Ø 22-25 mm rod; enclosure/ptfe_dome_lathe.step + drawings/ptfe_dome_lathe.svg) or CNC version (Ø 17.8 mm hemisphere on the flange; enclosure/ptfe_dome_cnc.step + drawings/ptfe_dome_cnc.svg). No stock part: order from PCBWay CNC turning (material PTFE, white), an AliExpress custom-PTFE turning shop, or a lathe",
+        "description": "Default cover over the dome board sensors in the `crown` top: low flush collar (lid trimmed 1.0 mm under the sensor tops), so the sensors see the sky down to slightly below the horizon. An 18 x 1.0 mm O-ring is squeezed 25 % flat between the flange top and the collar lip; the printed M22x1.5 dome nut (struts.stl) pushes the flat flange bottom, hand-tight. ~10-12 % diffuse transmission, spectrally flat 250-2500 nm (UV-B passes like visible light): firmware optics_transmission 0.11, calibrate per CALIBRATION.md step 8. Keep the PTFE white and matte: it is a diffuser, not a window (PTFE cannot be made transparent; polishing only changes the surface). Re-tighten the nut after the first week (PTFE creep)",
+        "source": "PCBWay CNC (PTFE) / AliExpress custom turning / local lathe (~$2-10 per part)",
+    })
+    items.append({
+        "item": "JGS1 Fused Silica UV Window Ø 20 x 2 mm (uncoated, backup cover)",
+        "qty": 0,
         "part": "Stock JGS1 UV-grade fused-silica round window Ø 20 x 2 mm, both faces polished, uncoated (AliExpress \"Various Sizes JGS1 UV Grade Fused Silica Window Quartz Glass Polished Disk\", 20 x 2 mm; a fiber-laser protective window 20x2 only if it is uncoated - 1064 nm AR coatings cut UV-B). See enclosure/drawings/jgs1_window.svg",
-        "description": "UV-B / UV-A / visible / NIR window over the dome board sensors, in the `crown` top: fitted from below, a thin 17 x 1.0 mm O-ring between its top face and the lid lip (the seal is lid <-> glass), pushed up hand-tight by the printed M22x1.5 window nut (struts.stl). Fits diameter 19.8-20.1 mm, thickness 1.8-2.2 mm. Option: the `crown_dome` top with a Ø 20 mm hollow JGS1 hemisphere, 1.2 mm wall (custom / made to order; ordinary glass blocks UV-B), 19 x 1.0 mm O-ring, the shorter dome nut (struts.stl)",
+        "description": "Backup cover for the `crown_window` top (same print plate as `crown`): fitted from below, a thin 17 x 1.0 mm O-ring between its top face and the 1.2 mm lid lip (seal lid <-> glass), pushed up hand-tight by the printed window nut (struts.stl). Fits diameter 19.8-20.1 mm, thickness 1.8-2.2 mm. More signal than PTFE (optics_transmission ~0.92) but the lip hides the sky below ~19-34 deg solar elevation",
         "source": "AliExpress / Taobao (JGS1 UV fused silica window 20 x 2 mm, ~$6-10)",
     })
     items.append({
@@ -199,8 +206,8 @@ def collect_assembly_parts(variant, spec):
     items.append({
         "item": "Crown cable (12-pin JST-SH) + probe jumper (10-pin JST-SH)",
         "qty": 2,
-        "part": "260 mm 12-conductor 30 AWG cable, OD <= 3.2 mm (or 12 loose 30 AWG wires in a PTFE sleeve), SHR-12V-S-B plug on both ends wired pin 1 <-> pin 1 (main J2 <-> crown J1, 224 mm routed path + 35 mm service loop) + 60 mm 10-wire SHR-10V-S-B jumper, pin 1 <-> pin 1 (main J3 <-> probe J1)",
-        "description": "main J2 and crown J1 are 12-pin BM12B-SRSS-TB. The crown cable passes the 13x11 mm umbrella cutout, the 12.6 x 3.35 mm rear conduit of probe_sleeve_back (a Ø 4.2 mm cable does NOT fit) and the 45-deg NE split-C strut; crimp one end after threading it through the strut nut",
+        "part": "260 mm 12-conductor 30 AWG cable, OD <= 3.2 mm (or 12 loose 30 AWG wires with insulation OD <= 0.6 mm, UL10064 / UL1571, in a thin PTFE sleeve; common pre-crimped 28 AWG SH leads are 0.8-1.0 mm OD and bundle to ~4 mm, which does NOT fit), SHR-12V-S-B plug on both ends wired pin 1 <-> pin 1 (main J2 <-> crown J1, ~202 mm routed path + service loop) + 60 mm 10-wire SHR-10V-S-B jumper, pin 1 <-> pin 1 (main J3 <-> probe J1). Crimping the crown end after threading needs SSH-003T-P0.2 contacts and an SH-capable crimper (JST WC-240, or an Engineer PA-09 / IWISS SN-01BM class tool)",
+        "description": "main J2 and crown J1 are 12-pin BM12B-SRSS-TB. The crown cable passes the 13x11 mm umbrella cutout, the 4.1 mm deep rear conduit of probe_sleeve_back (tested with a Ø 3.2 mm cable on a 10 mm bend radius; a Ø 4.2 mm cable does NOT fit) and the 45-deg NE split-C strut; crimp one end after threading it through the strut nut",
         "source": "Digi-Key / Mouser / LCSC / AliExpress",
     })
     items.append({
@@ -213,8 +220,8 @@ def collect_assembly_parts(variant, spec):
     items.append({
         "item": "Elastomeric O-Ring Seal Set (5 Rings)",
         "qty": 1,
-        "part": "3x 88 x 2.0 mm EPDM/NBR 70A O-rings (base<->pagoda, pagoda<->wind_tunnel, crown_base<->crown: glands sized for 2.0 mm, a 1.5 mm ring does not seal) + 1x 21 x 1.5 mm O-ring (probe_sleeve bottom) + 1x 17 x 1.0 mm O-ring (UV window, crown top) or 1x 19 x 1.0 mm O-ring (UV hemisphere, crown_dome top)",
-        "description": "Standard metric EPDM/nitrile O-rings (or 3D-printed in TPU 95A from orings.stl) sealing all 3 bayonet joints, the bottom pagoda bulkhead, and the JGS1 quartz dome",
+        "part": "3x 88 x 2.0 mm EPDM/NBR 70A O-rings (base<->pagoda, pagoda<->wind_tunnel, crown_base<->crown: glands sized for 2.0 mm, a 1.5 mm ring does not seal) + 1x 21 x 1.5 mm O-ring (probe_sleeve bottom) + 1x 18 x 1.0 mm O-ring (PTFE dome flange, default crown top) or 1x 17 x 1.0 mm O-ring (UV window, backup crown_window top)",
+        "description": "Standard metric EPDM/nitrile O-rings (or 3D-printed in TPU 95A from orings.stl) sealing all 3 bayonet joints, the bottom pagoda bulkhead, and the UV cover (PTFE dome flange or JGS1 window)",
         "source": "Local hardware / McMaster-Carr / TPU 95A print",
     })
     items.append({
@@ -232,16 +239,16 @@ def collect_assembly_parts(variant, spec):
         "source": "Mouser / Digi-Key / local electrical",
     })
     items.append({
-        "item": "Dual-Band 2.4 / 5.8 GHz U.FL (IPEX-1) Flexible PCB Dipole Antenna",
+        "item": "2.4 GHz U.FL (IPEX-1) Flexible PCB Dipole Antenna (dual-band parts also fit; the ESP32-C6 uses 2.4 GHz only)",
         "qty": 1,
         "part": "Molex 1461530100 / Taoglas FXP830 (42x12 mm, +4.5 dBi, 100 mm U.FL coax)",
         "description": "Plugs into XIAO ESP32-C6 U.FL jack (activated via GPIO3=LOW, GPIO14=HIGH); stick it (its own adhesive) horizontally on the inner bay wall above the umbrella, away from the main board (V1 has no printed cradle)",
         "source": "Mouser / Digi-Key / LCSC",
     })
     items.append({
-        "item": "3D-printed roof enclosure parts (12 parts on 8 print plates)",
+        "item": "3D-printed roof enclosure parts (13 parts on 8 print plates)",
         "qty": 8,
-        "part": "enclosure/print/<plate>.stl: base, orings, pagoda, wind_tunnel, probe_sleeve (front + back), mast_clamp (+ mast_shims), struts (+ transducer_adapters), crown (+ crown_dome + crown_base) — assembled-position references in enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,struts,crown_base,crown,mast_shims,transducer_adapters}.stl",
+        "part": "enclosure/print/<plate>.stl: base, orings, pagoda, wind_tunnel, probe_sleeve (front + back), mast_clamp (+ mast_shims), struts (+ transducer_adapters), crown (+ crown_window + crown_base) — assembled-position references in enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,struts,crown_base,crown,crown_window,mast_shims,transducer_adapters}.stl",
         "description": "Order/print the 8 enclosure/print/<plate>.stl files: all bodies laid out >= 6 mm apart, so captive and stacked bodies (umbrella, reset button, louver plates, strut halves, nuts, shims) are never printed fused. MJF PA12 or UV-stabilised ASA (TPU 95A only if printing orings); clamped to the mast with 6x M6x35 bolts",
         "source": "printed",
     })

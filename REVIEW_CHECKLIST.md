@@ -1,7 +1,7 @@
 # AeroMet V1 — Manufacturing-Readiness Fix Checklist
 
 Source: design review of 2026-10-20 (commit `22ec981`). Phase 1 fixes applied 2026-10-21 (independent electrical / mechanical / docs items).
-Status of the design: **NOT ready to order** (open: prototype checks Q1–Q4, Q6, S1–S5; sourcing decision B2; budget B5 re-quote). Phase 2 (crown STM32 wind / rain / lightning, 12 V heater rail, RS-485 RX) is in source and the
+Status of the design: **NOT ready to order** (open: prototype checks Q1–Q4, Q6, S1–S5, N9–N10; sourcing decision B2; budget B5 re-quote; deferred N4). Review of 2026-10-23 (commit `6bfb492`) added N1–N13 (section 4c). Phase 2 (crown STM32 wind / rain / lightning, 12 V heater rail, RS-485 RX) is in source and the
 release regenerates cleanly, but it is unprototyped: the bench / prototype checks listed per item are still required.
 Commissioning / calibration steps for every built station: `CALIBRATION.md`.
 Tick an item only when the fix is in the source (`hardware/circuits`, `hardware/circuits/variants/v1`, `mechanical/scripts`,
@@ -25,7 +25,7 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
   - Fix: swap NTC/resistor positions so the node sits ≈ 1.0 V (recompute setpoint + hysteresis), or power U4 from +5V_HEAT, or use a rail-to-rail comparator (e.g. TLV7031/TLV3201).
   - Accept: hand calc / SPICE shows both inputs within CMR from −40 °C to +60 °C; recompute hysteresis (current R7 gives ≈ 1.4 K, not 0.4 K).
 - [x] **E3 (H) LM393DR2G is 0…+70 °C only** (crown U4, probe U4). Replace with LM2903 (−40…+125 °C) or automotive LM393.
-  - **Status:** DONE (Phase 1): crown U4 and probe U4 are LM2903DR2G (C57474, -40..+125 C).
+  - **Status:** DONE (Phase 1): probe U4 is LM2903DR2G (C57474, -40..+105 C per onsemi / JLC data).
 - [x] **E4 (B) 3.3 V logic into 5 V CMOS on the crown.** `blocks/crown_sensors.py`: SN74LVC2G04 U1 (VIH = 0.7·VCC = 3.5 V) and CD4052 select A/B (VIH 3.5 V) driven by 3.3 V GPIO over a 260 mm cable.
   - **Status:** DONE (Phase 2): no logic crosses the cable any more; the crown runs everything at 3.3 V (STM32, 74HC4052 at 3.3 V, UCC27524 TTL-threshold inputs).
   - Fix: 74AHCT1G04 / 74HCT-family driver, 74HCT4052 (or level shifter), or run the mux at 3.3 V.
@@ -56,7 +56,7 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
   - **Status:** DONE (Phase 2): true charge amplifier (22 nF ‖ 4.7 MΩ at VREF), 1 k series + BAV99 clamp, digitised by STM32 ADC2 at 50 kSPS (`RainDetector`, host-tested). OPEN: rain calibration (S2).
   - Fix: bias at VREF, true charge amp (e.g. 1–10 nF ‖ 10 MΩ), ≥ 10 kΩ series + clamp diodes (BAV99) to rails; add a real peak detector if an envelope is wanted.
 - [x] **E14 (M) I²C rise time.** 4k7 pull-ups on ≈ 200 pF (12 devices + 260 mm + 60 mm + 100 mm cables) → ≈ 0.8 µs > 300 ns (400 kHz).
-  - **Status:** DONE (Phase 1): I2C pull-ups 2.2k (C4190, basic). Firmware still 400 kHz (PMSA003I device at 100 kHz).
+  - **Status:** DONE (Phase 1): I2C pull-ups 2.2k (C4190, basic). 2026-10-23 (N11): ~180 pF with 2.2k still rises in ~335 ns (> 300 ns fast-mode), so every device now runs at 100 kHz.
   - Fix: 2.2 kΩ (check all sink currents) and/or 100 kHz bus; keep US_TX away from SDA/SCL in the 12-pin cable pin order.
 - [x] **E15 (M) Reflector heater resistors at 93 % of rating** (4× 27 Ω 2512 1 W at 5 V) touching the plastic deck (0.08 mm). Use 2 W parts or more resistors; add firmware over-temperature cut-off on TH1.
   - **Status:** DONE (Phase 1): reflector resistors 27R 2512 2 W HP12 (C2791259) = 46 % of rating; firmware open-NTC SensorFault lockout (unit-tested).
@@ -69,7 +69,7 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
   - **Status:** DONE: TPS54360 stages per SLVSBB4G; SW nodes, VIN and VOUT are F.Cu pours (SW ~14 mm2, 3.5 mm residual track + 1 via to the bottom boot cap), J1 along the top edge, board 28.5 x 21.5 mm; 0 DRC / 0 unrouted.
   - Fix: hand layout per SCT2430 datasheet (tight hot loop, pours on F.Cu, thermal vias under EP, SW node minimal area).
 - [x] **P2 (M) Probe: reflector heater current (now ≈ 0.4 A at 12 V, was 0.74 A) routed past SHT40**, and the In1 GND plane connects SHT40 to J1 (which sits in the warm base bay).
-  - **Status:** DONE: second milled slot (y 9.0-10.2, copper keep-out on all layers) between J1 and the SHT40, so heat from the base bay and the heater pair reaches the SHT40 only over the two 2 mm side bridges; probe re-routed 0 DRC.
+  - **Status:** DONE: second milled slot (y 9.0-10.2, copper keep-out on all layers) between J1 and the SHT40, so heat from the base bay and the heater pair reaches the SHT40 only over the two 2 mm side bridges; probe re-routed 0 DRC. The heater-side coupling was still large: see N2.
   - Fix: route heater pair on the far edge, add copper keep-out / second slot between J1 and SHT40.
 - [x] **P3 (M) Panel has no fiducials, tooling holes or edge rails** (5-board panel 146.6 × 52.1 mm; the crown ships as its own board). Add rails + fiducials or order "added by JLCPCB" for both orders.
   - **Status:** DONE (owner decision: no own rails): compact 140.6 x 63.2 mm panel (column packing search over rotations / orders, tabs placed >= 1 mm from part pads, every board on >= 2 tabs); order with "Edge rails / fiducials: added by JLCPCB".
@@ -113,7 +113,7 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
 - [x] **M12 (M) Reset-button bore is an open hole** (no O-ring in CAD, README says waterproofed). Add gland or membrane.
   - **Status:** WON'T FIX (owner decision): an O-ring's friction would stop the button's spring from returning it. The bore opens downward on the base underside (drip side, no standing water) and the README no longer claims a waterproof button.
 - [x] **M13 (M) JGS1 dome stack-up.** Flange must be ≤ 1.2 mm thick (194.2 − 193.0); dome PCB clears the inner hemisphere by only ≈ 0.3 mm; no desiccant/vent → internal dew. Get a real dome drawing and add an ePTFE vent or desiccant.
-  - **Status:** DONE (stock part + option): two crown tops. `crown`: stock uncoated Ø 20 x 2 mm JGS1 disc in a raised boss, thin 17 x 1.0 mm O-ring between the window top and the 1.2 mm lip (seal lid <-> glass, the nut thread is outside the wet side), printed nut pushes the window from below; sensors 0.5 mm under the window; drains through the lip above the seal plane. Sky view from ~19-32 deg elevation (S4 corrects). `crown_dome`: Ø 20 mm hollow JGS1 hemisphere (made to order), lid flush at y 198.0 under the sensor tops (horizon view, no raised border), 19 x 1.0 mm O-ring in the bore / lip-underside corner gland squeezed ~21 % by the sphere, shorter nut. Both nuts on the struts plate. Tests: `test_uv_window_stack_fits_the_crown_lid`, `test_uv_dome_crown_top_fits`. Drawing `enclosure/drawings/jgs1_window.svg`.
+  - **Status:** DONE (stock part + option; superseded by N3: the default is now the PTFE dome in `crown`, the window top is `crown_window`): two crown tops. Window top: stock uncoated Ø 20 x 2 mm JGS1 disc in a raised boss, thin 17 x 1.0 mm O-ring between the window top and the 1.2 mm lip (seal lid <-> glass, the nut thread is outside the wet side), printed nut pushes the window from below; sensors 0.5 mm under the window; drains through the lip above the seal plane. Sky view from ~19-32 deg elevation (S4 corrects). `crown_dome`: Ø 20 mm hollow JGS1 hemisphere (made to order), lid flush at y 198.0 under the sensor tops (horizon view, no raised border), 19 x 1.0 mm O-ring in the bore / lip-underside corner gland squeezed ~21 % by the sphere, shorter nut. Both nuts on the struts plate. Tests: `test_uv_window_stack_fits_the_crown_lid`, `test_uv_dome_crown_top_fits`. Drawing `enclosure/drawings/jgs1_window.svg`.
 - [x] **M14 (M) Cable gland needs a hollow mast** (gland dome nut extends below the y = 19 mm pole stop). Document the required mast ID.
   - **Status:** DONE (docs): README section 4 and the gland BOM line require a hollow mast with ID >= 18 mm (e.g. 33.7 x 3.2 mm pipe) with the cable inside.
 - [x] **M15 (M) Probe sleeve final angle is set by thread run-out + O-ring squeeze** (uncontrolled). Add a key/index or a non-threaded keyed bayonet.
@@ -130,7 +130,7 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
 - [x] **F3 (M)** RS-485 streams telemetry unconditionally every cycle → collides with a polling master. Respond only when polled or use a time slot.
   - **Status:** DONE in source: `task_rs485` answers `STATE?` with the latest frame (plus `PING`, `RESET_RAIN`, `HEAT_CHECK`) and never transmits unsolicited. OPEN: bench test with a polling master.
 - [x] **F4 (M)** I²C at 400 kHz for every device (see E14); PMSA003I 100 kHz max.
-  - **Status:** DONE (verified in firmware): per-device SCL speeds (`I2cBus::add(addr, hz)`): PMSA003I, crown STM32 and its ROM bootloader at 100 kHz, others at 400 kHz; 2.2k pull-ups (E14).
+  - **Status:** DONE: the whole bus runs at 100 kHz (`board::i2c_speed_hz`, N11); per-device speeds stay possible via `I2cBus::add(addr, hz)`.
 - [x] **F5 (M)** Heater over-temperature cut-off and NTC plausibility (open/short) before enabling PWM.
   - **Status:** DONE (Phase 1): `HeaterState::SensorFault` for an open reflector NTC (> 3270 mV), unit test added. 25 C over-temperature cut-off already existed.
 
@@ -162,6 +162,35 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
   - **Status:** DONE: the crown is on the panel (right end, 3 rail tabs; both facing edges near the power board are too crowded for side tabs).
 - [x] **Q16 (M) Config migration.** New `StationConfig` fields used to reset the whole NVS config (Wi-Fi, location) on every firmware update (`len == sizeof`).
   - **Status:** DONE: fields are only appended; a shorter stored blob fills the prefix and new fields keep their defaults.
+
+## 4c. Review of 2026-10-23 (N-items)
+
+- [x] **N1 (B) Crown PGA amplified the 1.65 V bias.** OPAMP1 ran in the plain PGA mode (`PGA_CONNECT_INVERTINGINPUT_NO`): Vout = G × 1.65 V pinned the ADC at the 3.3 V rail for every gain, so no echo could be measured (E6 / E7 / F2 / Q3 were blocked by it).
+  - **Status:** DONE in source: U1 pin 17 (PA3 = OPAMP1_VINM0) on `US_VREF`, firmware `OPAMP_PGA_CONNECT_INVERTINGINPUT_IO0_BIAS` (Vout = G (Vin − VREF) + VREF), the gain writes keep the bias bits; ngspice + test `test_pga_is_biased_at_vref_not_ground` (preamp at its real DC level into the PGA in both modes; checks circuit + firmware). Crown fw 0.3.0. OPEN: scope check on the first board (CALIBRATION.md step 2.5).
+- [x] **N2 (H) Probe heater warmed the SHT40.** 1-D model of the released probe: SHT40 +9.8 / +4.3 / +1.9 K at h = 10 / 25 / 50 W/m²K with the 0.42 W heater on (the In1 plane crossed the heater-side slot bridges); the heater ran at every temperature below +8 °C.
+  - **Status:** DONE in source: SCD41 + heater moved to the top of the probe (next to J2), SGP41 / BMP585 to the middle, thermostat setpoint +8 → −7.6 °C (R5 22k → 51k, ~2.3 K hysteresis; the SCD41 is rated −10 °C), In1 ground plane removed from the heater-side slot bridges. Model: +5.6 / +1.7 / +0.5 K, and only below −8 °C. OPEN: cold-chamber check (CALIBRATION.md step 7).
+- [x] **N3 (H) UV / light sensors blind below 19–34° solar elevation** (window 3.25 mm under the 1.2 mm lip; Vilnius winter noon sun 11.8°).
+  - **Status:** DONE in source (revised 2026-10-23, owner decision): default top = `crown` with a low flush collar (0.9 mm lip, lid apex trimmed to y 197.8, 1.0 mm under the sensor tops) around a turned PTFE dome with a flat-faced Ø 20.4 x 1.5 mm flange (`UV_PTFE`): the 18 x 1.0 O-ring is squeezed 25 % flat between flange top and lip, the dome nut pushes the flat flange bottom. Two shapes from one profile function (`ptfe_dome_profile`): lathe version (default, Ø 17.8 cylinder + flat top, 2 mm edge radius, from round rod; `enclosure/ptfe_dome_lathe.step` + `drawings/ptfe_dome_lathe.svg`) and CNC version (Ø 17.8 hemisphere; `ptfe_dome_cnc.*`), 0.8 mm wall. Backup top = `crown_window` with the stock Ø 20 x 2 mm JGS1 disc. Test `test_uv_dome_crown_top_fits`: both shapes fit, flange faces flat, O-ring squeeze / lip backing, no lid material above −3° from the dome sensors (sunrise / sunset visible). No stock PTFE dome: PCBWay CNC turning (PTFE) / custom turning shop / lathe. Firmware `optics_transmission` default 0.11. OPEN: calibrate the transmission and the low-sun over-response (CALIBRATION.md step 8); total height 235 mm (lathe version; 238 mm with the CNC hemisphere).
+- [ ] **N4 (H) No transducer de-icing.** Rime / wet snow on the Ø 14 mm transducer faces stops the wind measurement in freezing fog; only the reflector is heated.
+  - **Status:** DEFERRED to crown v2.1 (owner decision): low-side MOSFET on J11 (+12V_HEAT) driven by a spare STM32 pin, 4 × ~1 W polyimide heater strips wrapped round the aluminium cans (barrel bore + ~0.3 mm radius), switched below +2 °C at high RH; +12V_HEAT budget ~9 W (reflector 4.5 + probe 0.4 + 4). V1 documents winter wind outages.
+- [x] **N5 (M) Rain channel aliasing / burst pickup.** 50 kSPS behind 1k / 1 nF (160 kHz) aliases 40 kHz burst pickup to 10 kHz; no blanking.
+  - **Status:** DONE in source: R24 1k → 22k (7.2 kHz with C22 1 nF, no new BOM line), crown firmware blanks the detector from each burst start to 1 ms after the capture (`RainDetector::add(..., blanked)`, host test `test_rain_detector_ignores_burst_window`). OPEN: dry-weather check (CALIBRATION.md step 9.5).
+- [x] **N6 (M) TIM8 left OUTA high after the burst** (one-pulse mode rests at CNT = 0 < CCR1).
+  - **Status:** DONE in source: TIM8 update IRQ (URS) clears MOE at the end of the burst; dead time 118 → 353 ns so CH1 cannot rise before MOE drops. OPEN: scope (CALIBRATION.md step 2.5).
+- [x] **N7 (M) Main input power tracks 0.3 mm, partly on 0.5 oz In2** (VIN_FUSED 11 mm, up to ~0.9 A).
+  - **Status:** DONE in source: main `power_track_width` 0.4 mm (fits the 1.0 mm JST-SH pitch).
+- [x] **N8 (M) RS-485 fail-safe bias on every node** (4 stations → 97 Ω per rail + termination → below the driver VOD spec).
+  - **Status:** DONE (docs): CALIBRATION.md step 3 — on buses with > 2 stations remove R9 / R10 on all but one station.
+- [ ] **N9 (M) Bayonet O-ring squeeze tolerance.** 15 % at rest is the bottom of the face-seal range; +0.25 mm print / stack error leaves ~3 %.
+  - **Status:** OPEN (prototype): measure glands + hose test (CALIBRATION.md step 10a).
+- [ ] **N10 (M) AS3935 vs the reflector heater PWM** (0.4 A, 1 kHz, loop up the probe to under the crown); AS3935 VDD had 100 nF (datasheet 1 µF).
+  - **Status:** C25 → 1 µF done in source. OPEN: disturber test with the heater on (CALIBRATION.md step 9.4).
+- [x] **N11 (M) I²C rise time at 400 kHz** ≈ 335 ns > 300 ns.
+  - **Status:** DONE: all devices at 100 kHz (bus load ~35 %: IMU 200 Hz, BMP585 FIFO 100 Hz, crown, slow sensors).
+- [x] **N12 (M) Crown cable sourcing / crimping.** Pre-crimped 28 AWG SH leads (OD 0.8–1.0 mm) bundle to ~4 mm and do not fit the conduit.
+  - **Status:** DONE (BOM / README): 30 AWG, insulation OD ≤ 0.6 mm (UL10064 / UL1571), SSH-003T-P0.2 contacts + SH-capable crimper.
+- [x] **N13 (M) STM32 ROM bootloader pin noise** (USART1 RX PA10 / SPI2 NSS PB12 floating).
+  - **Status:** DONE in source: R28 / R29 10k pull-ups on PA10 / PB12 (PA3 now carries VREF). OPEN: confirm with Q2.
 
 ## 5. Sensor accuracy (needs prototype + calibration, not just a fix)
 

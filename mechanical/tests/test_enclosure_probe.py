@@ -54,6 +54,7 @@ def test_boards_clear_enclosure_and_threads_truly_mesh():
     assert wind_tunnel.intersect(plates["reflector"]).val().Volume() < 1e-3
     assert crown_base.intersect(plates["crown"]).val().Volume() < 1e-3
     assert crown.intersect(plates["dome"]).val().Volume() < 1e-3
+    assert be.build_crown_window().intersect(plates["dome"]).val().Volume() < 1e-3
 
     # 2. 8-Lug Push-Turn-Click Bayonet Interlock Verification (on `base<->pagoda`, `pagoda<->wind_tunnel`, `crown_base<->crown`):
     #    (a) Zero boolean collision in the final locked detent position (0 deg, dy = 0.0 mm)
@@ -473,14 +474,14 @@ def test_printed_walls_are_at_least_the_process_minimum():
 
 
 def test_uv_window_stack_fits_the_crown_lid():
-    """Window crown top: the stock Ø 20 x 2 mm JGS1 window and the thin 17 x 1.0 mm O-ring above it fit the bore, the
+    """Backup `crown_window` top: the stock Ø 20 x 2 mm JGS1 window and the thin 17 x 1.0 mm O-ring above it fit the bore, the
     O-ring seals between the lid lip and the glass (its full face lies on the lip), the window clears the dome
     sensors, the nut pushes the window from below, and the 1.2 mm lip's drains stay above the O-ring plane."""
     w, b, u = be.UV_WIN, be.UV_BOSS, ef.UPPER
     win = ef.uv_window()
     at = (win["x"], 0, win["z"])
     w_top = w["y0"] + w["t"]
-    crown = be.build_crown()
+    crown = be.build_crown_window()
     for d in (19.8, 20.0, 20.1):
         glass = be.cone_y(w["y0"] + u, w_top + u, d / 2, d / 2).translate(at)
         assert crown.intersect(glass).val().Volume() < 1e-3, f"Ø {d} window hits the lid"
@@ -493,39 +494,56 @@ def test_uv_window_stack_fits_the_crown_lid():
     assert b["top"] - be.UV_LIP_Y >= 0.8
     sensor_top = max(p["y1"] for p in ef.part_boxes() if p["board"] == "dome" and p["side"] == "front")
     assert w["y0"] + u - sensor_top >= 0.3, f"dome sensors {sensor_top:.2f} vs window {w['y0'] + u:.2f}"
-    struts = be.build_struts()
+    nut = be.uv_window_nut()
     glass = be.cone_y(w["y0"] + u, w_top + u, w["d"] / 2, w["d"] / 2).translate(at)
-    assert struts.intersect(glass).val().Volume() < 1e-3
-    assert struts.intersect(glass.translate((0, -0.05, 0))).val().Volume() > 0.0, "nut must reach the window"
+    assert nut.intersect(glass).val().Volume() < 1e-3
+    assert nut.intersect(glass.translate((0, -0.05, 0))).val().Volume() > 0.0, "nut must reach the window"
 
 
 def test_uv_dome_crown_top_fits():
-    """Dome crown top: the Ø 20 mm hollow JGS1 hemisphere clears the lid; the thin 19 x 1.0 mm O-ring in the bore /
-    lip corner gland seals lid <-> sphere at 15-40 % squeeze; the lid around the dome stays below the dome sensor tops (horizon
-    view, no raised border); the dome nut (on the struts plate) pushes the rim; board and sensors clear glass and nut."""
-    d = be.UV_DOME
-    glass, lid = be.uv_dome20_glass(), be.build_crown_dome()
+    """Default `crown` top with both flanged PTFE domes (lathe = default, CNC hemisphere): the flange is flat on both
+    faces and fits the M22 bore; the 18 x 1.0 mm O-ring is squeezed flat 15-40 % between the flange top and the lip,
+    fully backed by the lip and clear of the dome; the dome passes the lip hole; no lid material rises around the dome:
+    from the dome sensor tops everything of the lid stays >= 3 deg below the horizon (sunrise / sunset visible); the
+    dome nut pushes the flat flange bottom; board and sensors clear the domes and the nut."""
+    d, o, f = be.UV_DOME, be.UV_DOME_ORING, be.UV_PTFE
+    lid = be.build_crown()
     win = ef.uv_window()
-    at = (win["x"], 0, win["z"])
-    assert lid.intersect(glass).val().Volume() < 1e-3
+    at, u = (win["x"], 0, win["z"]), ef.UPPER
+    assert 0.15 <= 1.0 - o["squeezed"] / o["cs"] <= 0.40
+    assert abs(f["flange_top"] + o["squeezed"] - d["gland_y"]) < 1e-9 and abs(be.UV_DOME_NUT_TOP - f["flange_bot"]) < 1e-9
+    assert d["bore_r"] - f["flange_r"] >= 0.15, "flange needs clearance in the bore (PTFE expands ~0.12 mm at +60 K)"
+    assert d["lip_r"] - f["dome_r"] >= 0.15, "dome must pass the lip hole"
+    assert o["id"] / 2.0 >= f["dome_r"] and o["id"] / 2.0 + o["cs"] <= f["flange_r"], "O-ring must lie on the flange"
+    assert d["lip_r"] <= o["id"] / 2.0 + 0.15, "lip must cover the O-ring face"
+    assert d["top_y"] - d["gland_y"] >= 0.8, "lip over the O-ring too thin"
     ring = be.uv_dome_oring()
-    assert lid.intersect(ring).val().Volume() < 0.01, "O-ring gland corner too small"
-    cx, cy = d["bore_r"] - 0.5, d["gland_y"] - 0.5   # O-ring section centre vs sphere: 15-40 % squeeze of 1.0 mm
-    squeeze = 0.5 - (math.hypot(cx, cy - d["rim_y"]) - d["r_out"])
-    assert 0.15 <= squeeze / 1.0 <= 0.40, f"dome O-ring squeeze {squeeze:.2f} mm"
-    lip_gap = d["lip_r"] - math.sqrt(d["r_out"] ** 2 - (d["gland_y"] - d["rim_y"]) ** 2)
-    assert lip_gap >= 0.15, f"lip hole only {lip_gap:.2f} mm from the dome"
+    assert lid.intersect(ring).val().Volume() < 1e-3, "squeezed O-ring hits the lid"
+    above = be.ring_cone_y(d["gland_y"] + u, d["gland_y"] + u + 0.05, d["lip_r"] + 0.05, o["id"] / 2 + o["cs"],
+                           d["lip_r"] + 0.05, o["id"] / 2 + o["cs"]).translate(at)
+    assert lid.intersect(above).val().Volume() > 0.01, "lip material must back the O-ring"
     sensors = [p for p in ef.part_boxes() if p["board"] == "dome" and p["side"] == "front"]
-    lowest_sensor = min(p["y1"] for p in sensors)
-    lid_above = be.box(-14, 14, lowest_sensor, lowest_sensor + 20, -14, 14).translate(at).cut(
-        be.cone_y(lowest_sensor - 1, lowest_sensor + 21, 10.5, 10.5).translate(at))
-    assert lid.intersect(lid_above).val().Volume() < 1e-3, "lid rises above the dome sensors (shades the horizon)"
+    y_s = min(p["y1"] for p in sensors)
+    r_s = max(math.hypot(x - win["x"], z - win["z"]) for p in sensors for x in (p["x0"], p["x1"]) for z in (p["z0"], p["z1"]))
+    for r in (9.2, 9.7, 10.5, 11.0, 11.5, 12.5, 14.0, 16.0, 20.0, 26.0, 34.0):
+        y_lim = y_s - math.tan(math.radians(3.0)) * (r - r_s)
+        band = be.ring_cone_y(y_lim, y_lim + 30.0, r - 0.05, r + 0.05, r - 0.05, r + 0.05).translate(at)
+        assert lid.intersect(band).val().Volume() < 1e-4, f"lid rises above -3 deg from the dome sensors at r {r} mm"
     nut = be.uv_dome_nut()
-    assert nut.intersect(glass).val().Volume() < 1e-3
-    assert nut.intersect(glass.translate((0, -0.05, 0))).val().Volume() > 0.0, "nut must reach the dome rim"
-    for p in ef.part_boxes():
-        if p["board"] == "dome":
-            part = be.box(p["x0"], p["x1"], p["y0"], p["y1"], p["z0"], p["z1"])
-            assert glass.intersect(part).val().Volume() < 1e-3, f"dome:{p['ref']} hits the hemisphere"
-            assert nut.intersect(part).val().Volume() < 1e-3, f"dome:{p['ref']} hits the dome nut"
     assert nut.intersect(_board_solids()["dome"]).val().Volume() < 1e-3
+    for kind in ("lathe", "cnc"):
+        dome = be.uv_ptfe_dome(kind)
+        assert len(dome.val().Solids()) == 1
+        assert lid.intersect(dome).val().Volume() < 1e-3, f"{kind} dome hits the lid"
+        assert ring.intersect(dome).val().Volume() < 1e-3, f"O-ring hits the {kind} dome"
+        assert nut.intersect(dome).val().Volume() < 1e-3
+        assert nut.intersect(dome.translate((0, -0.05, 0))).val().Volume() > 0.0, f"nut must reach the {kind} flange"
+        flange_top = be.ring_cone_y(f["flange_top"] + u - 0.05, f["flange_top"] + u, f["dome_r"] + 0.05, f["flange_r"] - 0.05,
+                                    f["dome_r"] + 0.05, f["flange_r"] - 0.05).translate(at)
+        assert abs(dome.intersect(flange_top).val().Volume() - flange_top.val().Volume()) < 1e-3, "flange top not flat"
+        for p in ef.part_boxes():
+            if p["board"] == "dome":
+                part = be.box(p["x0"], p["x1"], p["y0"], p["y1"], p["z0"], p["z1"])
+                assert dome.intersect(part).val().Volume() < 1e-3, f"dome:{p['ref']} hits the {kind} dome"
+                assert nut.intersect(part).val().Volume() < 1e-3, f"dome:{p['ref']} hits the dome nut"
+    assert 0.6 <= f["wall"] <= 1.2

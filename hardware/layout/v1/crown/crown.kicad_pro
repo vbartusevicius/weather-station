@@ -556,6 +556,14 @@
       },
       {
         "netclass": "SELV-CROWN",
+        "pattern": "BL_PA10"
+      },
+      {
+        "netclass": "SELV-CROWN",
+        "pattern": "BL_PB12"
+      },
+      {
+        "netclass": "SELV-CROWN",
         "pattern": "CROWN_BOOT0"
       },
       {

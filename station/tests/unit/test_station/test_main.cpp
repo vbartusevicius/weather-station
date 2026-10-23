@@ -1078,6 +1078,15 @@ void test_still_air_wind_calibration(void) {
     TEST_ASSERT_FALSE(few.result(18.0F, 60.0F, 1005.0F).ok);
 }
 
+void test_optics_cover_transmission(void) {
+    const StationConfig c{};
+    TEST_ASSERT_FLOAT_WITHIN(1e-6F, 0.11F, c.optics_transmission);          // default cover: PTFE hemisphere
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 10.0F, station::core::cover_corrected(1.1F, 0.11F));   // UVI behind the diffuser
+    TEST_ASSERT_FLOAT_WITHIN(1.0F, 108696.0F, station::core::cover_corrected(100000.0F, 0.92F));   // JGS1 window
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 50.0F, station::core::cover_corrected(1.0F, 0.0F));    // clamped to 0.02
+    TEST_ASSERT_FLOAT_WITHIN(1e-6F, 3.0F, station::core::cover_corrected(3.0F, 1.5F));     // clamped to 1
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ultrasonic_zero_wind_and_virtual_temp);
@@ -1104,5 +1113,6 @@ int main(void) {
     RUN_TEST(test_crown_blocks_decode_into_pipeline_types);
     RUN_TEST(test_crown_rom_bootloader_flashes_and_verifies);
     RUN_TEST(test_still_air_wind_calibration);
+    RUN_TEST(test_optics_cover_transmission);
     return UNITY_END();
 }

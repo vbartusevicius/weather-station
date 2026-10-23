@@ -173,6 +173,11 @@ def main(version, boards=BOARDS):
         # print plates are regrouped over time (PRINT_GROUPS): drop plates the CAD build no longer produces
         shutil.rmtree(root / "enclosure" / "print", ignore_errors=True)
         shutil.rmtree(root / "enclosure" / "drawings", ignore_errors=True)
+        # parts / renders renamed or retired in the CAD build (e.g. crown_dome -> crown) must not linger in the release
+        for sub in ("", "renders"):
+            for old in (root / "enclosure" / sub).glob("*.*"):
+                if old.suffix in (".stl", ".step", ".png") and not (enclosure / sub / old.name).exists():
+                    old.unlink()
         shutil.copytree(enclosure, root / "enclosure", dirs_exist_ok=True,
                         ignore=shutil.ignore_patterns("fit_*.png", "front_legend.png"))
     return 1 if failed else 0

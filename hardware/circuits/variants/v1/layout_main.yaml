@@ -15,6 +15,9 @@ frame:
       - { x0: 0.0, y0: 0.0, x1: 32.0, y1: 52.0 }
   isolators: []
   power_nets: [VIN_RAW, VIN_FUSED, VIN_PROT, HEAT_SW, HEAT_SENSE, CO2_HEAT_RTN, +5V, +12V_HEAT, +5V_XIAO, +3V3_PROBE]
+  # 0.4 mm (was 0.3): VIN carries up to ~0.9 A at a 12 V input with both heaters on and may run on a 0.5 oz inner
+  # layer (~+10-15 K instead of ~+20-25 K at 0.3 mm, IPC-2152); 0.4 mm still enters the 1.0 mm-pitch JST-SH pads.
+  power_track_width: 0.4
   pours:
     - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 31.5, y1: 51.5 } }
   no_coat_keepouts: []

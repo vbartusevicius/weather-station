@@ -1,11 +1,12 @@
-"""V1 pagoda probe board (14.0 x 50.0 mm, 4 layers, 1.6 mm, vertical stem of the T-assembly):
-  - J1 (bottom): 10-pin JST-SH from main J3
-  - U3 (bottom intake zone, between the two milled slots): Sensirion SHT40-AD1F-R2 thermo-hygrometer
-  - U1 (middle zone, above milled slot): Sensirion SCD41-D-R2 photoacoustic true CO2 sensor
-  - Backside Closed-Loop 0.42 W Local Heater (B.Cu behind U1): 2x 120R 1206 in parallel on +5V + TH1 10k NTC + LM393 + AO3400A
-  - U2 + U5 (upper zone): Sensirion SGP41-D-R4 VOC/NOx sensor + Bosch BMP585 barometer (thunder pressure waves)
-  - J2 (top T-junction): 4-pin 2.54 mm male pin header (KH-2.54PH180-1X4P-L11.5, C2905435)
-    plugging directly into the bottom 4-pin female socket (J1) of the horizontal `reflector` PCB
+"""V1 pagoda probe board (14.0 x 56.0 mm, 4 layers, 1.6 mm, vertical stem of the T-assembly), bottom to top:
+  - J1 (bottom): 10-pin JST-SH from main J3, then milled slot 1 (base-bay side)
+  - U3: Sensirion SHT40-AD1F-R2 thermo-hygrometer between the two milled slots, then slot 2 (heater side, In1 ground
+    plane cut in its side bridges)
+  - U2 + U5: Sensirion SGP41-D-R4 VOC/NOx sensor + Bosch BMP585 barometer (thunder pressure waves)
+  - U1 (top): Sensirion SCD41-D-R2 photoacoustic true CO2 sensor with the backside closed-loop 0.42 W heater
+    (B.Cu behind U1): 2x 680R 1206 in parallel on +12V_HEAT + TH1 10k NTC + LM2903 + AO3400A, -7.6 C setpoint
+  - J2 (top T-junction): 4-pin 2.54 mm right-angle SMD female socket (HX PM2.54-1x4P WT, C46061768)
+    receiving the vertical SMD male header (J1) of the horizontal `reflector` PCB
 """
 
 from blocks import probe_sensors

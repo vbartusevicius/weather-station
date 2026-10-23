@@ -15,21 +15,24 @@ frame:
       - { x0: 0.0, y0: 0.0, x1: 14.0, y1: 56.0 }
   isolators: []
   power_nets: [HEAT_SW, CO2_HEAT_SW, CO2_HEAT_RTN, +12V_HEAT, +3V3_PROBE]
-  # Two milled thermal slots: SCD41 heater zone | SHT40 | J1 (base-bay side). Heat reaching the SHT40 through the
-  # board / In1 ground plane must pass the 2 mm side bridges (checklist P2).
+  # Two milled thermal slots: SCD41 heater zone (top) + gas sensors | SHT40 | J1 (base-bay side). Heat reaching the
+  # SHT40 through the board must pass the 3 mm side bridges (checklist P2); on the heater side the In1 ground plane is
+  # cut in the bridges too (only tracks cross), checklist N2.
   slots:
     - { x0: 3.0, y0: 18.8, x1: 11.0, y1: 20.0 }
     - { x0: 3.0, y0: 9.0, x1: 11.0, y1: 10.2 }
   copper_keepout:
     - { x0: 2.5, y0: 18.3, x1: 11.5, y1: 20.5 }
     - { x0: 2.5, y0: 8.5, x1: 11.5, y1: 10.7 }
+    - { x0: 0.0, y0: 18.3, x1: 2.5, y1: 20.5, layers: [In1.Cu] }    # heater-side slot bridges: no ground plane
+    - { x0: 11.5, y0: 18.3, x1: 14.0, y1: 20.5, layers: [In1.Cu] }
   pours:
     - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 13.5, y1: 55.5 } }
   no_coat_keepouts:
     - { x0: 4.2, y0: 12.2, x1: 6.8,  y1: 14.8, layer: F.SilkS }  # U3 SHT40 PTFE membrane window
-    - { x0: 1.8, y0: 23.3, x1: 12.2, y1: 33.7, layer: F.SilkS }  # U1 SCD41 acoustic gas window
-    - { x0: 2.4, y0: 36.4, x1: 5.6,  y1: 39.6, layer: F.SilkS }  # U2 SGP41 MOX hotplate aperture
-    - { x0: 8.0, y0: 35.9, x1: 12.0, y1: 39.9, layer: F.SilkS }  # U5 BMP585 gel pressure port
+    - { x0: 1.8, y0: 33.3, x1: 12.2, y1: 43.7, layer: F.SilkS }  # U1 SCD41 acoustic gas window
+    - { x0: 2.4, y0: 25.9, x1: 5.6,  y1: 29.1, layer: F.SilkS }  # U2 SGP41 MOX hotplate aperture
+    - { x0: 8.0, y0: 25.4, x1: 12.0, y1: 29.4, layer: F.SilkS }  # U5 BMP585 gel pressure port
   connector_labels: { J1: "MAIN", J2: "REFL" }   # destination board / port, placed next to each connector
   silk_labels: []
 
@@ -48,30 +51,31 @@ heights:
   TH1: 0.6
 
 parts:
-  # --- Front (+z): Bottom SHT40 intake zone + SCD41 CO2 zone + upper SGP41/BMP585 zone + Top 4-pin 2.54 mm T-header J2 ---
+  # --- Front (+z): Bottom SHT40 intake zone + SGP41/BMP585 zone + upper SCD41 CO2 / heater zone + Top 4-pin T-socket J2 ---
   J1:  { x: 7.0,   y: 4.5,   rot: 0,   block: int_main, locked: true }
   U3:  { x: 5.5,   y: 13.5,  rot: 0,   block: thermo_hygro, locked: true }
   C5:  { x: 10.0,  y: 13.5,  rot: 90,  block: thermo_hygro }
 
-  C1:  { x: 3.0,   y: 22.0,  rot: 0,   block: air_quality }
-  C2:  { x: 10.5,  y: 22.0,  rot: 0,   block: air_quality }
-  U1:  { x: 7.0,   y: 28.5,  rot: 0,   block: air_quality, locked: true }
-  U2:  { x: 4.0,   y: 38.0,  rot: 0,   block: air_quality, locked: true }
-  C4:  { x: 4.0,   y: 41.0,  rot: 0,   block: air_quality }
-  U5:  { x: 10.0,  y: 37.9,  rot: 0,   block: baro, locked: true }
-  C6:  { x: 10.0,  y: 41.0,  rot: 0,   block: baro }
+  U2:  { x: 4.0,   y: 27.5,  rot: 0,   block: air_quality, locked: true }   # under the sleeve slot at y 96.5
+  C4:  { x: 4.0,   y: 24.4,  rot: 0,   block: air_quality }
+  U5:  { x: 10.0,  y: 27.4,  rot: 0,   block: baro, locked: true }
+  C6:  { x: 10.0,  y: 24.4,  rot: 0,   block: baro }
+  C1:  { x: 3.0,   y: 31.6,  rot: 0,   block: air_quality }
+  C2:  { x: 11.0,  y: 31.6,  rot: 0,   block: air_quality }
+  U1:  { x: 7.0,   y: 38.5,  rot: 0,   block: air_quality, locked: true }   # body y 33.45..43.55, chamber top 44.0
 
   J2:  { x: 7.0,   y: 52.5,  rot: 0,   block: int_reflector, locked: true }
 
-  # --- Back (-z): 0.5 W Parallel 1206 Heater (R1 || R2) + TH1 NTC + LM393 (U4) + AO3400A (Q1) Closed-Loop Thermostat ---
-  R1:  { x: 7.0,   y: 25.0,  rot: 0,   side: back, block: co2_back_heater, locked: true }
-  TH1: { x: 7.0,   y: 28.0,  rot: 0,   side: back, block: co2_back_heater, locked: true }
-  R2:  { x: 7.0,   y: 31.0,  rot: 0,   side: back, block: co2_back_heater, locked: true }
-  R3:  { x: 2.3,   y: 26.5,  rot: 90,  side: back, block: co2_back_heater }
-  R4:  { x: 11.7,  y: 26.5,  rot: 90,  side: back, block: co2_back_heater }
-  R5:  { x: 11.7,  y: 31.0,  rot: 90,  side: back, block: co2_back_heater }
-  R7:  { x: 2.3,   y: 31.0,  rot: 90,  side: back, block: co2_back_heater }   # thermostat hysteresis
-  U4:  { x: 6.5,   y: 36.5,  rot: 90,  side: back, block: co2_back_heater }
-  C3:  { x: 11.7,  y: 36.5,  rot: 90,  side: back, block: co2_back_heater }
-  R6:  { x: 3.0,   y: 42.0,  rot: 0,   side: back, block: co2_back_heater }
-  Q1:  { x: 9.8,   y: 42.2,  rot: 0,   side: back, block: co2_back_heater }
+  # --- Back (-z): 0.42 W Parallel 1206 Heater (R1 || R2) + TH1 NTC behind the SCD41; LM2903 (U4) + AO3400A (Q1)
+  #     thermostat below them, behind the gas sensors (all above the heater-side slot) ---
+  R1:  { x: 7.0,   y: 35.5,  rot: 0,   side: back, block: co2_back_heater, locked: true }
+  TH1: { x: 7.0,   y: 38.5,  rot: 0,   side: back, block: co2_back_heater, locked: true }
+  R2:  { x: 7.0,   y: 41.5,  rot: 0,   side: back, block: co2_back_heater, locked: true }
+  R3:  { x: 2.3,   y: 37.0,  rot: 90,  side: back, block: co2_back_heater }   # NTC pull-up
+  R7:  { x: 2.3,   y: 41.0,  rot: 90,  side: back, block: co2_back_heater }   # thermostat hysteresis
+  R4:  { x: 11.7,  y: 37.0,  rot: 90,  side: back, block: co2_back_heater }   # setpoint divider
+  R5:  { x: 11.7,  y: 41.0,  rot: 90,  side: back, block: co2_back_heater }
+  U4:  { x: 6.5,   y: 27.0,  rot: 90,  side: back, block: co2_back_heater }
+  C3:  { x: 11.7,  y: 27.0,  rot: 90,  side: back, block: co2_back_heater }
+  R6:  { x: 3.0,   y: 32.0,  rot: 0,   side: back, block: co2_back_heater }
+  Q1:  { x: 10.0,  y: 32.0,  rot: 0,   side: back, block: co2_back_heater }

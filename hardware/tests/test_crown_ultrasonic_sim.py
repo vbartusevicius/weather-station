@@ -1,5 +1,6 @@
 """ngspice check of the crown v2 ultrasonic drive / T-R isolation / receive chain (hardware/sim/crown_us_link.py)."""
 
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -35,3 +36,16 @@ def test_receive_path_is_isolated_and_protected(sim):
 def test_preamp_leaves_pga_headroom(sim):
     # ADC span 3.3 V: the preamp output must fit at the lowest PGA gain (x2) with margin
     assert 2.0 * sim["preamp_out_mvpp"] < 2600.0
+
+
+def test_pga_is_biased_at_vref_not_ground(sim):
+    """The preamp idles at VREF (1.65 V). In the plain PGA mode the STM32 multiplies that DC too and the output sits on
+    the 3.3 V rail; the crown must wire VREF to OPAMP1_VINM0 (PA3) and the firmware must use the bias mode."""
+    assert sim["pga_plain_mean_v"] > 3.2 and sim["pga_plain_mvpp"] < 50.0      # what the old design did
+    assert abs(sim["pga_bias_mean_v"] - 1.65) < 0.25                            # centred near mid-scale (code 2048)
+    assert sim["pga_bias_min_v"] > 0.1 and sim["pga_bias_max_v"] < 3.2          # x4 echo not clipped
+    circuit = (Path(__file__).resolve().parents[1] / "circuits/blocks/crown_sensors.py").read_text()
+    assert re.search(r'"17":\s*"US_VREF"', circuit), "PA3 (OPAMP1_VINM0) must carry US_VREF"
+    fw = (Path(__file__).resolve().parents[2] / "crown/src/main.cpp").read_text()
+    assert "kPgaConnect = OPAMP_PGA_CONNECT_INVERTINGINPUT_IO0_BIAS" in fw
+    assert "hopamp1.Init.PgaConnect = kPgaConnect" in fw and "kPgaConnect | kGain" in fw

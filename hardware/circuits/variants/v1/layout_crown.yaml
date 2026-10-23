@@ -143,6 +143,8 @@ parts:
   C6:  { x: 26.0, y: 38.5, rot: 0,   side: back, block: crown_mcu }
   C7:  { x: 29.3, y: 38.5, rot: 0,   side: back, block: crown_mcu }
   R25: { x: 35.9, y: 21.5, rot: 0,   side: back, block: crown_mcu }   # BOOT0 (pin 61 lands on the lower edge when flipped)
+  R28: { x: 39.3, y: 22.4, rot: 0,   side: back, block: crown_mcu }   # PA10 bootloader USART1_RX pull-up
+  R29: { x: 38.6, y: 37.8, rot: 90,  side: back, block: crown_mcu }   # PB12 bootloader SPI2_NSS pull-up
   C10: { x: 21.5, y: 34.0, rot: 90,  side: back, block: crown_mcu }
   Y1:  { x: 18.0, y: 27.5, rot: 90,  side: back, block: crown_mcu }   # next to PF0 / PF1 (pins 5-6, lower left when flipped)
   C11: { x: 18.0, y: 31.3, rot: 0,   side: back, block: crown_mcu }

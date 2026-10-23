@@ -16,16 +16,20 @@ only the LQFP-64 package bonds out).
      The transducer B terminal is referenced to GND through 330R during receive.
    - RX: transducer A terminal -> 47k -> 10 nF -> 1M bias to VREF (1.65 V) per channel -> 74HC4052 4:1 mux (3.3 V)
      -> TLV9062 non-inverting band-pass (gain 7.8 at 40 kHz, 1.6 kHz HP, 106 kHz LP) -> STM32 OPAMP1 PGA (x2..x32,
-     automatic gain) -> ADC1 at 2 MSPS (DMA). The transducers must stay at 0 V DC: any bias on them would forward-bias
-     the T/R diodes into the idle (low) driver and short the echo (found in hardware/sim/crown_us_link.py), hence the
-     AC coupling. During a 24 Vpp burst the 47k limits the mux input-diode current to ~0.2 mA (74HC4052 +/-20 mA).
+     automatic gain) -> ADC1 at 2 MSPS (DMA). The preamp output idles at VREF, so the PGA runs in its "inverting input
+     as bias" mode with VREF on OPAMP1_VINM0 (PA3): Vout = G (Vin - VREF) + VREF stays centred at mid-scale (in the
+     plain PGA mode G x 1.65 V would pin the output at the 3.3 V rail). The transducers must stay at 0 V DC: any
+     bias on them would forward-bias the T/R diodes into the idle (low) driver and short the echo (found in
+     hardware/sim/crown_us_link.py), hence the AC coupling. During a 24 Vpp burst the 47k limits the mux input-diode current to ~0.2 mA (74HC4052 +/-20 mA).
      Timing: 8 MHz +/-10 ppm crystal.
 2. Rain: 4 x 20 mm Murata 7BB-20-6L0 piezo discs in parallel -> BAV99 clamp -> 1k -> TLV9062 charge amplifier
-   (22 nF || 4.7 MOhm, biased at VREF, 1.5 Hz high-pass, ~1.8 V per uC) -> 1k / 1 nF -> STM32 ADC2 (continuous).
+   (22 nF || 4.7 MOhm, biased at VREF, 1.5 Hz high-pass, 45 mV per nC) -> 22k / 1 nF (7.2 kHz anti-alias) -> STM32
+   ADC2 (continuous, 50 kSPS).
 3. Lightning: ScioSense AS3935 on SPI1 (SI = GND selects SPI) + Coilcraft MA5532-AE 100 uH ferrite-rod antenna and
    2 x 470 pF C0G tank (AS3935-AN04), IRQ to the STM32 (EXTI). No copper under the antenna (layout keepout).
 4. Compass: MEMSIC MMC5603NJ on the main I2C bus (0x30), unchanged.
 Power: XC6206 3.3 V LDO from +5V (crown, dome sensors); VDDA through 10R / 1 uF.
+ROM bootloader hygiene: PA10 (USART1_RX) and PB12 (SPI2_NSS) pulled up (R28, R29).
 """
 
 from builtins import NC
@@ -57,17 +61,20 @@ MCU_PIN_NETS = {
     "7": "CROWN_NRST",      # PG10-NRST
     "13": "US_AMP_OUT",     # PA1 OPAMP1_VINP -> PGA -> ADC1 (internal VOPAMP1 channel)
     "15": "GND", "16": "+3V3",
+    "17": "US_VREF",        # PA3 OPAMP1_VINM0: PGA bias input (gain applied around VREF, not around GND)
     "18": "RAIN_ADC",       # PA4 ADC2_IN17
     "22": "I2C_SCL",        # PC4 I2C2_SCL (app + ROM bootloader)
     "27": "GND",            # VSSA
     "28": "+3V3A",          # VREF+
     "29": "+3V3A",          # VDDA
     "31": "GND", "32": "+3V3",
+    "33": "BL_PB12",        # PB12 ROM-bootloader SPI2_NSS: pulled up so a floating pin cannot select SPI2
     "38": "TX_P",           # PC6 TIM8_CH1
     "39": "XD_EN_N",        # PC7
     "40": "XD_EN_E",        # PC8
     "41": "XD_EN_S",        # PC9
     "42": "I2C_SDA",        # PA8 I2C2_SDA (app + ROM bootloader)
+    "44": "BL_PA10",        # PA10 ROM-bootloader USART1_RX: pulled up (idle high) so noise cannot fake a 0x7F
     "47": "GND", "48": "+3V3",
     "49": "SWDIO",          # PA13
     "50": "SWCLK",          # PA14
@@ -119,7 +126,8 @@ def build(nets):
     n = dict(nets)
     for name in ("+3V3A", "XTAL_IN", "XTAL_OUT", "US_AMP_OUT", "RAIN_ADC", "TX_P", "TX_N", "SWDIO", "SWCLK",
                  "AS_CS", "AS_SCK", "AS_MISO", "AS_MOSI", "AS_IRQ", "MUX_S0", "MUX_S1", "VDRV", "US_VREF",
-                 "US_RX_MUX", "US_AMP_FB", "US_AMP_G", "PIEZO_IN", "PIEZO_INV", "PIEZO_OUT", "AS_ACG", "AS_INP"):
+                 "US_RX_MUX", "US_AMP_FB", "US_AMP_G", "PIEZO_IN", "PIEZO_INV", "PIEZO_OUT", "AS_ACG", "AS_INP",
+                 "BL_PA10", "BL_PB12"):
         if name not in n:
             n[name] = Net(name)
     for ax in AXES:
@@ -159,6 +167,10 @@ def build(nets):
     two(cap("100n 50V", "STM32 NRST filter (ST AN5093)", "C10"), n["CROWN_NRST"], gnd)
     two(res("10k", "BOOT0 pull-down: boots the application unless the ESP32 requests the ROM bootloader", "R25"),
         n["CROWN_BOOT0"], gnd)
+    # AN2606: the ROM bootloader also listens on USART1 (PA10 RX) and SPI2 (PB12 NSS); hold them idle so noise on
+    # floating pins cannot capture the bootloader before the station talks to it over I2C2.
+    two(res("10k", "PA10 (bootloader USART1_RX) pull-up: idle high", "R28"), n["BL_PA10"], v3)
+    two(res("10k", "PB12 (bootloader SPI2_NSS) pull-up: SPI2 deselected", "R29"), n["BL_PB12"], v3)
     y1 = part("Device", "Crystal_GND24", "8MHz", FP_XTAL,
               src(mpn="3225 8M 20PF 10PPM", mfr="YXC", lcsc="C5181477",
                   source="8 MHz +/-10 ppm HSE crystal (CL 20 pF): time-of-flight timebase"), ref="Y1")
@@ -244,7 +256,7 @@ def build(nets):
     u8["8"] += v3
     u8["4"] += gnd
     two(cap("100n 50V", "TLV9062 decoupling", "C23"), v3, gnd)
-    u8["3"] += n["US_RX_MUX"]   # A+ (biased at VREF through the 100k of the selected channel)
+    u8["3"] += n["US_RX_MUX"]   # A+ (biased at VREF through the 1M of the selected channel)
     u8["2"] += n["US_AMP_FB"]
     u8["1"] += n["US_AMP_OUT"]
     two(res("1k", "RX stage gain resistor Rg", "R20"), n["US_AMP_FB"], n["US_AMP_G"])
@@ -267,10 +279,12 @@ def build(nets):
     u8["6"] += n["PIEZO_INV"]   # B-
     u8["5"] += vref             # B+
     u8["7"] += n["PIEZO_OUT"]
-    two(cap("22n 50V", "Charge amplifier feedback capacitor (~1.8 V per uC)", "C21"), n["PIEZO_INV"], n["PIEZO_OUT"])
+    two(cap("22n 50V", "Charge amplifier feedback capacitor (45 mV per nC)", "C21"), n["PIEZO_INV"], n["PIEZO_OUT"])
     two(res("4M7", "Charge amplifier DC feedback (1.5 Hz high-pass)", "R23"), n["PIEZO_INV"], n["PIEZO_OUT"])
-    two(res("1k", "Rain ADC anti-alias resistor", "R24"), n["PIEZO_OUT"], n["RAIN_ADC"])
-    two(cap("1n 50V", "Rain ADC anti-alias capacitor (160 kHz)", "C22"), n["RAIN_ADC"], gnd)
+    # 22k / 1 nF = 7.2 kHz: passes the 6.3 kHz piezo ring-down, attenuates 40 kHz burst pickup ~5.6x before the
+    # 50 kSPS ADC (which would alias it to 10 kHz); the firmware also blanks the detector during bursts.
+    two(res("22k", "Rain ADC anti-alias resistor (7.2 kHz with C22)", "R24"), n["PIEZO_OUT"], n["RAIN_ADC"])
+    two(cap("1n 50V", "Rain ADC anti-alias capacitor (7.2 kHz with R24)", "C22"), n["RAIN_ADC"], gnd)
 
     # ---------------------------------------------------------------- lightning (AS3935 on SPI1)
     block("lightning")
@@ -284,7 +298,7 @@ def build(nets):
         u9[pin] += net    # 6 VREG = 3.3 V direct (EN_VREG = GND); 9 SI = GND selects SPI
     u9["14"] += NC
     two(cap("1u 50V", "AS3935 ACG analog reference bypass", "C26"), n["AS_ACG"], gnd)
-    two(cap("100n 50V", "AS3935 VDD decoupling", "C25"), v3, gnd)
+    two(cap("1u 50V", "AS3935 VDD decoupling (datasheet CBAT 1 uF)", "C25"), v3, gnd)
     l1 = part("Device", "L", "100uH", L_MA5532,
               src(mpn="MA5532-AE", mfr="Coilcraft", hand=True, footprint_ref="C5361233",
                   source="AS3935 500 kHz lightning antenna (Coilcraft MA5532-AE 100 uH open ferrite rod, Q 30)"),

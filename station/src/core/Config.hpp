@@ -38,7 +38,17 @@ struct StationConfig {
     float rain_impact_scale{1.0F};        // crown charge-amp mV -> HapticRain mV (drop / hail thresholds)
     std::uint8_t rs485_address{0};        // 0 = answer un-addressed commands (single station); 1..247 = "<addr>:CMD"
     float wind_speed_gain{1.0F};          // wind-tunnel / reference-anemometer speed correction (CALIBRATION.md)
+    // Diffuse transmission of the UV / light cover over the dome sensors: ~0.11 for the default PTFE hemisphere diffuser
+    // (0.8 mm PTFE, spectrally flat), ~0.92 for the JGS1 window. LTR-390 UVI / lux, TSL25911 lux and the
+    // factory-scaled GUVB UVI are divided by it (a field `guvb_counts_per_uvi` already includes the cover).
+    float optics_transmission{0.11F};
 };
+
+// Reading behind the UV / light cover -> free-sky value (transmission clamped to 0.02..1).
+inline float cover_corrected(float value, float transmission) {
+    const float tr = transmission < 0.02F ? 0.02F : (transmission > 1.0F ? 1.0F : transmission);
+    return value / tr;
+}
 
 }  // namespace core
 }  // namespace station

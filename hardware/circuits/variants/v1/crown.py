@@ -1,9 +1,9 @@
-"""V1 crown board v2 (50 x 50 mm octagon with four transducer notches, 4 layers, 1.6 mm, y = 182.8 mm):
+"""V1 crown board v2 (60 x 60 mm with four transducer notches and a chamfered NE corner, 4 layers, 1.6 mm):
   - U1 STM32G431RBT6: digitises the wind echoes, rain impacts and lightning events; I2C peripheral 0x2A for main,
     reflashed by the ESP32 through the ROM I2C bootloader (CROWN_BOOT0 + CROWN_NRST from main)
   - U2..U5 + D1..D8: UCC27524 H-bridge transducer drivers on +12V_HEAT with BAV99 T/R isolation
-  - D9..D12 + U7 + U8A: receive clamps, 74HC4052 mux and 40 kHz band-pass preamp into the STM32 PGA / ADC1
-  - U8B + D13: piezo rain charge amplifier into ADC2
+  - U7 + U8A: 74HC4052 receive mux and 40 kHz band-pass preamp into the STM32 PGA (biased at VREF via PA3) / ADC1
+  - U8B + D9: piezo rain charge amplifier into ADC2
   - U9 + L1: AS3935 lightning detector (SPI) with its MA5532-AE ferrite-rod antenna
   - U6: MMC5603NJ compass (main I2C bus); U10: 3.3 V LDO (crown + dome)
   - J1: 12-pin JST-SH from main J2; J2..J5 transducers (1 = A, 2 = B); J6..J9 piezo discs; J10 dome riser;
@@ -58,6 +58,7 @@ NET_CLASSES = {
     "SELV-CROWN": [
         "GND", "+3V3", "+3V3A", "+5V", "+12V_HEAT", "VDRV", "I2C_SDA", "I2C_SCL", "CROWN_IRQ", "CROWN_NRST",
         "CROWN_BOOT0", "XTAL_*", "SWDIO", "SWCLK", "AS_*", "TX_P", "TX_N", "MUX_*", "XD_*", "US_*", "PIEZO_*", "RAIN_ADC",
+        "BL_*",
         "Net-*",
     ],
     "CROWN-Power": ["+5V", "+12V_HEAT", "+3V3", "VDRV"],

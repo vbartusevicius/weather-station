@@ -1,16 +1,17 @@
 """Pagoda Probe board circuit blocks (vertical stem of the T-assembly):
   - U3 (bottom intake zone, between the two milled slots): Sensirion SHT40-AD1F-R2 +/-0.2 C / +/-1.8 % RH sensor
-    (I2C 0x44; same DFN-4 footprint as the SHT45)
-  - U1 (middle zone, above milled slot): Sensirion SCD41-D-R2 photoacoustic true CO2 sensor (I2C 0x62)
+    (I2C 0x44; same DFN-4 footprint as the SHT45), as far from the heater as the board allows
+  - U2 + U5 (middle zone, just above the heater-side slot): Sensirion SGP41-D-R4 MOX VOC + NOx sensor (I2C 0x59) and
+    Bosch BMP585 gel-filled barometer (I2C 0x47) in the vented probe chamber (thunder pressure-wave timing)
+  - U1 (top zone, next to J2 / the warm reflector): Sensirion SCD41-D-R2 photoacoustic true CO2 sensor (I2C 0x62)
   - Backside Closed-Loop Regulated 0.42 W Local Heater (B.Cu directly behind U1 SCD41 pad 21):
     * R1, R2: 2x 680R 1206 0.5 W resistors in PARALLEL on the +12V_HEAT rail (340 Ohm, 0.42 W at 12 V, 42 % of rating each);
       the heater current returns to main over CO2_HEAT_RTN through the 1 ohm monitor shunt (ADS1115 on main)
     * TH1: SDNT1608X103F3950FTF 10k 1% B=3950K NTC thermistor right between R1 & R2 on back of SCD41
-    * U4 (LM2903DR2G on +12V_HEAT, 2-36 V) + Q1 (AO3400A, gate pulled to +3V3): analog thermostat holding SCD41 at +8 C
-      during extreme cold (R7 470k positive feedback gives ~1.4 K hysteresis so the comparator does not chatter)
-  - U2 (upper zone): Sensirion SGP41-D-R4 MOX multi-gas VOC Index + NOx Index sensor (I2C 0x59)
-  - U5 (upper zone, next to U2): Bosch BMP585 gel-filled barometer (I2C 0x47) in the vented probe chamber,
-    close to outside air for thunder pressure-wave timing
+    * U4 (LM2903DR2G on +12V_HEAT, 2-36 V) + Q1 (AO3400A, gate pulled to +3V3): analog thermostat holding the SCD41
+      at -7.6 C, just above its -10 C rating (R7 470k positive feedback gives ~2.3 K hysteresis). The heater stays off
+      above -8 C, so it cannot bias the SHT40 in the common -8..+8 C winter range; below that the SHT40 sits two slots
+      and the gas-sensor zone (~21 mm) away, and the In1 ground plane is cut in the heater-side slot bridges.
 """
 
 from builtins import NC
@@ -85,26 +86,26 @@ def build(gnd, v3, sda, scl, v5, heat_rtn):
     th1[1] += co2_ntc
     th1[2] += gnd
 
-    # Setpoint divider (10k / 22k -> V_SET = 2.27 V = +8.0 C threshold)
-    r_set_top = res("10k", src(source="SCD41 thermostat +8 C setpoint divider top"))
-    r_set_bot = res("22k", src(source="SCD41 thermostat +8 C setpoint divider bottom"))
+    # Setpoint divider (10k / 51k -> V_SET = 2.76 V = NTC 51k = -7.6 C threshold; SCD41 rated -10..+60 C)
+    r_set_top = res("10k", src(source="SCD41 thermostat -7.6 C setpoint divider top"))
+    r_set_bot = res("51k", src(source="SCD41 thermostat -7.6 C setpoint divider bottom"))
     r_set_top[1] += v3
     r_set_top[2] += co2_vset
     r_set_bot[1] += co2_vset
     r_set_bot[2] += gnd
 
-    # Closed-loop thermostat comparator U4 (LM2903, -40..+125 C) + low-side MOSFET switch Q1 (AO3400A).
+    # Closed-loop thermostat comparator U4 (LM2903DR2G, -40..+105 C) + low-side MOSFET switch Q1 (AO3400A).
     # Powered from +12V_HEAT (10.4-12 V): its input common-mode range (0..VCC-2.0 V over temperature) covers the
-    # 2.27 V NTC/setpoint node; the open-collector output is pulled to +3V3 so Q1's gate never sees the 12 V rail.
+    # 2.76 V NTC/setpoint node; the open-collector output is pulled to +3V3 so Q1's gate never sees the 12 V rail.
     u4 = part("gateway", "LM393", "LM2903DR2G", FP_LM393,
               src(mpn="LM2903DR2G", mfr="onsemi", lcsc="C57474",
-                  source="Closed-loop analog thermostat comparator (-40..+125 C) regulating SCD41 backside heater via TH1"),
+                  source="Closed-loop analog thermostat comparator (-40..+105 C) regulating SCD41 backside heater via TH1"),
               ref="U4")
     u4["8"] += v5
     u4["4"] += gnd
-    u4["3"] += co2_ntc   # IN/A+ (rises above V_SET when T_SCD41 < +8 C)
-    u4["2"] += co2_vset  # IN/A- (+8 C threshold)
-    u4["1"] += co2_gate  # OUT/A (releases high when T_SCD41 < +8 C -> turns Q1 ON)
+    u4["3"] += co2_ntc   # IN/A+ (rises above V_SET when T_SCD41 < -7.6 C)
+    u4["2"] += co2_vset  # IN/A- (-7.6 C threshold)
+    u4["1"] += co2_gate  # OUT/A (releases high when T_SCD41 < -7.6 C -> turns Q1 ON)
     u4["5"] += co2_vset
     u4["6"] += gnd
     u4["7"] += NC
@@ -122,7 +123,7 @@ def build(gnd, v3, sda, scl, v5, heat_rtn):
     q1["1"] += co2_gate
     q1["2"] += heat_rtn   # source -> CO2_HEAT_RTN -> 1 ohm monitor shunt on main
     q1["3"] += co2_sw
-    r_hyst = res("470k", src(source="Thermostat positive feedback (OUT -> IN+, ~48 mV = ~1.4 K hysteresis)"), ref="R7")
+    r_hyst = res("470k", src(source="Thermostat positive feedback (OUT -> IN+, ~58 mV = ~2.3 K hysteresis)"), ref="R7")
     r_hyst[1] += co2_gate
     r_hyst[2] += co2_ntc
 

@@ -167,12 +167,14 @@ void task_slow_i2c(void*) {
         core::Controls ctl{};
         float declination = 0.0F;
         float guvb_scale = 0.0F;
+        float optics_tr = 1.0F;
         core::Reading<float> sht_t{}, sht_rh{};
         {
             Lock l;
             ctl = g_derived.controls;
             declination = g_cfg.declination_deg;
             guvb_scale = g_cfg.guvb_counts_per_uvi;
+            optics_tr = g_cfg.optics_transmission;
             sht_t = g_raw.thermo.temp_c;
             sht_rh = g_raw.thermo.rh_pct;
         }
@@ -217,15 +219,17 @@ void task_slow_i2c(void*) {
             float uvb_counts = 0.0F, uvb_uvi = 0.0F;
             bool uvb_uvi_ok = false;
             const bool guvb_ok = g_guvb.read(guvb_scale, uvb_counts, uvb_uvi, uvb_uvi_ok);
+            // free-sky values: the cover (PTFE diffuser / JGS1) transmission; a field GUVB scale already includes it
+            using core::cover_corrected;
             Lock l;
             if (guvb_ok) {
                 g_raw.optical.guvb_counts.set(uvb_counts, t);
-                if (uvb_uvi_ok) g_raw.optical.guvb_uvi.set(uvb_uvi, t);
+                if (uvb_uvi_ok) g_raw.optical.guvb_uvi.set(guvb_scale > 0.0F ? uvb_uvi : cover_corrected(uvb_uvi, optics_tr), t);
             }
-            if (ltr_ok && is_uvs) g_raw.optical.ltr_uvi.set(v, t);
-            if (ltr_ok && !is_uvs) g_raw.optical.ltr_lux.set(v, t);
+            if (ltr_ok && is_uvs) g_raw.optical.ltr_uvi.set(cover_corrected(v, optics_tr), t);
+            if (ltr_ok && !is_uvs) g_raw.optical.ltr_lux.set(cover_corrected(v, optics_tr), t);
             if (tsl_ok) {
-                g_raw.optical.tsl_lux.set(lux, t);
+                g_raw.optical.tsl_lux.set(cover_corrected(lux, optics_tr), t);
                 g_raw.optical.tsl_nir_ratio.set(nir, t);
             }
         }
@@ -692,6 +696,7 @@ esp_err_t handle_config_get(httpd_req_t* req) {
         doc["wind_cal_status"] = g_wind_cal_running ? std::string("running") : g_wind_cal_status;   // copied
     }
     doc["guvb_counts_per_uvi"] = c.guvb_counts_per_uvi;
+    doc["optics_transmission"] = c.optics_transmission;
     doc["guvb_factory_b_scale"] = g_guvb.factory_b_scale();
     doc["as3935_tun_cap"] = c.as3935_tun_cap;
     doc["wifi_ssid"] = c.wifi_ssid;
@@ -748,6 +753,10 @@ esp_err_t handle_config_post(httpd_req_t* req) {
         if (a >= 0 && a <= 247) c.rs485_address = static_cast<std::uint8_t>(a);
     }
     if (in["guvb_counts_per_uvi"].is<float>()) c.guvb_counts_per_uvi = std::max(0.0F, in["guvb_counts_per_uvi"].as<float>());
+    if (in["optics_transmission"].is<float>()) {
+        const float tr = in["optics_transmission"].as<float>();
+        if (tr >= 0.02F && tr <= 1.0F) c.optics_transmission = tr;
+    }
     if (in["as3935_tun_cap"].is<int>()) c.as3935_tun_cap = static_cast<std::uint8_t>(in["as3935_tun_cap"].as<int>() & 0x0F);
     if (in["mqtt_uri"].is<const char*>()) {
         copy(c.mqtt_uri, sizeof(c.mqtt_uri), in["mqtt_uri"].as<const char*>());

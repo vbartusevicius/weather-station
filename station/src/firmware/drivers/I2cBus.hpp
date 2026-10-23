@@ -42,7 +42,7 @@ private:
     };
     i2c_master_bus_handle_t bus_{nullptr};
     SemaphoreHandle_t mutex_{nullptr};
-    std::uint32_t speed_hz_{400000};
+    std::uint32_t speed_hz_{100000};
 };
 
 // Sensirion CRC-8 (poly 0x31, init 0xFF) used by SHT4x, SCD4x, SGP4x.

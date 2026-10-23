@@ -72,6 +72,8 @@ R24,41.000mm,46.100mm,Bottom,0
 R25,35.900mm,21.500mm,Bottom,0
 R26,13.300mm,17.800mm,Top,0
 R27,32.600mm,21.500mm,Bottom,0
+R28,39.300mm,22.400mm,Bottom,0
+R29,38.600mm,37.800mm,Bottom,90
 R3,55.500mm,6.500mm,Top,0
 R4,13.000mm,21.000mm,Top,0
 R5,28.400mm,45.500mm,Bottom,0
@@ -79,7 +81,7 @@ R6,44.800mm,26.000mm,Bottom,90
 R7,28.400mm,16.500mm,Bottom,0
 R8,14.000mm,31.500mm,Bottom,90
 R9,9.000mm,44.000mm,Bottom,90
-U1,30.000mm,30.006mm,Bottom,90
+U1,29.999mm,30.004mm,Bottom,90
 U10,44.099mm,22.000mm,Bottom,180
 U2,17.000mm,51.000mm,Top,270
 U3,52.500mm,17.000mm,Top,270

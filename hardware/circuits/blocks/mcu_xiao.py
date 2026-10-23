@@ -74,7 +74,8 @@ def build(gnd, v3, v5, vin_adc, heat_pwm, rs485_a, rs485_b):
                                crown_irq, crown_nrst, v3, gnd, v5_xiao), start=1):
         u3[str(pin)] += net
 
-    # I2C pull-ups: 2.2k keeps the rise time < 300 ns on the ~150-200 pF bus (sensors + 260/60/100 mm cables)
+    # I2C pull-ups: 2.2k on the ~150-200 pF bus (sensors + 260/60/100 mm cables) gives a ~250-335 ns rise time, so the
+    # firmware runs every device at 100 kHz (standard mode, 1000 ns limit)
     for ref_r, bus_net in (("R5", sda), ("R6", scl)):
         r = res("2k2", src(source="I2C bus pull-up (2.2k, ~1.5 mA sink at 3.3 V)"), ref=ref_r)
         r[1] += v3

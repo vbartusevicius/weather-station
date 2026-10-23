@@ -743,6 +743,7 @@ function loadConfig() {
     set("cfg-rain-scale", c.rain_impact_scale);
     set("cfg-wind-gain", c.wind_speed_gain);
     set("cfg-rs485-addr", c.rs485_address);
+    set("cfg-optics-tr", c.optics_transmission);
     setText("wind-cal-status", `Wind calibration: ${c.wind_cal_status || "—"}`);
     set("cfg-tuncap", c.as3935_tun_cap);
     set("cfg-ssid", c.wifi_ssid);
@@ -796,6 +797,7 @@ el("btn-save-cfg").addEventListener("click", () => {
     us_delay_us: num("cfg-us-delay"), pressure_wind_coef: num("cfg-pcoef"), rain_gain: num("cfg-rain-gain"),
     as3935_tun_cap: parseInt(el("cfg-tuncap").value, 10),
     rain_impact_scale: num("cfg-rain-scale"), wind_speed_gain: num("cfg-wind-gain"), rs485_address: parseInt(el("cfg-rs485-addr").value, 10) || 0,
+    optics_transmission: num("cfg-optics-tr"),
   }).then(() => setText("cfg-save-status", "Saved ✓")).catch(() => {});
 });
 

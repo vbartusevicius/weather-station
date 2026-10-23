@@ -1,6 +1,6 @@
 """12-32 V DC roof input protection, VIN_ADC supply monitor, and de-icing heater MOSFET driver (AO3400A).
-The two 5 V rails (+5V electronics, +12V_HEAT heaters) come from the separate `power` board (two 60 V TPS54360
-bucks) over main J5; no 12-32 V conductor leaves the base bay. Every part on VIN is rated >= 60 V (TVS clamp 58.1 V)."""
+The two supply rails (+5V electronics, +12V_HEAT heaters / transducer drive) come from the separate `power` board
+(two 60 V TPS54360 bucks) over main J5; no 12-32 V conductor leaves the base bay. Every part on VIN is rated >= 60 V (TVS clamp 58.1 V)."""
 
 from common import block, part, power_flag, src
 from skidl import Net
@@ -23,7 +23,7 @@ def cap(value, fields=None, footprint=C0603, ref=None):
 
 
 def build(gnd, heat_pwm):
-    """Build 12-32 V + RS-485 4-pole terminal J1, 5 V buck, VIN_ADC divider, and heater switch."""
+    """Build the 12-32 V + RS-485 terminal J1 with input protection, the VIN_ADC divider and the heater switch."""
     vin_raw = Net("VIN_RAW")
     vin_fused = Net("VIN_FUSED")
     vin_prot = Net("VIN_PROT")

@@ -4,7 +4,11 @@
 
 namespace crown {
 
-bool RainDetector::add(std::uint16_t raw, std::uint32_t t_us, RainImpact& out) {
+bool RainDetector::add(std::uint16_t raw, std::uint32_t t_us, RainImpact& out, bool blanked) {
+    if (blanked) {
+        in_pulse_ = false;
+        return false;
+    }
     const float mv = static_cast<float>(raw) * kMvPerCount;
     if (!init_) {
         baseline_ = mv;

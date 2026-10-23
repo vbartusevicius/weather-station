@@ -178,6 +178,34 @@ void test_rain_detector_impacts(void) {
     TEST_ASSERT_TRUE(imp.clipped);
 }
 
+void test_rain_detector_ignores_burst_window(void) {
+    RainDetector rd(50000.0F, 40.0F);
+    RainImpact imp{};
+    std::uint32_t t = 0;
+    int events = 0;
+    auto feed = [&](float mv, bool blank) {
+        const auto raw = static_cast<std::uint16_t>(std::round(mv / RainDetector::kMvPerCount));
+        if (rd.add(raw, t, imp, blank)) ++events;
+        t += 20;
+    };
+    for (int i = 0; i < 5000; ++i) feed(1650.0F, false);
+    // 40 kHz burst pickup aliased to 10 kHz, 200 mV, during a 0.7 ms capture + 1 ms ring-down window
+    for (int i = 0; i < 85; ++i) {
+        feed(1650.0F + 200.0F * std::sin(2.0F * kPi * 10000.0F * static_cast<float>(i) * 20e-6F), true);
+    }
+    for (int i = 0; i < 100; ++i) feed(1650.0F, false);
+    TEST_ASSERT_EQUAL_INT(0, events);
+    TEST_ASSERT_FLOAT_WITHIN(2.0F, 1650.0F, rd.baseline_mv());
+    // an impact that is still ringing when a burst starts is dropped, the next clean one is counted
+    for (int i = 0; i < 10; ++i) feed(2050.0F, false);
+    for (int i = 0; i < 85; ++i) feed(1650.0F, true);
+    for (int i = 0; i < 100; ++i) feed(1650.0F, false);
+    TEST_ASSERT_EQUAL_INT(0, events);
+    for (int i = 0; i < 10; ++i) feed(2050.0F, false);
+    for (int i = 0; i < 100; ++i) feed(1650.0F, false);
+    TEST_ASSERT_EQUAL_INT(1, events);
+}
+
 void test_register_bank_protocol(void) {
     RegisterBank bank({1, 2, 3});
     std::uint8_t buf[64];
@@ -257,6 +285,7 @@ int main(void) {
     RUN_TEST(test_wind_end_to_end_on_a_reflected_path);
     RUN_TEST(test_no_echo_clipping_and_gain_control);
     RUN_TEST(test_rain_detector_impacts);
+    RUN_TEST(test_rain_detector_ignores_burst_window);
     RUN_TEST(test_register_bank_protocol);
     return UNITY_END();
 }

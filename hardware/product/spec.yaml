@@ -16,7 +16,7 @@ active_variant: v1
 envelope:
   outer_diameter: 96.0
   outer_radius: 48.0
-  total_height: 236.3          # y = -12 (bottom of the 40 mm mast clamp) .. 224.3 (UV window boss top incl. both raises)
+  total_height: 235.2          # y = -12 (bottom of the 40 mm mast clamp) .. 223.2 (PTFE dome top, lathe version; CNC 226.1)
   # Everything above the base (pagoda, probe, reflector, struts, crown, dome) is designed in the original frame and
   # placed `above_base_raise` higher: the base bay grew by 15 mm (taller power/PM/main stack, more airflow room).
   above_base_raise: 15.0
@@ -303,6 +303,7 @@ derived:
       - US_*
       - PIEZO_*
       - RAIN_ADC
+      - BL_*
       - Net-*
       CROWN-Power:
       - +5V

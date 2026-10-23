@@ -12,7 +12,7 @@
 //   D3  / GPIO21 = HEAT_PWM   (LEDC PWM driving AO3400A reflector de-icing heater MOSFET)
 //   D4  / GPIO22 = I2C_SDA    (crown STM32 0x2A, BMP585, LSM6DS3, ADS1115, PMSA003I, SHT40, SGP41, SCD41, LTR390,
 //                              TSL25911, GUVB-C31SM, MMC5603NJ)
-//   D5  / GPIO23 = I2C_SCL    (I2C clock, 400 kHz; the crown and PMSA003I devices run at 100 kHz)
+//   D5  / GPIO23 = I2C_SCL    (I2C clock, 100 kHz standard mode for every device)
 //   D6  / GPIO16 = RS485_TX   (UART1 TX -> SP3485 DI)
 //   D7  / GPIO17 = RS485_RX   (UART1 RX <- SP3485 RO)
 //   D8  / GPIO19 = RS485_DE   (UART1 RTS in RS-485 half-duplex mode -> SP3485 DE + /RE)
@@ -65,7 +65,10 @@ constexpr float probe_shunt_ohm = 1.0F;   // main R17 (probe heater return, CO2_
 constexpr float rail5_divider = 2.0F;     // main R24/R25 (+5V electronics rail), 10k/10k
 constexpr float rail_heat_divider = 4.0F; // main R20/R21 (+12V_HEAT heater rail), 30k/10k
 
-constexpr std::uint32_t i2c_speed_hz = 400000;
+// 100 kHz for the whole bus: ~180 pF (12 devices + 260 / 60 mm cables) with 2.2k pull-ups rises in ~335 ns, over
+// the 300 ns fast-mode limit but 3x inside the 1000 ns standard-mode one. Bus load ~35 % (IMU 200 Hz, BMP585 FIFO
+// 100 Hz, crown 4 quads/s, slow sensors).
+constexpr std::uint32_t i2c_speed_hz = 100000;
 
 constexpr bool usb_pin(gpio_num_t pin) {
     return pin == GPIO_NUM_12 || pin == GPIO_NUM_13;

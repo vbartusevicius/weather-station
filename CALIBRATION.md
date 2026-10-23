@@ -46,6 +46,10 @@ a closed cardboard box that fits over the upper station (still-air hood), a refe
    reset pulse and note the address that works.
 4. AS3935 antenna: `crown.as3935_lco_hz` within 482 500–517 500 Hz (500 kHz ± 3.5 %) and `crown.as3935_tun_cap`
    0–15. Outside the range: check the MA5532-AE and the two 470 pF caps; nothing is adjustable in software.
+5. First board only (checklist Q1 / N1 / N6), scope on the crown: the preamp output (U8 pin 1 / PA1) idles at
+   1.65 V and PA3 sits at 1.65 V (VREF into the PGA bias input); TIM8 drives INA / INB with 8 cycles of 40 kHz and
+   353 ns dead time, and **both** UCC27524 inputs are low again within 1 µs of the last cycle (no level held on OUTA
+   during the capture). `/api/config` → crown wind blocks must not carry the `clipped` flag in still air.
 
 ## 3. RS-485 (bench, USB–RS-485 adapter on J1 pins 3 A+ / 4 B−)
 
@@ -59,7 +63,9 @@ s.write(b"STATE?\n"); print(s.readline())       # b'$AM,<uptime>,...*CRC16\r\n'
 Pass: replies within 50 ms, CRC-16/MODBUS over the text between `$` and `*` (inclusive of `$AM...`) matches, nothing is
 sent without a command. For a multi-station bus set `rs485_address` (1–247) per station and prefix commands
 (`7:STATE?`); the reply talker becomes `$AM7`. Fit the 120 Ω terminator R26 only on the two stations at the
-physical bus ends.
+physical bus ends. Every station carries the 390 Ω fail-safe bias (R9 to +3V3 on A, R10 to GND on B), sized for one
+biased node: on a bus with more than two stations remove R9 and R10 (0603, main board top) from every station except
+one, otherwise the parallel bias loads the drivers below the RS-485 output spec (checklist N8).
 
 ## 4. Wind: still-air calibration (bench or indoors, every station)
 
@@ -117,15 +123,33 @@ Two settings: `rain_impact_scale` maps the crown charge-amplifier deviation to t
 2. Report mean and 95th-percentile difference of `environment.temp_c` and `environment.humidity_rh` split by sun / night and by wind
    < 1 m/s. The labyrinth louvers trade ventilation for radiation blocking: daytime still-air errors of +0.5…1.5 °C are
    expected; if larger, investigate the base-bay heat (main / power board) path into the probe.
+   Probe heater (checklist N2, first build): in a freezer / cold night below −8 °C, log `heater.probe_on` with the
+   reference: the SHT40 bias while the probe heater runs must stay < 1 K in light wind (model: ~0.5–1.7 K at
+   h = 25–50 W/m²K, up to ~5 K in dead calm). The heater must be off above about −5 °C (thermostat −7.6 °C, ~2.3 K
+   hysteresis).
 3. Pressure: compare `qnh_hpa` with the nearest airport METAR over a calm day (±0.5 hPa after `altitude_m` is set).
    In wind, adjust `pressure_wind_coef` until the pressure no longer rises with wind speed.
 
 ## 8. UV / light
 
-1. Clear-sky solar noon, UV meter next to the dome: compare `solar.uv_index_guvb` with the reference. If it differs by
-   > 10 %, set `guvb_counts_per_uvi` = current scale × station UVI / reference UVI, where the current scale is
-   `guvb_counts_per_uvi` or, while that is 0, `guvb_factory_b_scale` (both in `/api/config`).
-2. Lux above ~88 klx saturates the TSL25911; the LTR-390 then provides the illuminance (expected behaviour).
+The default cover is the flanged PTFE dome diffuser, lathe or CNC version (`optics_transmission` = 0.11, an estimate:
+PTFE batches differ); with the backup `crown_window` JGS1 disc set `optics_transmission` ≈ 0.92 first. LTR-390 UVI / lux, TSL25911 lux
+and the factory-scaled GUVB UVI are divided by it.
+
+1. Clear-sky solar noon, UV meter next to the station: compare `solar.uv_index_ltr` with the reference and set
+   `optics_transmission` = current value × station UVI / reference UVI (0.02–1). Check the illuminance against a lux
+   meter held level at the same time (expect ±10 %).
+2. Compare `solar.uv_index_guvb` with the reference. If it differs by > 10 %, set `guvb_counts_per_uvi` = current
+   scale × station UVI / reference UVI, where the current scale is `guvb_counts_per_uvi` or, while that is 0,
+   `guvb_factory_b_scale` divided by `optics_transmission` (both in `/api/config`). A field scale includes the cover.
+3. Low sun (dome covers): on a clear morning compare at 0–20° solar elevation; the station must still see the direct
+   beam at sunrise / sunset (the backup flat JGS1 window under its lip loses it below ~19–34°). A dome is not an
+   ideal cosine collector: it over-reads low sun relative to a flat cosine-corrected meter (the CNC hemisphere more
+   than the lathe version, whose flat top is closer to a cosine diffuser). Note the ratio at 10° and
+   20° in the record; it does not matter for UVI (small at low sun) but does for illuminance / irradiance at dawn.
+4. PTFE changes its transmission by a few % around +19 °C (crystal transition); calibrate on a day near the season's
+   typical temperature and note it. With the JGS1 window, lux above ~88 klx saturates the TSL25911 and the LTR-390
+   provides the illuminance; behind the diffuser the TSL25911 covers full sun.
 
 ## 9. Lightning interference (checklist Q4, once per design and after crown changes)
 
@@ -133,12 +157,24 @@ Two settings: `rain_impact_scale` maps the crown charge-amplifier deviation to t
 2. Action `crown_bursts_off` (wind stops), 30 min: note `crown.disturbers` again; action `crown_bursts_on`.
 3. Pass: disturber count with bursts ≤ 2 × without. If much higher, the drive harmonics reach the antenna: add the
    RC low-pass per transducer or increase the AS3935 noise floor / watchdog.
+4. Heater PWM (checklist N10): repeat 1–2 below +2 °C (reflector heater running at 1 kHz PWM, `heater.reflector_w`
+   > 0) or with a `heater_check` pulse: disturbers with the heater on ≤ 2 × off. If much higher, raise the heater
+   MOSFET gate resistor (main, 330 Ω → 4.7 kΩ) to slow the 0.4 A edges.
+5. Rain channel during bursts (checklist N5): in dry weather with bursts on, `crown.rain_events` must not increase
+   (the crown blanks the rain detector for each burst + 1 ms; R24 / C22 = 22 kΩ / 1 nF low-pass).
 
 ## 10. Compass, tilt, CO₂
 
 * Tilt: `wind.tilt_deg` < 2° after mounting (the solver corrects up to ~45°, but the beams then leave the reflector).
 * CO₂: the SCD41 runs automatic self-calibration (needs outdoor air ≥ 4 h per week). After the first week the outdoor
   value should read 410–450 ppm.
+
+## 10a. Enclosure seals (first build of each print batch, checklist N9)
+
+The bayonet glands give only 15 % O-ring squeeze at rest (1.70 mm gland, 2.0 mm ring); a +0.25 mm print / stack error
+leaves ~3 %. With the three bayonets locked, measure each gland height (lug resting on its shelf) with feeler gauges or
+a depth gauge: ≤ 1.75 mm passes. Then a hose test (garden-hose spray, 2 min per side, station upright) with tissue paper
+in the base bay and crown: dry. If a gland is too tall, shim the O-ring seat or switch to a 2.1 mm ring.
 
 ## 11. Record
 
@@ -151,6 +187,6 @@ Two settings: `rain_impact_scale` maps the crown charge-amplifier deviation to t
 | | | 5 `wind_speed_gain`, worst heading error | | | |
 | | | 6 `rain_impact_scale`, `rain_gain` | | | |
 | | | 7 T / RH bias (day / night), QNH offset | | | |
-| | | 8 `guvb_counts_per_uvi` | | | |
+| | | 8 `optics_transmission`, `guvb_counts_per_uvi` | | | |
 | | | 9 disturbers on / off | | | |
 | | | 10 tilt, CO₂ outdoor baseline | | | |
