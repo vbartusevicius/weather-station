@@ -9,12 +9,14 @@
 #include <driver/gpio.h>
 #include <driver/uart.h>
 #include <esp_http_server.h>
+#include <esp_ota_ops.h>
 #include <esp_system.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 
+#include "../calibration/Calibration.hpp"
 #include "../conditioning/Conditioners.hpp"
 #include "../core/Pipeline.hpp"
 #include "../crown/CrownDecode.hpp"
@@ -53,6 +55,10 @@ core::StationConfig g_cfg{};
 core::Pipeline g_pipeline{};
 wind::ImuCompassReading g_orientation{};  // gravity + compass for the ultrasonic north rotation
 bool g_history_loaded = false;
+// Home calibration sessions (/api/calibration, Web UI "Calibrate"); raw magnetometer before its correction
+calibration::Calibrator g_cal;
+core::Vec3 g_mag_raw{};
+bool g_mag_raw_ok = false;
 
 struct Lock {
     Lock() { xSemaphoreTake(g_lock, portMAX_DELAY); }
@@ -75,6 +81,8 @@ firmware::Tsl2591 g_tsl;
 firmware::GuvbC31sm g_guvb;
 firmware::CrownLink g_crown;
 std::string g_rs485_frame;   // latest $AM telemetry frame, answered on STATE?
+rs485::BusStats g_rs485_stats;   // bus activity (Setup -> RS-485)
+std::string g_rs485_last_reply;
 // Still-air wind calibration (`wind_calibrate` action): raw quads are collected for kWindCalS seconds
 constexpr std::uint32_t kWindCalS = 60;
 wind::StillAirCalibrator g_wind_cal;
@@ -166,6 +174,7 @@ void task_slow_i2c(void*) {
         const std::uint32_t t = now_ms();
         core::Controls ctl{};
         float declination = 0.0F;
+        core::StationConfig cal_cfg{};
         float guvb_scale = 0.0F;
         float optics_tr = 1.0F;
         core::Reading<float> sht_t{}, sht_rh{};
@@ -173,6 +182,7 @@ void task_slow_i2c(void*) {
             Lock l;
             ctl = g_derived.controls;
             declination = g_cfg.declination_deg;
+            cal_cfg = g_cfg;
             guvb_scale = g_cfg.guvb_counts_per_uvi;
             optics_tr = g_cfg.optics_transmission;
             sht_t = g_raw.thermo.temp_c;
@@ -252,6 +262,18 @@ void task_slow_i2c(void*) {
             scd_paused ? g_scd.stop() : g_scd.start();
         }
         const bool co2_ok = !scd_paused && g_scd.data_ready() && g_scd.read(co2, st, srh);
+        float frc_ppm = 0.0F;
+        bool frc_req = false;
+        {
+            Lock l;
+            frc_req = g_cal.take_frc_request(frc_ppm);
+        }
+        if (frc_req) {   // applied `co2_fresh_air` calibration: SCD41 forced recalibration (stops / restarts it)
+            int corr = 0;
+            const bool frc_ok = !scd_paused && g_scd.forced_recalibration(frc_ppm, corr);
+            Lock l;
+            g_cal.report_frc(frc_ok, corr);
+        }
         if (tick % 600 == 0 && ctl.ambient_pressure_hpa > 0.0F) {
             g_scd.set_ambient_pressure(ctl.ambient_pressure_hpa);  // in-sensor CO2 pressure compensation
         }
@@ -260,8 +282,8 @@ void task_slow_i2c(void*) {
 
         Lock l;
         if (sht_ok && !ctl.sht_bakeout) {  // the reading right after a heater pulse is not ambient
-            g_raw.thermo.temp_c.set(tc, t);
-            g_raw.thermo.rh_pct.set(rh, t);
+            g_raw.thermo.temp_c.set(tc + cal_cfg.temp_offset_c, t);
+            g_raw.thermo.rh_pct.set(std::min(100.0F, std::max(0.0F, rh + cal_cfg.rh_offset_pct)), t);
         }
         if (pm_ok) {
             g_raw.air.pm1_ug_m3.set(pm.pm1, t);
@@ -277,10 +299,16 @@ void task_slow_i2c(void*) {
             g_raw.air.scd41_temp_c.set(st, t);
         }
         if (mag_ok) {
-            g_orientation.mag_x_ut = mag.x;
-            g_orientation.mag_y_ut = mag.y;
-            g_orientation.mag_z_ut = mag.z;
-            g_orientation.declination_deg = declination;
+            // home-calibrated compass (hard / soft iron, N-mark offset), or a fixed heading that ignores it:
+            // a zero field makes compute_north_heading_deg return the "declination" term alone
+            g_mag_raw = mag;
+            g_mag_raw_ok = true;
+            const bool fixed = cal_cfg.heading_mode == 1;
+            const core::Vec3 m = fixed ? core::Vec3{} : calibration::corrected_mag(mag, cal_cfg);
+            g_orientation.mag_x_ut = m.x;
+            g_orientation.mag_y_ut = m.y;
+            g_orientation.mag_z_ut = m.z;
+            g_orientation.declination_deg = fixed ? cal_cfg.heading_fixed_deg : declination + cal_cfg.heading_offset_deg;
             g_raw.wind.heading_deg.set(wind::UltrasonicWindSolver::compute_north_heading_deg(g_orientation), t);
         }
         if (g_raw.imu.gravity_g.valid) {
@@ -377,6 +405,7 @@ void task_crown(void*) {
                 if (n > 0) g_last_rain = ev[n - 1];
                 for (int i = 0; i < n; ++i) {
                     g_events.rain.push(crown_link::to_rain_impact(ev[i], t_now, g_cfg.rain_impact_scale));
+                    g_cal.add_rain_peak(ev[i].peak_mv);
                 }
             }
             if (status & crown::kStStrikePending) {
@@ -386,6 +415,7 @@ void task_crown(void*) {
                 for (int i = 0; i < n; ++i) {
                     core::LightningStrike ls{};
                     (ev[i].kind == 1 ? g_strike_events : g_disturber_events)++;
+                    (ev[i].kind == 1 ? g_raw.crown.strikes : g_raw.crown.disturbers)++;
                     if (crown_link::to_strike(ev[i], t_now, ls)) {
                         g_events.lightning.push(ls);
                     }
@@ -397,7 +427,10 @@ void task_crown(void*) {
             const bool ok = g_crown.read_diag(dg);
             Lock l;
             g_crown_diag_ok = ok;
-            if (ok) g_crown_diag = dg;
+            if (ok) {
+                g_crown_diag = dg;
+                g_raw.crown.as3935_lco_hz.set(static_cast<std::uint32_t>(dg.lco_hz10) * 10U, now_ms());
+            }
         }
         const std::uint32_t t = now_ms();
         if (t - last_second >= 1000U) {
@@ -480,20 +513,25 @@ void task_rs485(void*) {
             address = g_cfg.rs485_address;
         }
         const auto cmd = rs485::Rs485Protocol::parse_command(line, len, address);
+        {
+            Lock l;
+            g_rs485_stats.note(cmd, line, len, now_ms());
+        }
         len = 0;
+        std::string reply;
         if (cmd == rs485::CommandType::Ping) {
-            const std::string pong = rs485::Rs485Protocol::encode_pong(address);
-            uart_write_bytes(UART_NUM_1, pong.c_str(), pong.size());
+            reply = rs485::Rs485Protocol::encode_pong(address);
         } else if (cmd == rs485::CommandType::RequestState) {
-            std::string frame;
-            {
-                Lock l;
-                frame = g_rs485_frame;
-            }
-            if (!frame.empty()) {
-                uart_write_bytes(UART_NUM_1, frame.c_str(), frame.size());
-            }
-        } else if (cmd == rs485::CommandType::ResetDailyRain) {
+            Lock l;
+            reply = g_rs485_frame;
+        }
+        if (!reply.empty()) {
+            uart_write_bytes(UART_NUM_1, reply.c_str(), reply.size());
+            Lock l;
+            ++g_rs485_stats.replies;
+            g_rs485_last_reply = reply;
+        }
+        if (cmd == rs485::CommandType::ResetDailyRain) {
             Lock l;
             g_pipeline.reset_rain_today();
         } else if (cmd == rs485::CommandType::ForceHeaterCheck) {
@@ -531,6 +569,9 @@ void task_pipeline(void*) {
     for (;;) {
         vTaskDelayUntil(&wake, pdMS_TO_TICKS(1000));
         ++seconds;
+        if (seconds == 60) {
+            esp_ota_mark_app_valid_cancel_rollback();   // 60 s of normal operation: keep this firmware
+        }
         const bool clock_ok = firmware::Network::clock_valid();
         const std::int64_t unix_s = firmware::Network::unix_now();
         std::string state;
@@ -545,6 +586,7 @@ void task_pipeline(void*) {
             g_events = core::EventQueues{};
             g_pipeline.step(raw, ev, g_cfg, d);
             g_derived = d;
+            g_cal.add_sample(calibration::make_sample(raw, d, g_cfg, g_mag_raw_ok ? &g_mag_raw : nullptr), g_cfg);
             // Restore persisted hour/day history once the wall clock is known.
             if (clock_ok && !g_history_loaded) {
                 g_history_loaded = true;
@@ -579,7 +621,7 @@ void task_pipeline(void*) {
             cfg = g_cfg;
         }
         g_net.tick_1s(cfg);
-        if (seconds % 10 == 0) {
+        if (seconds % std::max<std::uint32_t>(1U, cfg.mqtt_interval_s) == 0) {
             g_net.mqtt_publish_state(state);  // Home Assistant keeps its own history
         }
     }
@@ -699,16 +741,68 @@ esp_err_t handle_config_get(httpd_req_t* req) {
     doc["optics_transmission"] = c.optics_transmission;
     doc["guvb_factory_b_scale"] = g_guvb.factory_b_scale();
     doc["as3935_tun_cap"] = c.as3935_tun_cap;
+    doc["heading_mode"] = c.heading_mode;
+    doc["heading_fixed_deg"] = c.heading_fixed_deg;
+    doc["heading_offset_deg"] = c.heading_offset_deg;
+    doc["temp_offset_c"] = c.temp_offset_c;
+    doc["rh_offset_pct"] = c.rh_offset_pct;
+    doc["as3935_indoor"] = c.as3935_indoor;
+    {
+        JsonObject ota = doc["ota"].to<JsonObject>();
+        const esp_partition_t* run = esp_ota_get_running_partition();
+        const esp_partition_t* next = esp_ota_get_next_update_partition(nullptr);
+        ota["version"] = STATION_FW_VERSION;
+        ota["running"] = run != nullptr ? run->label : "?";
+        ota["max_bytes"] = next != nullptr ? next->size : 0U;
+    }
     doc["wifi_ssid"] = c.wifi_ssid;
     doc["mqtt_uri"] = c.mqtt_uri;
+    doc["mqtt_user"] = c.mqtt_user;
+    doc["mqtt_pass_set"] = c.mqtt_pass[0] != '\0';   // passwords are write-only
+    doc["mqtt_topic"] = c.mqtt_topic;
+    doc["ha_discovery"] = c.ha_discovery != 0;
+    doc["mqtt_interval_s"] = c.mqtt_interval_s;
     doc["ha_prefix"] = c.ha_prefix;
+    {
+        JsonObject mq = doc["mqtt"].to<JsonObject>();
+        mq["configured"] = g_net.mqtt_configured();
+        mq["connected"] = g_net.mqtt_connected();
+        mq["state_topic"] = g_net.state_topic();
+        mq["node_id"] = g_net.node_id();
+    }
+    {
+        Lock l;
+        JsonObject rs = doc["rs485"].to<JsonObject>();
+        const rs485::BusStats& b = g_rs485_stats;
+        rs["address"] = c.rs485_address;
+        rs["baud"] = rs485::Rs485Protocol::kDefaultBaudRate;
+        rs["lines"] = b.lines;
+        rs["ignored"] = b.ignored;
+        rs["pings"] = b.pings;
+        rs["states"] = b.states;
+        rs["resets"] = b.resets;
+        rs["heat_checks"] = b.heat_checks;
+        rs["replies"] = b.replies;
+        if (b.last_ms != 0) rs["last_cmd_age_s"] = (now_ms() - b.last_ms) / 1000U;
+        rs["last_cmd"] = b.last_cmd;
+        rs["last_reply"] = g_rs485_last_reply.c_str();
+        rs["frame"] = g_rs485_frame.c_str();
+        JsonArray fields = rs["fields"].to<JsonArray>();
+        for (std::size_t i = 0; i < rs485::Rs485Protocol::kFrameFieldCount; ++i) {
+            const rs485::FrameField& f = rs485::Rs485Protocol::frame_fields()[i];
+            JsonObject o = fields.add<JsonObject>();
+            o["key"] = f.key;
+            o["label"] = f.label;
+            o["unit"] = f.unit;
+        }
+    }
     std::string out;
     serializeJson(doc, out);
     return send_json(req, out);
 }
 
 esp_err_t handle_config_post(httpd_req_t* req) {
-    char body[768]{};
+    char body[1024]{};
     const int n = httpd_req_recv(req, body, sizeof(body) - 1);
     JsonDocument in;
     if (n <= 0 || deserializeJson(in, body, static_cast<std::size_t>(n)) != DeserializationError::Ok) {
@@ -757,15 +851,49 @@ esp_err_t handle_config_post(httpd_req_t* req) {
         const float tr = in["optics_transmission"].as<float>();
         if (tr >= 0.02F && tr <= 1.0F) c.optics_transmission = tr;
     }
+    if (in["heading_mode"].is<int>()) c.heading_mode = in["heading_mode"].as<int>() == 1 ? 1 : 0;
+    if (in["heading_fixed_deg"].is<float>()) c.heading_fixed_deg = calibration::wrap360(in["heading_fixed_deg"].as<float>());
+    if (in["heading_offset_deg"].is<float>()) c.heading_offset_deg = calibration::wrap180(in["heading_offset_deg"].as<float>());
+    if (in["temp_offset_c"].is<float>()) c.temp_offset_c = std::min(3.0F, std::max(-3.0F, in["temp_offset_c"].as<float>()));
+    if (in["rh_offset_pct"].is<float>()) c.rh_offset_pct = std::min(10.0F, std::max(-10.0F, in["rh_offset_pct"].as<float>()));
+    if (in["reset_compass"] | false) {
+        c.mag_offset_ut[0] = c.mag_offset_ut[1] = c.mag_offset_ut[2] = 0.0F;
+        c.mag_scale[0] = c.mag_scale[1] = 1.0F;
+    }
     if (in["as3935_tun_cap"].is<int>()) c.as3935_tun_cap = static_cast<std::uint8_t>(in["as3935_tun_cap"].as<int>() & 0x0F);
     if (in["mqtt_uri"].is<const char*>()) {
         copy(c.mqtt_uri, sizeof(c.mqtt_uri), in["mqtt_uri"].as<const char*>());
         reboot = true;
     }
-    if (in["ha_prefix"].is<const char*>()) copy(c.ha_prefix, sizeof(c.ha_prefix), in["ha_prefix"].as<const char*>());
+    if (in["ha_prefix"].is<const char*>()) {
+        copy(c.ha_prefix, sizeof(c.ha_prefix), in["ha_prefix"].as<const char*>());
+        reboot = true;
+    }
+    if (in["mqtt_user"].is<const char*>()) {
+        copy(c.mqtt_user, sizeof(c.mqtt_user), in["mqtt_user"].as<const char*>());
+        reboot = true;
+    }
+    if (in["mqtt_pass"].is<const char*>()) {   // sent only when the user typed a new one
+        copy(c.mqtt_pass, sizeof(c.mqtt_pass), in["mqtt_pass"].as<const char*>());
+        reboot = true;
+    }
+    if (in["mqtt_topic"].is<const char*>()) {
+        copy(c.mqtt_topic, sizeof(c.mqtt_topic), in["mqtt_topic"].as<const char*>());
+        reboot = true;
+    }
+    if (in["ha_discovery"].is<bool>()) {
+        c.ha_discovery = in["ha_discovery"].as<bool>() ? 1 : 0;
+        reboot = true;
+    }
+    if (in["mqtt_interval_s"].is<int>()) {
+        c.mqtt_interval_s = static_cast<std::uint16_t>(std::min(3600, std::max(1, in["mqtt_interval_s"].as<int>())));
+    }
+    if (in["as3935_indoor"].is<bool>()) c.as3935_indoor = in["as3935_indoor"].as<bool>();
     if (in["wifi_ssid"].is<const char*>()) {
         copy(c.wifi_ssid, sizeof(c.wifi_ssid), in["wifi_ssid"].as<const char*>());
-        copy(c.wifi_pass, sizeof(c.wifi_pass), in["wifi_pass"] | "");
+        if (in["wifi_pass"].is<const char*>()) {   // absent = keep the stored password
+            copy(c.wifi_pass, sizeof(c.wifi_pass), in["wifi_pass"].as<const char*>());
+        }
         reboot = true;
     }
     {
@@ -824,6 +952,76 @@ esp_err_t handle_action(httpd_req_t* req) {
     return send_json(req, std::string("{\"ok\":true,\"action\":\"") + action + "\"}");
 }
 
+// GET /api/calibration: home-calibration session status; POST {"cmd": start|finish|apply|cancel|clear_runs, ...}
+esp_err_t handle_calibration(httpd_req_t* req) {
+    char body[256]{};
+    if (req->method == HTTP_POST) {
+        const int n = httpd_req_recv(req, body, sizeof(body) - 1);
+        if (n <= 0) return send_json(req, "{\"ok\":false,\"error\":\"empty body\"}");
+    }
+    const std::int64_t unix_s = firmware::Network::clock_valid() ? firmware::Network::unix_now() : 0;
+    bool changed = false;
+    core::StationConfig c{};
+    std::string out;
+    {
+        Lock l;
+        out = g_cal.handle(body, g_cfg, unix_s, now_ms(), changed);
+        c = g_cfg;
+    }
+    if (changed) g_storage.save_config(c);
+    return send_json(req, out);
+}
+
+// POST /api/firmware (body = station firmware.bin): writes the inactive OTA slot, verifies the image (esp_ota_end
+// checks the header and SHA-256), boots it and reboots. With rollback enabled the new image must reach
+// mark_app_valid() (task_pipeline, after 60 s of normal operation) or the bootloader returns to the old one.
+esp_err_t handle_firmware(httpd_req_t* req) {
+    const esp_partition_t* part = esp_ota_get_next_update_partition(nullptr);
+    const std::size_t len = req->content_len;
+    if (part == nullptr || len < 1024 || len > part->size) {
+        return send_json(req, "{\"ok\":false,\"error\":\"image size does not fit the OTA slot\"}");
+    }
+    esp_ota_handle_t ota = 0;
+    if (esp_ota_begin(part, len, &ota) != ESP_OK) {
+        return send_json(req, "{\"ok\":false,\"error\":\"cannot start the update\"}");
+    }
+    static char buf[4096];
+    std::size_t got = 0;
+    bool first = true;
+    while (got < len) {
+        const int r = httpd_req_recv(req, buf, std::min(sizeof(buf), len - got));
+        if (r == HTTPD_SOCK_ERR_TIMEOUT) continue;
+        if (r <= 0) {
+            esp_ota_abort(ota);
+            return ESP_FAIL;
+        }
+        if (first && static_cast<std::uint8_t>(buf[0]) != 0xE9) {   // ESP image magic: refuse crown / random files
+            esp_ota_abort(ota);
+            return send_json(req, "{\"ok\":false,\"error\":\"not an ESP32 firmware image (use the station firmware.bin)\"}");
+        }
+        first = false;
+        if (esp_ota_write(ota, buf, static_cast<std::size_t>(r)) != ESP_OK) {
+            esp_ota_abort(ota);
+            return send_json(req, "{\"ok\":false,\"error\":\"flash write failed\"}");
+        }
+        got += static_cast<std::size_t>(r);
+    }
+    if (esp_ota_end(ota) != ESP_OK) {
+        return send_json(req, "{\"ok\":false,\"error\":\"image check failed (wrong or damaged file)\"}");
+    }
+    if (esp_ota_set_boot_partition(part) != ESP_OK) {
+        return send_json(req, "{\"ok\":false,\"error\":\"cannot select the new image\"}");
+    }
+    {
+        Lock l;
+        g_storage.save_history(g_pipeline.history());
+    }
+    send_json(req, "{\"ok\":true,\"reboot\":true}");
+    vTaskDelay(pdMS_TO_TICKS(500));
+    esp_restart();
+    return ESP_OK;
+}
+
 // POST /api/crown/firmware (body = crown .bin for 0x08000000): reflash the crown STM32 through its ROM bootloader.
 esp_err_t handle_crown_firmware(httpd_req_t* req) {
     const std::size_t len = req->content_len;
@@ -870,7 +1068,7 @@ esp_err_t handle_ws(httpd_req_t* req) {
 
 void start_http() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.max_uri_handlers = 13;
+    config.max_uri_handlers = 15;
     config.stack_size = 8192;
     if (httpd_start(&g_http, &config) != ESP_OK) {
         return;
@@ -886,6 +1084,9 @@ void start_http() {
         {"/api/config", HTTP_POST, handle_config_post, nullptr, false, false, nullptr},
         {"/api/action", HTTP_POST, handle_action, nullptr, false, false, nullptr},
         {"/api/crown/firmware", HTTP_POST, handle_crown_firmware, nullptr, false, false, nullptr},
+        {"/api/firmware", HTTP_POST, handle_firmware, nullptr, false, false, nullptr},
+        {"/api/calibration", HTTP_GET, handle_calibration, nullptr, false, false, nullptr},
+        {"/api/calibration", HTTP_POST, handle_calibration, nullptr, false, false, nullptr},
         {"/ws", HTTP_GET, handle_ws, nullptr, true, false, nullptr},
     };
     for (const auto& u : uris) {

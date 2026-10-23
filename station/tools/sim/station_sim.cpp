@@ -8,6 +8,8 @@
 //   history <tier> [metrics]     reply = /api/history JSON (tier = minute|hour|day)
 //   config <lat> <lon> <alt_m>   set the location, reply {"ok":true}
 //   action reset_rain            reply {"ok":true}
+//   rs485                        reply = {"frame": "<current $AM frame>", "fields": [{key, label, unit}, ...]}
+//   cal <json>                   home calibration command (/api/calibration POST body; "{}" = status), reply = status
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -17,8 +19,10 @@
 #include <string>
 
 #include "astro/Astronomy.hpp"
+#include "calibration/Calibration.hpp"
 #include "core/Pipeline.hpp"
 #include "rain/HapticRain.hpp"
+#include "rs485/Rs485Protocol.hpp"
 #include "telemetry/HomeAssistantMqtt.hpp"
 
 using namespace station;
@@ -197,6 +201,26 @@ public:
         mono_ms_ += static_cast<std::uint32_t>(dt) * 1000U;
         fill_raw(dt);
         pipeline_.step(raw_, events_, cfg_, derived_);
+        // magnetometer: Earth's field (heading 20 deg, 17 / -47 uT) + a 6 / -4 uT hard-iron offset; the station
+        // "turns" 8 deg/s while a compass spin runs so the procedure can be exercised in the browser
+        if (cal_.running() && cal_.kind() == calibration::Kind::Compass) spin_deg_ += 8.0 * dt;
+        const double h = (20.0 + spin_deg_) * kPi / 180.0;
+        const core::Vec3 mag{static_cast<float>(6.0 + 17.0 * std::sin(h)), static_cast<float>(-4.0 + 17.0 * std::cos(h)), -47.0F};
+        cal_.add_sample(calibration::make_sample(raw_, derived_, cfg_, &mag), cfg_);
+    }
+    std::string rs485_frame() const {
+        std::string f = rs485::Rs485Protocol::encode_telemetry_frame(derived_, 0);
+        while (!f.empty() && (f.back() == '\n' || f.back() == '\r')) f.pop_back();
+        std::string out = std::string("{\"frame\":\"") + f + "\",\"fields\":[";
+        for (std::size_t i = 0; i < rs485::Rs485Protocol::kFrameFieldCount; ++i) {
+            const rs485::FrameField& ff = rs485::Rs485Protocol::frame_fields()[i];
+            out += std::string(i ? "," : "") + "{\"key\":\"" + ff.key + "\",\"label\":\"" + ff.label + "\",\"unit\":\"" + ff.unit + "\"}";
+        }
+        return out + "]}";
+    }
+    std::string calibration(const std::string& body) {
+        bool changed = false;
+        return cal_.handle(body.c_str(), cfg_, t_, mono_ms_, changed);
     }
 
     std::string state() const {
@@ -262,6 +286,7 @@ private:
         w.samples = 4;
         raw_.wind.second.set(w, now);
         raw_.wind.tilt_deg.set(0.38F, now);
+        raw_.wind.heading_deg.set(static_cast<float>(std::fmod(20.0 + spin_deg_, 360.0)), now);
 
         // ---- optics from the real sun position + Kasten-Czeplak cloud attenuation ----
         const auto sun = astro::Astronomy::sun(t, cfg_.latitude_deg, cfg_.longitude_deg);
@@ -277,7 +302,7 @@ private:
             const double cz = std::sin(std::max(0.0F, sun.altitude_deg) * kPi / 180.0);
             uvi = 12.5 * std::pow(cz, 2.42) * (1.0 - 0.56 * std::pow(cloud / 100.0, 2.0));
         }
-        if (lux < 80000.0) {
+        if (lux * cfg_.optics_transmission < 80000.0) {   // behind the cover (PTFE 0.11: never saturates)
             raw_.optical.tsl_lux.set(static_cast<float>(lux), now);
             raw_.optical.tsl_nir_ratio.set(static_cast<float>(cloud > 70 ? 0.22 : 0.27), now);
         } else {
@@ -323,6 +348,7 @@ private:
             v.dominant_hz = 24.0F;
         }
         raw_.imu.vibration.set(v, now);
+        raw_.crown.as3935_lco_hz.set(500600U, now);   // crown diagnostics: tuned lightning antenna
         raw_.imu.gravity_g.set({0.0F, 0.0066F, 1.0F}, now);
 
         // ---- power / heater ----
@@ -344,6 +370,7 @@ private:
         }
         while (drop_acc_ >= 1.0) {
             events_.rain.push({now, 626, 206, 220});
+            cal_.add_rain_peak(626);
             drop_acc_ -= 1.0;
         }
         while (hail_acc_ >= 1.0) {
@@ -385,6 +412,8 @@ private:
     core::DerivedState derived_{};
     std::int64_t t_{0};
     std::uint32_t mono_ms_{0};
+    calibration::Calibrator cal_{};
+    double spin_deg_{0.0};
     float drop_mm_{0.0F};
     float hail_mm_{0.0F};
     double drop_acc_{0.0}, hail_acc_{0.0}, strike_acc_{0.0};
@@ -426,6 +455,12 @@ int main() {
                 sim.set_location(lat, lon, alt);
                 reply = "{\"ok\":true}";
             }
+        } else if (cmd == "rs485") {
+            reply = sim.rs485_frame();
+        } else if (cmd == "cal") {
+            std::string body;
+            std::getline(in, body);
+            reply = sim.calibration(body);
         } else if (cmd == "action") {
             std::string a;
             in >> a;

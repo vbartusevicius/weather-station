@@ -7,6 +7,7 @@
     python3 hardware/scripts/layout.py <board> components
 """
 
+import itertools
 import json
 import math
 import os
@@ -312,11 +313,22 @@ def apply_frame(board, plan):
         txt.SetLayer(lyr)
         txt.SetText(str(lbl["text"]))
         txt.SetPosition(pos(lbl["x"], lbl["y"]))
-        txt.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(SILK_TEXT_MM), pcbnew.FromMM(SILK_TEXT_MM)))
-        txt.SetTextThickness(pcbnew.FromMM(SILK_STROKE_MM))
+        size = lbl.get("size", SILK_TEXT_MM)   # optional larger marking text (mm)
+        txt.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(size), pcbnew.FromMM(size)))
+        txt.SetTextThickness(pcbnew.FromMM(max(SILK_STROKE_MM, 0.15 * size)))
         if lyr == pcbnew.B_SilkS:
             txt.SetMirrored(True)
         board.Add(txt)
+    for line in frame.get("silk_lines", []):   # polylines, e.g. orientation arrows: {points: [[x, y], ...], width}
+        lyr = pcbnew.B_SilkS if line.get("layer") == "B.SilkS" else pcbnew.F_SilkS
+        pts = line["points"]
+        for a, b in itertools.pairwise(pts):
+            seg = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
+            seg.SetLayer(lyr)
+            seg.SetWidth(pcbnew.FromMM(line.get("width", 0.25)))
+            seg.SetStart(pos(*a))
+            seg.SetEnd(pos(*b))
+            board.Add(seg)
     for layer in frame.get("plane_layers", []):
         board.SetLayerType(LAYERS[layer], pcbnew.LT_POWER)
     all_copper = [LAYERS[n] for n in LAYERS if board.IsLayerEnabled(LAYERS[n])]

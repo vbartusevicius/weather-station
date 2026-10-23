@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <functional>
 #include <string>
 #include <vector>
 #if __has_include(<unity.h>)
@@ -29,6 +31,7 @@
 #include "../../../src/airquality/AirQuality.hpp"
 #include "../../../src/airquality/GasIndex.hpp"
 #include "../../../src/astro/Astronomy.hpp"
+#include "../../../src/calibration/Calibration.hpp"
 #include "../../../src/conditioning/Conditioners.hpp"
 #include "../../../src/core/Pipeline.hpp"
 #include "../../../src/crown/CrownDecode.hpp"
@@ -37,6 +40,7 @@
 #include "../../../src/firmware/ButtonController.hpp"
 #include "../../../src/heater/DeIcingHeater.hpp"
 #include "../../../src/history/TieredHistory.hpp"
+#include "../../../src/quality/Quality.hpp"
 #include "../../../src/rain/HapticRain.hpp"
 #include "../../../src/rs485/Rs485Protocol.hpp"
 #include "../../../src/telemetry/HomeAssistantMqtt.hpp"
@@ -708,7 +712,7 @@ void test_rs485_command_parsing(void) {
     DerivedState d{};
     d.uptime_s = 120;
     const std::string frame = Rs485Protocol::encode_telemetry_frame(d);
-    TEST_ASSERT_NOT_NULL(std::strstr(frame.c_str(), "$AM,120,,,0.00,0.00,,,,,*"));
+    TEST_ASSERT_NOT_NULL(std::strstr(frame.c_str(), "$AM,120,,,0.00,0.00,,,,,,,,,,,,,,,,0.00,0.0,,,,,,,0,,,,3*"));   // counters + health always present
 }
 
 void test_sgp41_gas_index_algorithm_blackout_baseline_event_and_state(void) {
@@ -1087,6 +1091,362 @@ void test_optics_cover_transmission(void) {
     TEST_ASSERT_FLOAT_WITHIN(1e-6F, 3.0F, station::core::cover_corrected(3.0F, 1.5F));     // clamped to 1
 }
 
+// Home calibration (src/calibration): the math against known answers, and each session from start to Apply.
+void test_home_calibration_math(void) {
+    namespace cal = station::calibration;
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, -10.0F, cal::wrap180(350.0F));
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 350.0F, cal::wrap360(-10.0F));
+    const float across_north[] = {350.0F, 10.0F, 355.0F, 5.0F};
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 0.0F, cal::wrap180(cal::circular_mean_deg(across_north, 4)));
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 0.0F, cal::initial_bearing_deg(54.0, 25.0, 55.0, 25.0));
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 90.0F, cal::initial_bearing_deg(0.0, 10.0, 0.0, 11.0));
+    TEST_ASSERT_FLOAT_WITHIN(0.5F, 270.0F, cal::initial_bearing_deg(54.6872, 25.2797, 54.6872, 25.20));
+    // the QNH inverse reproduces the pipeline reduction
+    const float qnh = MetCalculator::sea_level_pressure_hpa(998.4F, 12.0F, 112.0F);
+    TEST_ASSERT_FLOAT_WITHIN(0.2F, 112.0F, cal::elevation_from_qnh_m(998.4F, qnh, 12.0F));
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 75.47F, cal::salt_rh_pct(20.0F));
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 75.38F, cal::salt_rh_pct(22.5F));
+    // drops: 2 mm terminal velocity ~6.5 m/s; a long fall reaches the HapticRain terminal-velocity amplitude
+    TEST_ASSERT_FLOAT_WITHIN(0.1F, 6.55F, cal::drop_terminal_velocity_m_s(2.0F));
+    TEST_ASSERT_FLOAT_WITHIN(5.0F, 1000.0F, cal::expected_drop_mv(18.5F, 40.0F));
+    const float e15 = cal::expected_drop_mv(50.0F, 1.5F);   // 20 drops / ml from 1.5 m
+    TEST_ASSERT_TRUE(e15 > 550.0F && e15 < 750.0F);
+    TEST_ASSERT_TRUE(cal::expected_drop_mv(50.0F, 3.0F) > e15);
+    // compass: shifted, squashed horizontal circle, two turns
+    float x[180], y[180];
+    for (int i = 0; i < 180; ++i) {
+        const float a = 4.0F * 3.14159265F * static_cast<float>(i) / 180.0F;
+        x[i] = 12.0F + 20.0F * std::cos(a);
+        y[i] = -7.0F + 16.0F * std::sin(a);
+    }
+    const cal::CompassFit f = cal::fit_compass(x, y, 180);
+    TEST_ASSERT_TRUE(f.ok);
+    TEST_ASSERT_FLOAT_WITHIN(0.1F, 12.0F, f.offset_x);
+    TEST_ASSERT_FLOAT_WITHIN(0.1F, -7.0F, f.offset_y);
+    TEST_ASSERT_FLOAT_WITHIN(0.1F, 20.0F * f.scale_x, 16.0F * f.scale_y);
+    TEST_ASSERT_EQUAL_INT(12, f.coverage_bins);
+    TEST_ASSERT_FALSE(cal::fit_compass(x, y, 45).ok);   // a quarter turn per 45 samples: not enough directions
+}
+
+void test_home_calibration_sessions(void) {
+    namespace cal = station::calibration;
+    StationConfig cfg{};
+    cal::Calibrator c;
+    std::uint32_t t = 1000;
+    auto feed = [&](int n, const std::function<void(cal::Sample&, int)>& fill) {
+        for (int i = 0; i < n; ++i) {
+            cal::Sample s{};
+            s.t_ms = t;
+            fill(s, i);
+            c.add_sample(s, cfg);
+            t += 1000;
+        }
+    };
+    // compass spin -> offsets applied + date stamp
+    c.start(cal::Kind::Compass, 0, 0, 0, cfg, t);
+    feed(91, [](cal::Sample& s, int i) {
+        const float a = 4.0F * 3.14159265F * static_cast<float>(i) / 90.0F;
+        s.mag_ok = true;
+        s.mag_ut = {30.0F + 18.0F * std::cos(a), 5.0F + 18.0F * std::sin(a), -45.0F};
+    });
+    TEST_ASSERT_TRUE(c.result_ok());
+    TEST_ASSERT_TRUE(c.apply(cfg, 1700000000));
+    TEST_ASSERT_FLOAT_WITHIN(0.2F, 30.0F, cfg.mag_offset_ut[0]);
+    TEST_ASSERT_EQUAL_UINT32(1700000000U, cfg.cal_unix[static_cast<int>(cal::Kind::Compass)]);
+    TEST_ASSERT_FALSE(c.apply(cfg, 1700000001));   // only once
+    const station::core::Vec3 m = cal::corrected_mag({48.0F, 5.0F, -45.0F}, cfg);
+    TEST_ASSERT_FLOAT_WITHIN(0.3F, 18.0F, m.x);
+
+    // north reference: compass says 350, the N mark is at 10 -> +20 deg; fixed heading skips the magnetometer
+    c.start(cal::Kind::Heading, 10.0F, 0, 0, cfg, t);
+    feed(16, [](cal::Sample& s, int) { s.heading_ok = true; s.heading_deg = 350.0F; });
+    TEST_ASSERT_TRUE(c.apply(cfg, 1));
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 20.0F, cfg.heading_offset_deg);
+    bool changed = false;
+    const std::string st = c.handle(R"({"cmd":"start","kind":"heading","p1":123.5,"fixed":true})", cfg, 2, t, changed);
+    TEST_ASSERT_TRUE(st.find("\"state\":\"done\"") != std::string::npos);
+    c.handle(R"({"cmd":"apply"})", cfg, 2, t, changed);
+    TEST_ASSERT_TRUE(changed);
+    TEST_ASSERT_EQUAL_UINT8(1, cfg.heading_mode);
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 123.5F, cfg.heading_fixed_deg);
+
+    // car runs: 10 m/s GPS both ways, station 9 and 11 m/s (tail / head wind) -> gain 1.0 after two runs
+    for (float station_raw : {9.0F, 11.0F}) {
+        c.start(cal::Kind::CarRun, 0, 0, 0, cfg, t);
+        feed(40, [station_raw](cal::Sample& s, int) { s.wind_ok = true; s.wind_raw_m_s = station_raw; });
+        TEST_ASSERT_EQUAL(station_raw == 9.0F ? false : true, c.finish(10.0F, cfg, t));
+    }
+    TEST_ASSERT_TRUE(c.apply(cfg, 3));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 1.0F, cfg.wind_speed_gain);
+
+    // drop test: impacts at half the expected amplitude -> impact scale 2
+    c.start(cal::Kind::DropTest, 20.0F, 1.5F, 0, cfg, t);
+    const float expected = cal::expected_drop_mv(50.0F, 1.5F);
+    for (int i = 0; i < 12; ++i) c.add_rain_peak(static_cast<std::uint16_t>(std::lround(expected / 2.0F + (i % 3) - 1)));
+    TEST_ASSERT_TRUE(c.finish(0.0F, cfg, t));
+    TEST_ASSERT_TRUE(c.apply(cfg, 4));
+    TEST_ASSERT_FLOAT_WITHIN(0.02F, 2.0F, cfg.rain_impact_scale);
+
+    // rain gauge: the station counted 4 mm (with one reset in between), the container 5 mm -> gain x1.25
+    c.start(cal::Kind::RainGauge, 0, 0, 0, cfg, t);
+    feed(60, [](cal::Sample& s, int i) {
+        s.rain_ok = true;
+        s.rain_total_mm = i < 30 ? 0.1F * static_cast<float>(i) : 0.1F * static_cast<float>(i - 30);
+    });
+    TEST_ASSERT_TRUE(c.finish(5.0F, cfg, t));
+    TEST_ASSERT_TRUE(c.apply(cfg, 5));
+    TEST_ASSERT_FLOAT_WITHIN(0.02F, 5.0F / 5.8F, cfg.rain_gain);
+
+    // airport QNH -> elevation
+    const float p_stn = 1000.0F;
+    const float q = MetCalculator::sea_level_pressure_hpa(p_stn, 10.0F, 250.0F);
+    c.start(cal::Kind::Pressure, q, 0, 0, cfg, t);
+    feed(61, [p_stn](cal::Sample& s, int) { s.pressure_ok = s.temp_ok = true; s.station_hpa = p_stn; s.temp_c = 10.0F; });
+    TEST_ASSERT_TRUE(c.apply(cfg, 6));
+    TEST_ASSERT_FLOAT_WITHIN(0.3F, 250.0F, cfg.altitude_m);
+
+    // known elevation: map ground 101.5 m + 9 m mast/roof, no measurement needed
+    c.start(cal::Kind::Pressure, 101.5F, 1.0F, 9.0F, cfg, t);
+    TEST_ASSERT_TRUE(c.apply(cfg, 6));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 110.5F, cfg.altitude_m);
+
+    // clear sky at 40 deg sun with an 0.13 cover; clouds (light varying) are refused
+    const float clear_lux = station::astro::Astronomy::clear_sky_ghi_w_m2(40.0F) * cal::kLuxPerWm2;
+    c.start(cal::Kind::ClearSky, 0, 0, 0, cfg, t);
+    feed(121, [clear_lux](cal::Sample& s, int) { s.lux_ok = s.sun_ok = true; s.lux_raw = 0.13F * clear_lux; s.sun_alt_deg = 40.0F; });
+    TEST_ASSERT_TRUE(c.apply(cfg, 7));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 0.13F, cfg.optics_transmission);
+    c.start(cal::Kind::ClearSky, 0, 0, 0, cfg, t);
+    feed(121, [clear_lux](cal::Sample& s, int i) { s.lux_ok = s.sun_ok = true; s.lux_raw = (i % 20 < 10 ? 0.13F : 0.06F) * clear_lux; s.sun_alt_deg = 40.0F; });
+    TEST_ASSERT_FALSE(c.result_ok());
+
+    // UV self-reference: LTR-390 sees 0.65 UVI behind the 0.13 cover = UVI 5; GUVB 40 counts -> 8 counts per UVI
+    c.start(cal::Kind::UvReference, 0, 1.0F, 0, cfg, t);
+    feed(61, [](cal::Sample& s, int) { s.guvb_ok = s.ltr_uvi_ok = true; s.guvb_counts = 40.0F; s.ltr_uvi_raw = 0.65F; });
+    TEST_ASSERT_TRUE(c.apply(cfg, 8));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 8.0F, cfg.guvb_counts_per_uvi);
+
+    // salt jar 73.5 % at 20 C -> +1.97 %, applied on top of the sensor reading; still-drifting RH is refused
+    c.start(cal::Kind::SaltRh, 0, 0, 0, cfg, t);
+    feed(601, [](cal::Sample& s, int) { s.rh_ok = s.temp_ok = true; s.rh_pct = 73.5F; s.temp_c = 20.0F; });
+    TEST_ASSERT_TRUE(c.apply(cfg, 8));
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 1.97F, cfg.rh_offset_pct);
+    c.start(cal::Kind::SaltRh, 0, 0, 0, cfg, t);
+    feed(601, [](cal::Sample& s, int i) { s.rh_ok = s.temp_ok = true; s.rh_pct = 70.0F + 0.01F * i; s.temp_c = 20.0F; });
+    TEST_ASSERT_FALSE(c.result_ok());
+
+    // ice point 0.3 C -> -0.3 C
+    c.start(cal::Kind::IcePoint, 0, 0, 0, cfg, t);
+    feed(301, [](cal::Sample& s, int) { s.temp_ok = true; s.temp_c = 0.3F; });
+    TEST_ASSERT_TRUE(c.apply(cfg, 9));
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, -0.3F, cfg.temp_offset_c);
+
+    // fresh air: Apply hands a 425 ppm FRC to the firmware once
+    c.start(cal::Kind::Co2FreshAir, 0, 0, 0, cfg, t);
+    feed(181, [](cal::Sample& s, int i) { s.co2_ok = true; s.co2_ppm = 440.0F + static_cast<float>(i % 5); });
+    float ppm = 0.0F;
+    TEST_ASSERT_FALSE(c.take_frc_request(ppm));
+    TEST_ASSERT_TRUE(c.apply(cfg, 10));
+    TEST_ASSERT_TRUE(c.take_frc_request(ppm));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 425.0F, ppm);
+    TEST_ASSERT_FALSE(c.take_frc_request(ppm));
+
+    // invalid input is refused without starting; status JSON is well-formed
+    const std::string bad = c.handle(R"({"cmd":"start","kind":"pressure","p1":29.9})", cfg, 11, t, changed);
+    JsonDocument doc;
+    TEST_ASSERT_TRUE(deserializeJson(doc, bad) == DeserializationError::Ok);
+    TEST_ASSERT_EQUAL_STRING("done", doc["state"].as<const char*>());
+    TEST_ASSERT_FALSE(doc["ok"].as<bool>());
+    TEST_ASSERT_TRUE(doc["stamps"]["compass"].as<std::uint32_t>() == 1700000000U);
+}
+
+void test_home_calibration_sample_undoes_corrections(void) {
+    namespace cal = station::calibration;
+    StationConfig cfg{};
+    cfg.temp_offset_c = 0.5F;
+    cfg.rh_offset_pct = -2.0F;
+    cfg.optics_transmission = 0.1F;
+    cfg.wind_speed_gain = 1.25F;
+    station::core::RawState raw{};
+    raw.now_ms = 5000;
+    raw.thermo.temp_c.set(20.5F, 5000);
+    raw.thermo.rh_pct.set(48.0F, 5000);
+    raw.optical.tsl_lux.set(50000.0F, 5000);
+    station::core::WindSecond w{};
+    w.speed_mean_m_s = 5.0F;
+    raw.wind.second.set(w, 5000);
+    station::core::DerivedState d{};
+    const station::core::Vec3 mag{10.0F, 0.0F, -40.0F};
+    const cal::Sample s = cal::make_sample(raw, d, cfg, &mag);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 20.0F, s.temp_c);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 50.0F, s.rh_pct);
+    TEST_ASSERT_FLOAT_WITHIN(1e-2F, 5000.0F, s.lux_raw);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 4.0F, s.wind_raw_m_s);
+    TEST_ASSERT_TRUE(s.heading_ok);
+    TEST_ASSERT_FLOAT_WITHIN(0.5F, 90.0F, s.heading_deg);   // field along +x: same convention as the wind solver
+}
+
+// Data quality (src/quality): range / step / persistence / consistency flags and the station health list.
+void test_quality_flags_and_station_health(void) {
+    using station::core::QcFlag;
+    using station::core::QcMetric;
+    using station::core::HealthStatus;
+    station::quality::QualityControl qc;
+    StationConfig cfg{};
+    station::core::RawState raw{};
+    auto flag = [](const station::core::DerivedState& d, QcMetric m) { return d.quality.qc[static_cast<int>(m)].flag; };
+    auto run = [&](int seconds, const std::function<void(station::core::DerivedState&, int)>& fill) {
+        station::core::DerivedState d{};
+        for (int i = 0; i < seconds; ++i) {
+            d = station::core::DerivedState{};
+            raw.now_ms += 1000;
+            fill(d, i);
+            qc.step(raw, cfg, d);
+        }
+        return d;
+    };
+    // missing -> missing; out of range -> fail
+    auto d = run(1, [](station::core::DerivedState&, int) {});
+    TEST_ASSERT_TRUE(flag(d, QcMetric::TempC) == QcFlag::Missing);
+    d = run(1, [](station::core::DerivedState& x, int) { x.thermo.temp_c.set(80.0F); });
+    TEST_ASSERT_TRUE(flag(d, QcMetric::TempC) == QcFlag::Fail);
+    // a 5 K jump within a minute is a spike, held suspect for 10 min, then good again
+    d = run(130, [](station::core::DerivedState& x, int i) { x.thermo.temp_c.set(i < 70 ? 10.0F + 0.001F * i : 15.0F); });
+    TEST_ASSERT_TRUE(flag(d, QcMetric::TempC) == QcFlag::Suspect);
+    d = run(700, [](station::core::DerivedState& x, int i) { x.thermo.temp_c.set(15.0F + 0.001F * (i % 50)); });
+    TEST_ASSERT_TRUE(flag(d, QcMetric::TempC) == QcFlag::Good);
+    // station pressure frozen for 3 h -> stuck; a slow real drift stays good
+    d = run(3 * 3600 + 5, [](station::core::DerivedState& x, int) { x.baro.station_hpa.set(1001.30F); });
+    TEST_ASSERT_TRUE(flag(d, QcMetric::PressureHpa) == QcFlag::Suspect);
+    TEST_ASSERT_EQUAL_STRING("no change for hours (stuck)", d.quality.qc[static_cast<int>(QcMetric::PressureHpa)].reason);
+    d = run(3 * 3600 + 5, [](station::core::DerivedState& x, int i) { x.baro.station_hpa.set(1001.30F + 0.0001F * i); });
+    TEST_ASSERT_TRUE(flag(d, QcMetric::PressureHpa) == QcFlag::Good);
+    // consistency: sunlight at night, irradiance far above clear sky, rain at 30 % RH, CO2 below background
+    d = run(2, [](station::core::DerivedState& x, int) {
+        x.astro.location_set = true;
+        x.astro.sun_alt_deg.set(-12.0F);
+        x.solar.irradiance_w_m2.set(80.0F);
+        x.solar.clear_sky_w_m2.set(0.0F);
+        x.rain.sensor_ok = true;
+        x.rain.rate_mm_h = 3.0F;
+        x.thermo.rh_pct.set(30.0F);
+        x.air.co2_ppm.set(320.0F);
+    });
+    TEST_ASSERT_TRUE(flag(d, QcMetric::Irradiance) == QcFlag::Suspect);
+    TEST_ASSERT_TRUE(flag(d, QcMetric::RainRate) == QcFlag::Suspect);
+    TEST_ASSERT_TRUE(flag(d, QcMetric::Co2) == QcFlag::Suspect);
+    d = run(1, [](station::core::DerivedState& x, int) {
+        x.solar.irradiance_w_m2.set(1400.0F);
+        x.solar.clear_sky_w_m2.set(700.0F);
+    });
+    TEST_ASSERT_TRUE(flag(d, QcMetric::Irradiance) == QcFlag::Suspect);
+
+    // health: nothing connected -> failures; a healthy supply and rails -> ok entries
+    auto entry = [](const station::core::DerivedState& x, const char* id) -> const station::core::HealthEntry* {
+        for (int i = 0; i < x.quality.n_health; ++i) {
+            if (std::strcmp(x.quality.health[i].id, id) == 0) return &x.quality.health[i];
+        }
+        return nullptr;
+    };
+    d = run(1, [](station::core::DerivedState&, int) {});
+    TEST_ASSERT_TRUE(d.quality.summary == HealthStatus::Fail);
+    TEST_ASSERT_NOT_NULL(entry(d, "wind"));
+    TEST_ASSERT_TRUE(entry(d, "wind")->status == HealthStatus::Fail);
+    d = run(1, [](station::core::DerivedState& x, int) {
+        x.heater.vin_v.set(11.2F);
+        x.heater.rail_logic_v.set(5.02F);
+        x.heater.rail_heat_v.set(10.1F);
+    });
+    TEST_ASSERT_TRUE(entry(d, "supply")->status == HealthStatus::Warn);
+    TEST_ASSERT_EQUAL_STRING("low input voltage", entry(d, "supply")->detail);
+    TEST_ASSERT_EQUAL_STRING("", entry(d, "rail_5v")->detail);
+    TEST_ASSERT_TRUE(entry(d, "rail_5v")->status == HealthStatus::Ok);
+    TEST_ASSERT_TRUE(entry(d, "rail_heat")->status == HealthStatus::Ok);   // input minus ~1 V below 13.5 V
+    cfg.heading_mode = 1;
+    d = run(1, [](station::core::DerivedState&, int) {});
+    TEST_ASSERT_TRUE(entry(d, "compass")->status == HealthStatus::Off);
+
+    // published: quality flags, health list incl. Wi-Fi, summary
+    station::telemetry::WifiInfo wifi{};
+    wifi.connected = true;
+    wifi.rssi_dbm = -84;
+    JsonDocument doc;
+    TEST_ASSERT_TRUE(deserializeJson(doc, TelemetryFormatter::build_state_json(d, "t", wifi)) == DeserializationError::Ok);
+    TEST_ASSERT_EQUAL_STRING("missing", doc["quality"]["temp_c"]["flag"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("fail", doc["health_summary"].as<const char*>());
+    bool wifi_seen = false;
+    for (JsonObject o : doc["health"].as<JsonArray>()) {
+        if (std::strcmp(o["id"] | "", "wifi") == 0) {
+            wifi_seen = true;
+            TEST_ASSERT_EQUAL_STRING("fail", o["status"].as<const char*>());
+        }
+    }
+    TEST_ASSERT_TRUE(wifi_seen);
+}
+
+void test_lightning_seismic_health_rs485_decode_and_mqtt_topic(void) {
+    using station::core::HealthStatus;
+    station::quality::QualityControl qc;
+    StationConfig cfg{};
+    station::core::RawState raw{};
+    station::core::DerivedState d{};
+    auto entry = [&d](const char* id) -> const station::core::HealthEntry* {
+        for (int i = 0; i < d.quality.n_health; ++i) {
+            if (std::strcmp(d.quality.health[i].id, id) == 0) return &d.quality.health[i];
+        }
+        return nullptr;
+    };
+    auto tick = [&](int n) {
+        for (int i = 0; i < n; ++i) {
+            raw.now_ms += 1000;
+            if (raw.crown.as3935_lco_hz.valid) raw.crown.as3935_lco_hz.set(raw.crown.as3935_lco_hz.value, raw.now_ms);
+            d = station::core::DerivedState{};
+            qc.step(raw, cfg, d);
+        }
+    };
+    tick(1);
+    TEST_ASSERT_TRUE(entry("lightning")->status == HealthStatus::Fail);    // no crown diagnostics
+    TEST_ASSERT_TRUE(entry("seismic")->status == HealthStatus::Fail);
+    raw.crown.as3935_lco_hz.set(500300U, raw.now_ms);
+    station::core::VibrationSecond vs{};
+    raw.imu.vibration.set(vs, raw.now_ms + 1000);
+    tick(1);
+    TEST_ASSERT_TRUE(entry("lightning")->status == HealthStatus::Ok);
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 500.3F, d.quality.as3935_antenna_khz.v);
+    TEST_ASSERT_TRUE(entry("seismic")->status == HealthStatus::Ok);
+    raw.crown.as3935_lco_hz.set(470000U, raw.now_ms);
+    tick(1);
+    TEST_ASSERT_TRUE(entry("lightning")->status == HealthStatus::Warn);   // antenna tuning off
+    raw.crown.as3935_lco_hz.set(500000U, raw.now_ms);
+    raw.crown.disturbers = 80;   // interference burst within one 10-min window
+    tick(601);
+    TEST_ASSERT_TRUE(entry("lightning")->status == HealthStatus::Warn);
+    TEST_ASSERT_FLOAT_WITHIN(0.5F, 80.0F, d.quality.disturbers_10min.v);
+    tick(601);   // quiet window
+    TEST_ASSERT_TRUE(entry("lightning")->status == HealthStatus::Ok);
+
+    // RS-485: the documented field list matches the frame, and bus activity is counted
+    station::core::DerivedState f{};
+    const std::string frame = station::rs485::Rs485Protocol::encode_telemetry_frame(f, 7);
+    const std::size_t commas = static_cast<std::size_t>(std::count(frame.begin(), frame.end(), ','));
+    TEST_ASSERT_EQUAL_UINT32(station::rs485::Rs485Protocol::kFrameFieldCount, commas);
+    station::rs485::BusStats bus{};
+    bus.note(station::rs485::CommandType::RequestState, "7:STATE?\r", 9, 1234);
+    bus.note(station::rs485::CommandType::None, "3:STATE?", 8, 1300);
+    TEST_ASSERT_EQUAL_UINT32(2, bus.lines);
+    TEST_ASSERT_EQUAL_UINT32(1, bus.states);
+    TEST_ASSERT_EQUAL_UINT32(1, bus.ignored);
+    TEST_ASSERT_EQUAL_STRING("7:STATE?", bus.last_cmd);
+    TEST_ASSERT_EQUAL_UINT32(1234, bus.last_ms);
+
+    // MQTT: configured base topic, used by the Home Assistant discovery too
+    TEST_ASSERT_EQUAL_STRING("aeromet/abc123/state", TelemetryFormatter::ha_state_topic("abc123").c_str());
+    TEST_ASSERT_EQUAL_STRING("home/roof/state", TelemetryFormatter::ha_state_topic("abc123", "home/roof/").c_str());
+    std::string topic, payload;
+    TEST_ASSERT_TRUE(TelemetryFormatter::build_ha_discovery(0, "abc123", "homeassistant", topic, payload, "home/roof/state"));
+    TEST_ASSERT_TRUE(payload.find("\"stat_t\":\"home/roof/state\"") != std::string::npos);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ultrasonic_zero_wind_and_virtual_temp);
@@ -1114,5 +1474,10 @@ int main(void) {
     RUN_TEST(test_crown_rom_bootloader_flashes_and_verifies);
     RUN_TEST(test_still_air_wind_calibration);
     RUN_TEST(test_optics_cover_transmission);
+    RUN_TEST(test_home_calibration_math);
+    RUN_TEST(test_home_calibration_sessions);
+    RUN_TEST(test_home_calibration_sample_undoes_corrections);
+    RUN_TEST(test_quality_flags_and_station_health);
+    RUN_TEST(test_lightning_seismic_health_rs485_decode_and_mqtt_topic);
     return UNITY_END();
 }

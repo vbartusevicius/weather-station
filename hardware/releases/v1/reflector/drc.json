@@ -1,7 +1,7 @@
 {
     "$schema": "https://schemas.kicad.org/drc.v1.json",
     "coordinate_units": "mm",
-    "date": "2026-10-23T09:55:16",
+    "date": "2026-10-23T13:40:08",
     "ignored_checks": [
         {
             "description": "Footprint has no courtyard defined",
@@ -37,12 +37,12 @@
             "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
             "items": [
                 {
-                    "description": "Footprint R3",
+                    "description": "Footprint R2",
                     "pos": {
-                        "x": 5.5,
-                        "y": -5.5
+                        "x": 18.5,
+                        "y": -18.5
                     },
-                    "uuid": "3aa42352-591d-4846-82a9-be9208af6eb4"
+                    "uuid": "3d41d516-b292-48b0-a116-69adfc9852da"
                 }
             ],
             "severity": "warning",
@@ -57,37 +57,7 @@
                         "x": 5.5,
                         "y": -18.5
                     },
-                    "uuid": "78434856-62a5-4fe6-a695-a1bb89dcbe76"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint TH1",
-                    "pos": {
-                        "x": 12.0,
-                        "y": -12.0
-                    },
-                    "uuid": "8cb9808d-4e31-46a0-8454-bad7dc12d347"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R4",
-                    "pos": {
-                        "x": 18.5,
-                        "y": -5.5
-                    },
-                    "uuid": "99644ddb-ebd4-4f73-8b23-74e783e48554"
+                    "uuid": "60426615-a299-4faf-8861-e3df9e43e24c"
                 }
             ],
             "severity": "warning",
@@ -102,7 +72,7 @@
                         "x": 12.0,
                         "y": -8.5
                     },
-                    "uuid": "d5f15856-e1b6-4aaf-bd32-d5c1953f1c26"
+                    "uuid": "8d39e3d0-9c0b-44ee-baf8-b35269663430"
                 }
             ],
             "severity": "warning",
@@ -112,12 +82,42 @@
             "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
             "items": [
                 {
-                    "description": "Footprint R2",
+                    "description": "Footprint R4",
                     "pos": {
                         "x": 18.5,
-                        "y": -18.5
+                        "y": -5.5
                     },
-                    "uuid": "e24ccae9-d5b2-4606-acdc-22c85a02ac52"
+                    "uuid": "d2b870b7-b318-49c0-9983-9d32c3d2aacc"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R3",
+                    "pos": {
+                        "x": 5.5,
+                        "y": -5.5
+                    },
+                    "uuid": "e7591021-f93a-47d6-8ecb-61b470769bb4"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint TH1",
+                    "pos": {
+                        "x": 12.0,
+                        "y": -12.0
+                    },
+                    "uuid": "f9869aa7-6f13-45ea-91ff-e9a66c351ef1"
                 }
             ],
             "severity": "warning",
@@ -132,7 +132,7 @@
                         "x": 12.0,
                         "y": -14.05
                     },
-                    "uuid": "9873796e-b34b-4b56-911a-7bf13c6062b2"
+                    "uuid": "9f811eb3-bd94-49eb-a56d-3de3daa458e3"
                 }
             ],
             "severity": "warning",

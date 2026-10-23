@@ -3,7 +3,10 @@
 #include <ArduinoJson.h>
 
 #include <cmath>
+#include <cstdio>
 #include <cstring>
+
+#include "../quality/Quality.hpp"
 
 namespace station {
 namespace telemetry {
@@ -49,6 +52,7 @@ constexpr HaSensor kHaSensors[] = {
     {"wind_gust", "Wind Gust", "m/s", "wind_speed", "measurement", "{{ value_json.wind.gust_m_s }}"},
     {"wind_direction", "Wind Direction", "°", "", "measurement", "{{ value_json.wind.dir_10m_deg }}"},
     {"rain_rate", "Rain Rate", "mm/h", "precipitation_intensity", "measurement", "{{ value_json.rain.rate_mm_h }}"},
+    {"station_health", "Station Health", "", "", "", "{{ value_json.health_summary }}"},
     {"rain_today", "Rain Today", "mm", "precipitation", "total_increasing", "{{ value_json.rain.today_mm }}"},
     {"uv_index", "UV Index", "", "", "measurement", "{{ value_json.solar.uv_index }}"},
     {"irradiance", "Solar Irradiance", "W/m²", "irradiance", "measurement", "{{ value_json.solar.irradiance_w_m2 }}"},
@@ -144,6 +148,7 @@ std::string TelemetryFormatter::build_state_json(const core::DerivedState& d, co
     put(wind, "sound_m_s", w.sound_m_s, 1);
     put(wind, "acoustic_temp_c", w.acoustic_temp_c, 1);
     put(wind, "tilt_deg", w.tilt_deg, 2);
+    put(wind, "heading_deg", w.heading_deg, 1);
     JsonArray rose = wind["rose"].to<JsonArray>();
     for (float p : w.rose_pct) {
         rose.add(round_to(p, 1));
@@ -198,6 +203,7 @@ std::string TelemetryFormatter::build_state_json(const core::DerivedState& d, co
     put(sol, "uvb_w_m2", s.uvb_w_m2, 2);
     put(sol, "burn_time_min", s.burn_time_min, 0);
     put(sol, "clear_sky_w_m2", s.clear_sky_w_m2, 0);
+    put(sol, "lux_behind_dome", s.lux_behind_dome, 0);
     put(sol, "cloud_cover_pct", s.cloud_cover_pct, 0);
     put(sol, "sqm", s.sqm_mag_arcsec2, 2);
     put(sol, "bortle", s.bortle, 0);
@@ -286,6 +292,44 @@ std::string TelemetryFormatter::build_state_json(const core::DerivedState& d, co
     ht["reflector_status"] = h.reflector_status;
     ht["probe_status"] = h.probe_status;
 
+    // Data quality flags (supplement, never alter, the values above) and the station health list
+    JsonObject qc = doc["quality"].to<JsonObject>();
+    for (std::size_t i = 0; i < static_cast<std::size_t>(core::QcMetric::Count); ++i) {
+        const core::QcValue& v = d.quality.qc[i];
+        JsonObject o = qc[quality::metric_key(static_cast<core::QcMetric>(i))].to<JsonObject>();
+        o["flag"] = quality::flag_name(v.flag);
+        o["reason"] = v.reason;
+    }
+    JsonArray hl = doc["health"].to<JsonArray>();
+    core::HealthStatus summary = d.quality.summary;
+    for (std::size_t i = 0; i < d.quality.n_health; ++i) {
+        const core::HealthEntry& e = d.quality.health[i];
+        JsonObject o = hl.add<JsonObject>();
+        o["id"] = e.id;
+        o["label"] = e.label;
+        o["status"] = quality::status_name(e.status);
+        o["detail"] = e.detail;
+    }
+    {   // Wi-Fi is only known to the publisher
+        const core::HealthStatus ws = wifi.ap_mode || !wifi.connected ? core::HealthStatus::Warn
+                                      : (wifi.rssi_dbm >= -70 ? core::HealthStatus::Ok
+                                         : (wifi.rssi_dbm >= -80 ? core::HealthStatus::Warn : core::HealthStatus::Fail));
+        char detail[48];
+        std::snprintf(detail, sizeof detail, "%s", wifi.ap_mode ? "setup access point active"
+                                                    : (!wifi.connected ? "not connected" : (wifi.rssi_dbm < -70 ? "weak signal" : "")));
+        JsonObject o = hl.add<JsonObject>();
+        o["id"] = "wifi";
+        o["label"] = "Wi-Fi";
+        o["status"] = quality::status_name(ws);
+        o["detail"] = detail;
+        const int rank_ws = ws == core::HealthStatus::Fail ? 3 : (ws == core::HealthStatus::Warn ? 2 : 1);
+        const int rank_s = summary == core::HealthStatus::Fail ? 3 : (summary == core::HealthStatus::Warn ? 2 : (summary == core::HealthStatus::Ok ? 1 : 0));
+        if (rank_ws > rank_s) summary = ws;
+    }
+    doc["health_summary"] = quality::status_name(summary);
+    put(lt, "antenna_khz", d.quality.as3935_antenna_khz, 1);
+    put(lt, "disturbers_10min", d.quality.disturbers_10min, 0);
+
     std::string out;
     serializeJson(doc, out);
     return out;
@@ -360,12 +404,17 @@ std::size_t TelemetryFormatter::ha_sensor_count() {
     return kHaSensorCount;
 }
 
-std::string TelemetryFormatter::ha_state_topic(const char* node_id) {
+std::string TelemetryFormatter::ha_state_topic(const char* node_id, const char* base_topic) {
+    if (base_topic != nullptr && base_topic[0] != '\0') {
+        std::string b = base_topic;
+        while (!b.empty() && b.back() == '/') b.pop_back();
+        return b + "/state";
+    }
     return std::string("aeromet/") + node_id + "/state";
 }
 
 bool TelemetryFormatter::build_ha_discovery(std::size_t i, const char* node_id, const char* ha_prefix, std::string& topic,
-                                            std::string& payload) {
+                                            std::string& payload, const char* state_topic) {
     if (i >= kHaSensorCount) {
         return false;
     }
@@ -374,7 +423,7 @@ bool TelemetryFormatter::build_ha_discovery(std::size_t i, const char* node_id, 
     JsonDocument doc;
     doc["name"] = s.name;
     doc["uniq_id"] = std::string("aeromet_") + node_id + "_" + s.id;
-    doc["stat_t"] = ha_state_topic(node_id);
+    doc["stat_t"] = state_topic != nullptr && state_topic[0] != '\0' ? std::string(state_topic) : ha_state_topic(node_id);
     doc["val_tpl"] = s.tpl;
     if (s.unit[0] != '\0') doc["unit_of_meas"] = s.unit;
     if (s.device_class[0] != '\0') doc["dev_cla"] = s.device_class;

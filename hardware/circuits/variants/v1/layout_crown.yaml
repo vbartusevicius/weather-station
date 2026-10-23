@@ -50,7 +50,13 @@ frame:
     - { x0: 6.3, y0: 3.8, x1: 19.7, y1: 9.2, layers: [In1.Cu, In2.Cu] }   # no planes under the ferrite rod
     - { x0: 9.4, y0: 3.8, x1: 16.6, y1: 9.2, layers: [F.Cu, B.Cu] }       # no tracks between its end pads
   connector_labels: { J1: "MAIN", J2: "N", J3: "E", J4: "S", J5: "W", J6: "PZ NE", J7: "PZ NW", J8: "PZ SW", J9: "PZ SE", J10: "DOME", J11: "HEAT", J12: "SWD" }
-  silk_labels: []
+  # North marker in the free triangle at the NE chamfer (J1 ends at x 48.7): big "N" + arrow towards the N notch
+  # side (+y). The Web UI calibration diagram shows it so the N transducer barrel can be told from the struts.
+  silk_labels:
+    - { text: "N", x: 51.6, y: 41.4, size: 2.2, layer: F.SilkS }
+  silk_lines:
+    - { points: [[54.5, 38.9], [54.5, 42.2]], width: 0.3 }
+    - { points: [[53.8, 41.4], [54.5, 42.2], [55.2, 41.4]], width: 0.3 }
 
 heights:
   default: 1.2

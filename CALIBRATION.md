@@ -3,7 +3,7 @@
 Work through the steps in order on every new station. Bench steps (1–4) need the opened enclosure; field steps
 (5–11) need the station on its mast. Record every result in the table at the end and keep it with the unit.
 
-All settings live in the Web UI (**Settings → Sensor Calibration**) and in `GET/POST /api/config`; actions are
+All settings live in the Web UI (**Setup → Sensor Calibration**, guided home procedures in the **Calibration** tab, section 0) and in `GET/POST /api/config`; actions are
 `POST /api/action {"action": "<name>"}`. Examples below use `curl` against `http://<station-ip>`.
 
 ```sh
@@ -16,6 +16,42 @@ curl -s -X POST $S/api/action -d '{"action": "wind_calibrate"}'
 Equipment: bench supply 10–32 V / 2 A with current display, multimeter, ST-Link V2 (SWD), USB–RS-485 adapter,
 a closed cardboard box that fits over the upper station (still-air hood), a reference thermometer / hygrometer
 (aspirated if possible), a manual rain gauge or tipping bucket, a UV-index meter, a phone compass.
+
+---
+
+## 0. Home calibration without lab equipment (Web UI → **Calibration** tab)
+
+The **Calibration** tab starts with **Station health** (every subsystem ok / warn / fail with a reason, plus the
+automatic data-quality flags): fix anything red there first. Below it, the tab walks through every user calibration with household items or public reference data. Each
+procedure shows what you need, step-by-step instructions, live readings and a progress bar. The station does the
+measuring and the arithmetic (`src/calibration/Calibration.*`, host-tested). It shows the result next to the current
+value, and nothing changes until **Apply result**; the date of each applied step is kept in the configuration.
+API: `GET /api/calibration` (status), `POST /api/calibration {"cmd": "start" | "finish" | "apply" | "cancel" |
+"clear_runs", "kind": ..., "p1": .., "p2": .., "p3": .., "fixed": bool}`.
+
+| # | Procedure (`kind`) | Reference | Sets | Expected accuracy |
+| --- | --- | --- | --- | --- |
+| 1 | Compass spin (`compass`), bench | 2 slow turns of the assembled station in 90 s, ≥ 1 m from steel | `mag_offset_ut`, `mag_scale` (hard / soft iron, x–y) | removes station-fixed bias; needs 12/12 directions |
+| 2 | North reference (`heading`), mounted | A: shadow of a stick at the S barrel crossing the N mark (sun azimuth from the clock + location); B: landmark ≥ 300 m sighted over S→N (map coordinates); C: true-north compass bearing | `heading_offset_deg`, or `heading_mode` 1 + `heading_fixed_deg` (magnetometer ignored; best on a steel mast) | A/B ±1°, C ±5° |
+| 3 | Wind zero (still air) | closed cardboard box, 10 min settling (step 4 below) | `us_delay_us`, `dt_*_offset_us` | < 0.1 m/s still-air reading |
+| 4 | Level | live `tilt_deg` | — (mast shims) | < 1° |
+| 5 | Wind speed (`car_run`) | ≥ 2 runs of a known air speed: A car in calm air (pole ≥ 50 cm above the roof, GPS, both directions); B hand-held on a 1–1.5 m pole while walking / jogging / cycling (GPS, or a measured distance ≥ 100 m and its time; both directions; USB-C power bank with a 12 V PD trigger cable); C a handheld vane anemometer beside the station in steady wind or 1–2 m in front of a ≥ 50 cm box fan (a hair dryer's jet is narrower than the sound paths and too uneven) | `wind_speed_gain` = Σ reference / Σ station (before gain) | A, C ±3–5 %, B ±5–10 % (body wake) |
+| 6 | Pressure (`pressure`) | A (`p2` 1): ground elevation from a map (Google Earth, OpenTopoMap, national geoportal / LiDAR) + barometer height above it, no measurement; B: reference sea-level pressure ≤ 50 km, ≤ 30 min old (airport METAR `Q`, national weather service, SYNOP via ogimet.com), wind < 5 m/s | `altitude_m` (B: inverse of the pipeline's QNH reduction) | A ±1–3 m, B ±0.3 hPa ≈ ±3 m |
+| 7 | Light cover (`clear_sky`) | cloudless sky, sun ≥ 25°, light steady within 4 % for 2 min, against the pipeline's clear-sky model × 122 lm/W | `optics_transmission` | ±10–15 % (aerosols); average 2–3 days |
+| 8 | UV (`uv_reference`, optional: the GUVB-C31SM has a factory scale) | A (`p2` 1): no reference, the LTR-390 factory UV index through the cover ÷ `optics_transmission` from step 7, UVI ≥ 1; B: TEMIS (temis.nl) clear-sky UV index at solar noon for the site, cloudless, within 15 min of solar noon (shown in the live bar); C: a UV-index meter beside the dome | `guvb_counts_per_uvi` | A ±15–20 %, B ±10 %, C ±5–10 % |
+| 9 | Rain drops (`drop_test`) | syringe drops (counted per ml) from a measured height, ≥ 8 impacts; impact speed with quadratic drag, amplitude ∝ kinetic energy at the HapticRain drop model | `rain_impact_scale` = expected / median | ±15 % |
+| 10 | Rain amount (`rain_gauge`) | cheap gauge, or a straight-walled container + kitchen scale (mm = g × 1000 / area mm²), ≥ 1 mm on both | `rain_gain` × gauge / station | ±10–20 % per event |
+| 11 | Humidity (`salt_rh`) | probe sealed over damp NaCl 6–12 h (75.3–75.7 %, Greenspan 1977), drift < 1 % over the 10 min | `rh_offset_pct` | ±0.5 % RH |
+| 12 | Temperature (`ice_point`) | probe double-bagged in an ice-water slurry, steady within 0.15 °C | `temp_offset_c` | ±0.1 °C |
+| 13 | CO₂ (`co2_fresh_air`) | outdoor air (425 ppm default), steady within ±20 ppm for 3 min | SCD41 forced recalibration (FRC 0x362F) | ±(10 ppm + background uncertainty) |
+| 14 | Self-tests | heater check; lightning antenna (crown auto-tunes it, health shows 482–518 kHz), interference (disturbers per 10 min, bursts on / off), storm comparison with lightningmaps.org; vibration tap test on the mast | — (nothing to calibrate: AS3935 distance is a ±30 % step estimate, the accelerometer is factory calibrated) | step 9 below |
+
+Mark the **N barrel** once during assembly. The crown board's one large cut corner (NE) carries a silk **N ↑**:
+with that corner top-right (seen from above) the barrel at the top is N, and its transducer plugs into `J2`
+(silkscreen **N**). The four posts on the diagonals are struts. A paint dot on the outside of that barrel is what
+steps 1, 2 and 5 refer to. A station reboot cancels a running
+session (the rain-gauge comparison then starts again). The sections below remain the lab / commissioning procedure;
+where both exist, the lab reference is the better one.
 
 ---
 
@@ -53,6 +89,9 @@ a closed cardboard box that fits over the upper station (still-air hood), a refe
 
 ## 3. RS-485 (bench, USB–RS-485 adapter on J1 pins 3 A+ / 4 B−)
 
+The Web UI **Setup → RS-485** card shows whether a master is polling (requests per command, replies, ignored lines,
+last command and its age) and decodes the current `$AM` frame field by field.
+
 ```python
 import serial                                   # pip install pyserial
 s = serial.Serial("/dev/ttyUSB0", 115200, timeout=1)
@@ -60,7 +99,10 @@ s.write(b"PING\n");   print(s.readline())       # b'$AM,PONG*xxxx\r\n'
 s.write(b"STATE?\n"); print(s.readline())       # b'$AM,<uptime>,...*CRC16\r\n'
 ```
 
-Pass: replies within 50 ms, CRC-16/MODBUS over the text between `$` and `*` (inclusive of `$AM...`) matches, nothing is
+The frame carries every published sensor: 33 comma-separated fields after the talker, in the order of the Setup card
+(the first ten are unchanged from earlier firmware; an empty field = no valid value).
+
+Pass: replies within 50 ms, CRC-16/MODBUS over everything before the `*` (including `$AM...`) matches, nothing is
 sent without a command. For a multi-station bus set `rs485_address` (1–247) per station and prefix commands
 (`7:STATE?`); the reply talker becomes `$AM7`. Fit the 120 Ω terminator R26 only on the two stations at the
 physical bus ends. Every station carries the 390 Ω fail-safe bias (R9 to +3V3 on A, R10 to GND on B), sized for one
@@ -97,9 +139,9 @@ the strut wakes make the real gain differ by a few percent and vary with directi
    point to confirm ±3 %.
 4. Note the worst-heading error in the record. If it exceeds ±5 %, a per-sector correction is needed (not
    implemented in V1 firmware — checklist S1).
-5. Direction: with the station at its final orientation, set `declination_deg` (NOAA magnetic-field calculator for
-   the site), then compare `wind.dir_10m_deg` with the reference in steady wind (±10°). Large errors: the crown
-   compass sees steel nearby (mast, roof): repeat with a non-magnetic mast section or correct via `declination_deg`.
+5. Direction: compass spin on the bench and the North reference after mounting (section 0, steps 1–2; the reference
+   absorbs the declination), then compare `wind.dir_10m_deg` with the reference in steady wind (±10°). On a steel
+   mast, or if the error stays large, use the fixed heading (`heading_mode` 1): the magnetometer is then ignored.
 
 ## 6. Rain
 

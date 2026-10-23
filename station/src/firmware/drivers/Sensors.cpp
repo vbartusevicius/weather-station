@@ -206,6 +206,20 @@ bool Scd41::set_ambient_pressure(float hpa) {
     return sensirion_cmd_word(dev_, 0xE000, static_cast<std::uint16_t>(std::lround(hpa)));
 }
 
+bool Scd41::forced_recalibration(float ppm, int& correction_ppm) {
+    if (!present_ || ppm < 300.0F || ppm > 2000.0F) {
+        return false;
+    }
+    stop();
+    std::uint16_t w = 0xFFFF;
+    const bool sent = sensirion_cmd_word(dev_, 0x362F, static_cast<std::uint16_t>(std::lround(ppm)));
+    delay_ms(400);
+    const bool ok = sent && sensirion_read_words(dev_, &w, 1) && w != 0xFFFF;
+    correction_ppm = ok ? static_cast<int>(w) - 0x8000 : 0;
+    start();
+    return ok;
+}
+
 // -------------------------------------------------------------------------------------- PMSA003I
 bool Pmsa003i::begin(I2cBus& bus, std::uint8_t addr, std::uint32_t now_ms) {
     present_ = bus.probe(addr);

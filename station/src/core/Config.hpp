@@ -42,6 +42,23 @@ struct StationConfig {
     // (0.8 mm PTFE, spectrally flat), ~0.92 for the JGS1 window. LTR-390 UVI / lux, TSL25911 lux and the
     // factory-scaled GUVB UVI are divided by it (a field `guvb_counts_per_uvi` already includes the cover).
     float optics_transmission{0.11F};
+
+    // Added for the home calibration procedures (src/calibration, Web UI "Calibrate"); appended like the fields above.
+    std::uint8_t heading_mode{0};             // 0 = magnetometer (+ declination + heading_offset_deg), 1 = fixed
+    float heading_fixed_deg{0.0F};            // true bearing the station's N transducer points to (heading_mode 1)
+    float heading_offset_deg{0.0F};           // residual compass error from the N-mark reference (heading_mode 0)
+    float mag_offset_ut[3]{0.0F, 0.0F, 0.0F}; // magnetometer hard-iron offset (compass spin)
+    float mag_scale[2]{1.0F, 1.0F};           // magnetometer x / y soft-iron scale (compass spin)
+    float temp_offset_c{0.0F};                // SHT40 offset added to every reading (ice-point check)
+    float rh_offset_pct{0.0F};                // SHT40 offset added to every reading (saturated-salt check)
+    std::uint32_t cal_unix[16]{};             // unix time each calibration::Kind was last applied (0 = never)
+
+    // MQTT (appended): broker login, base topic ("" = "aeromet/<node id>"), Home Assistant discovery, state interval
+    char mqtt_user[33]{""};
+    char mqtt_pass[65]{""};
+    char mqtt_topic[48]{""};
+    std::uint8_t ha_discovery{1};
+    std::uint16_t mqtt_interval_s{10};
 };
 
 // Reading behind the UV / light cover -> free-sky value (transmission clamped to 0.02..1).

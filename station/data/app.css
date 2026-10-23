@@ -465,19 +465,6 @@ body {
 .sec-bar-bg { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; }
 .sec-bar-fg { height: 100%; background: var(--accent); }
 
-.twin-wrap { background: var(--card-inner); border-radius: 12px; padding: 8px; }
-.twin-svg { width: 100%; height: 290px; }
-.twin-lbl { fill: var(--muted); font-size: 10px; font-weight: 700; }
-.twin-val { fill: var(--text); font-size: 11.5px; font-weight: 800; }
-
-.corr-visual-list { display: flex; flex-direction: column; gap: 10px; }
-.corr-item { background: var(--card-inner); padding: 9px 12px; border-radius: 10px; }
-.corr-top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
-.corr-bar-bg { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; }
-.corr-bar-fg { height: 100%; border-radius: 99px; }
-.corr-bar-fg.amber { background: #f59e0b; }
-.corr-bar-fg.cyan { background: #38bdf8; }
-.corr-bar-fg.green { background: #22c55e; }
 .code-box {
   font-family: "SFMono-Regular", Consolas, monospace; font-size: 11px;
   padding: 9px 11px; border-radius: 8px; background: var(--card-inner); color: var(--accent);
@@ -524,3 +511,153 @@ body {
   margin-bottom: 14px; padding: 10px 14px; border-radius: 12px;
   background: var(--card); border: 1px solid var(--warn); font-size: 12.5px; color: var(--text);
 }
+
+/* CALIBRATE TAB (guided home procedures) */
+.form-grid select {
+  background: var(--card-inner); border: 1px solid var(--border); color: var(--text);
+  padding: 8px 10px; border-radius: 8px; font-size: 12.5px;
+}
+.cal-wrap { max-width: 900px; margin: 18px auto 0; }
+.cal-intro { margin-bottom: 14px; }
+.cal-lead { font-size: 13px; line-height: 1.5; margin: 8px 0 10px; }
+.cal-order { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; font-size: 12px; }
+.cal-order span { background: var(--accent-soft); border-radius: 8px; padding: 4px 9px; }
+.cal-order b { color: var(--accent); margin-right: 4px; }
+.cal-now { display: flex; flex-wrap: wrap; gap: 8px; }
+.cal-chip { background: var(--card-inner); border: 1px solid var(--border); border-radius: 9px; padding: 6px 10px; font-size: 12px; }
+.cal-chip b { display: block; font-size: 10.5px; color: var(--muted); font-weight: 700; letter-spacing: 0.3px; }
+.cal-list { display: flex; flex-direction: column; gap: 10px; }
+.cal-proc { padding: 0; }
+.cal-proc > summary, .cal-advanced > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+}
+.cal-proc > summary::-webkit-details-marker, .cal-advanced > summary::-webkit-details-marker { display: none; }
+.cal-proc[open] > summary, .cal-advanced[open] > summary { border-bottom: 1px solid var(--border); }
+.cal-proc.active { border-color: var(--accent); }
+.cal-num {
+  width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12.5px; flex: none;
+}
+.cal-title { font-weight: 800; font-size: 14px; }
+.cal-where { color: var(--muted); font-size: 12px; flex: 1; }
+.cal-body { padding: 14px 18px 16px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 1.55; }
+.cal-top { display: flex; gap: 18px; align-items: flex-start; }
+.cal-fig { margin: 0; flex: 0 0 190px; }
+.cal-text { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cal-why { margin: 0; font-weight: 600; }
+.cal-need { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.cal-need li { background: var(--card-inner); border: 1px solid var(--border); border-radius: 7px; padding: 3px 8px; font-size: 12px; }
+.cal-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.cal-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.cal-methods figure { margin: 0; padding: 10px; border-radius: 10px; background: var(--card-inner); font-size: 12px; line-height: 1.45; }
+.cal-methods figure i { color: var(--muted); font-style: normal; font-size: 11px; }
+.cal-methods .cal-svg { display: block; margin: 6px auto; max-width: 170px; }
+.cal-svg { width: 100%; height: auto; }
+.fg-body { fill: var(--card-inner); stroke: var(--muted); stroke-width: 1.5; }
+.fg-part { fill: var(--border); stroke: var(--muted); stroke-width: 1; }
+.fg-dome { fill: #f8fafc; stroke: var(--muted); stroke-width: 1; }
+.fg-line { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.fg-lid { stroke: var(--muted); stroke-width: 3; }
+.fg-acc { fill: var(--accent); }
+.fg-acc-l { fill: none; stroke: var(--accent); stroke-width: 2; }
+.fg-dash { stroke-dasharray: 5 4; }
+.fg-t { font: 600 10px sans-serif; fill: var(--muted); text-anchor: middle; }
+.fg-ta { fill: var(--accent); }
+.fg-sun { fill: #f59e0b; } .fg-ray { stroke: #f59e0b; stroke-width: 1.5; }
+.fg-shadow { stroke: #475569; stroke-width: 4; stroke-linecap: round; opacity: 0.8; }
+.fg-stick { fill: #92400e; }
+.fg-phone { fill: var(--card); stroke: var(--accent); stroke-width: 1.5; }
+.fg-water { fill: rgba(56, 189, 248, 0.3); }
+.fg-ice { fill: rgba(255, 255, 255, 0.85); stroke: #93c5fd; stroke-width: 1; }
+.fg-salt { fill: #f1f5f9; stroke: #94a3b8; stroke-width: 0.6; }
+.fg-pcb { fill: #15803d; stroke: #14532d; stroke-width: 1; }
+.fg-board { fill: #166534; stroke: #14532d; stroke-width: 1.5; }
+.fg-strut { fill: var(--border); stroke: var(--muted); stroke-width: 1; }
+.fg-barrel { fill: var(--card-inner); stroke: var(--muted); stroke-width: 1.5; }
+.fg-barrel-n { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2.5; }
+.fg-silk { font: 800 12px sans-serif; fill: #f8fafc; }
+.fg-silk-l { stroke: #f8fafc; stroke-width: 2; }
+.fg-pin { fill: var(--danger); }
+.fg-bg { fill: var(--card-inner); }
+.cal-find { display: flex; gap: 18px; align-items: center; padding: 10px; border-radius: 10px; background: var(--card-inner); }
+.cal-find p { margin: 4px 0 0; font-size: 12.5px; }
+.cal-methods-text > div { padding: 10px; border-radius: 10px; background: var(--card-inner); font-size: 12px; line-height: 1.45; }
+.cal-methods-text i { color: var(--muted); font-style: normal; font-size: 11px; }
+.cal-methods-text p { margin: 4px 0 0; }
+.cal-warn { margin: 8px 0; padding: 8px 12px; border-radius: 9px; background: var(--warn-soft); font-size: 12.5px; }
+.cal-steps code { font-size: 12px; color: var(--accent); }
+.cal-note { margin: 0; font-size: 12px; color: var(--muted); }
+.cal-check { flex-direction: row !important; align-items: center; gap: 8px !important; grid-column: 1 / -1; }
+.cal-progress { height: 6px; border-radius: 3px; background: var(--card-inner); overflow: hidden; display: none; }
+.cal-progress-fg { height: 100%; width: 0; background: var(--accent); transition: width 0.8s linear; }
+.cal-progress.on { display: block; }
+.cal-live { display: flex; flex-wrap: wrap; gap: 8px; }
+.cal-live:empty, .cal-msg:empty, .cal-suggest:empty { display: none; }
+.cal-msg { margin: 0; padding: 9px 12px; border-radius: 9px; background: var(--accent-soft); }
+.cal-msg.ok { background: var(--ok-soft); }
+.cal-msg.fail { background: var(--warn-soft); }
+.cal-suggest table { border-collapse: collapse; font-size: 12.5px; }
+.cal-suggest td, .cal-suggest th { padding: 4px 14px 4px 0; text-align: left; }
+.cal-suggest th { color: var(--muted); font-weight: 700; font-size: 11px; }
+button:disabled { opacity: 0.4; cursor: default; }
+@media (max-width: 740px) {
+  .cal-where { display: none; } .form-grid { grid-template-columns: 1fr; }
+  .cal-top { flex-direction: column; } .cal-fig { flex-basis: auto; width: 100%; max-width: 240px; }
+  .cal-methods { grid-template-columns: 1fr; }
+  .cal-find { flex-direction: column; }
+}
+.cal-find .cal-fig { flex-basis: 250px; }
+
+/* Station health + data quality (Calibration tab) */
+.health-card { margin-bottom: 14px; }
+.health-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; margin-top: 10px; }
+.health-item { display: grid; grid-template-columns: 10px 1fr; column-gap: 9px; row-gap: 2px; padding: 9px 11px;
+  border-radius: 9px; background: var(--card-inner); align-items: center; }
+.health-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); grid-row: 1 / span 3; align-self: start; margin-top: 4px; }
+.health-item.ok .health-dot { background: var(--ok); }
+.health-item.warn .health-dot { background: var(--warn); }
+.health-item.fail .health-dot { background: var(--danger); }
+.health-item.fail { background: var(--danger-soft); }
+.health-item.warn { background: var(--warn-soft); }
+.health-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--muted); }
+.health-value { font-size: 14.5px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.health-detail { font-size: 11.5px; color: var(--muted); }
+.health-item.warn .health-detail { color: var(--warn); font-weight: 600; }
+.health-item.fail .health-detail { color: var(--danger); font-weight: 600; }
+.qc-head { margin: 14px 0 6px; font-size: 11.5px; font-weight: 800; letter-spacing: 0.6px; color: var(--muted); }
+.qc-badge { margin-left: auto; }
+
+/* Calibration tab extras + Setup tab */
+.loc-card { margin-bottom: 14px; }
+.cal-advanced { padding: 0; margin-top: 10px; }
+.setup-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.setup-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.setup-grid .card { display: flex; flex-direction: column; justify-content: flex-start; gap: 10px; }
+@media (max-width: 900px) { .setup-grid { grid-template-columns: 1fr; } }
+.fw-row { display: grid; grid-template-columns: 1fr; gap: 6px; padding: 10px; border-radius: 9px; background: var(--card-inner); }
+.fw-row input[type=file] { font-size: 12px; color: var(--muted); }
+.fw-row button { justify-self: start; }
+.cal-progress.on { display: block; }
+.rs-actions { display: flex; align-items: flex-end; }
+.rs-stats { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.rs-frame { word-break: break-all; }
+.rs-decode { columns: 2 220px; column-gap: 18px; font-size: 12px; }
+.rs-field { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; break-inside: avoid;
+  border-bottom: 1px dashed var(--border); }
+.rs-field span { color: var(--muted); }
+.rs-field i { color: var(--muted); font-style: normal; margin-right: 4px; }
+.rs-help summary { cursor: pointer; font-size: 12px; color: var(--accent); }
+.rs-help p { font-size: 12px; line-height: 1.5; margin: 6px 0; }
+.rs-help code, .rs-help b { font-size: 11.5px; }
+
+/* firmware file picker (native input hidden behind a drop zone) */
+.fw-info { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.file-drop { position: relative; display: flex; align-items: center; gap: 12px; padding: 16px; border: 1.5px dashed var(--border);
+  border-radius: 11px; background: var(--card-inner); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.file-drop:hover, .file-drop.drag { border-color: var(--accent); background: var(--accent-soft); }
+.file-drop.has-file { border-style: solid; border-color: var(--accent); }
+.file-drop input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.file-drop-icon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--accent-soft); color: var(--accent); font-size: 16px; flex: none; }
+.file-drop-text { font-size: 12.5px; color: var(--muted); }
+.file-drop-text b { color: var(--text); }

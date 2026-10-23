@@ -175,6 +175,8 @@ void Pipeline::step(const RawState& raw, EventQueues& events, const StationConfi
 
     d.thermo.comfort = comfort_label(d.thermo);
     d.controls.ambient_pressure_hpa = d.baro.station_hpa.ok ? d.baro.station_hpa.v : 0.0F;
+    if (d.solar.lux.ok) d.solar.lux_behind_dome.set(d.solar.lux.v * cfg.optics_transmission);
+    quality_.step(raw, cfg, d);   // QC flags + station health (read-only on the values above)
 
     record_history(d, last_rain_mm_, static_cast<std::uint16_t>(strikes_total_ - strikes_before));
     out = d;
@@ -227,6 +229,9 @@ void Pipeline::process_wind(const RawState& raw, DerivedState& d) {
     }
     if (fresh) {
         o.sound_m_s.set(w.sound_speed_m_s);
+    }
+    if (raw.wind.heading_deg.fresh(raw.now_ms, 60000)) {
+        o.heading_deg.set(raw.wind.heading_deg.value);
     }
     if (raw.wind.tilt_deg.fresh(raw.now_ms, 60000)) {
         o.tilt_deg.set(raw.wind.tilt_deg.value);

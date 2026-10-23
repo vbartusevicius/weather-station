@@ -27,8 +27,10 @@ public:
     static std::int32_t utc_offset_s(std::int64_t unix_s);
 
     bool mqtt_connected() const { return mqtt_connected_; }
+    bool mqtt_configured() const { return mqtt_uri_[0] != '\0'; }
     void mqtt_publish_state(const std::string& json);
     const char* node_id() const { return node_id_; }
+    const char* state_topic() const { return state_topic_; }
 
 private:
     void start_ap();
@@ -48,8 +50,12 @@ private:
     std::uint32_t seconds_without_ip_{0};
     char ip_[16]{""};
     char node_id_[16]{"roof"};
-    char mqtt_uri_[64]{""};
+    char mqtt_uri_[72]{""};
+    char mqtt_user_[33]{""};
+    char mqtt_pass_[65]{""};
+    char state_topic_[64]{""};
     char ha_prefix_[32]{"homeassistant"};
+    bool ha_discovery_{true};
 };
 
 }  // namespace firmware

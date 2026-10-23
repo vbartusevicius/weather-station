@@ -109,8 +109,16 @@ void Network::begin(const core::StationConfig& cfg) {
     sntp.sync_cb = on_time_sync;
     esp_netif_sntp_init(&sntp);
 
-    std::strncpy(mqtt_uri_, cfg.mqtt_uri, sizeof(mqtt_uri_) - 1);
+    // broker: "host", "host:port" or a full "mqtt://" / "mqtts://" URI
+    if (cfg.mqtt_uri[0] != '\0') {
+        std::snprintf(mqtt_uri_, sizeof(mqtt_uri_), "%s%s", std::strstr(cfg.mqtt_uri, "://") ? "" : "mqtt://", cfg.mqtt_uri);
+    }
+    std::strncpy(mqtt_user_, cfg.mqtt_user, sizeof(mqtt_user_) - 1);
+    std::strncpy(mqtt_pass_, cfg.mqtt_pass, sizeof(mqtt_pass_) - 1);
     std::strncpy(ha_prefix_, cfg.ha_prefix, sizeof(ha_prefix_) - 1);
+    ha_discovery_ = cfg.ha_discovery != 0;
+    std::snprintf(state_topic_, sizeof(state_topic_), "%s",
+                  telemetry::TelemetryFormatter::ha_state_topic(node_id_, cfg.mqtt_topic).c_str());
 }
 
 void Network::start_ap() {
@@ -155,7 +163,7 @@ void Network::tick_1s(const core::StationConfig& cfg) {
     if (mqtt_ == nullptr && mqtt_uri_[0] != '\0') {
         start_mqtt(cfg);
     }
-    if (mqtt_connected_ && !discovery_sent_) {
+    if (mqtt_connected_ && !discovery_sent_ && ha_discovery_) {
         publish_discovery(cfg);
     }
 }
@@ -165,6 +173,10 @@ void Network::start_mqtt(const core::StationConfig& cfg) {
     esp_mqtt_client_config_t m{};
     m.broker.address.uri = mqtt_uri_;
     m.session.keepalive = 60;
+    if (mqtt_user_[0] != '\0') {
+        m.credentials.username = mqtt_user_;
+        m.credentials.authentication.password = mqtt_pass_;
+    }
     auto client = esp_mqtt_client_init(&m);
     if (client == nullptr) {
         return;
@@ -188,7 +200,7 @@ void Network::publish_discovery(const core::StationConfig& /*cfg*/) {
     auto client = static_cast<esp_mqtt_client_handle_t>(mqtt_);
     std::string topic, payload;
     for (std::size_t i = 0; i < telemetry::TelemetryFormatter::ha_sensor_count(); ++i) {
-        if (telemetry::TelemetryFormatter::build_ha_discovery(i, node_id_, ha_prefix_, topic, payload)) {
+        if (telemetry::TelemetryFormatter::build_ha_discovery(i, node_id_, ha_prefix_, topic, payload, state_topic_)) {
             esp_mqtt_client_publish(client, topic.c_str(), payload.c_str(), static_cast<int>(payload.size()), 1, 1);
         }
     }
@@ -199,8 +211,7 @@ void Network::mqtt_publish_state(const std::string& json) {
     if (!mqtt_connected_) {
         return;
     }
-    const std::string topic = telemetry::TelemetryFormatter::ha_state_topic(node_id_);
-    esp_mqtt_client_publish(static_cast<esp_mqtt_client_handle_t>(mqtt_), topic.c_str(), json.c_str(),
+    esp_mqtt_client_publish(static_cast<esp_mqtt_client_handle_t>(mqtt_), state_topic_, json.c_str(),
                             static_cast<int>(json.size()), 0, 0);
 }
 

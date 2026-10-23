@@ -11,6 +11,7 @@
 #include "Config.hpp"
 #include "DerivedState.hpp"
 #include "RawState.hpp"
+#include "../quality/Quality.hpp"
 
 namespace station {
 namespace core {
@@ -72,6 +73,7 @@ private:
     bool minute_trend(history::Metric m, float& per_hour) const;
 
     wind::WmoWindAggregator wind_{};
+    quality::QualityControl quality_{};
     rain::HapticRainProcessor rain_{};
     environment::EnvLongevityManager longevity_{};
     airquality::GasIndexPair gas_{};

@@ -38,9 +38,11 @@ public:
 
     // Home Assistant MQTT discovery for sensor index `i` (0 .. ha_sensor_count()-1).
     static std::size_t ha_sensor_count();
+    // `state_topic` (nullptr / "" = ha_state_topic(node_id)) is where the station publishes its state JSON.
     static bool build_ha_discovery(std::size_t i, const char* node_id, const char* ha_prefix, std::string& topic,
-                                   std::string& payload);
-    static std::string ha_state_topic(const char* node_id);
+                                   std::string& payload, const char* state_topic = nullptr);
+    // State topic: `<base>/state` for a configured base topic, otherwise "aeromet/<node_id>/state".
+    static std::string ha_state_topic(const char* node_id, const char* base_topic = nullptr);
 };
 
 }  // namespace telemetry

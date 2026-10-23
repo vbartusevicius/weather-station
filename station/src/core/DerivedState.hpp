@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 #include "Reading.hpp"
@@ -32,6 +33,7 @@ struct WindDerived {
     Value<float> sound_m_s;
     Value<float> acoustic_temp_c;
     Value<float> tilt_deg;
+    Value<float> heading_deg;      // true bearing of the station's N mark (compass or fixed heading)
     std::array<float, 16> rose_pct{};
 };
 
@@ -85,6 +87,7 @@ struct SolarDerived {
     Value<float> uvb_w_m2;           // estimate from the UV index (not a band-integrated measurement)
     Value<float> burn_time_min;      // fair skin (type II) time to 1 MED; invalid when UVI < 1
     Value<float> clear_sky_w_m2;
+    Value<float> lux_behind_dome;    // illuminance reaching the sensors (lux x optics_transmission)
     Value<float> cloud_cover_pct;    // daytime only (sun > 10 deg)
     Value<float> sqm_mag_arcsec2;    // night only
     Value<float> bortle;             // night only
@@ -185,6 +188,32 @@ struct Controls {
     float ambient_pressure_hpa{0.0F};// sent to SCD41 for in-sensor CO2 pressure compensation
 };
 
+// Data quality (src/quality): WMO-style automatic QC per published measurement, and the station health list.
+enum class QcFlag : std::uint8_t { Good = 0, Suspect, Fail, Missing };
+enum class QcMetric : std::uint8_t {
+    TempC = 0, RhPct, PressureHpa, WindSpeed, WindDir, RainRate, Irradiance, UvIndex, Pm25, Co2, Count
+};
+struct QcValue {
+    QcFlag flag{QcFlag::Missing};
+    const char* reason{"no data"};
+};
+enum class HealthStatus : std::uint8_t { Ok = 0, Warn, Fail, Off };
+struct HealthEntry {
+    const char* id{""};
+    const char* label{""};
+    HealthStatus status{HealthStatus::Off};
+    char detail[56]{};
+};
+struct QualityDerived {
+    std::array<QcValue, static_cast<std::size_t>(QcMetric::Count)> qc{};
+    static constexpr std::size_t kMaxHealth = 20;
+    std::array<HealthEntry, kMaxHealth> health{};
+    std::uint8_t n_health{0};
+    HealthStatus summary{HealthStatus::Off};   // worst entry
+    Value<float> as3935_antenna_khz;           // lightning antenna resonance (crown diagnostics)
+    Value<float> disturbers_10min;             // AS3935 disturber interrupts in the last full 10 minutes
+};
+
 struct DerivedState {
     std::uint32_t uptime_s{0};
     bool clock_valid{false};
@@ -200,6 +229,7 @@ struct DerivedState {
     LightningDerived lightning;
     SeismicDerived seismic;
     HeaterDerived heater;
+    QualityDerived quality;
     Controls controls;
 };
 

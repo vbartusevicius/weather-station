@@ -86,6 +86,12 @@ struct PowerRaw {
     bool rain_adc_ok{false};      // rain AFE sampling is running
 };
 
+struct CrownRaw {             // crown STM32 diagnostics (task_crown, every 5 s) + lightning event counters
+    Reading<std::uint32_t> as3935_lco_hz;   // measured AS3935 antenna resonance (target 500 kHz +/- 3.5 %)
+    std::uint32_t strikes{0};               // AS3935 strike / disturber interrupts since boot
+    std::uint32_t disturbers{0};
+};
+
 struct ClockRaw {
     bool valid{false};            // true once SNTP (or a browser time push) set the wall clock
     std::int64_t unix_s{0};
@@ -102,6 +108,7 @@ struct RawState {
     AirRaw air;
     ImuRaw imu;
     PowerRaw power;
+    CrownRaw crown;
 };
 
 // ---------------------------------------------------------------------------------------------

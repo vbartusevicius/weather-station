@@ -54,7 +54,7 @@ def build_sim() -> None:
     algo_obj = SIM_BIN.parent / "sensirion_gas_index_algorithm.o"
     print("building simulator:", SIM_BIN, flush=True)
     subprocess.run([cc, "-O2", "-w", "-c", str(gia / "algorithm" / "sensirion_gas_index_algorithm.c"), "-o", str(algo_obj)], check=True)
-    cmd = [cxx, "-std=c++17", "-O2", f"-I{STATION / 'src'}", f"-I{JSON_INC}", f"-I{gia}",
+    cmd = [cxx, "-std=c++17", "-O2", f"-I{STATION / 'src'}", f"-I{STATION.parent / 'shared' / 'include'}", f"-I{JSON_INC}", f"-I{gia}",
            *map(str, sources), str(SIM_SRC), str(algo_obj), "-o", str(SIM_BIN)]
     subprocess.run(cmd, check=True)
 
@@ -158,6 +158,8 @@ class Handler(BaseHTTPRequestHandler):
             tier = q.get("tier", ["hour"])[0]
             metrics = q.get("metrics", [""])[0].replace(" ", "")
             self._send_raw_json(SIM.call(f"history {tier} {metrics}".strip()))
+        elif url.path == "/api/calibration":
+            self._send_raw_json(SIM.call("cal {}"))
         elif url.path == "/api/config":
             self._send_json(
                 {
@@ -167,6 +169,22 @@ class Handler(BaseHTTPRequestHandler):
                     "scenario": SIM.scenario,
                     "scenarios": SCENARIOS,
                     "simulated": True,
+                    "wifi_ssid": "home-wifi",
+                    "mqtt_uri": "mqtt://192.168.1.10:1883",
+                    "mqtt_user": "aeromet",
+                    "mqtt_pass_set": True,
+                    "mqtt_topic": "",
+                    "ha_discovery": True,
+                    "ha_prefix": "homeassistant",
+                    "mqtt_interval_s": 10,
+                    "mqtt": {"configured": True, "connected": True, "state_topic": "aeromet/sim000/state", "node_id": "sim000"},
+                    "crown": {"present": True, "embedded_fw": "0.3.0", "auto_update": "not needed"},
+                    "ota": {"version": "sim", "running": "ota_0", "max_bytes": 1835008},
+                    "rs485": {
+                        "address": 0, "baud": 115200, "lines": 42, "ignored": 0, "pings": 2, "states": 40,
+                        "resets": 0, "heat_checks": 0, "replies": 42, "last_cmd_age_s": 3, "last_cmd": "STATE?",
+                        **json.loads(SIM.call("rs485")),
+                    },
                 }
             )
         else:
@@ -174,7 +192,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         length = int(self.headers.get("Content-Length", "0"))
-        body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
+        body = self.rfile.read(length).decode("utf-8", errors="replace") if length > 0 else "{}"
         try:
             data = json.loads(body)
         except json.JSONDecodeError:
@@ -189,6 +207,11 @@ class Handler(BaseHTTPRequestHandler):
                 loc = SIM.location
                 SIM.call(f"config {loc['latitude']} {loc['longitude']} {loc['altitude_m']}")
             self._send_json({"ok": True, "reboot_required": False})
+        elif self.path in ("/api/firmware", "/api/crown/firmware"):
+            # body already read above (Content-Length); the simulator only acknowledges uploads
+            self._send_json({"ok": length > 1024, "simulated": True, "error": "file too small" if length <= 1024 else ""})
+        elif self.path == "/api/calibration":
+            self._send_raw_json(SIM.call("cal " + json.dumps(data)))
         elif self.path == "/api/action":
             act = data.get("action", "")
             if act == "set_scenario" and data.get("scenario") in SCENARIOS:

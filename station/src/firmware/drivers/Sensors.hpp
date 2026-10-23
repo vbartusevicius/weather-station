@@ -49,6 +49,9 @@ public:
     bool data_ready();
     bool read(float& co2_ppm, float& temp_c, float& rh_pct);
     bool set_ambient_pressure(float hpa);
+    // Forced recalibration to `ppm` (datasheet 3.8.1: run >= 3 min in that air first). Stops and restarts the
+    // periodic measurement; `correction_ppm` = the applied FRC correction.
+    bool forced_recalibration(float ppm, int& correction_ppm);
     bool start();
     bool stop();
     bool running() const { return running_; }

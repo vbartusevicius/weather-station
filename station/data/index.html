@@ -24,7 +24,7 @@
     <nav class="tabs" role="tablist">
       <button class="tab active" data-tab="overview">Now</button>
       <button class="tab" data-tab="trends">Trends</button>
-      <button class="tab" data-tab="twin">Station Twin</button>
+      <button class="tab" data-tab="calibration">Calibration</button>
       <button class="tab" data-tab="settings">Setup</button>
     </nav>
 
@@ -582,108 +582,20 @@
     <!-- =========================================================
          TAB 3: VISUAL STATION DIGITAL TWIN & PHYSICS CORRECTIONS
          ========================================================= -->
-    <section class="panel" id="tab-twin">
-      <div class="grid-2">
-        <div class="card">
+    <section class="panel" id="tab-calibration">
+      <!-- HOME CALIBRATION (guided procedures, /api/calibration; diagrams are inline SVG) -->
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><marker id="cal-ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs></svg>
+      <div class="cal-wrap">
+        <div class="card health-card">
           <div class="card-header">
-            <span class="card-title">🛰 AeroMet V1 Live Hardware Digital Twin</span>
-            <span class="badge ok" id="twin-vin-badge">24.1 V · Heater Standby</span>
+            <span class="card-title">🩺 Station health</span>
+            <span class="badge info" id="health-summary">—</span>
           </div>
-          <div class="twin-wrap">
-            <svg viewBox="0 0 380 310" class="twin-svg">
-              <path d="M 162 34 A 28 28 0 0 1 218 34 Z" fill="rgba(56,189,248,0.18)" stroke="#38bdf8" stroke-width="1.8" />
-              <rect x="172" y="32" width="36" height="5" rx="2" fill="#22c55e" />
-              <text x="234" y="28" class="twin-lbl">Dome PCB (UV / Lux)</text>
-              <text x="234" y="40" class="twin-val" id="tw-dome">UV 5.4 · 642 W/m²</text>
-
-              <rect x="115" y="38" width="150" height="36" rx="8" fill="var(--card-inner)" stroke="var(--border)" stroke-width="2" />
-              <rect x="142" y="50" width="96" height="6" rx="2" fill="#22c55e" />
-              <polygon points="128,68 140,62 146,74 134,80" fill="#38bdf8" />
-              <polygon points="252,68 240,62 234,74 246,80" fill="#38bdf8" />
-              <polyline points="139,76 190,136 241,76" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4 3" />
-              <text x="274" y="54" class="twin-lbl">Crown (4× Piezo + 4× US)</text>
-              <text x="274" y="66" class="twin-val" id="tw-crown">c = 342.8 m/s</text>
-
-              <rect x="122" y="74" width="8" height="64" fill="var(--border)" />
-              <rect x="250" y="74" width="8" height="64" fill="var(--border)" />
-
-              <polygon points="115,152 190,136 265,152" fill="var(--card-inner)" stroke="#f59e0b" stroke-width="2" />
-              <rect x="164" y="152" width="52" height="5" rx="2" fill="#f59e0b" />
-              <text x="274" y="148" class="twin-lbl">Heated Reflector (25 Ω)</text>
-              <text x="274" y="160" class="twin-val" id="tw-heater">18.3 °C · 0.0 W</text>
-
-              <rect x="120" y="164" width="140" height="64" rx="6" fill="var(--card-inner)" stroke="var(--border)" stroke-dasharray="6 3" stroke-width="1.8" />
-              <rect x="184" y="168" width="12" height="56" rx="2" fill="#22c55e" />
-              <text x="274" y="192" class="twin-lbl">Probe Stem (SHT45/SCD41)</text>
-              <text x="274" y="204" class="twin-val" id="tw-probe">18.4 °C · 419 ppm CO₂</text>
-
-              <rect x="115" y="232" width="150" height="62" rx="8" fill="var(--card-inner)" stroke="var(--border)" stroke-width="2" />
-              <rect x="136" y="252" width="108" height="6" rx="2" fill="#22c55e" />
-              <rect x="180" y="278" width="20" height="16" fill="#38bdf8" opacity="0.35" />
-              <text x="274" y="256" class="twin-lbl">Main (ESP32-C6 + RS-485)</text>
-              <text x="274" y="268" class="twin-val" id="tw-main">-56 dBm · 24.1 V</text>
-            </svg>
-          </div>
+          <div class="health-list" id="health-list"></div>
+          <p class="muted-xs">Each light also includes the automatic data checks weather networks use: impossible values,
+          sudden jumps, values stuck for hours, and cross-checks such as sunlight at night.</p>
         </div>
-
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">⚡ Live Physical Error Corrections (Raw → True)</span>
-            <span class="badge info">6 Active Loops</span>
-          </div>
-
-          <div class="corr-visual-list">
-            <div class="corr-item">
-              <div class="corr-top">
-                <span>☀ Solar Radiation Shield Heating (ΔT<sub>rad</sub>)</span>
-                <b class="accent" id="cv-solar">-0.28 °C</b>
-              </div>
-              <div class="corr-bar-bg"><div class="corr-bar-fg amber" id="cb-solar" style="width:14%"></div></div>
-            </div>
-
-            <div class="corr-item">
-              <div class="corr-top">
-                <span>💨 Bernoulli Wind Suction Baro Comp (ΔP<sub>dyn</sub>)</span>
-                <b class="accent" id="cv-bern">+0.04 hPa</b>
-              </div>
-              <div class="corr-bar-bg"><div class="corr-bar-fg cyan" id="cb-bern" style="width:8%"></div></div>
-            </div>
-
-            <div class="corr-item">
-              <div class="corr-top">
-                <span>🌫 κ-Köhler Fog Hygroscopic PM Strip</span>
-                <b class="accent" id="cv-fog">1.00× (Dry)</b>
-              </div>
-              <div class="corr-bar-bg"><div class="corr-bar-fg green" id="cb-fog" style="width:100%"></div></div>
-            </div>
-
-            <div class="corr-item">
-              <div class="corr-top">
-                <span>🔊 Ultrasonic speed of sound → humidity-corrected sonic temperature</span>
-                <b class="accent" id="cv-tof">—</b>
-              </div>
-              <div class="corr-bar-bg"><div class="corr-bar-fg cyan" id="cb-tof" style="width:52%"></div></div>
-            </div>
-
-            <div class="corr-item">
-              <div class="corr-top">
-                <span>🔥 12–32 V Constant-Wattage De-Icing PWM</span>
-                <b class="accent" id="cv-heater">0.0 % (0.0 W / 4.0 W)</b>
-              </div>
-              <div class="corr-bar-bg"><div class="corr-bar-fg amber" id="cb-heater" style="width:2%"></div></div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </section>
-
-    <!-- =========================================================
-         TAB 4: CALIBRATION, MAINTENANCE & OTA
-         ========================================================= -->
-    <section class="panel" id="tab-settings">
-      <div class="grid-2">
-        <div class="card">
+        <div class="card loc-card">
           <div class="card-header">
             <span class="card-title">📍 Location &amp; Time</span>
             <span class="badge info" id="loc-status">—</span>
@@ -701,57 +613,336 @@
           <span class="muted-xs" id="geo-status">Location is used for sun/moon positions, clear-sky cloud cover and the barometric solar-tide correction.</span>
         </div>
 
-        <div class="card">
+        <div class="card cal-intro">
           <div class="card-header">
-            <span class="card-title">📶 Network &amp; Home Assistant</span>
-            <span class="badge info" id="net-status">—</span>
+            <span class="card-title">🧭 Calibration</span>
+            <span class="badge info" id="cal-active">idle</span>
           </div>
-          <div class="form-grid">
-            <label>Wi-Fi SSID<input type="text" id="cfg-ssid" autocomplete="off" /></label>
-            <label>Wi-Fi password<input type="password" id="cfg-pass" autocomplete="new-password" placeholder="unchanged" /></label>
-            <label>MQTT broker URI<input type="text" id="cfg-mqtt" placeholder="mqtt://192.168.1.10:1883" /></label>
-            <label>HA discovery prefix<input type="text" id="cfg-ha" /></label>
+          <p class="cal-warn" id="cal-loc-warn" style="display:none">Set the station location and time in <b>Setup</b> first: the sun-based steps need them.</p>
+          <div class="cal-now" id="cal-now"></div>
+          <p class="muted-xs" id="cal-frc"></p>
+        </div>
+        <div class="cal-list">
+        <details class="card cal-proc" data-kind="compass">
+          <summary><span class="cal-num">1</span><span class="cal-title">Compass spin</span><span class="cal-where">bench · 2 min</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><figure class="cal-fig"><svg class="cal-svg" viewBox="0 0 200 145" role="img" aria-label="turn the station two full turns"><circle cx="100" cy="72" r="30" class="fg-body"/><circle cx="100" cy="72" r="7.5" class="fg-dome"/><rect x="95" y="38" width="10" height="8" rx="2" class="fg-part"/><rect x="125" y="68" width="10" height="8" rx="2" class="fg-part"/><rect x="95" y="98" width="10" height="8" rx="2" class="fg-part"/><rect x="65" y="68" width="10" height="8" rx="2" class="fg-part"/><circle cx="100" cy="42" r="3.2" class="fg-acc"/><text x="100" y="34" class="fg-t fg-ta">N</text><text x="100" y="117" class="fg-t">S</text><path d="M123,32 A46,46 0 0 1 140,95" class="fg-acc-l" marker-end="url(#cal-ah)"/><path d="M77,112 A46,46 0 0 1 60,49" class="fg-acc-l" marker-end="url(#cal-ah)"/><text x="100" y="140" class="fg-t">2 slow turns in 90 s</text></svg></figure><div class="cal-text"><p class="cal-why">Removes the station's own magnetic bias from the compass.</p><ul class="cal-need"><li>Assembled station, powered</li><li>Wooden or plastic table</li><li>1 m from steel, magnets and phones</li></ul><ol class="cal-steps"><li>Once: find the <b>N barrel</b> (picture below) and mark it outside with a paint dot.</li><li>Press <b>Start</b>, then turn the station by hand: <b>2 slow turns in 90 s</b>.</li><li>When <i>Directions covered</i> shows 12 / 12 and the time is up, press <b>Apply result</b>.</li></ol></div></div>
+            <div class="cal-find"><figure class="cal-fig"><svg class="cal-svg" viewBox="0 0 240 178" role="img" aria-label="crown board from above: the cut corner with the silk N is next to the N barrel"><rect x="152" y="10" width="12" height="12" rx="3" class="fg-strut"/><rect x="36" y="10" width="12" height="12" rx="3" class="fg-strut"/><rect x="36" y="126" width="12" height="12" rx="3" class="fg-strut"/><rect x="152" y="126" width="12" height="12" rx="3" class="fg-strut"/><polygon points="54,134 84,134 84,109 116,109 116,134 146,134 160,120 160,90 135,90 135,58 160,58 116,14 116,39 84,39 84,14 54,14 40,28 40,58 65,58 65,90 40,90 40,120" class="fg-board"/><circle cx="100" cy="23" r="13" class="fg-barrel-n"/><circle cx="100" cy="23" r="3.5" class="fg-acc"/><circle cx="151" cy="74" r="13" class="fg-barrel"/><circle cx="100" cy="125" r="13" class="fg-barrel"/><circle cx="49" cy="74" r="13" class="fg-barrel"/><text x="128" y="64" class="fg-silk">N</text><line x1="147" y1="68" x2="147" y2="54" class="fg-silk-l" marker-end="url(#cal-ah)"/><path d="M160,58 L116,14" class="fg-acc-l"/><line x1="172" y1="40" x2="150" y2="44" class="fg-line"/><text x="204" y="38" class="fg-t fg-ta">cut corner</text><text x="204" y="50" class="fg-t fg-ta">with silk N ↑</text><text x="100" y="6" class="fg-t fg-ta">N barrel</text><text x="22" y="172" class="fg-t">strut</text><text x="100" y="172" class="fg-t">S barrel</text></svg></figure><div><b>Finding the N barrel</b>
+              <p>Look at the crown board from above. Its one big cut corner carries a silk <b>N ↑</b>. Turn it so
+              that corner is top-right: the transducer barrel at the top is <b>N</b>. Its cable plugs into
+              <code>J2</code>, labelled <b>N</b>. The four posts on the diagonals are struts, not transducers.</p></div></div><div class="btn-row"><button class="btn-primary" data-cmd="start">Start</button><button class="btn-secondary" data-cmd="finish">Finish now</button><button class="btn-primary" data-cmd="apply">Apply result</button><button class="btn-secondary" data-cmd="cancel">Cancel</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
           </div>
-          <div class="btn-row">
-            <button class="btn-primary" id="btn-save-net">Save network</button>
+        </details>
+        <details class="card cal-proc" data-kind="heading">
+          <summary><span class="cal-num">2</span><span class="cal-title">North reference</span><span class="cal-where">mounted · 5 min</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><div class="cal-text"><p class="cal-why">Tells the station which way its N mark points. Pick one method; all three give the true bearing of the N mark.</p><ol class="cal-steps"><li>Choose the method and fill in its field.</li><li>Tick <b>Fixed heading</b> if the station never turns on its mast (best on steel masts): the compass is then ignored.</li><li>Press <b>Start</b>, keep the station still for 15 s, then <b>Apply result</b>.</li></ol></div></div>
+            <div class="cal-methods">
+              <figure><b>A · Sun shadow</b> <i>±1°</i><svg class="cal-svg" viewBox="0 0 180 150" role="img" aria-label="stick shadow across the N mark"><circle cx="90" cy="62" r="26" class="fg-body"/><circle cx="90" cy="62" r="6.5" class="fg-dome"/><rect x="85" y="32" width="10" height="8" rx="2" class="fg-part"/><rect x="111" y="58" width="10" height="8" rx="2" class="fg-part"/><rect x="85" y="84" width="10" height="8" rx="2" class="fg-part"/><rect x="59" y="58" width="10" height="8" rx="2" class="fg-part"/><circle cx="90" cy="36" r="3.2" class="fg-acc"/><text x="104" y="30" class="fg-t fg-ta">N</text><text x="104" y="101" class="fg-t">S</text><line x1="90" y1="99" x2="90" y2="22" class="fg-shadow"/><circle cx="90" cy="99" r="3" class="fg-stick"/><circle cx="90" cy="136" r="7" class="fg-sun"/><line x1="100" y1="136" x2="103" y2="136" class="fg-ray"/><line x1="80" y1="136" x2="77" y2="136" class="fg-ray"/><line x1="97.0" y1="143.0" x2="99.1" y2="145.1" class="fg-ray"/><line x1="83.0" y1="143.0" x2="80.9" y2="145.1" class="fg-ray"/><line x1="97.0" y1="129.0" x2="99.1" y2="126.9" class="fg-ray"/><line x1="83.0" y1="129.0" x2="80.9" y2="126.9" class="fg-ray"/><text x="128" y="140" class="fg-t">sun</text><text x="62" y="104" class="fg-t">stick</text><text x="60" y="26" class="fg-t">shadow</text></svg><figcaption>Hold a thin stick upright at the S barrel.
+              Press Start when its shadow crosses the N mark. The shadow points away from the sun, and the station
+              knows where the sun is.</figcaption></figure>
+              <figure><b>B · Landmark</b> <i>±1°</i><svg class="cal-svg" viewBox="0 0 180 150" role="img" aria-label="sight over S and N to a far landmark"><line x1="45" y1="115" x2="148" y2="27" class="fg-acc-l fg-dash"/><g transform="rotate(49.4 45 115)"><circle cx="45" cy="115" r="17" class="fg-body"/><circle cx="45" cy="115" r="4.2" class="fg-dome"/><rect x="40" y="94" width="10" height="8" rx="2" class="fg-part"/><rect x="57" y="111" width="10" height="8" rx="2" class="fg-part"/><rect x="40" y="128" width="10" height="8" rx="2" class="fg-part"/><rect x="23" y="111" width="10" height="8" rx="2" class="fg-part"/><circle cx="45" cy="98" r="3.2" class="fg-acc"/></g><rect x="144" y="12" width="10" height="20" class="fg-part"/><path d="M142,12 L149,1 L156,12 Z" class="fg-part"/><text x="98" y="14" class="fg-t">landmark ≥ 300 m</text><text x="90" y="146" class="fg-t">station: location from Setup</text><line x1="45" y1="96" x2="45" y2="52" class="fg-line" marker-end="url(#cal-ah)"/><text x="45" y="45" class="fg-t">true N</text><path d="M45,73 A42,42 0 0 1 77,88" class="fg-acc-l"/><text x="86" y="76" class="fg-t fg-ta">bearing</text></svg><figcaption>Sight over the S and N barrels to a
+              far landmark. Enter its map coordinates (Google Maps: right-click → copy). The station computes the
+              direction from its own location to it.</figcaption></figure>
+              <figure><b>C · Compass</b> <i>±5°</i><svg class="cal-svg" viewBox="0 0 180 150" role="img" aria-label="sight with a compass app over S and N"><line x1="90" y1="122" x2="90" y2="8" class="fg-acc-l fg-dash"/><circle cx="90" cy="66" r="24" class="fg-body"/><circle cx="90" cy="66" r="6.0" class="fg-dome"/><rect x="85" y="38" width="10" height="8" rx="2" class="fg-part"/><rect x="109" y="62" width="10" height="8" rx="2" class="fg-part"/><rect x="85" y="86" width="10" height="8" rx="2" class="fg-part"/><rect x="61" y="62" width="10" height="8" rx="2" class="fg-part"/><circle cx="90" cy="42" r="3.2" class="fg-acc"/><text x="104" y="36" class="fg-t fg-ta">N</text><text x="104" y="103" class="fg-t">S</text><rect x="82" y="118" width="16" height="26" rx="3" class="fg-phone"/><text x="136" y="134" class="fg-t">compass app</text><text x="136" y="146" class="fg-t">(true north)</text></svg><figcaption>Stand behind the S barrel and sight over
+              N with a compass app set to <b>true</b> north, 1–2 m away from the mast. Enter the bearing.</figcaption></figure>
+            </div><div class="form-grid cal-inputs"><label>Method<select data-p="method"><option value="1">A · sun shadow</option><option value="2">B · landmark</option><option value="0">C · compass bearing</option></select></label>
+            <label>C · N-mark bearing (° true)<input type="number" data-p="bearing" step="0.5" min="0" max="360" /></label>
+            <label>B · landmark latitude (°)<input type="number" data-p="lm_lat" step="0.00001" /></label>
+            <label>B · landmark longitude (°)<input type="number" data-p="lm_lon" step="0.00001" /></label>
+            <label class="cal-check"><input type="checkbox" data-p="fixed" /> Fixed heading (ignore the compass)</label></div><div class="btn-row"><button class="btn-primary" data-cmd="start">Start</button><button class="btn-secondary" data-cmd="finish">Finish now</button><button class="btn-primary" data-cmd="apply">Apply result</button><button class="btn-secondary" data-cmd="cancel">Cancel</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
           </div>
+        </details>
+        <details class="card cal-proc" data-kind="still_air">
+          <summary><span class="cal-num">3</span><span class="cal-title">Wind zero</span><span class="cal-where">indoors · 25 min</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><figure class="cal-fig"><svg class="cal-svg" viewBox="0 0 200 150" role="img" aria-label="cardboard box over the station"><rect x="88" y="88" width="24" height="40" rx="3" class="fg-body"/><rect x="84" y="81" width="32" height="7" rx="2" class="fg-body"/><path d="M94,81 A6,6 0 0 1 106,81" class="fg-dome"/><line x1="40" y1="128" x2="160" y2="128" class="fg-line"/><rect x="55" y="34" width="90" height="94" class="fg-acc-l fg-dash"/><text x="100" y="26" class="fg-t">box ≥ 40 cm, not touching</text><text x="100" y="145" class="fg-t">wait 10 min, then 60 s</text></svg></figure><div class="cal-text"><p class="cal-why">Makes still air read 0.0 m/s.</p><ul class="cal-need"><li>Cardboard box ≥ 40 × 40 × 40 cm</li><li>Room without drafts, fans or open windows</li><li>Station powered ≥ 30 min</li></ul><ol class="cal-steps"><li>Put the box over the station, not touching the transducers.</li><li>Leave the room for 10 min.</li><li>Press <b>Start</b> and stay away for 60 s. A good result is saved automatically.</li></ol></div></div>
+            <div class="btn-row"><button class="btn-primary" data-act="wind_calibrate">Start (60 s)</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
+          </div>
+        </details>
+        <details class="card cal-proc" data-kind="level">
+          <summary><span class="cal-num">4</span><span class="cal-title">Level the mast</span><span class="cal-where">mounted · 5 min</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><div class="cal-text"><p class="cal-why">A level station aims its wind beams at the reflector centre. Target below 1°.</p><ul class="cal-need"><li>Spirit level or a phone level app</li><li>Mast shims if needed</li></ul><ol class="cal-steps"><li>Watch <i>Tilt</i> in Station health above.</li><li>Straighten or shim the mast until it is below 1°.</li></ol></div></div>
+            
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
+          </div>
+        </details>
+        <details class="card cal-proc" data-kind="car_run">
+          <summary><span class="cal-num">5</span><span class="cal-title">Wind speed</span><span class="cal-where">outdoors · 30–60 min</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><div class="cal-text"><p class="cal-why">Compares the station with a known air speed. Pick a method; do at least two runs.</p><ul class="cal-need"><li>Phone hotspot + GPS speed app</li><li>Power: car 12 V socket, or a USB-C power bank with a 12 V trigger cable</li></ul><ol class="cal-steps"><li>Get a steady speed (or flow) first, then press <b>Start run</b>.</li><li>After 30–60 s enter the reference speed and press <b>Finish run</b>.</li><li>Repeat in the other direction (A, B) or at a second fan speed (C), then <b>Apply result</b>.</li></ol></div></div>
+            <div class="cal-methods"><figure><b>A · Car</b> <i>±3–5 %</i><svg class="cal-svg" viewBox="0 0 220 150" role="img" aria-label="station on a pole above a car roof"><line x1="5" y1="124" x2="215" y2="124" class="fg-line"/><path d="M18,112 L22,92 L70,88 L92,70 L150,70 L172,88 L204,94 L206,112 Z" class="fg-body"/><circle cx="58" cy="114" r="10" class="fg-part"/><circle cx="168" cy="114" r="10" class="fg-part"/><line x1="122" y1="70" x2="122" y2="34" class="fg-line"/><rect x="110" y="18" width="24" height="16" rx="3" class="fg-body"/><rect x="106" y="11" width="32" height="7" rx="2" class="fg-body"/><path d="M116,11 A6,6 0 0 1 128,11" class="fg-dome"/><line x1="146" y1="68" x2="146" y2="36" class="fg-line" marker-start="url(#cal-ah)" marker-end="url(#cal-ah)"/><text x="174" y="56" class="fg-t">≥ 50 cm</text><line x1="40" y1="138" x2="90" y2="138" class="fg-acc-l" marker-end="url(#cal-ah)"/><text x="65" y="148" class="fg-t">run 1</text><line x1="180" y1="138" x2="130" y2="138" class="fg-acc-l" marker-end="url(#cal-ah)"/><text x="155" y="148" class="fg-t">run 2, same road</text></svg><figcaption>Calm day. Station on a 50–100 cm pole on the roof bars, N mark forward. A passenger enters the GPS speed. Drive the same road both ways.</figcaption></figure><figure><b>B · Hand-held</b> <i>±5–10 %</i><svg class="cal-svg" viewBox="0 0 180 150" role="img" aria-label="walk or cycle holding the station high on a pole"><line x1="8" y1="134" x2="172" y2="134" class="fg-line"/><circle cx="62" cy="66" r="6" class="fg-body"/><line x1="62" y1="72" x2="62" y2="104" class="fg-line"/><line x1="62" y1="104" x2="52" y2="133" class="fg-line"/><line x1="62" y1="104" x2="74" y2="133" class="fg-line"/><line x1="62" y1="80" x2="80" y2="66" class="fg-line"/><line x1="80" y1="104" x2="80" y2="40" class="fg-line"/><rect x="68" y="26" width="24" height="14" rx="3" class="fg-body"/><rect x="64" y="19" width="32" height="7" rx="2" class="fg-body"/><path d="M74,19 A6,6 0 0 1 86,19" class="fg-dome"/><line x1="98" y1="88" x2="140" y2="88" class="fg-acc-l" marker-end="url(#cal-ah)"/><line x1="14" y1="118" x2="14" y2="134" class="fg-line"/><line x1="166" y1="118" x2="166" y2="134" class="fg-line"/><line x1="14" y1="143" x2="166" y2="143" class="fg-line" marker-start="url(#cal-ah)" marker-end="url(#cal-ah)"/><rect x="66" y="138" width="48" height="11" class="fg-bg"/><text x="90" y="147" class="fg-t">≥ 100 m</text></svg><figcaption>Calm day. Hold it high on a 1–1.5 m pole, ahead of your body. Walk briskly, jog or cycle steadily: GPS speed, or a measured distance and its time.</figcaption></figure><figure><b>C · Reference anemometer</b> <i>±3–5 %</i><svg class="cal-svg" viewBox="0 0 180 150" role="img" aria-label="box fan blowing on the station with a handheld anemometer beside it"><circle cx="40" cy="78" r="30" class="fg-body"/><circle cx="40" cy="78" r="4" class="fg-part"/><path d="M40,78 L40,54" class="fg-line"/><path d="M40,78 L61,90" class="fg-line"/><path d="M40,78 L19,90" class="fg-line"/><line x1="40" y1="108" x2="40" y2="134" class="fg-line"/><line x1="24" y1="134" x2="56" y2="134" class="fg-line"/><line x1="78" y1="62" x2="104" y2="62" class="fg-acc-l" marker-end="url(#cal-ah)"/><line x1="78" y1="78" x2="104" y2="78" class="fg-acc-l" marker-end="url(#cal-ah)"/><line x1="78" y1="94" x2="104" y2="94" class="fg-acc-l" marker-end="url(#cal-ah)"/><rect x="120" y="86" width="24" height="48" rx="3" class="fg-body"/><rect x="116" y="79" width="32" height="7" rx="2" class="fg-body"/><path d="M126,79 A6,6 0 0 1 138,79" class="fg-dome"/><circle cx="160" cy="70" r="7" class="fg-part"/><rect x="156" y="77" width="8" height="22" rx="2" class="fg-phone"/><text x="40" y="146" class="fg-t">box fan ≥ 50 cm</text><text x="150" y="146" class="fg-t">anemometer</text></svg><figcaption>A handheld vane anemometer (about €20) right beside the station in steady wind or 1–2 m in front of a large box fan. A hair dryer's jet is too narrow and uneven.</figcaption></figure></div><div class="form-grid cal-inputs"><label>Method<select data-p="wmethod"><option value="car">A · car</option><option value="hand">B · hand-held</option><option value="anemo">C · reference anemometer</option></select></label>
+            <label>A, B · GPS speed (km/h)<input type="number" data-p="gps_kmh" step="0.5" min="7" max="150" /></label>
+            <label>B · or distance (m)<input type="number" data-p="dist_m" step="1" min="20" /></label>
+            <label>B · and its time (s)<input type="number" data-p="time_s" step="0.1" min="2" /></label>
+            <label>C · anemometer reading (m/s)<input type="number" data-p="anemo_ms" step="0.1" min="2" max="40" /></label></div><div class="btn-row"><button class="btn-primary" data-cmd="start">Start run</button><button class="btn-primary" data-cmd="finish">Finish run</button><button class="btn-primary" data-cmd="apply">Apply result</button><button class="btn-secondary" data-cmd="clear_runs">Clear runs</button><button class="btn-secondary" data-cmd="cancel">Cancel</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
+          </div>
+        </details>
+        <details class="card cal-proc" data-kind="pressure">
+          <summary><span class="cal-num">6</span><span class="cal-title">Pressure</span><span class="cal-where">anywhere · 2 min</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><div class="cal-text"><p class="cal-why">Sea-level pressure needs the barometer's exact elevation.</p><ol class="cal-steps"><li>Choose A or B and fill in its fields.</li><li>Press <b>Start</b> (B measures for 60 s), then <b>Apply result</b>.</li></ol></div></div>
+            <div class="cal-methods"><figure><b>A · Map elevation</b> <i>±1–3 m</i><svg class="cal-svg" viewBox="0 0 180 140" role="img" aria-label="map elevation plus height above ground"><line x1="6" y1="124" x2="174" y2="124" class="fg-line"/><rect x="40" y="58" width="64" height="66" class="fg-body"/><path d="M34,58 L72,30 L110,58 Z" class="fg-body"/><line x1="72" y1="30" x2="72" y2="14" class="fg-line"/><rect x="60" y="6" width="24" height="8" rx="3" class="fg-body"/><rect x="56" y="-1" width="32" height="7" rx="2" class="fg-body"/><path d="M66,-1 A6,6 0 0 1 78,-1" class="fg-dome"/><line x1="132" y1="122" x2="132" y2="8" class="fg-acc-l" marker-start="url(#cal-ah)" marker-end="url(#cal-ah)"/><text x="156" y="64" class="fg-t fg-ta">height</text><text x="156" y="76" class="fg-t fg-ta">above</text><text x="156" y="88" class="fg-t fg-ta">ground</text><path d="M20,124 C20,112 12,108 12,102 A8,8 0 1 1 28,102 C28,108 20,112 20,124 Z" class="fg-pin"/><text x="96" y="137" class="fg-t">map elevation of the ground</text></svg><figcaption>Ground elevation at the station from a map (Google Earth, OpenTopoMap, a national geoportal), plus the station's height above it: floors × ≈3 m + roof + mast.</figcaption></figure><figure><b>B · Reference pressure</b> <i>±3 m</i><svg class="cal-svg" viewBox="0 0 180 140" role="img" aria-label="reference sea-level pressure"><circle cx="90" cy="64" r="44" class="fg-body"/><circle cx="90" cy="64" r="3" class="fg-part"/><line x1="90" y1="64" x2="112" y2="36" class="fg-acc-l"/><line x1="63.0" y1="37.0" x2="58.8" y2="32.8" class="fg-line"/><line x1="90.0" y1="26.0" x2="90.0" y2="20.0" class="fg-line"/><line x1="117.0" y1="37.0" x2="121.2" y2="32.8" class="fg-line"/><line x1="128.0" y1="64.0" x2="134.0" y2="64.0" class="fg-line"/><line x1="52.0" y1="64.0" x2="46.0" y2="64.0" class="fg-line"/><text x="90" y="92" class="fg-t fg-ta">Q1013</text><text x="90" y="128" class="fg-t">METAR · weather service · SYNOP</text></svg><figcaption>Sea-level pressure from an official station within ~50 km, at most 30 min old: an airport METAR (<code>Q1013</code> = 1013 hPa), the national weather service, or SYNOP data (ogimet.com). Calm weather.</figcaption></figure></div><div class="form-grid cal-inputs"><label>Method<select data-p="pmethod"><option value="1">A · map elevation</option><option value="0">B · reference pressure</option></select></label>
+            <label>A · ground elevation (m)<input type="number" data-p="ground_m" step="0.1" /></label>
+            <label>A · station height above the ground (m)<input type="number" data-p="above_m" step="0.1" min="0" max="300" /></label>
+            <label>B · reference sea-level pressure (hPa)<input type="number" data-p="qnh" step="0.1" min="900" max="1080" /></label></div><div class="btn-row"><button class="btn-primary" data-cmd="start">Start</button><button class="btn-secondary" data-cmd="finish">Finish now</button><button class="btn-primary" data-cmd="apply">Apply result</button><button class="btn-secondary" data-cmd="cancel">Cancel</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
+          </div>
+        </details>
+        <details class="card cal-proc" data-kind="clear_sky">
+          <summary><span class="cal-num">7</span><span class="cal-title">Light cover</span><span class="cal-where">mounted · 3 min</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><div class="cal-text"><p class="cal-why">Measures how much light the PTFE dome really passes (about 11 %).</p><ul class="cal-need"><li>Cloudless, haze-free sky</li><li>Sun ≥ 25° high (see <i>Sun</i> above)</li><li>Clean, dry dome</li></ul><ol class="cal-steps"><li>Press <b>Start</b> (2 min). <i>Light varies</i> must stay below 4 %.</li><li>Press <b>Apply result</b>. Repeating on 2–3 clear days improves it (±10–15 %).</li></ol></div></div>
+            <div class="btn-row"><button class="btn-primary" data-cmd="start">Start</button><button class="btn-secondary" data-cmd="finish">Finish now</button><button class="btn-primary" data-cmd="apply">Apply result</button><button class="btn-secondary" data-cmd="cancel">Cancel</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
+          </div>
+        </details>
+        <details class="card cal-proc" data-kind="uv_reference">
+          <summary><span class="cal-num">8</span><span class="cal-title">UV index</span><span class="cal-where">mounted · 2 min</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><div class="cal-text"><p class="cal-why">Optional fine-tuning: the UV-B sensor is factory calibrated; this corrects it for the dome.</p><ul class="cal-need"><li>Sunny, cloudless sky</li><li>UV index ≥ 1 (A) or ≥ 3 (B, C)</li></ul><ol class="cal-steps"><li>Choose the method; for B or C enter the UV index.</li><li>Press <b>Start</b> (60 s), then <b>Apply result</b>.</li></ol></div></div>
+            <div class="cal-methods cal-methods-text">
+              <div><b>A · No reference</b> <i>±15–20 %</i><p>Uses the station's second UV sensor (LTR-390, factory
+              calibrated) through the dome. Do <b>Light cover</b> first: it supplies the dome transmission.</p></div>
+              <div><b>B · TEMIS forecast</b> <i>±10 %</i><p>temis.nl gives the clear-sky UV index at solar noon for
+              your coordinates. Run within 15 min of <i>Solar noon</i> (live bar) on a cloudless day.</p></div>
+              <div><b>C · UV meter</b> <i>±5–10 %</i><p>Hold a UV-index meter level next to the dome, in full sun,
+              and enter its reading.</p></div>
+            </div><div class="form-grid cal-inputs"><label>Method<select data-p="uvmethod"><option value="1">A · no reference</option><option value="0">B · TEMIS forecast</option><option value="2">C · UV meter</option></select></label>
+            <label>B, C · reference UV index<input type="number" data-p="uvi" step="0.1" min="0.5" max="16" /></label></div><div class="btn-row"><button class="btn-primary" data-cmd="start">Start</button><button class="btn-secondary" data-cmd="finish">Finish now</button><button class="btn-primary" data-cmd="apply">Apply result</button><button class="btn-secondary" data-cmd="cancel">Cancel</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
+          </div>
+        </details>
+        <details class="card cal-proc" data-kind="drop_test">
+          <summary><span class="cal-num">9</span><span class="cal-title">Rain drops</span><span class="cal-where">indoors · 15 min</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><figure class="cal-fig"><svg class="cal-svg" viewBox="0 0 200 165" role="img" aria-label="drops from a syringe 1.5 m above the lid"><line x1="40" y1="158" x2="160" y2="158" class="fg-line"/><rect x="88" y="122" width="24" height="36" rx="3" class="fg-body"/><rect x="84" y="115" width="32" height="7" rx="2" class="fg-body"/><path d="M94,115 A6,6 0 0 1 106,115" class="fg-dome"/><rect x="94" y="8" width="12" height="30" rx="2" class="fg-body"/><line x1="100" y1="0" x2="100" y2="8" class="fg-line"/><line x1="100" y1="38" x2="100" y2="45" class="fg-line"/><circle cx="100" cy="64" r="3" class="fg-acc"/><line x1="150" y1="45" x2="150" y2="113" class="fg-line" marker-start="url(#cal-ah)" marker-end="url(#cal-ah)"/><text x="172" y="83" class="fg-t fg-ta">1.5 m</text><line x1="58" y1="104" x2="88" y2="114" class="fg-line"/><text x="44" y="100" class="fg-t">flat lid ring</text></svg></figure><div class="cal-text"><p class="cal-why">Teaches the rain sensor how hard a drop of known size hits.</p><ul class="cal-need"><li>5–10 ml syringe, no needle</li><li>Cup of water</li><li>Tape measure, chair</li><li>Towel</li></ul><ol class="cal-steps"><li>Count drops in 1 ml (usually 15–25). Do it twice, enter the average.</li><li>Hold the syringe tip <b>1.5 m</b> above the lid.</li><li>Press <b>Start</b>. Drop 20–30 single drops on the flat lid ring, one every 2–3 s.</li><li>Press <b>Finish &amp; compute</b>, then <b>Apply result</b>.</li></ol></div></div>
+            <div class="form-grid cal-inputs"><label>Drops per ml<input type="number" data-p="drops_per_ml" step="0.5" min="5" max="80" value="20" /></label>
+            <label>Drop height (m)<input type="number" data-p="height_m" step="0.01" min="0.3" max="6" value="1.5" /></label></div><div class="btn-row"><button class="btn-primary" data-cmd="start">Start</button><button class="btn-primary" data-cmd="finish">Finish &amp; compute</button><button class="btn-primary" data-cmd="apply">Apply result</button><button class="btn-secondary" data-cmd="cancel">Cancel</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
+          </div>
+        </details>
+        <details class="card cal-proc" data-kind="rain_gauge">
+          <summary><span class="cal-num">10</span><span class="cal-title">Rain amount</span><span class="cal-where">outdoors · during rain</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><figure class="cal-fig"><svg class="cal-svg" viewBox="0 0 180 150" role="img" aria-label="straight-walled container on a kitchen scale"><rect x="61" y="92" width="58" height="27" class="fg-water"/><path d="M60,32 L60,120 L120,120 L120,32" class="fg-line"/><line x1="60" y1="22" x2="120" y2="22" class="fg-line" marker-start="url(#cal-ah)" marker-end="url(#cal-ah)"/><text x="90" y="14" class="fg-t">D inside (mm)</text><rect x="45" y="121" width="90" height="8" rx="2" class="fg-part"/><text x="90" y="145" class="fg-t">kitchen scale (g)</text></svg></figure><div class="cal-text"><p class="cal-why">Matches the rain total to a simple gauge. Do <b>Rain drops</b> first.</p><ul class="cal-need"><li>Cheap rain gauge, or a straight-walled round container + kitchen scale</li><li>Open spot, ≥ 2 m from walls and trees</li></ul><ol class="cal-steps"><li>Empty the gauge. Press <b>Start</b> before the rain (a reboot cancels it).</li><li>After ≥ 5 mm: enter the gauge mm, or the container diameter and the water weight.</li><li>Press <b>Finish &amp; compute</b>, then <b>Apply result</b>.</li></ol></div></div>
+            <div class="form-grid cal-inputs"><label>Gauge reading (mm)<input type="number" data-p="gauge_mm" step="0.1" min="0" /></label>
+            <label>…or container inside Ø (mm)<input type="number" data-p="cont_d_mm" step="1" min="30" /></label>
+            <label>…and water weight (g)<input type="number" data-p="water_g" step="1" min="0" /></label></div><div class="btn-row"><button class="btn-primary" data-cmd="start">Start</button><button class="btn-primary" data-cmd="finish">Finish &amp; compute</button><button class="btn-primary" data-cmd="apply">Apply result</button><button class="btn-secondary" data-cmd="cancel">Cancel</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
+          </div>
+        </details>
+        <details class="card cal-proc" data-kind="salt_rh">
+          <summary><span class="cal-num">11</span><span class="cal-title">Humidity (salt jar)</span><span class="cal-where">bench · overnight</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><figure class="cal-fig"><svg class="cal-svg" viewBox="0 0 200 160" role="img" aria-label="salt jar with the probe board"><rect x="30" y="32" width="140" height="100" rx="6" class="fg-body"/><line x1="26" y1="32" x2="174" y2="32" class="fg-lid"/><path d="M48,132 L52,108 L88,108 L92,132 Z" class="fg-part"/><circle cx="58" cy="116" r="2" class="fg-salt"/><circle cx="66" cy="113" r="2" class="fg-salt"/><circle cx="74" cy="117" r="2" class="fg-salt"/><circle cx="82" cy="114" r="2" class="fg-salt"/><circle cx="62" cy="123" r="2" class="fg-salt"/><circle cx="78" cy="124" r="2" class="fg-salt"/><circle cx="70" cy="121" r="2" class="fg-salt"/><text x="70" y="100" class="fg-t">wet salt paste</text><rect x="122" y="62" width="12" height="68" rx="2" class="fg-pcb"/><line x1="128" y1="62" x2="128" y2="6" class="fg-line"/><circle cx="128" cy="32" r="5" class="fg-acc"/><text x="68" y="24" class="fg-t">airtight box ≈ 1 L</text><text x="160" y="16" class="fg-t">tape / putty</text><text x="128" y="150" class="fg-t">probe board, not touching</text></svg></figure><div class="cal-text"><p class="cal-why">Air over wet salt in a closed box is always 75.3–75.7 % RH.</p><ul class="cal-need"><li><b>15 g</b> table salt (1 level tablespoon)</li><li><b>5 ml</b> water (1 teaspoon)</li><li>Egg cup or shot glass</li><li>Airtight food box ≈ 1 L</li><li>Tape or putty</li><li>Probe board on its cable</li></ul><ol class="cal-steps"><li>Stir the salt and water in the cup into wet sand. Dry crystals must remain; add salt if all of it dissolves.</li><li>Put the cup and the probe board in the box, not touching. Seal the cable gap.</li><li>Leave 6–12 h (overnight) at steady room temperature, out of the sun.</li><li>Press <b>Start</b> (10 min), then <b>Apply result</b>.</li></ol></div></div>
+            <div class="btn-row"><button class="btn-primary" data-cmd="start">Start</button><button class="btn-secondary" data-cmd="finish">Finish now</button><button class="btn-primary" data-cmd="apply">Apply result</button><button class="btn-secondary" data-cmd="cancel">Cancel</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
+          </div>
+        </details>
+        <details class="card cal-proc" data-kind="ice_point">
+          <summary><span class="cal-num">12</span><span class="cal-title">Temperature (ice bath)</span><span class="cal-where">bench · 40 min</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><figure class="cal-fig"><svg class="cal-svg" viewBox="0 0 200 155" role="img" aria-label="probe in double bags in ice water"><path d="M30,48 Q30,138 100,138 Q170,138 170,48" class="fg-line"/><path d="M31,62 L169,62 Q166,136 100,136 Q34,136 31,62 Z" class="fg-water"/><rect x="40" y="66" width="11" height="11" rx="2" class="fg-ice"/><rect x="56" y="80" width="11" height="11" rx="2" class="fg-ice"/><rect x="44" y="92" width="11" height="11" rx="2" class="fg-ice"/><rect x="128" y="68" width="11" height="11" rx="2" class="fg-ice"/><rect x="146" y="82" width="11" height="11" rx="2" class="fg-ice"/><rect x="132" y="98" width="11" height="11" rx="2" class="fg-ice"/><rect x="60" y="110" width="11" height="11" rx="2" class="fg-ice"/><rect x="124" y="116" width="11" height="11" rx="2" class="fg-ice"/><rect x="70" y="66" width="11" height="11" rx="2" class="fg-ice"/><rect x="86" y="20" width="28" height="98" rx="5" class="fg-acc-l fg-dash"/><rect x="94" y="76" width="12" height="36" rx="2" class="fg-pcb"/><line x1="100" y1="76" x2="100" y2="4" class="fg-line"/><line x1="124" y1="62" x2="124" y2="76" class="fg-line" marker-start="url(#cal-ah)" marker-end="url(#cal-ah)"/><text x="150" y="57" class="fg-t">≥ 5 cm</text><text x="148" y="40" class="fg-t">2 zip bags</text><text x="100" y="152" class="fg-t">crushed ice + cold water</text></svg></figure><div class="cal-text"><p class="cal-why">Melting ice is exactly 0.0 °C. Optional: the sensor is factory calibrated to ±0.2 °C.</p><ul class="cal-need"><li>Bowl ≥ 1 L full of crushed ice</li><li>Cold water, just below the ice top</li><li>2 zip bags</li><li>Probe board on its cable</li></ul><ol class="cal-steps"><li>Bag the probe board twice; keep the openings above the water.</li><li>Push it ≥ 5 cm under, surrounded by ice. Wait 20 min, stirring now and then.</li><li>Press <b>Start</b> (5 min), then <b>Apply result</b>. Water in the bag: unplug and dry the board.</li></ol></div></div>
+            <div class="btn-row"><button class="btn-primary" data-cmd="start">Start</button><button class="btn-secondary" data-cmd="finish">Finish now</button><button class="btn-primary" data-cmd="apply">Apply result</button><button class="btn-secondary" data-cmd="cancel">Cancel</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
+          </div>
+        </details>
+        <details class="card cal-proc" data-kind="co2_fresh_air">
+          <summary><span class="cal-num">13</span><span class="cal-title">CO₂ (fresh air)</span><span class="cal-where">mounted · 5 min</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><div class="cal-text"><p class="cal-why">Recalibrates the CO₂ sensor to outdoor air (about 425 ppm).</p><ul class="cal-need"><li>Station outdoors, some wind</li><li>No chimneys, traffic or people nearby</li></ul><ol class="cal-steps"><li>Stay ≥ 3 m away. Press <b>Start</b> (3 min); readings must be steady (±20 ppm).</li><li>Press <b>Apply result</b>.</li></ol></div></div>
+            <div class="form-grid cal-inputs"><label>Fresh-air CO₂ (ppm)<input type="number" data-p="co2_ref" step="1" min="380" max="500" value="425" /></label></div><div class="btn-row"><button class="btn-primary" data-cmd="start">Start</button><button class="btn-secondary" data-cmd="finish">Finish now</button><button class="btn-primary" data-cmd="apply">Apply result</button><button class="btn-secondary" data-cmd="cancel">Cancel</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
+          </div>
+        </details>
+        <details class="card cal-proc" data-kind="self_tests">
+          <summary><span class="cal-num">14</span><span class="cal-title">Self-tests</span><span class="cal-where">any time</span><span class="badge info cal-stamp">never</span></summary>
+          <div class="cal-body">
+            <div class="cal-top"><div class="cal-text"><p class="cal-why">Checks for the parts that need no calibration: heater, lightning detector, vibration sensor.</p><ol class="cal-steps"><li><b>Heater check</b>: after about 10 s <i>De-icing heater</i> in Station health above shows <i>check-pass</i>.</li><li><b>Lightning antenna</b>: the crown tunes it itself at start-up; <i>Lightning</i> in Station health must show 482–518 kHz. Outside that range check the antenna coil and its two 470 pF capacitors.</li><li><b>Lightning interference</b> (no storm within 100 km): disturbers per 10 min should stay low. Press <b>Bursts off</b> for 30 min, then <b>Bursts on</b>: with bursts on, at most twice as many.</li><li><b>During a thunderstorm</b>: compare strikes and distance with the free map at lightningmaps.org. The detector estimates distance in steps (±30 %), it cannot be calibrated.</li><li><b>Vibration / seismic</b>: tap the mast firmly with a knuckle: <i>Vibration</i> in Station health jumps for a moment. The accelerometer is factory calibrated; nothing to adjust.</li></ol></div></div>
+            <div class="btn-row"><button class="btn-secondary" data-act="heater_check">Heater check</button><button class="btn-secondary" data-act="crown_bursts_off">Bursts off</button><button class="btn-secondary" data-act="crown_bursts_on">Bursts on</button></div>
+            <div class="cal-progress"><div class="cal-progress-fg"></div></div>
+            <div class="cal-live"></div>
+            <p class="cal-msg"></p>
+            <div class="cal-suggest"></div>
+          </div>
+        </details>
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">⚙ Sensor Calibration</span>
-            <span class="badge ok" id="cfg-save-status">—</span>
+        <details class="card cal-advanced">
+          <summary><span class="cal-title">⚙ All calibration values</span><span class="cal-where">manual entry · normally set by the steps above</span><span class="badge ok" id="cfg-save-status">—</span></summary>
+          <div class="cal-body">
+            <div class="form-grid">
+              <label>Magnetic declination (°)<input type="number" id="cfg-decl" step="0.1" /></label>
+              <label>Heading source<select id="cfg-heading-mode"><option value="0">Magnetometer</option><option value="1">Fixed heading</option></select></label>
+              <label>Fixed heading of the N mark (°)<input type="number" id="cfg-heading-fixed" step="0.5" min="0" max="360" /></label>
+              <label>Compass correction (°)<input type="number" id="cfg-heading-off" step="0.5" min="-180" max="180" /></label>
+              <label>Zero-wind Δt<sub>NS</sub> (µs)<input type="number" id="cfg-dt-ns" step="0.01" /></label>
+              <label>Zero-wind Δt<sub>EW</sub> (µs)<input type="number" id="cfg-dt-ew" step="0.01" /></label>
+              <label>Ultrasonic delay (µs)<input type="number" id="cfg-us-delay" step="0.1" /></label>
+              <label>Wind speed gain<input type="number" id="cfg-wind-gain" step="0.001" min="0.5" max="2" /></label>
+              <label>Rain impact scale<input type="number" id="cfg-rain-scale" step="0.01" min="0.05" /></label>
+              <label>Rain gain<input type="number" id="cfg-rain-gain" step="0.01" /></label>
+              <label>Barometer port coefficient<input type="number" id="cfg-pcoef" step="0.01" /></label>
+              <label>Dome transmission<input type="number" id="cfg-optics-tr" step="0.01" min="0.02" max="1" /></label>
+              <label>Temperature offset (°C)<input type="number" id="cfg-t-off" step="0.05" min="-3" max="3" /></label>
+              <label>Humidity offset (% RH)<input type="number" id="cfg-rh-off" step="0.1" min="-10" max="10" /></label>
+              <label>AS3935 tuning capacitor (0–15)<input type="number" id="cfg-tuncap" step="1" min="0" max="15" /></label>
+              <label class="cal-check"><input type="checkbox" id="cfg-as3935-indoor" /> Lightning detector indoor mode (bench tests only)</label>
+            </div>
+            <div class="btn-row">
+              <button class="btn-primary" id="btn-save-cfg">Save values</button>
+              <button class="btn-secondary" id="btn-reset-compass">Reset compass fit</button>
+            </div>
           </div>
-          <div class="form-grid">
-            <label>Magnetic declination (°)<input type="number" id="cfg-decl" step="0.1" /></label>
-            <label>Zero-wind Δt<sub>NS</sub> (µs)<input type="number" id="cfg-dt-ns" step="0.01" /></label>
-            <label>Zero-wind Δt<sub>EW</sub> (µs)<input type="number" id="cfg-dt-ew" step="0.01" /></label>
-            <label>Ultrasonic AFE delay (µs)<input type="number" id="cfg-us-delay" step="0.1" /></label>
-            <label>Barometer port coefficient<input type="number" id="cfg-pcoef" step="0.01" /></label>
-            <label>Rain gain<input type="number" id="cfg-rain-gain" step="0.01" /></label>
-            <label>Wind speed gain<input type="number" id="cfg-wind-gain" step="0.001" min="0.5" max="2" /></label>
-            <label>Rain impact scale<input type="number" id="cfg-rain-scale" step="0.01" min="0.05" /></label>
-            <label>RS-485 address (0 = single)<input type="number" id="cfg-rs485-addr" step="1" min="0" max="247" /></label>
-            <label>UV / light cover transmission<input type="number" id="cfg-optics-tr" step="0.01" min="0.02" max="1" /></label>
-            <label>AS3935 tuning cap (0–15)<input type="number" id="cfg-tuncap" step="1" min="0" max="15" /></label>
-          </div>
-          <div class="btn-row">
-            <button class="btn-primary" id="btn-save-cfg">Save calibration</button>
-            <button class="btn-secondary" id="btn-wind-cal">Still-air wind calibration (60 s)</button>
-          </div>
-          <p class="muted-xs" id="wind-cal-status">Wind calibration: —</p>
-        </div>
+        </details>
+      </div>
+    </section>
 
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">🛠 Maintenance</span>
-            <span class="badge info" id="hdr-fw">fw —</span>
+    <!-- =========================================================
+         TAB 4: CALIBRATION, MAINTENANCE & OTA
+         ========================================================= -->
+    <section class="panel" id="tab-settings">
+      <div class="setup-grid">
+        <div class="setup-col">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">📶 Wi-Fi</span>
+              <span class="badge info" id="net-status">—</span>
+            </div>
+            <div class="form-grid">
+              <label>Network name (SSID)<input type="text" id="cfg-ssid" autocomplete="off" /></label>
+              <label>Password<input type="password" id="cfg-pass" autocomplete="new-password" placeholder="unchanged" /></label>
+            </div>
+            <div class="btn-row">
+              <button class="btn-primary" id="btn-save-wifi">Save Wi-Fi</button>
+            </div>
+            <p class="muted-xs" id="wifi-note">Without a working network the station opens its own access point after 60 s:
+            <b>AeroMet-xxxxxx</b>, password <b>aeromet-setup</b>, page <b>http://192.168.4.1</b>.</p>
           </div>
-          <div class="btn-row">
-            <button class="btn-secondary" id="btn-reset-rain">Reset today's rain</button>
-            <button class="btn-danger" id="btn-reboot">Reboot</button>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">🏠 MQTT &amp; Home Assistant</span>
+              <span class="badge info" id="mqtt-status">—</span>
+            </div>
+            <div class="form-grid">
+              <label>Broker host or IP<input type="text" id="cfg-mqtt-host" placeholder="192.168.1.10" autocomplete="off" /></label>
+              <label>Port<input type="number" id="cfg-mqtt-port" placeholder="1883" min="1" max="65535" /></label>
+              <label>Username<input type="text" id="cfg-mqtt-user" autocomplete="off" /></label>
+              <label>Password<input type="password" id="cfg-mqtt-pass" autocomplete="new-password" placeholder="not set" /></label>
+              <label>Base topic<input type="text" id="cfg-mqtt-topic" placeholder="aeromet/&lt;id&gt;" /></label>
+              <label>Publish every (s)<input type="number" id="cfg-mqtt-int" min="1" max="3600" step="1" /></label>
+              <label>Discovery prefix<input type="text" id="cfg-ha" placeholder="homeassistant" /></label>
+              <label class="cal-check"><input type="checkbox" id="cfg-ha-disc" /> Home Assistant auto-discovery</label>
+            </div>
+            <div class="btn-row">
+              <button class="btn-primary" id="btn-save-mqtt">Save MQTT</button>
+            </div>
+            <p class="muted-xs" id="mqtt-note">—</p>
           </div>
-          <span class="muted-xs" id="ota-status">Hour and day history is saved to flash every hour and before a reboot.</span>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">⬆ Firmware update</span>
+              <span class="badge info" id="fw-status">ready</span>
+            </div>
+            <div class="fw-info" id="fw-info"></div>
+            <label class="file-drop" id="fw-drop">
+              <input type="file" id="fw-station-file" accept=".bin" />
+              <span class="file-drop-icon">⬆</span>
+              <span class="file-drop-text" id="fw-file-name">Choose <b>firmware.bin</b> or drop it here</span>
+            </label>
+            <div class="btn-row"><button class="btn-primary" id="btn-fw-station" disabled>Install</button></div>
+            <div class="cal-progress" id="fw-progress"><div class="cal-progress-fg" id="fw-progress-fg"></div></div>
+            <p class="muted-xs">One file updates everything: the station firmware carries the crown firmware inside it, and
+            the station installs it on the crown by itself after restarting. The update is checked before it is used; a
+            firmware that does not run normally for a minute is undone at the next restart. Keep the power on.</p>
+          </div>
+        </div>
+        <div class="setup-col">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">🔌 RS-485</span>
+              <span class="badge info" id="rs485-status">—</span>
+            </div>
+            <div class="form-grid">
+              <label>Address (0 = only station on the bus)<input type="number" id="cfg-rs485-addr" step="1" min="0" max="247" /></label>
+              <div class="rs-actions"><button class="btn-primary" id="btn-save-rs485">Save address</button></div>
+            </div>
+            <div class="rs-stats" id="rs485-stats"></div>
+            <div class="qc-head">Current frame</div>
+            <div class="code-box rs-frame" id="rs485-frame">—</div>
+            <div class="rs-decode" id="rs485-decode"></div>
+            <details class="rs-help">
+              <summary>How to read it</summary>
+              <p>115200 baud, 8N1, two wires: terminal 3 = A+ (white), 4 = B− (yellow). The station only answers; send one
+              command per line ending in <code>\n</code>: <code>STATE?</code>, <code>PING</code>, <code>RESET_RAIN</code>,
+              <code>HEAT_CHECK</code>. With an address, prefix it: <code>7:STATE?</code>; the reply then starts
+              <code>$AM7,</code>.</p>
+              <p>Reply: <code>$AM,&lt;fields&gt;*&lt;CRC&gt;</code>. The fields are in the order of the table above; an empty
+              field means no valid value. CRC = CRC-16/MODBUS (4 upper-case hex digits) of everything before the <code>*</code>,
+              including the <code>$</code>. Fit the 120 Ω terminator R26 only on the two stations at the ends of a long bus; with more than
+              two stations, keep the 390 Ω bias resistors on one station only.</p>
+            </details>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">🛠 Maintenance</span>
+              <span class="badge info" id="hdr-fw">fw —</span>
+            </div>
+            <div class="rs-stats" id="maint-info"></div>
+            <div class="btn-row">
+              <button class="btn-secondary" id="btn-reset-rain">Reset today's rain</button>
+              <button class="btn-danger" id="btn-reboot">Reboot</button>
+            </div>
+            <span class="muted-xs" id="ota-status">Hour and day history is saved to flash every hour and before a reboot.</span>
+          </div>
         </div>
       </div>
     </section>

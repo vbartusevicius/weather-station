@@ -22,6 +22,9 @@ let trendData = null;       // /api/history?tier=...
 let rain31d = null;
 let stationCfg = null;
 let clockPushed = false;
+let setupTimer = null;      // Setup tab: 5 s status poll (inputs are not touched)
+let calTimer = null;        // Calibration tab: 1 s status poll while the tab is open
+let calStatus = null;       // last /api/calibration status
 
 const el = (id) => document.getElementById(id);
 const isNum = (v) => typeof v === "number" && Number.isFinite(v);
@@ -89,9 +92,19 @@ function showTab(name) {
   document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
   if (name === "trends") loadTrends();
   if (name === "settings") loadConfig();
+  clearInterval(setupTimer);
+  setupTimer = name === "settings" ? setInterval(loadSetupStatus, 5000) : null;   // live MQTT / RS-485 status
+  clearInterval(calTimer);
+  calTimer = null;
+  if (name === "calibration") {
+    loadCal();
+    loadConfig();
+    calTimer = setInterval(loadCal, 1000);
+  }
 }
 document.querySelectorAll(".tab").forEach((btn) => btn.addEventListener("click", () => showTab(btn.dataset.tab)));
-el("loc-banner-btn").addEventListener("click", () => showTab("settings"));
+if (location.hash && document.querySelector(`.tab[data-tab="${location.hash.slice(1)}"]`)) showTab(location.hash.slice(1));   // deep link, e.g. /#calibration
+el("loc-banner-btn").addEventListener("click", () => showTab("calibration"));
 
 el("unit-toggle").addEventListener("click", () => {
   unitIdx = (unitIdx + 1) % UNIT_SYSTEMS.length;
@@ -198,6 +211,7 @@ function openInspectModal(kind, d) {
       ["Distance (method) / closest 1 h", `${fv(l.distance_km, 2, " km")} (${l.method}) / ${fv(l.closest_1h_km, 1, " km")}`],
     ];
   }
+  rows = rows.concat(qcRows(d, kind));
   el("modal-title").textContent = title;
   el("modal-body").innerHTML = rows.map(([k, v]) => `<div class="m-kv"><span class="sub-lbl">${k}</span><b>${v}</b></div>`).join("");
   el("inspect-modal").style.display = "flex";
@@ -679,25 +693,95 @@ function applyTelemetry(d) {
   renderLightningTimeline(d);
   renderWaveAndSeismic(d);
 
-  // ---- Station twin ----
-  const h = d.heater;
-  setText("twin-vin-badge", `${fv(h.vin_v, 1, " V")} · ${h.state === 1 ? `DE-ICING ${h.power_w.toFixed(1)} W` : "Heater Standby"}`);
-  setText("tw-dome", `UV ${fv(uvi, 1)} · ${fv(s.irradiance_w_m2, 0, " W/m²")}`);
-  setText("tw-crown", `c = ${fv(w.sound_m_s, 1, " m/s")}`);
-  setText("tw-heater", `${fv(h.reflector_c, 1, " °C")} · ${fv(h.reflector_w, 1, " W")} measured`);
-  setText("tw-probe", `${fv(e.temp_c, 1, " °C")} · ${fv(q.co2_ppm, 0, " ppm CO₂")} · heater ${fv(h.probe_c, 1, " °C")} ${fv(h.probe_w, 2, " W")}`);
-  setText("tw-main", `${d.wifi.rssi_dbm} dBm · ${fv(h.vin_v, 1, " V")} in · 5V ${fv(h.rail_logic_v, 2)} / heat ${fv(h.rail_heat_v, 2)}`);
-  setText("cv-solar", isNum(e.solar_offset_c) ? `-${e.solar_offset_c.toFixed(2)} °C` : "—");
-  el("cb-solar").style.width = `${clampPct(e.solar_offset_c, 0, 1.5).toFixed(0)}%`;
-  setText("cv-bern", isNum(e.pressure_wind_corr_hpa) ? `+${e.pressure_wind_corr_hpa.toFixed(2)} hPa` : "—");
-  el("cb-bern").style.width = `${clampPct(e.pressure_wind_corr_hpa, 0, 1.0).toFixed(0)}%`;
-  const pmRat = isNum(q.pm2_5) && isNum(q.pm2_5_raw) && q.pm2_5_raw > 0.1 ? q.pm2_5 / q.pm2_5_raw : null;
-  setText("cv-fog", isNum(pmRat) ? `${pmRat.toFixed(2)}× (Dry ${q.pm2_5.toFixed(1)} vs Raw ${q.pm2_5_raw.toFixed(1)})` : "—");
-  el("cb-fog").style.width = `${((pmRat || 1) * 100).toFixed(0)}%`;
-  setText("cv-tof", isNum(w.sound_m_s) ? `${w.sound_m_s.toFixed(1)} m/s → ${fv(w.acoustic_temp_c, 1, " °C")}` : "—");
-  el("cb-tof").style.width = `${clampPct(w.sound_m_s, 320, 360).toFixed(0)}%`;
-  setText("cv-heater", `${h.duty_pct.toFixed(1)} % (${h.power_w.toFixed(1)} W set, ${fv(h.reflector_w, 1, " W")} measured, ${h.reflector_status})`);
-  el("cb-heater").style.width = `${Math.max(2, h.duty_pct).toFixed(0)}%`;
+  renderHealth(d);
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// Station health + data quality (computed by the firmware: src/quality, "health" / "quality" in /api/state)
+// ---------------------------------------------------------------------------------------------
+const QC_LABELS = {
+  temp_c: "Temperature", rh_pct: "Humidity", pressure_hpa: "Pressure", wind_speed: "Wind speed", wind_dir: "Wind direction",
+  rain_rate: "Rain", irradiance: "Sunlight", uv_index: "UV index", pm2_5: "PM2.5", co2_ppm: "CO₂",
+};
+const QC_CARDS = {   // Now-tab card (data-inspect) -> its quality-checked measurements
+  temp: ["temp_c", "rh_pct"], baro: ["pressure_hpa"], wind: ["wind_speed", "wind_dir"], rain: ["rain_rate"],
+  solar: ["irradiance", "uv_index"], air: ["pm2_5", "co2_ppm"],
+};
+const QC_RANK = { good: 0, missing: 1, suspect: 2, fail: 3 };
+// Live reading per health entry (unit-aware formatting only; the status and the reason come from the firmware)
+const HEALTH_VALUES = {
+  supply: (d) => fv(d.heater.vin_v, 1, " V"),
+  rail_5v: (d) => fv(d.heater.rail_logic_v, 2, " V"),
+  rail_heat: (d) => fv(d.heater.rail_heat_v, 2, " V"),
+  wind: (d) => (isNum(d.wind.speed_m_s) ? `${fv(conv.w(d.wind.speed_m_s), 1)} ${UNIT_SYSTEMS[unitIdx].wUnit} from ${fv(d.wind.dir_deg, 0, "°")} · sound ${fv(d.wind.sound_m_s, 1, " m/s")}` : ""),
+  rain: (d) => (d.rain.sensor_ok ? `${d.rain.raining ? `${fv(conv.r(d.rain.rate_mm_h), 1)} ${UNIT_SYSTEMS[unitIdx].rUnit}/h` : "dry"} · today ${fv(conv.r(d.rain.today_mm), 1)} ${UNIT_SYSTEMS[unitIdx].rUnit}` : ""),
+  thermo: (d) => (isNum(d.environment.temp_c) ? `${fv(conv.t(d.environment.temp_c), 1)}${UNIT_SYSTEMS[unitIdx].tUnit} · ${fv(d.environment.humidity_rh, 0, " % RH")}` : ""),
+  baro: (d) => (isNum(d.environment.qnh_hpa) ? `${fv(conv.p(d.environment.qnh_hpa), UNIT_SYSTEMS[unitIdx].pUnit === "inHg" ? 2 : 1)} ${UNIT_SYSTEMS[unitIdx].pUnit} sea level` : ""),
+  co2: (d) => (isNum(d.air_quality.co2_ppm) ? fv(d.air_quality.co2_ppm, 0, " ppm") : ""),
+  voc: (d) => (isNum(d.air_quality.voc_index) ? `VOC ${fv(d.air_quality.voc_index, 0)} · NOx ${fv(d.air_quality.nox_index, 0)}` : ""),
+  pm: (d) => (isNum(d.air_quality.pm2_5) ? `PM2.5 ${fv(d.air_quality.pm2_5, 1)} · PM10 ${fv(d.air_quality.pm10, 1, " µg/m³")}` : ""),
+  imu: (d) => (isNum(d.wind.tilt_deg) ? `${fv(d.wind.tilt_deg, 1, "°")} tilt` : ""),
+  compass: (d) => (isNum(d.wind.heading_deg) ? `N mark → ${fv(d.wind.heading_deg, 0, "°")} (${degToCardinal(d.wind.heading_deg)})` : ""),
+  optics: (d) => {
+    const s = d.solar;
+    const lux = isNum(s.lux) ? (s.lux >= 1000 ? `${(s.lux / 1000).toFixed(1)} klx` : `${s.lux.toFixed(s.lux < 10 ? 2 : 0)} lx`) : "—";
+    const behind = isNum(s.lux_behind_dome) ? ` · ${s.lux_behind_dome >= 1000 ? `${(s.lux_behind_dome / 1000).toFixed(1)} klx` : `${Math.round(s.lux_behind_dome)} lx`} behind the dome` : "";
+    return `${lux} · UV ${fv(s.uv_index, 1)}${behind}`;
+  },
+  reflector_heater: (d) => (isNum(d.heater.reflector_c) ? `${fv(conv.t(d.heater.reflector_c), 1)}${UNIT_SYSTEMS[unitIdx].tUnit} · ${fv(d.heater.reflector_w, 1, " W")}` : ""),
+  probe_heater: (d) => (isNum(d.heater.probe_c) ? `${fv(conv.t(d.heater.probe_c), 1)}${UNIT_SYSTEMS[unitIdx].tUnit} · ${d.heater.probe_on ? "heating" : "off"}` : ""),
+  wifi: (d) => (d.wifi && d.wifi.connected ? `${d.wifi.rssi_dbm} dBm` : ""),
+  lightning: (d) => {
+    const l = d.lightning;
+    const last = isNum(l.distance_km) ? ` · last ${fv(conv.d(l.distance_km), 0)} ${UNIT_SYSTEMS[unitIdx].dUnit}` : "";
+    const dist = isNum(l.disturbers_10min) ? ` · ${l.disturbers_10min} disturbers / 10 min` : "";
+    return `${l.strikes_today} strikes today${last} · antenna ${fv(l.antenna_khz, 1, " kHz")}${dist}`;
+  },
+  seismic: (d) => (isNum(d.seismic.ppv_mm_s) ? `PPV ${fv(d.seismic.ppv_mm_s, 2, " mm/s")}${d.seismic.source && d.seismic.source !== "—" ? ` · ${d.seismic.source}` : ""}` : ""),
+};
+
+function qcRows(d, kind) {
+  const q = d.quality || {};
+  return (QC_CARDS[kind] || []).filter(k => q[k]).map(k => [`Data quality: ${QC_LABELS[k]}`,
+    q[k].flag === "good" ? "good" : `${q[k].flag}${q[k].reason ? ` · ${q[k].reason}` : ""}`]);
+}
+
+function renderHealth(d) {
+  const list = el("health-list");
+  if (!list || !Array.isArray(d.health)) return;
+  const sum = d.health_summary || "off";
+  const badge = el("health-summary");
+  badge.textContent = { ok: "all ok", warn: "check", fail: "fault", off: "—" }[sum] || sum;
+  badge.className = `badge ${{ ok: "ok", warn: "warn", fail: "danger" }[sum] || "info"}`;
+  list.innerHTML = d.health.map((h) => {
+    let value = "";
+    try { value = HEALTH_VALUES[h.id] ? HEALTH_VALUES[h.id](d) : ""; } catch (_) { value = ""; }
+    // secondary: what it is; primary: the reading (or the problem when there is no reading)
+    const primary = value || h.detail || "—";
+    const note = value ? h.detail : "";
+    return `<div class="health-item ${h.status}"><span class="health-dot"></span><span class="health-label">${h.label}</span>` +
+      `<span class="health-value">${primary}</span>` + (note ? `<span class="health-detail">${note}</span>` : "") + "</div>";
+  }).join("");
+  const q = d.quality || {};
+  // Now-tab cards: a badge when one of their measurements is suspect / failed
+  document.querySelectorAll(".card.clickable[data-inspect]").forEach((card) => {
+    const keys = QC_CARDS[card.dataset.inspect] || [];
+    const worst = keys.map(k => (q[k] ? q[k].flag : "missing")).reduce((a, b) => (QC_RANK[b] > QC_RANK[a] ? b : a), "good");
+    let b = card.querySelector(".qc-badge");
+    if (worst !== "suspect" && worst !== "fail") {
+      if (b) b.remove();
+      return;
+    }
+    if (!b) {
+      b = document.createElement("span");
+      b.className = "badge qc-badge";
+      const header = card.querySelector(".card-header");
+      if (header) header.appendChild(b);
+    }
+    b.className = `badge qc-badge ${worst === "fail" ? "danger" : "warn"}`;
+    b.textContent = worst === "fail" ? "⚠ sensor fault" : "⚠ check data";
+  });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -742,16 +826,150 @@ function loadConfig() {
     set("cfg-rain-gain", c.rain_gain);
     set("cfg-rain-scale", c.rain_impact_scale);
     set("cfg-wind-gain", c.wind_speed_gain);
-    set("cfg-rs485-addr", c.rs485_address);
+    set("cfg-rs485-addr", isNum(c.rs485_address) ? c.rs485_address : (c.rs485 ? c.rs485.address : null));
     set("cfg-optics-tr", c.optics_transmission);
-    setText("wind-cal-status", `Wind calibration: ${c.wind_cal_status || "—"}`);
     set("cfg-tuncap", c.as3935_tun_cap);
+    set("cfg-heading-mode", c.heading_mode);
+    set("cfg-heading-fixed", c.heading_fixed_deg);
+    set("cfg-heading-off", c.heading_offset_deg);
+    set("cfg-t-off", c.temp_offset_c);
+    set("cfg-rh-off", c.rh_offset_pct);
+    if (el("cfg-as3935-indoor")) el("cfg-as3935-indoor").checked = !!c.as3935_indoor;
     set("cfg-ssid", c.wifi_ssid);
-    set("cfg-mqtt", c.mqtt_uri);
+    // broker URI -> host / port fields ("mqtt://host:port", or a bare host)
+    const uri = c.mqtt_uri || "";
+    const um = /^(?:(mqtts?):\/\/)?([^:/]+)(?::(\d+))?/.exec(uri);
+    set("cfg-mqtt-host", um ? (um[1] === "mqtts" ? `mqtts://${um[2]}` : um[2]) : "");
+    set("cfg-mqtt-port", um && um[3] ? um[3] : "");
+    set("cfg-mqtt-user", c.mqtt_user);
+    if (el("cfg-mqtt-pass")) el("cfg-mqtt-pass").placeholder = c.mqtt_pass_set ? "unchanged" : "not set";
+    set("cfg-mqtt-topic", c.mqtt_topic);
+    if (el("cfg-mqtt-topic") && c.mqtt && c.mqtt.node_id) el("cfg-mqtt-topic").placeholder = `aeromet/${c.mqtt.node_id}`;
+    set("cfg-mqtt-int", c.mqtt_interval_s);
     set("cfg-ha", c.ha_prefix);
+    if (el("cfg-ha-disc")) el("cfg-ha-disc").checked = c.ha_discovery !== false;
     setText("loc-status", c.location_set ? `${(+c.latitude).toFixed(4)}, ${(+c.longitude).toFixed(4)}` : "Not set");
-    setText("net-status", lastState && lastState.wifi ? (lastState.wifi.connected ? `${lastState.wifi.ip} · ${lastState.wifi.rssi_dbm} dBm` : (lastState.wifi.ap_mode ? "Setup AP 192.168.4.1" : "Offline")) : "—");
+    renderSetupStatus(c);
   }).catch(() => {});
+}
+
+function loadSetupStatus() {
+  return fetch("/api/config").then(r => r.json()).then((c) => { stationCfg = c; renderSetupStatus(c); }).catch(() => {});
+}
+
+// Setup tab status: Wi-Fi, MQTT, RS-485 bus activity + the current frame decoded with the firmware's field list
+function renderSetupStatus(c) {
+  const wf = lastState && lastState.wifi;
+  setText("net-status", wf ? (wf.connected ? `${wf.ip} · ${wf.rssi_dbm} dBm` : (wf.ap_mode ? "setup AP 192.168.4.1" : "offline")) : "—");
+  const kv = (rows) => rows.map(([k, v]) => `<div class="m-kv"><span class="sub-lbl">${k}</span><b>${v}</b></div>`).join("");
+  const mq = c.mqtt || {};
+  const ms = el("mqtt-status");
+  if (ms) {
+    ms.textContent = !mq.configured ? "off" : (mq.connected ? "connected" : "not connected");
+    ms.className = `badge ${!mq.configured ? "info" : (mq.connected ? "ok" : "warn")}`;
+  }
+  setText("mqtt-note", mq.configured && mq.state_topic
+    ? `State JSON goes to ${mq.state_topic} every ${c.mqtt_interval_s || 10} s.${c.ha_discovery !== false ? ` Home Assistant finds the sensors under ${c.ha_prefix || "homeassistant"}/sensor/aeromet_${mq.node_id || ""}_…` : ""} Changes apply after a reboot.`
+    : "Enter a broker to publish to Home Assistant or any MQTT client. Changes apply after a reboot.");
+  const rs = c.rs485;
+  if (rs && el("rs485-stats")) {
+    const age = rs.last_cmd_age_s;
+    const st = el("rs485-status");
+    st.textContent = isNum(age) ? (age < 120 ? `active · ${age} s ago` : `idle · last ${Math.round(age / 60)} min ago`) : "no requests yet";
+    st.className = `badge ${isNum(age) && age < 120 ? "ok" : "info"}`;
+    el("rs485-stats").innerHTML = kv([
+      ["Requests", `STATE? ${rs.states} · PING ${rs.pings} · RESET_RAIN ${rs.resets} · HEAT_CHECK ${rs.heat_checks}`],
+      ["Replies sent / lines ignored", `${rs.replies} / ${rs.ignored} (other address or unknown)`],
+      ["Last command", rs.last_cmd ? `${rs.last_cmd}${isNum(age) ? ` · ${age} s ago` : ""}` : "—"],
+      ["Line settings", `${rs.baud} baud 8N1 · address ${rs.address}`],
+    ]);
+    const frame = (rs.frame || "").trim();
+    el("rs485-frame").textContent = frame || "—";
+    const fm = /^\$AM\d*,(.*)\*([0-9A-F]{4})$/.exec(frame);
+    const vals = fm ? fm[1].split(",") : [];
+    el("rs485-decode").innerHTML = (rs.fields || []).map((f, i) => `<div class="rs-field"><span><i>${i + 1}</i>${f.label}</span>` +
+      `<b>${vals[i] ? `${vals[i]} ${f.unit}` : "—"}</b></div>`).join("") +
+      (fm ? `<div class="rs-field"><span><i>*</i>Checksum (CRC-16/MODBUS)</span><b>${fm[2]}</b></div>` : "");
+  }
+  const cr = c.crown;
+  const ota = c.ota;
+  if (el("fw-info")) {
+    el("fw-info").innerHTML = kv([
+      ["Station firmware", ota ? `${ota.version} · slot ${ota.running}` : (lastState ? lastState.fw : "—")],
+      ["Crown firmware (built in)", cr ? `${cr.embedded_fw}${cr.present ? "" : " · crown not detected"}` : "—"],
+      ["Crown install at last start", cr && cr.auto_update ? (cr.auto_update === "not needed" ? "up to date" : cr.auto_update) : "—"],
+    ]);
+  }
+  if (el("maint-info")) {
+    el("maint-info").innerHTML = kv([
+      ["Crown", cr ? (cr.present ? "connected" : "not detected") : "—"],
+      ["Station id", mq.node_id || "—"],
+      ["Uptime", lastState && isNum(lastState.uptime_s) ? `${Math.floor(lastState.uptime_s / 86400)} d ${Math.floor((lastState.uptime_s % 86400) / 3600)} h` : "—"],
+    ]);
+  }
+}
+
+// Firmware upload with progress (XHR: fetch has no upload progress)
+function uploadFirmware(url, fileInputId, onDone) {
+  const f = el(fileInputId).files && el(fileInputId).files[0];
+  if (!f) { setText("fw-status", "choose a .bin file"); return; }
+  if (!confirm(`Upload ${f.name} (${(f.size / 1024).toFixed(0)} KB)? Keep the power on until it finishes.`)) return;
+  const bar = el("fw-progress"), fg = el("fw-progress-fg");
+  bar.classList.add("on");
+  fg.style.width = "0%";
+  setText("fw-status", "uploading…");
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", url);
+  xhr.upload.onprogress = (ev) => {
+    if (ev.lengthComputable) {
+      fg.style.width = `${((100 * ev.loaded) / ev.total).toFixed(0)}%`;
+      setText("fw-status", ev.loaded < ev.total ? `uploading ${((100 * ev.loaded) / ev.total).toFixed(0)} %` : "installing…");
+    }
+  };
+  xhr.onload = () => {
+    let res = {};
+    try { res = JSON.parse(xhr.responseText); } catch (_) { res = { ok: false, error: `HTTP ${xhr.status}` }; }
+    onDone(res);
+  };
+  xhr.onerror = () => onDone({ ok: false, error: "connection lost" });
+  xhr.send(f);
+}
+
+el("btn-fw-station").addEventListener("click", () => uploadFirmware("/api/firmware", "fw-station-file", (res) => {
+  if (res.ok) {
+    setText("fw-status", "installed: restarting…");
+    setTimeout(() => location.reload(), 35000);   // the page comes back with the new firmware
+  } else {
+    setText("fw-status", `failed: ${res.error || "unknown error"}`);
+  }
+}));
+// file picker: click or drag & drop onto the drop zone
+function setFirmwareFile(file) {
+  const ok = !!file && /\.bin$/i.test(file.name);
+  el("fw-drop").classList.toggle("has-file", ok);
+  el("btn-fw-station").disabled = !ok;
+  el("fw-file-name").innerHTML = file ? (ok ? `<b>${file.name}</b> · ${(file.size / 1024).toFixed(0)} KB` : `${file.name}: not a .bin file`)
+    : "Choose <b>firmware.bin</b> or drop it here";
+}
+el("fw-station-file").addEventListener("change", () => setFirmwareFile(el("fw-station-file").files[0]));
+el("fw-drop").addEventListener("dragover", (ev) => { ev.preventDefault(); el("fw-drop").classList.add("drag"); });
+el("fw-drop").addEventListener("dragleave", () => el("fw-drop").classList.remove("drag"));
+el("fw-drop").addEventListener("drop", (ev) => {
+  ev.preventDefault();
+  el("fw-drop").classList.remove("drag");
+  if (ev.dataTransfer && ev.dataTransfer.files.length) {
+    el("fw-station-file").files = ev.dataTransfer.files;
+    setFirmwareFile(ev.dataTransfer.files[0]);
+  }
+});
+
+function rebootPrompt(res, statusId) {
+  if (res && res.reboot_required) {
+    setText(statusId, "saved: reboot to apply");
+    if (confirm("Saved. Reboot the station now to apply it?")) postJson("/api/action", { action: "reboot" }).catch(() => {});
+  } else {
+    setText(statusId, "saved ✓");
+  }
 }
 
 el("btn-geolocate").addEventListener("click", () => {
@@ -782,12 +1000,31 @@ el("btn-save-loc").addEventListener("click", () => {
     .catch(() => setText("geo-status", "Saving failed"));
 });
 
-el("btn-save-net").addEventListener("click", () => {
-  const body = { mqtt_uri: el("cfg-mqtt").value, ha_prefix: el("cfg-ha").value };
-  if (el("cfg-ssid").value) { body.wifi_ssid = el("cfg-ssid").value; body.wifi_pass = el("cfg-pass").value; }
-  postJson("/api/config", body)
-    .then((res) => setText("net-status", res.reboot_required ? "Saved: reboot to apply" : "Saved ✓"))
-    .catch(() => {});
+el("btn-save-wifi").addEventListener("click", () => {
+  const ssid = el("cfg-ssid").value.trim(), pass = el("cfg-pass").value;
+  if (!ssid) { setText("net-status", "enter the network name"); return; }
+  const body = { wifi_ssid: ssid };
+  // password: send a typed one; a new network without one is taken as open; otherwise keep the stored one
+  if (pass || !stationCfg || ssid !== stationCfg.wifi_ssid) body.wifi_pass = pass;
+  postJson("/api/config", body).then((res) => rebootPrompt(res, "net-status")).catch(() => {});
+});
+
+el("btn-save-mqtt").addEventListener("click", () => {
+  const host = el("cfg-mqtt-host").value.trim(), port = parseInt(el("cfg-mqtt-port").value, 10);
+  const uri = !host ? "" : (host.includes("://") ? `${host}${isNum(port) ? `:${port}` : ""}` : `mqtt://${host}:${isNum(port) ? port : 1883}`);
+  const body = {
+    mqtt_uri: uri, mqtt_user: el("cfg-mqtt-user").value.trim(), mqtt_topic: el("cfg-mqtt-topic").value.trim(),
+    ha_prefix: el("cfg-ha").value.trim() || "homeassistant", ha_discovery: el("cfg-ha-disc").checked,
+    mqtt_interval_s: parseInt(el("cfg-mqtt-int").value, 10) || 10,
+  };
+  if (el("cfg-mqtt-pass").value) body.mqtt_pass = el("cfg-mqtt-pass").value;
+  postJson("/api/config", body).then((res) => rebootPrompt(res, "mqtt-status")).catch(() => {});
+});
+
+el("btn-save-rs485").addEventListener("click", () => {
+  const a = parseInt(el("cfg-rs485-addr").value, 10);
+  if (!isNum(a) || a < 0 || a > 247) { setText("rs485-status", "address 0…247"); return; }
+  postJson("/api/config", { rs485_address: a }).then(() => { setText("rs485-status", "saved ✓"); loadSetupStatus(); }).catch(() => {});
 });
 
 el("btn-save-cfg").addEventListener("click", () => {
@@ -796,17 +1033,203 @@ el("btn-save-cfg").addEventListener("click", () => {
     declination_deg: num("cfg-decl"), dt_ns_offset_us: num("cfg-dt-ns"), dt_ew_offset_us: num("cfg-dt-ew"),
     us_delay_us: num("cfg-us-delay"), pressure_wind_coef: num("cfg-pcoef"), rain_gain: num("cfg-rain-gain"),
     as3935_tun_cap: parseInt(el("cfg-tuncap").value, 10),
-    rain_impact_scale: num("cfg-rain-scale"), wind_speed_gain: num("cfg-wind-gain"), rs485_address: parseInt(el("cfg-rs485-addr").value, 10) || 0,
+    rain_impact_scale: num("cfg-rain-scale"), wind_speed_gain: num("cfg-wind-gain"), as3935_indoor: el("cfg-as3935-indoor").checked,
     optics_transmission: num("cfg-optics-tr"),
+    heading_mode: parseInt(el("cfg-heading-mode").value, 10) || 0, heading_fixed_deg: num("cfg-heading-fixed"),
+    heading_offset_deg: num("cfg-heading-off"), temp_offset_c: num("cfg-t-off"), rh_offset_pct: num("cfg-rh-off"),
   }).then(() => setText("cfg-save-status", "Saved ✓")).catch(() => {});
 });
 
-el("btn-wind-cal").addEventListener("click", () => {
-  if (!confirm("Cover the station (closed box) or make sure the air is completely still for 60 s, then press OK.")) return;
-  postJson("/api/action", { action: "wind_calibrate" })
-    .then(() => setText("wind-cal-status", "Wind calibration: running (60 s) — reload Settings afterwards"))
-    .catch(() => {});
+el("btn-reset-compass").addEventListener("click", () => {
+  if (!confirm("Forget the compass-spin fit (magnetometer offsets and scales)?")) return;
+  postJson("/api/config", { reset_compass: true }).then(() => setText("cfg-save-status", "Compass fit reset ✓")).catch(() => {});
 });
+
+// ---------------------------------------------------------------------------------------------
+// Calibrate tab: guided home procedures. The station runs each measurement and computes every result
+// (src/calibration, /api/calibration); the page collects the inputs, starts / finishes / applies and displays.
+// ---------------------------------------------------------------------------------------------
+const CAL_LIVE = {
+  coverage_bins: ["Directions covered", 0, " / 12"], field_ut: ["Horizontal field", 1, " µT"],
+  bearing_deg: ["N-mark bearing", 1, "°"], compass_deg: ["Compass reads", 1, "°"],
+  station_raw_m_s: ["Station speed (before gain)", 2, " m/s"], seconds: ["Seconds of data", 0, " s"],
+  impacts: ["Impacts", 0, ""], median_mv: ["Median impact", 0, " mV"], expected_mv: ["Expected per drop", 0, " mV"],
+  station_mm: ["Station rain so far", 2, " mm"], station_hpa: ["Station pressure", 2, " hPa"],
+  elevation_m: ["Implied elevation", 1, " m"], lux_behind_cover: ["Light behind the dome", 0, " lx"],
+  expected_lux: ["Clear-sky light (model)", 0, " lx"], sun_alt_deg: ["Sun height", 1, "°"],
+  variation_pct: ["Light varies", 1, " %"], guvb_counts: ["GUVB-C31SM counts", 1, ""],
+  ltr_uvi_behind_cover: ["LTR-390 UVI behind dome", 2, ""], rh_pct: ["RH (last minute)", 2, " %"],
+  expected_pct: ["Salt equilibrium", 2, " %"], temp_c: ["Temperature (last minute)", 2, " °C"],
+  co2_ppm: ["CO₂ mean", 0, " ppm"], co2_std_ppm: ["CO₂ spread", 0, " ppm"],
+};
+const CAL_SUGGEST = {
+  mag_offset_x: ["Magnetometer offset X", 2, " µT"], mag_offset_y: ["Magnetometer offset Y", 2, " µT"],
+  mag_scale_x: ["Magnetometer scale X", 4, ""], mag_scale_y: ["Magnetometer scale Y", 4, ""],
+  heading_mode: ["Heading source (0 compass, 1 fixed)", 0, ""], heading_fixed_deg: ["Fixed heading", 1, "°"],
+  heading_offset_deg: ["Compass correction", 1, "°"], wind_speed_gain: ["Wind speed gain", 4, ""],
+  rain_impact_scale: ["Rain impact scale", 3, ""], rain_gain: ["Rain gain", 3, ""], altitude_m: ["Elevation", 1, " m"],
+  optics_transmission: ["Dome transmission", 4, ""], guvb_counts_per_uvi: ["GUVB counts per UVI", 2, ""],
+  rh_offset_pct: ["Humidity offset", 2, " %"], temp_offset_c: ["Temperature offset", 2, " °C"],
+};
+// Calibration header: only what the procedures need beyond Station health (sun position, solar noon)
+const CAL_NOW = {
+  sun_alt_deg: ["Sun", 0, "° high"], sun_az_deg: ["Sun azimuth", 0, "°"], shadow_deg: ["Shadow points to", 0, "°"],
+  solar_noon_min: ["Solar noon", 0, ""],
+};
+const UI_ONLY_KINDS = ["still_air", "level", "self_tests"];
+
+function calChips(obj, map) {
+  const fmt = (k) => (k === "solar_noon_min" ? hhmm(obj[k]) : `${obj[k].toFixed(map[k][1])}${map[k][2]}`);
+  return Object.keys(map).filter(k => isNum(obj[k]))
+    .map(k => `<span class="cal-chip"><b>${map[k][0]}</b>${fmt(k)}</span>`).join("");
+}
+
+function calInput(card, name) {
+  const n = card.querySelector(`[data-p="${name}"]`);
+  if (!n) return NaN;
+  return n.type === "checkbox" ? n.checked : parseFloat(n.value);
+}
+
+function calStartParams(kind, card) {
+  switch (kind) {
+    case "heading": {
+      const m = parseInt(card.querySelector('[data-p="method"]').value, 10);
+      const base = { p2: m, fixed: calInput(card, "fixed") };
+      if (m === 2) return { ...base, p1: calInput(card, "lm_lat"), p3: calInput(card, "lm_lon") };
+      return { ...base, p1: m === 0 ? calInput(card, "bearing") : 0 };
+    }
+    case "pressure": {
+      const m = parseInt(card.querySelector('[data-p="pmethod"]').value, 10);
+      return m === 1 ? { p1: calInput(card, "ground_m"), p2: 1, p3: calInput(card, "above_m") } : { p1: calInput(card, "qnh"), p2: 0 };
+    }
+    case "uv_reference": {
+      const m = parseInt(card.querySelector('[data-p="uvmethod"]').value, 10);
+      return m === 1 ? { p2: 1 } : { p1: calInput(card, "uvi"), p2: 0 };
+    }
+    case "drop_test": return { p1: calInput(card, "drops_per_ml"), p2: calInput(card, "height_m") };
+    case "co2_fresh_air": return { p1: calInput(card, "co2_ref") };
+    default: return {};
+  }
+}
+
+// Finish input: reference speed in m/s (GPS km/h, distance / time, or an anemometer); rain from the gauge, or from
+// the water weight in a round container (1 g = 1000 mm³)
+function calFinishParam(kind, card) {
+  if (kind === "car_run") {
+    const m = card.querySelector('[data-p="wmethod"]').value;
+    if (m === "anemo") return calInput(card, "anemo_ms");
+    const kmh = calInput(card, "gps_kmh");
+    if (isNum(kmh) && kmh > 0) return kmh / 3.6;
+    const d = calInput(card, "dist_m"), t = calInput(card, "time_s");
+    return m === "hand" && isNum(d) && isNum(t) && t > 0 ? d / t : NaN;
+  }
+  if (kind === "rain_gauge") {
+    const mm = calInput(card, "gauge_mm"), d = calInput(card, "cont_d_mm"), g = calInput(card, "water_g");
+    if (isNum(mm) && mm > 0) return mm;
+    if (isNum(d) && isNum(g) && d > 0) return (g * 1000) / (Math.PI * d * d / 4);
+    return NaN;
+  }
+  return 0;
+}
+
+function calCard(kind) {
+  return document.querySelector(`.cal-proc[data-kind="${kind}"]`);
+}
+
+function renderCal(st) {
+  calStatus = st;
+  const running = st.state === "running";
+  const activeCard = calCard(st.kind);
+  const activeTitle = activeCard ? activeCard.querySelector(".cal-title").textContent : st.kind;
+  setText("cal-active", running ? `${activeTitle} · ${st.elapsed_s} s` : (st.state === "done" ? `${activeTitle}: done` : "idle"));
+  el("cal-now").innerHTML = calChips(st.now || {}, CAL_NOW) || '<span class="muted-xs">Waiting for station readings…</span>';
+  setText("cal-frc", st.frc ? `SCD41 forced recalibration: ${st.frc}` : "");
+  const cfg = st.config || {};
+  el("cal-loc-warn").style.display = cfg.location_set === false ? "" : "none";
+  document.querySelectorAll(".cal-proc").forEach((card) => {
+    const kind = card.dataset.kind;
+    const stamp = card.querySelector(".cal-stamp");
+    const mine = kind === st.kind && st.state !== "idle";
+    card.classList.toggle("active", mine && running);
+    if (UI_ONLY_KINDS.includes(kind)) {
+      if (kind === "still_air") {
+        const ws = stationCfg && stationCfg.wind_cal_status ? stationCfg.wind_cal_status : "—";
+        stamp.textContent = ws.startsWith("ok") ? "done" : (ws === "running" ? "running" : "not done");
+        stamp.className = `badge ${ws.startsWith("ok") ? "ok" : "info"} cal-stamp`;
+        const msg = card.querySelector(".cal-msg");
+        msg.textContent = `Last result: ${ws}`;
+        msg.className = `cal-msg ${ws.startsWith("ok") ? "ok" : (ws.startsWith("never") || ws === "running" ? "" : "fail")}`;
+      } else if (kind === "level") {
+        const t = st.now ? st.now.tilt_deg : null;
+        stamp.textContent = isNum(t) ? (t < 1 ? "level" : (t < 2 ? "acceptable" : "adjust")) : "—";
+        stamp.className = `badge ${isNum(t) && t < 2 ? "ok" : "warn"} cal-stamp`;
+        card.querySelector(".cal-live").innerHTML = isNum(t) ? `<span class="cal-chip"><b>Tilt now</b>${t.toFixed(2)}°</span>` : "";
+      } else {
+        stamp.style.display = "none";
+      }
+      return;
+    }
+    const unix = st.stamps ? st.stamps[kind] : 0;
+    stamp.textContent = unix > 1 ? new Date(unix * 1000).toLocaleDateString() : (unix === 1 ? "applied" : "never");
+    stamp.className = `badge ${unix > 0 ? "ok" : "info"} cal-stamp`;
+    const btn = (cmd) => card.querySelector(`[data-cmd="${cmd}"]`);
+    if (btn("finish")) btn("finish").disabled = !(mine && running);
+    if (btn("apply")) btn("apply").disabled = !(mine && st.state === "done" && st.ok && !st.applied);
+    const prog = card.querySelector(".cal-progress");
+    prog.classList.toggle("on", mine && running && st.duration_s > 0);
+    if (mine && st.duration_s > 0) {
+      card.querySelector(".cal-progress-fg").style.width = `${Math.min(100, (100 * st.elapsed_s) / st.duration_s).toFixed(0)}%`;
+    }
+    let live = mine ? calChips(st.live || {}, CAL_LIVE) : "";
+    if (kind === "car_run" && st.runs && st.runs.length) {
+      live += st.runs.map((r, i) => `<span class="cal-chip"><b>Run ${i + 1}</b>GPS ${(r.ref_m_s * 3.6).toFixed(1)} km/h · station ${(r.station_raw_m_s * 3.6).toFixed(1)} km/h · ${r.seconds} s</span>`).join("");
+    }
+    if (mine && running && st.duration_s > 0) live += `<span class="cal-chip"><b>Time left</b>${Math.max(0, st.duration_s - st.elapsed_s)} s</span>`;
+    card.querySelector(".cal-live").innerHTML = live;
+    const msg = card.querySelector(".cal-msg");
+    msg.textContent = mine ? (running ? (st.duration_s > 0 ? "Measuring…" : "Measuring… press Finish when done.") : st.message + (st.applied ? " Applied ✓" : "")) : "";
+    msg.className = `cal-msg ${mine && st.state === "done" ? (st.ok ? "ok" : "fail") : ""}`;
+    const keys = mine && st.state === "done" && st.suggest ? Object.keys(st.suggest) : [];
+    card.querySelector(".cal-suggest").innerHTML = keys.length ? `<table><tr><th>Setting</th><th>Now</th><th>${st.applied ? "Applied" : "After Apply"}</th></tr>${keys.map((k) => {
+      const m = CAL_SUGGEST[k] || [k, 3, ""];
+      const cur = isNum(cfg[k]) ? `${cfg[k].toFixed(m[1])}${m[2]}` : "—";
+      return `<tr><td>${m[0]}</td><td>${st.applied ? "" : cur}</td><td><b>${st.suggest[k].toFixed(m[1])}${m[2]}</b></td></tr>`;
+    }).join("")}</table>` : "";
+  });
+}
+
+function loadCal() {
+  return fetch("/api/calibration").then(r => r.json()).then(renderCal).catch(() => {});
+}
+
+document.querySelectorAll(".cal-proc").forEach((card) => card.addEventListener("click", (ev) => {
+  const b = ev.target.closest("button");
+  if (!b) return;
+  const kind = card.dataset.kind;
+  const msg = card.querySelector(".cal-msg");
+  if (b.dataset.act) {
+    if (b.dataset.act === "wind_calibrate" && !confirm("Box over the station, air settled for 10 min, nobody near it for 60 s?")) return;
+    postJson("/api/action", { action: b.dataset.act }).then(() => {
+      msg.textContent = b.dataset.act === "wind_calibrate" ? "Running (60 s)…" : `${b.textContent}: sent ✓`;
+      msg.className = "cal-msg";
+      if (b.dataset.act === "wind_calibrate") setTimeout(loadConfig, 63000);
+    }).catch(() => {});
+    return;
+  }
+  const cmd = b.dataset.cmd;
+  const body = { cmd, kind };
+  if (cmd === "start") Object.assign(body, calStartParams(kind, card));
+  if (cmd === "finish") {
+    body.p1 = calFinishParam(kind, card);
+    if (!isNum(body.p1)) {
+      msg.textContent = kind === "car_run" ? "Enter the reference speed first (GPS, distance and time, or anemometer)." : "Enter the gauge reading (or container diameter and water weight) first.";
+      msg.className = "cal-msg fail";
+      return;
+    }
+  }
+  if (cmd === "cancel" && calStatus && calStatus.kind !== kind) return;
+  postJson("/api/calibration", body).then((st) => { renderCal(st); if (cmd === "apply") loadConfig(); }).catch(() => {});
+}));
 
 el("btn-reset-rain").addEventListener("click", () => {
   postJson("/api/action", { action: "reset_rain" }).then(() => setText("ota-status", "Today's rain reset ✓")).catch(() => {});
