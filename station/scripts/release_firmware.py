@@ -35,8 +35,11 @@ IMAGES = [("0x0", "bootloader.bin"), ("0x8000", "partitions.bin"), ("0x19000", "
 
 def container(cmd: str, version: str | None) -> None:
     env = ["-e", f"FW_VERSION={version}"] if version else []
-    subprocess.run(["docker", "compose", "--profile", "lint", "run", "--rm", "-T", *env, "cpp-lint", cmd],
-                   cwd=REPO, check=True)
+    # The container runs as root: hand the build output back to the checkout's owner so this script (and CI on Linux)
+    # can read it afterwards (Docker Desktop on macOS hides the difference).
+    give_back = "chown -R \"$(stat -c %u:%g /work)\" /work/station/.pio /work/crown/.pio 2>/dev/null"
+    subprocess.run(["docker", "compose", "--profile", "lint", "run", "--rm", "-T", *env, "cpp-lint",
+                    f"{cmd}; rc=$?; {give_back}; exit $rc"], cwd=REPO, check=True)
 
 
 def default_version() -> str:
