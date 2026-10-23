@@ -317,19 +317,12 @@ def main():
     crown_base = be.build_crown_base()
     crown = be.build_crown()
     win = ef.uv_window()
-    # Hollow JGS1 Fused Silica Hemispherical Dome (Ø 18.0 mm OD / Ø 15.6 mm ID, 1.2 mm wall) + O-Ring + Standard ISO M22x1.5 Hex-Flange Retainer Nut:
-    uv_flange_shell = be.ring_cone_y(193.0 + ef.UPPER, 194.2 + ef.UPPER, 7.8, 10.35, 7.8, 10.35).translate((win["x"], 0, win["z"]))
-    uv_neck_shell = be.ring_cone_y(194.2 + ef.UPPER, 198.0 + ef.UPPER, 7.8, 9.0, 7.8, 9.0).translate((win["x"], 0, win["z"]))
-    hemi_outer = (cq.Workplane("XY", origin=(win["x"], 198.0 + ef.UPPER, win["z"]))
-                  .sphere(9.0)
-                  .intersect(box(-25, 25, 198.0 + ef.UPPER, 209.0 + ef.UPPER, -25, 25)))
-    hemi_inner = (cq.Workplane("XY", origin=(win["x"], 198.0 + ef.UPPER, win["z"]))
-                  .sphere(7.8)
-                  .intersect(box(-25, 25, 197.8 + ef.UPPER, 209.0 + ef.UPPER, -25, 25)))
-    uv_lens = uv_flange_shell.union(uv_neck_shell).union(hemi_outer.cut(hemi_inner))
+    # Stock Ø 20 x 2 mm JGS1 fused-silica UV window + 17 x 1.5 mm O-ring + M22x1.5 retainer nut (thread at the bottom):
+    w = be.UV_WIN
+    uv_lens = be.cone_y(w["y0"] + ef.UPPER, w["y0"] + w["t"] + ef.UPPER, w["d"] / 2, w["d"] / 2).translate((win["x"], 0, win["z"]))
     uv_nut_hex = be.hex_prism_y(189.8 + ef.UPPER, 191.0 + ef.UPPER, across_flats=22.0, cx=win["x"], cz=win["z"]).cut(
         be.cone_y(189.5 + ef.UPPER, 193.5 + ef.UPPER, 8.2, 8.2).translate((win["x"], 0, win["z"])))
-    uv_nut_barrel = be.ring_cone_y(190.4 + ef.UPPER, 193.0 + ef.UPPER, 8.2, 10.20, 8.2, 10.20).translate((win["x"], 0, win["z"]))
+    uv_nut_barrel = be.ring_cone_y(190.4 + ef.UPPER, be.UV_NUT_TOP + ef.UPPER, 8.2, 10.20, 8.2, 10.20).translate((win["x"], 0, win["z"]))
     uv_retainer_nut = be.add_external_thread_y(uv_nut_hex.union(uv_nut_barrel), (191.2 + ef.UPPER, 192.7 + ef.UPPER),
                                                r_root=10.20, depth=0.70, half_base=0.45, half_crest=0.14,
                                                cx=win["x"], cz=win["z"])
@@ -463,7 +456,7 @@ def main():
     )
     render("exploded", exploded, (360, 210, 360), focal=(0, 115, 0), zoom=0.98)
 
-    # Crown close-up from above showing transparent hollow JGS1 hemisphere + elevated `dome` Micro-PCB + B2B riser + O-ring + nut + 4 Murata piezos + `crown` PCB + `crown_base` + `crown` meshing threads
+    # Crown close-up from above showing transparent JGS1 UV window + elevated `dome` Micro-PCB + B2B riser + O-ring + nut + 4 Murata piezos + `crown` PCB + `crown_base` + `crown` meshing threads
     crown_inside_items = (
         [(crown_base.intersect(keep), STL_COLOURS["crown_base"], 0.55),
          (crown_base.cut(keep), STL_COLOURS["crown_base"], 0.14),
@@ -474,10 +467,27 @@ def main():
          (uv_retainer_nut.intersect(keep), BRASS, 1.0),
          (uv_retainer_nut.cut(keep), BRASS, 0.35),
          (b2b_riser, GOLD, 1.0),
-         (orings.intersect(box(-50, 50, 184 + ef.UPPER, 200 + ef.UPPER, -50, 50)), STL_COLOURS["orings"], 0.92)]
+         (orings.intersect(box(-50, 50, 184 + ef.UPPER, 205 + ef.UPPER, -50, 50)), STL_COLOURS["orings"], 0.92)]
         + crown_pcb_grp
         + dome_pcb_grp
     )
+    # Same close-up for the Ø 20 mm hollow JGS1 hemisphere option: same lid, shorter `uv_nut_dome20`, same O-ring
+    glass_d20, nut_d20, crown_dome = be.uv_dome20_glass(), be.uv_dome_nut(), be.build_crown_dome()
+    ring_d20 = be.uv_dome_oring()
+    render("crown_dome20",
+           [(crown_base.intersect(keep), STL_COLOURS["crown_base"], 0.55),
+            (crown_base.cut(keep), STL_COLOURS["crown_base"], 0.14),
+            (crown_dome.intersect(keep), STL_COLOURS["crown"], 0.35),
+            (crown_dome.cut(keep), STL_COLOURS["crown"], 0.12),
+            (glass_d20.intersect(keep), GLASS_UV, 0.38),
+            (glass_d20.cut(keep), GLASS_UV, 0.16),
+            (nut_d20.intersect(keep), BRASS, 1.0),
+            (nut_d20.cut(keep), BRASS, 0.35),
+            (ring_d20, STL_COLOURS["orings"], 0.92),
+            (b2b_riser, GOLD, 1.0),
+            (orings.intersect(box(-50, 50, 184 + ef.UPPER, 196 + ef.UPPER, -50, 50)), STL_COLOURS["orings"], 0.92)]
+           + crown_pcb_grp + dome_pcb_grp,
+           (68, 228 + ef.UPPER, 82), focal=(0, 190.5 + ef.UPPER, 0), zoom=2.15)
     # Pagoda clean 100% opaque cross-sectional slice (`x <= 0` only — zero translucent ghosting!)
     # Slice ALL items (including `probe_grp` and `refl_grp`!) on `x <= 0` so the `x > 0` half of `probe J1`
     # does not stick out in front of the cut plane and obscure the `x = 0` cross-section of `probe_sleeve_front/back`!

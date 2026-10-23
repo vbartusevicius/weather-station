@@ -1,4 +1,4 @@
-"""V1 `power` board (28.5 x 21.5 mm, 4 layers, 1.2 mm) lying flat under `main`:
+"""V1 `power` board (28.5 x 21.5 mm, 4 layers, 1.6 mm) lying flat under `main`:
   - U1 + L1 + D1: TPS54360 (60 V) 12-32 V -> +5V for the electronics (XIAO, sensors, PMSA003I fan, crown MCU / AFE)
   - U2 + L2 + D2: TPS54360 (60 V) 12-32 V -> +12V_HEAT (12.0 V regulated above ~13.5 V input, VIN - ~1 V below it):
     reflector heater 4.8 W PWM, probe heater 0.42 W, and the crown transducer H-bridge drivers (via crown J1)

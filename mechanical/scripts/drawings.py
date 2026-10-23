@@ -1,54 +1,39 @@
-"""Supplier drawings for purchased custom parts (SVG, mm), written next to the enclosure exports.
+"""Purchase drawings for the non-electronic optical part (SVG, mm), written next to the enclosure exports.
 
-jgs1_dome.svg: the flanged JGS1 fused-silica UV dome over the `dome` board (checklist B3 / M13). The dimensions match
-the crown lid seat in build_enclosure.py (Ø 20.8 mm flange bore, Ø 18.5 mm top hole, flange stack-up 193.0..194.2)
-and the render model in render_assembly3d.py.
+jgs1_window.svg: the stock Ø 20 x 2 mm JGS1 fused-silica UV window over the `dome` board (checklist B3 / M13). The
+numbers come from build_enclosure.UV_WIN / UV_NUT_TOP / UV_BOSS, the crown lid seat that holds it.
 """
 
 from __future__ import annotations
 
-import math
+import sys
 from pathlib import Path
 
-# Dome geometry (mm): flange, cylindrical neck, hemisphere on top of the neck; constant 1.2 mm wall
-FLANGE_OD, FLANGE_T = 20.6, 1.2
-NECK_OD, NECK_H = 18.0, 3.8
-WALL = 1.2
-ID = NECK_OD - 2 * WALL
-R_OUT = NECK_OD / 2
-R_IN = R_OUT - WALL
-TOTAL_H = FLANGE_T + NECK_H + R_OUT
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import build_enclosure as be
 
-S = 9.0             # drawing scale (px per mm)
-OX, OY = 330.0, 360.0   # axis x, flange underside y (px)
+S = 12.0                  # drawing scale (px per mm)
+OX, OY = 330.0, 330.0     # axis x, window underside y (px)
 
 
 def _p(x, y):
     return f"{OX + x * S:.1f},{OY - y * S:.1f}"
 
 
-def _profile(sign):
-    """Closed half-section polygon (sign +1 right half) of the dome wall, flange to apex."""
-    pts = [(sign * ID / 2, 0.0), (sign * FLANGE_OD / 2, 0.0), (sign * FLANGE_OD / 2, FLANGE_T),
-           (sign * R_OUT, FLANGE_T), (sign * R_OUT, FLANGE_T + NECK_H)]
-    pts += [(sign * R_OUT * math.cos(math.radians(a)), FLANGE_T + NECK_H + R_OUT * math.sin(math.radians(a)))
-            for a in range(0, 91, 5)]
-    pts += [(sign * R_IN * math.cos(math.radians(a)), FLANGE_T + NECK_H + R_IN * math.sin(math.radians(a)))
-            for a in range(90, -1, -5)]
-    pts += [(sign * R_IN, 0.0)]
-    return " ".join(_p(x, y) for x, y in pts)
+def _rect(x0, y0, x1, y1, cls):
+    return f'<polygon points="{_p(x0, y0)} {_p(x1, y0)} {_p(x1, y1)} {_p(x0, y1)}" class="{cls}"/>'
 
 
-def _dim_h(x0, x1, y, text, above=True):
-    yy = OY - y * S + (-14 if above else 14)
+def _dim_h(x0, x1, y, text, dy):
+    yy = OY - y * S + dy
     a, b = OX + x0 * S, OX + x1 * S
     return (f'<line x1="{a}" y1="{yy}" x2="{b}" y2="{yy}" class="dim" marker-start="url(#a)" marker-end="url(#a)"/>'
             f'<line x1="{a}" y1="{OY - y * S}" x2="{a}" y2="{yy}" class="ext"/>'
             f'<line x1="{b}" y1="{OY - y * S}" x2="{b}" y2="{yy}" class="ext"/>'
-            f'<text x="{(a + b) / 2}" y="{yy - 4 if above else yy + 12}" class="t" text-anchor="middle">{text}</text>')
+            f'<text x="{(a + b) / 2}" y="{yy - 5 if dy < 0 else yy + 15}" class="t" text-anchor="middle">{text}</text>')
 
 
-def _dim_v(x, y0, y1, text, dx=40):
+def _dim_v(x, y0, y1, text, dx):
     xx = OX + x * S + dx
     a, b = OY - y0 * S, OY - y1 * S
     return (f'<line x1="{xx}" y1="{a}" x2="{xx}" y2="{b}" class="dim" marker-start="url(#a)" marker-end="url(#a)"/>'
@@ -57,38 +42,31 @@ def _dim_v(x, y0, y1, text, dx=40):
             f'<text x="{xx + 6}" y="{(a + b) / 2 + 4}" class="t">{text}</text>')
 
 
-def dome_svg() -> str:
+def window_svg() -> str:
+    w = be.UV_WIN
+    r, t = w["d"] / 2, w["t"]
     notes = [
-        "Material: JGS1 UV-grade fused silica (transmission >= 85 % 250-400 nm, >= 90 % 400-1100 nm), no coating.",
-        "Wall 1.2 +/-0.1 mm, uniform; outer and inner hemisphere optically polished (60-40 S/D or better).",
-        "Flange: OD 20.6 +0/-0.2 mm, thickness 1.0-1.2 mm (MAX 1.2); top face fine-ground flat (17 x 1.5 mm O-ring seal).",
-        "Neck OD 18.0 +/-0.1 mm (passes a 18.5 mm hole); ID 15.6 +/-0.2 mm through flange and neck.",
-        "Edges chamfered 0.2 mm x 45 deg; no chips > 0.3 mm on the flange or neck.",
-        "Operating -40..+85 C outdoors; quantity per station: 1.",
+        f"Stock part: JGS1 UV-grade fused-silica round window Ø {w['d']:.0f} x {t:.0f} mm, both faces polished, UNCOATED.",
+        "AliExpress: \"Various Sizes JGS1 UV Grade Fused Silica Window Quartz Glass Polished Disk\" (pick 20 x 2 mm),",
+        "or fiber-laser protective window \"20x2\" (WSX / Raytools type) ONLY if sold uncoated: 1064 nm AR coatings cut UV-B.",
+        "Tolerances that fit the lid: diameter 19.8-20.1 mm (bore Ø 20.8), thickness 1.8-2.2 mm (the nut thread takes it up).",
+        "Transmission needed: >= 85 % at 280-400 nm (GUVB-C31SM UV-B, LTR-390 UV-A), >= 90 % at 400-1100 nm.",
+        "Fitted from below: 17 x 1.0 mm O-ring against the lid lip, then the window, then the printed nut (hand-tight).",
     ]
-    body = "".join(
-        f'<polygon points="{_profile(s)}" class="{"cut" if s > 0 else "out"}"/>' for s in (1, -1))
-    dims = (
-        _dim_h(-FLANGE_OD / 2, FLANGE_OD / 2, 0.0, f"Ø {FLANGE_OD} +0/-0.2", above=False)
-        + _dim_h(-R_OUT, R_OUT, FLANGE_T + NECK_H + 2.0, f"Ø {NECK_OD} ±0.1")
-        + _dim_h(-ID / 2, ID / 2, FLANGE_T + 1.6, f"Ø {ID:.1f} ±0.2 (ID)")
-        + _dim_v(FLANGE_OD / 2, 0.0, FLANGE_T, f"{FLANGE_T} max", dx=30)
-        + _dim_v(R_OUT, FLANGE_T, FLANGE_T + NECK_H, f"{NECK_H}", dx=60)
-        + _dim_v(R_OUT, 0.0, TOTAL_H, f"{TOTAL_H:.1f}", dx=110)
-        + f'<text x="{OX + 4.5 * S}" y="{OY - (FLANGE_T + NECK_H + 6.6) * S}" class="t">SR {R_OUT} outside, SR {R_IN:.1f} inside</text>'
-        + f'<line x1="{OX}" y1="{OY + 40}" x2="{OX}" y2="{OY - (TOTAL_H + 4) * S}" class="axis"/>'
-    )
-    notes_svg = "".join(f'<text x="40" y="{470 + 18 * i}" class="n">{i + 1}. {n}</text>' for i, n in enumerate(notes))
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620">
+    body = _rect(-r, 0, r, t, "cut")
+    dims = (_dim_h(-r, r, 0.0, f"Ø {w['d']:.1f} (19.8-20.1)", 34)
+            + _dim_v(r, 0.0, t, f"{t:.1f} (1.8-2.2)", 40)
+            + f'<line x1="{OX}" y1="{OY + 50}" x2="{OX}" y2="{OY - (t + 3) * S}" class="axis"/>')
+    notes_svg = "".join(f'<text x="40" y="{440 + 18 * i}" class="n">{i + 1}. {n}</text>' for i, n in enumerate(notes))
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="900" height="580" viewBox="0 0 900 580">
 <defs><marker id="a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M0,2 L10,5 L0,8 z"/></marker>
 <pattern id="h" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#333" stroke-width="1"/></pattern></defs>
-<style>.cut{{fill:url(#h);stroke:#000;stroke-width:1.5}}.out{{fill:none;stroke:#000;stroke-width:1.5}}
-.dim{{stroke:#06c;stroke-width:1}}.ext{{stroke:#06c;stroke-width:0.6}}.axis{{stroke:#999;stroke-dasharray:12 4 2 4}}
-.t{{font:13px sans-serif;fill:#06c}}.n{{font:13px sans-serif}}.title{{font:bold 18px sans-serif}}</style>
-<rect x="5" y="5" width="890" height="610" fill="#fff" stroke="#000"/>
-<text x="40" y="40" class="title">AeroMet V1 — JGS1 fused-silica flanged UV dome (crown lid window)</text>
-<text x="40" y="62" class="n">Half section (right), outline (left). All dimensions in mm. Scale ~9:1. Generated by mechanical/scripts/drawings.py.</text>
+<style>.cut{{fill:url(#h);stroke:#000;stroke-width:1.5}}.dim{{stroke:#06c;stroke-width:1}}.ext{{stroke:#06c;stroke-width:0.6}}
+.axis{{stroke:#999;stroke-dasharray:12 4 2 4}}.t{{font:13px sans-serif;fill:#06c}}.n{{font:13px sans-serif}}.title{{font:bold 18px sans-serif}}</style>
+<rect x="5" y="5" width="890" height="570" fill="#fff" stroke="#000"/>
+<text x="40" y="40" class="title">AeroMet V1 — JGS1 fused-silica UV window (crown lid, over the dome board)</text>
+<text x="40" y="62" class="n">Section. All dimensions in mm. Scale ~12:1. Generated by mechanical/scripts/drawings.py.</text>
 {body}{dims}{notes_svg}
 </svg>
 '''
@@ -96,9 +74,12 @@ def dome_svg() -> str:
 
 def export_drawings(out_dir: Path) -> None:
     out = Path(out_dir) / "drawings"
+    if out.exists():
+        for old in out.glob("*.svg"):
+            old.unlink()
     out.mkdir(parents=True, exist_ok=True)
-    (out / "jgs1_dome.svg").write_text(dome_svg())
-    print(f"Exported drawings/jgs1_dome.svg -> {out}")
+    (out / "jgs1_window.svg").write_text(window_svg())
+    print(f"Exported drawings/jgs1_window.svg -> {out}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""V1 main board (32.0 x 52.0 mm, 4 layers, 1.2 mm, horizontal in the lower bay):
+"""V1 main board (32.0 x 52.0 mm, 4 layers, 1.6 mm, horizontal in the lower bay):
   - J1: KF250-3.5-4P push-in roof terminal (12-32 V + RS-485) + 60 V PTC + SMAJ36A TVS + SS16 Schottky + 100 V MLCC
   - J5: 10-pin JST-SH to the `power` board (VIN_PROT out, +5V / +12V_HEAT from two TPS54360 bucks, +3V3_PROBE from
     its LDO straight through to the probe connector J3)

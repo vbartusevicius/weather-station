@@ -172,6 +172,7 @@ def main(version, boards=BOARDS):
     if enclosure.exists():
         # print plates are regrouped over time (PRINT_GROUPS): drop plates the CAD build no longer produces
         shutil.rmtree(root / "enclosure" / "print", ignore_errors=True)
+        shutil.rmtree(root / "enclosure" / "drawings", ignore_errors=True)
         shutil.copytree(enclosure, root / "enclosure", dirs_exist_ok=True,
                         ignore=shutil.ignore_patterns("fit_*.png", "front_legend.png"))
     return 1 if failed else 0

@@ -1,4 +1,4 @@
-"""V1 crown board v2 (50 x 50 mm octagon with four transducer notches, 4 layers, 1.2 mm, y = 182.8 mm):
+"""V1 crown board v2 (50 x 50 mm octagon with four transducer notches, 4 layers, 1.6 mm, y = 182.8 mm):
   - U1 STM32G431RBT6: digitises the wind echoes, rain impacts and lightning events; I2C peripheral 0x2A for main,
     reflashed by the ESP32 through the ROM I2C bootloader (CROWN_BOOT0 + CROWN_NRST from main)
   - U2..U5 + D1..D8: UCC27524 H-bridge transducer drivers on +12V_HEAT with BAV99 T/R isolation

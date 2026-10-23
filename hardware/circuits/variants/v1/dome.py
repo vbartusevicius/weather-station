@@ -1,8 +1,8 @@
-"""V1 elevated Ø 13.6 mm 3-Sensor UV/Light/NIR Micro-PCB (`dome`, 4 layers, 1.2 mm)
+"""V1 elevated Ø 13.6 mm 3-Sensor UV/Light/NIR Micro-PCB (`dome`, 4 layers, 1.6 mm)
 raised on a vertical 4-pin board-to-board riser (`crown J10 <-> dome J1`)
 so U1 (LTR-390UV-01), U2 (ams OSRAM TSL25911FN Vis+NIR+188uLux), and U3
-(GenUV GUVB-C31SM AlGaN UV-B) sit directly inside the hollow JGS1 Fused Silica
-Hemispherical Dome above the roof peak with a full 180-deg (0-deg horizon) sky view!"""
+(GenUV GUVB-C31SM AlGaN UV-B) sit 0.5 mm under the stock Ø 20 x 2 mm JGS1 fused-silica window in the crown
+lid boss (sky view above ~19-32 deg elevation, set by the window lip; see build_enclosure.UV_WIN)."""
 
 from builtins import NC
 

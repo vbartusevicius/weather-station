@@ -470,3 +470,62 @@ def test_printed_walls_are_at_least_the_process_minimum():
                 if t is not None and t < MIN_WALL_MM:
                     thin.append((plate, i, round(t, 2), where))
     assert not thin, f"{len(thin)} faces back walls < {MIN_WALL_MM} mm, e.g. {thin[:6]}"
+
+
+def test_uv_window_stack_fits_the_crown_lid():
+    """Window crown top: the stock Ø 20 x 2 mm JGS1 window and the thin 17 x 1.0 mm O-ring above it fit the bore, the
+    O-ring seals between the lid lip and the glass (its full face lies on the lip), the window clears the dome
+    sensors, the nut pushes the window from below, and the 1.2 mm lip's drains stay above the O-ring plane."""
+    w, b, u = be.UV_WIN, be.UV_BOSS, ef.UPPER
+    win = ef.uv_window()
+    at = (win["x"], 0, win["z"])
+    w_top = w["y0"] + w["t"]
+    crown = be.build_crown()
+    for d in (19.8, 20.0, 20.1):
+        glass = be.cone_y(w["y0"] + u, w_top + u, d / 2, d / 2).translate(at)
+        assert crown.intersect(glass).val().Volume() < 1e-3, f"Ø {d} window hits the lid"
+    ring = be.ring_cone_y(w_top + u, be.UV_LIP_Y + u, 8.5, 9.5, 8.5, 9.5).translate(at)
+    assert crown.intersect(ring).val().Volume() < 1e-3
+    assert 8.5 > b["ap_r"], "O-ring face (17 x 1.0: r 8.5..9.5) must sit fully on the lip, inside the Ø 20.8 bore"
+    assert 0.15 <= 1.0 - be.UV_ORING["squeezed"] / be.UV_ORING["cs"] <= 0.40
+    above = be.ring_cone_y(be.UV_LIP_Y + u, be.UV_LIP_Y + u + 0.05, 8.6, 9.4, 8.6, 9.4).translate(at)
+    assert crown.intersect(above).val().Volume() > 0.01, "lip material must back the O-ring"
+    assert b["top"] - be.UV_LIP_Y >= 0.8
+    sensor_top = max(p["y1"] for p in ef.part_boxes() if p["board"] == "dome" and p["side"] == "front")
+    assert w["y0"] + u - sensor_top >= 0.3, f"dome sensors {sensor_top:.2f} vs window {w['y0'] + u:.2f}"
+    struts = be.build_struts()
+    glass = be.cone_y(w["y0"] + u, w_top + u, w["d"] / 2, w["d"] / 2).translate(at)
+    assert struts.intersect(glass).val().Volume() < 1e-3
+    assert struts.intersect(glass.translate((0, -0.05, 0))).val().Volume() > 0.0, "nut must reach the window"
+
+
+def test_uv_dome_crown_top_fits():
+    """Dome crown top: the Ø 20 mm hollow JGS1 hemisphere clears the lid; the thin 19 x 1.0 mm O-ring in the bore /
+    lip corner gland seals lid <-> sphere at 15-40 % squeeze; the lid around the dome stays below the dome sensor tops (horizon
+    view, no raised border); the dome nut (on the struts plate) pushes the rim; board and sensors clear glass and nut."""
+    d = be.UV_DOME
+    glass, lid = be.uv_dome20_glass(), be.build_crown_dome()
+    win = ef.uv_window()
+    at = (win["x"], 0, win["z"])
+    assert lid.intersect(glass).val().Volume() < 1e-3
+    ring = be.uv_dome_oring()
+    assert lid.intersect(ring).val().Volume() < 0.01, "O-ring gland corner too small"
+    cx, cy = d["bore_r"] - 0.5, d["gland_y"] - 0.5   # O-ring section centre vs sphere: 15-40 % squeeze of 1.0 mm
+    squeeze = 0.5 - (math.hypot(cx, cy - d["rim_y"]) - d["r_out"])
+    assert 0.15 <= squeeze / 1.0 <= 0.40, f"dome O-ring squeeze {squeeze:.2f} mm"
+    lip_gap = d["lip_r"] - math.sqrt(d["r_out"] ** 2 - (d["gland_y"] - d["rim_y"]) ** 2)
+    assert lip_gap >= 0.15, f"lip hole only {lip_gap:.2f} mm from the dome"
+    sensors = [p for p in ef.part_boxes() if p["board"] == "dome" and p["side"] == "front"]
+    lowest_sensor = min(p["y1"] for p in sensors)
+    lid_above = be.box(-14, 14, lowest_sensor, lowest_sensor + 20, -14, 14).translate(at).cut(
+        be.cone_y(lowest_sensor - 1, lowest_sensor + 21, 10.5, 10.5).translate(at))
+    assert lid.intersect(lid_above).val().Volume() < 1e-3, "lid rises above the dome sensors (shades the horizon)"
+    nut = be.uv_dome_nut()
+    assert nut.intersect(glass).val().Volume() < 1e-3
+    assert nut.intersect(glass.translate((0, -0.05, 0))).val().Volume() > 0.0, "nut must reach the dome rim"
+    for p in ef.part_boxes():
+        if p["board"] == "dome":
+            part = be.box(p["x0"], p["x1"], p["y0"], p["y1"], p["z0"], p["z1"])
+            assert glass.intersect(part).val().Volume() < 1e-3, f"dome:{p['ref']} hits the hemisphere"
+            assert nut.intersect(part).val().Volume() < 1e-3, f"dome:{p['ref']} hits the dome nut"
+    assert nut.intersect(_board_solids()["dome"]).val().Volume() < 1e-3

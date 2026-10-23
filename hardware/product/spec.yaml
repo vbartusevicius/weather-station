@@ -16,7 +16,7 @@ active_variant: v1
 envelope:
   outer_diameter: 96.0
   outer_radius: 48.0
-  total_height: 231.0          # y = -12 (bottom of the 40 mm mast clamp) .. 219 (dome apex incl. both raises)
+  total_height: 236.3          # y = -12 (bottom of the 40 mm mast clamp) .. 224.3 (UV window boss top incl. both raises)
   # Everything above the base (pagoda, probe, reflector, struts, crown, dome) is designed in the original frame and
   # placed `above_base_raise` higher: the base bay grew by 15 mm (taller power/PM/main stack, more airflow room).
   above_base_raise: 15.0
@@ -80,22 +80,22 @@ variants:
 boards:
   main:
     plane: horizontal-xz     # enc_x = board_x - 0.5, enc_z = board_y - 26.0 (right half of the bay), top faces +y
-    thickness: 1.2
-    y: 56.5                  # board top face y (raised 10 mm with the taller bay: 6.8+ mm above the power board)
+    thickness: 1.6
+    y: 56.9                  # board top face y (1.6 mm board, underside at 55.3 as with the 1.2 mm board: SW1 / reset plunger)
     x_offset: 15.5           # board spans enc x = -0.5..31.5; the PMSA003I lies flat on the left half
     max_outline: { width: 32.0, height: 52.0 }
     domains:
       SELV-MAIN: all
   crown:
     plane: horizontal-xz     # 60 x 60 mm crown v2 at y = 182.8 mm: N/E/S/W notches for the transducer barrels, NE corner clear of the cable column (outline in layout_crown.yaml)
-    thickness: 1.2
+    thickness: 1.6
     y: 182.8
     max_outline: { width: 60.0, height: 60.0 }
     domains:
       SELV-CROWN: all
   power:
     plane: horizontal-xz     # 28.5 x 21.5 mm two-rail power supply lying flat under `main`
-    thickness: 1.2
+    thickness: 1.6
     y: 41.7                  # board top face y (bottom face at 40.5, 6 mm above the y = 34.5 floor); inductors end at 46.2
     x_offset: 23.75          # board spans enc x = 9.5..38.0 (clear of the gland locknut, juts past main's edge for J1)
     z_offset: -3.25          # board spans enc z = -14.0..7.5 (clear of the reset button and main's L2)
@@ -104,16 +104,16 @@ boards:
       SELV-POWER: all
   reflector:
     plane: horizontal-xz     # compact 24x24 mm horizontal T-cap directly under the wind-tunnel reflector apex (y = 123.8)
-    thickness: 1.2
+    thickness: 1.6
     y: 123.8                 # board top face y (bottom face at 122.6); 4x 2512 parallel heater array
     max_outline: { width: 24.0, height: 24.0 }
     domains:
       SELV-REFLECTOR: all
   dome:
-    plane: horizontal-xz     # round Ø 13.6 mm UV/Light micro-PCB raised on 4-pin vertical B2B riser right inside the JGS1 hemisphere!
+    plane: horizontal-xz     # round Ø 13.6 mm UV/Light micro-PCB raised on 4-pin vertical B2B riser right under the Ø 20 x 2 mm JGS1 window in the crown lid boss
     shape: circle
-    thickness: 1.2
-    y: 197.4                 # U1 (LTR-390UV) & U2 (VEML7700) sit at y = 197.4..200.4 inside the hollow JGS1 hemisphere above the y=197.8 lip
+    thickness: 1.6
+    y: 197.4                 # sensor tops at y <= 198.8, 0.5 mm below the UV window (build_enclosure.UV_WIN)
     x_offset: 0.0
     z_offset: 0.0
     max_outline: { width: 13.6, height: 13.6 }
@@ -121,9 +121,9 @@ boards:
       SELV-DOME: all
   probe:
     plane: vertical-xy       # vertical stem of the T inside the 5-plate pagoda (y = 69.0..125.0)
-    thickness: 1.2
+    thickness: 1.6
     y_start: 69.0
-    z: 0.6                   # front face at +0.6, back face at -0.6
+    z: 0.8                   # front face at +0.8, back face at -0.8 (1.6 mm board)
     max_outline: { width: 14.0, height: 56.0 }   # 6 mm longer (above_pagoda_raise) so J2 reaches the raised reflector
     domains:
       SELV-PROBE: all

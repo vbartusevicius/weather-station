@@ -1,7 +1,7 @@
 frame:
   size: { x: 14.0, y: 56.0 }   # 6 mm longer: J2 reaches the reflector under the raised wind_tunnel deck
   copper_layers: 4
-  thickness: 1.2
+  thickness: 1.6
   min_drill: 0.2
   min_track: 0.12
   edge_clearance: 0.3

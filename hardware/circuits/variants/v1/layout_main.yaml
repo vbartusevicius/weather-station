@@ -1,7 +1,7 @@
 frame:
   size: { x: 32.0, y: 52.0 }
   copper_layers: 4
-  thickness: 1.2
+  thickness: 1.6
   min_drill: 0.2
   min_track: 0.12
   edge_clearance: 0.3

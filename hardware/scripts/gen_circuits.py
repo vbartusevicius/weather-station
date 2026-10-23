@@ -176,11 +176,11 @@ def collect_assembly_parts(variant, spec):
         "source": "Murata / Mouser / Digi-Key / LCSC",
     })
     items.append({
-        "item": "JGS1 Fused Silica UV & Solar Optical Dome (or Ø 20x1.5 mm JGS1 Flat Disc)",
+        "item": "JGS1 Fused Silica UV Window Ø 20 x 2 mm (uncoated)",
         "qty": 1,
-        "part": "JGS1/JGS2 UV Fused Silica Hemispherical Dome (Ø 18.0 mm OD / Ø 15.6 mm ID x 9.0 mm height with Ø 20.5 mm flange, Bena Optics DW-series / AliExpress) OR standard Ø 20.0 x 1.5 mm JGS1 Quartz Glass Disc",
-        "description": "185-2500 nm UV-B/UV-A/Visible/NIR transmission (>=92%); seats from underneath against the 17 x 1.5 mm O-ring inside crown.stl and is clamped by the printed M22x1.5 threaded retainer (flange must be <= 1.2 mm thick: get the supplier drawing before ordering)",
-        "source": "AliExpress / Bena Optics / Crystran / Edmund Optics",
+        "part": "Stock JGS1 UV-grade fused-silica round window Ø 20 x 2 mm, both faces polished, uncoated (AliExpress \"Various Sizes JGS1 UV Grade Fused Silica Window Quartz Glass Polished Disk\", 20 x 2 mm; a fiber-laser protective window 20x2 only if it is uncoated - 1064 nm AR coatings cut UV-B). See enclosure/drawings/jgs1_window.svg",
+        "description": "UV-B / UV-A / visible / NIR window over the dome board sensors, in the `crown` top: fitted from below, a thin 17 x 1.0 mm O-ring between its top face and the lid lip (the seal is lid <-> glass), pushed up hand-tight by the printed M22x1.5 window nut (struts.stl). Fits diameter 19.8-20.1 mm, thickness 1.8-2.2 mm. Option: the `crown_dome` top with a Ø 20 mm hollow JGS1 hemisphere, 1.2 mm wall (custom / made to order; ordinary glass blocks UV-B), 19 x 1.0 mm O-ring, the shorter dome nut (struts.stl)",
+        "source": "AliExpress / Taobao (JGS1 UV fused silica window 20 x 2 mm, ~$6-10)",
     })
     items.append({
         "item": "Particulate Matter Sensor Module (PM1.0/2.5/10)",
@@ -213,7 +213,7 @@ def collect_assembly_parts(variant, spec):
     items.append({
         "item": "Elastomeric O-Ring Seal Set (5 Rings)",
         "qty": 1,
-        "part": "3x 88 x 2.0 mm EPDM/NBR 70A O-rings (base<->pagoda, pagoda<->wind_tunnel, crown_base<->crown: glands sized for 2.0 mm, a 1.5 mm ring does not seal) + 1x 21 x 1.5 mm O-ring (probe_sleeve bottom) + 1x 17 x 1.5 mm O-ring (JGS1 UV dome)",
+        "part": "3x 88 x 2.0 mm EPDM/NBR 70A O-rings (base<->pagoda, pagoda<->wind_tunnel, crown_base<->crown: glands sized for 2.0 mm, a 1.5 mm ring does not seal) + 1x 21 x 1.5 mm O-ring (probe_sleeve bottom) + 1x 17 x 1.0 mm O-ring (UV window, crown top) or 1x 19 x 1.0 mm O-ring (UV hemisphere, crown_dome top)",
         "description": "Standard metric EPDM/nitrile O-rings (or 3D-printed in TPU 95A from orings.stl) sealing all 3 bayonet joints, the bottom pagoda bulkhead, and the JGS1 quartz dome",
         "source": "Local hardware / McMaster-Carr / TPU 95A print",
     })
@@ -241,7 +241,7 @@ def collect_assembly_parts(variant, spec):
     items.append({
         "item": "3D-printed roof enclosure parts (12 parts on 8 print plates)",
         "qty": 8,
-        "part": "enclosure/print/<plate>.stl: base, orings, pagoda, wind_tunnel, probe_sleeve (front + back), mast_clamp (+ mast_shims), struts (+ transducer_adapters), crown (+ crown_base) — assembled-position references in enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,struts,crown_base,crown,mast_shims,transducer_adapters}.stl",
+        "part": "enclosure/print/<plate>.stl: base, orings, pagoda, wind_tunnel, probe_sleeve (front + back), mast_clamp (+ mast_shims), struts (+ transducer_adapters), crown (+ crown_dome + crown_base) — assembled-position references in enclosure/{base,mast_clamp,orings,probe_sleeve_back,probe_sleeve_front,pagoda,wind_tunnel,struts,crown_base,crown,mast_shims,transducer_adapters}.stl",
         "description": "Order/print the 8 enclosure/print/<plate>.stl files: all bodies laid out >= 6 mm apart, so captive and stacked bodies (umbrella, reset button, louver plates, strut halves, nuts, shims) are never printed fused. MJF PA12 or UV-stabilised ASA (TPU 95A only if printing orings); clamped to the mast with 6x M6x35 bolts",
         "source": "printed",
     })

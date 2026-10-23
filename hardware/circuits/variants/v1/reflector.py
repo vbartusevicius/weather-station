@@ -1,4 +1,4 @@
-"""V1 horizontal reflector de-icing heater board (34.0 x 56.0 mm, 4 layers, 1.2 mm,
+"""V1 horizontal reflector de-icing heater board (34.0 x 56.0 mm, 4 layers, 1.6 mm,
 horizontal top bar of the T-assembly at y = 123.8 mm directly under the ultrasonic
 reflector cone):
   - J1 (back side): 4-pin 2.54 mm female socket strip (KH-2.54FH-1X4P-H8.5, C2905415)

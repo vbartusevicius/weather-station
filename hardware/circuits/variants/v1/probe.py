@@ -1,4 +1,4 @@
-"""V1 pagoda probe board (14.0 x 50.0 mm, 4 layers, 1.2 mm, vertical stem of the T-assembly):
+"""V1 pagoda probe board (14.0 x 50.0 mm, 4 layers, 1.6 mm, vertical stem of the T-assembly):
   - J1 (bottom): 10-pin JST-SH from main J3
   - U3 (bottom intake zone, between the two milled slots): Sensirion SHT40-AD1F-R2 thermo-hygrometer
   - U1 (middle zone, above milled slot): Sensirion SCD41-D-R2 photoacoustic true CO2 sensor

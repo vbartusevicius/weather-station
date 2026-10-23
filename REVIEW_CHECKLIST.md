@@ -1,7 +1,7 @@
 # AeroMet V1 — Manufacturing-Readiness Fix Checklist
 
 Source: design review of 2026-10-20 (commit `22ec981`). Phase 1 fixes applied 2026-10-21 (independent electrical / mechanical / docs items).
-Status of the design: **NOT ready to order** (open: prototype checks Q1–Q4, Q6, S1–S5; dome quote M13 / B3; sourcing decision B2; budget B5 re-quote). Phase 2 (crown STM32 wind / rain / lightning, 12 V heater rail, RS-485 RX) is in source and the
+Status of the design: **NOT ready to order** (open: prototype checks Q1–Q4, Q6, S1–S5; sourcing decision B2; budget B5 re-quote). Phase 2 (crown STM32 wind / rain / lightning, 12 V heater rail, RS-485 RX) is in source and the
 release regenerates cleanly, but it is unprototyped: the bench / prototype checks listed per item are still required.
 Commissioning / calibration steps for every built station: `CALIBRATION.md`.
 Tick an item only when the fix is in the source (`hardware/circuits`, `hardware/circuits/variants/v1`, `mechanical/scripts`,
@@ -112,8 +112,8 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
   - **Status:** DONE (Phase 1, docs): no cradle in V1; BOM/README say adhesive-mount the dipole on the inner wall.
 - [x] **M12 (M) Reset-button bore is an open hole** (no O-ring in CAD, README says waterproofed). Add gland or membrane.
   - **Status:** WON'T FIX (owner decision): an O-ring's friction would stop the button's spring from returning it. The bore opens downward on the base underside (drip side, no standing water) and the README no longer claims a waterproof button.
-- [ ] **M13 (M) JGS1 dome stack-up.** Flange must be ≤ 1.2 mm thick (194.2 − 193.0); dome PCB clears the inner hemisphere by only ≈ 0.3 mm; no desiccant/vent → internal dew. Get a real dome drawing and add an ePTFE vent or desiccant.
-  - **Status:** PARTIAL: vents done; supplier drawing `enclosure/drawings/jgs1_dome.svg` (flange Ø 20.6 +0/-0.2 x 1.0-1.2 mm, neck Ø 18.0 ±0.1 x 3.8 mm, SR 9.0 / 7.8 hemisphere, ID 15.6, 14.0 mm total) generated from the CAD numbers; crown top hole widened to Ø 18.5 (was a zero-clearance Ø 18.0). OPEN: supplier confirmation of the drawing (B3).
+- [x] **M13 (M) JGS1 dome stack-up.** Flange must be ≤ 1.2 mm thick (194.2 − 193.0); dome PCB clears the inner hemisphere by only ≈ 0.3 mm; no desiccant/vent → internal dew. Get a real dome drawing and add an ePTFE vent or desiccant.
+  - **Status:** DONE (stock part + option): two crown tops. `crown`: stock uncoated Ø 20 x 2 mm JGS1 disc in a raised boss, thin 17 x 1.0 mm O-ring between the window top and the 1.2 mm lip (seal lid <-> glass, the nut thread is outside the wet side), printed nut pushes the window from below; sensors 0.5 mm under the window; drains through the lip above the seal plane. Sky view from ~19-32 deg elevation (S4 corrects). `crown_dome`: Ø 20 mm hollow JGS1 hemisphere (made to order), lid flush at y 198.0 under the sensor tops (horizon view, no raised border), 19 x 1.0 mm O-ring in the bore / lip-underside corner gland squeezed ~21 % by the sphere, shorter nut. Both nuts on the struts plate. Tests: `test_uv_window_stack_fits_the_crown_lid`, `test_uv_dome_crown_top_fits`. Drawing `enclosure/drawings/jgs1_window.svg`.
 - [x] **M14 (M) Cable gland needs a hollow mast** (gland dome nut extends below the y = 19 mm pole stop). Document the required mast ID.
   - **Status:** DONE (docs): README section 4 and the gland BOM line require a hollow mast with ID >= 18 mm (e.g. 33.7 x 3.2 mm pipe) with the cable inside.
 - [x] **M15 (M) Probe sleeve final angle is set by thread run-out + O-ring squeeze** (uncontrolled). Add a key/index or a non-threaded keyed bayonet.
@@ -184,8 +184,8 @@ Severity: **B** = blocker (board/part will not work or cannot be assembled) · *
   - **Status:** DONE (Phase 1): BOM = 12-conductor, OD <= 3.2 mm, SHR-12V both ends pin 1 <-> pin 1, 260 mm (+ note about threading through the strut nut).
 - [ ] **B2 (H)** LTR-390UV-01 and AS3935 show 0 stock at JLC → order from Digi-Key/Mouser and hand-fit (the AS3935 QFN-16 now sits on the crown, the MA5532-AE antenna too); plan hot-air rework for 2×2 mm / QFN-16.
   - **Status:** PARTIAL (sourcing checked): AS3935-BQFT Digi-Key 1,279 in stock, $13.61 (brokers ~$6); MA5532-AE(B) Mouser 994-MA5532-AE ~831, $1.93 (Coilcraft direct ~1.18 EUR); LTR-390UV-01 0 at LCSC/JLC, ~3,400 at brokers ~$0.9-1.6 (one Chinese distributor lists it as discontinued: confirm with Lite-On / Mouser before buying); GUVB-C31SM ~2,300 at brokers ~$10.5 (-30..+85 C). Instead of hand rework, these can be bought into JLC by Global Sourcing or consigned, so JLC places them. OPEN: choose consign / global sourcing vs hand-fit; LTR-390 lifecycle.
-- [ ] **B3 (H)** JGS1 Ø18 dome with Ø20.5 flange is custom — get a quote + drawing before freezing crown CAD.
-  - **Status:** PARTIAL: drawing ready (`enclosure/drawings/jgs1_dome.svg`). Custom flanged JGS1 domes are offered to drawing, MOQ 1, by e.g. VY Optoelectronics (made-in-china listing: stepped JGS1 dome from ~$5.6/pc at 10-99 pcs; larger flanged domes ~$27/pc + ~$100 sample), Coligh Optics and Felix Glass. OPEN: send the drawing for quotes; order 2-3 samples first.
+- [x] **B3 (H)** JGS1 Ø18 dome with Ø20.5 flange is custom — get a quote + drawing before freezing crown CAD.
+  - **Status:** DONE: stock part — AliExpress "Various Sizes JGS1 UV Grade Fused Silica Window Quartz Glass Polished Disk" in 20 x 2 mm (~€6-10), uncoated (do not use 1064 nm AR-coated laser protective windows: the coating cuts UV-B). OPEN: check the delivered diameter (19.8-20.1) and thickness (1.8-2.2) on arrival.
 - [x] **B4 (M)** PMSA003I needs a custom 6-pin ZH → 2×5 1.27 mm harness; transducers need JST-SH pigtails. Define both with drawings.
   - **Status:** DONE (docs): README section 4 harness table with pin-by-pin conductors for the crown cable, probe and power jumpers, PM harness, transducer and piezo pigtails.
 - [ ] **B5 (M)** Budget: one JLC PCBA panel + hand-fit parts + prints — re-quote at order time.

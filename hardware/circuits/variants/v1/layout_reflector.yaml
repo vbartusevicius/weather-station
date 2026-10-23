@@ -1,7 +1,7 @@
 frame:
   size: { x: 24.0, y: 24.0 }
   copper_layers: 4
-  thickness: 1.2
+  thickness: 1.6
   min_drill: 0.2
   min_track: 0.12
   edge_clearance: 0.3
@@ -40,4 +40,4 @@ parts:
   R4:  { x: 18.5,  y: 5.5,   rot: 0,   block: reflector_heater, locked: true }
 
   # --- Bottom (-y, B.Cu): 1x4 2.54 mm vertical SMD male pin header at (12.0, 13.85) -> enc_z = +1.85 mm (aligned 0.00 mm with probe J2!) ---
-  J1:  { x: 12.0,  y: 13.85, rot: 0,   side: back, block: int_probe, locked: true }
+  J1:  { x: 12.0,  y: 14.05, rot: 0,   side: back, block: int_probe, locked: true }
