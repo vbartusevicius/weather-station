@@ -2,7 +2,7 @@
 
 Part details: [hardware.md](hardware.md). After assembly: first flash and bring-up in [CALIBRATION.md](../CALIBRATION.md).
 
-## JLC3DP (3D printing) & JLCPCB (PCB / PCBA) ordering
+## Ordering: 3D printing (JLC3DP) and PCB / PCBA (AISLER, PCBWay, Eurocircuits, JLCPCB)
 
 ### 1. Ordering the Structural Plastic Parts (upload the 8 plates in `enclosure/print/`)
 
@@ -34,9 +34,33 @@ Part details: [hardware.md](hardware.md). After assembly: first flash and bring-
   - **Local FDM:** Print `orings.stl` in **TPU 90A or 95A** (`0.12 mm` layer height, `100%` concentric infill, `3` wall loops, `25 mm/s` speed).
   - **JLC3DP:** Upload `orings.stl` and select **DLP Flexible Resin / Elastomer (Shore 70A–80A Black)**.
 
-### 3. Ordering the Breakaway Panel (`hardware/releases/v1/panel/`) at JLCPCB
+### 3. Ordering the PCBs and assembly
 
-1. **PCB Fabrication Settings (`panel/gerbers/`):**
+### Which files to upload where
+
+Every board folder (and `panel/`) carries the same set; pick by fab house:
+
+| File | AISLER | PCBWay | Eurocircuits | JLCPCB |
+| :--- | :---: | :---: | :---: | :---: |
+| `<board>_odb.zip`: ODB++ (layers, drills, netlist, components with MPN) | **PCB + assembly** (Gerbers cannot be assembled there) | accepted | accepted | — |
+| `<board>_gerbers.zip`: Gerber X2 + Excellon PTH / NPTH + IPC-D-356 netlist | bare boards | **PCB** | **PCB** | **PCB** |
+| `<board>_bom.csv`: qty, designators, value, package, SMD / THT, manufacturer, MPN, LCSC, assembly | (read from the ODB++) | **BOM** | **BOM** | — |
+| `<board>_cpl.csv`: KiCad position file, mm, both sides | (read from the ODB++) | **centroid** | **CPL** | — |
+| `<board>_bom_jlc.csv` / `_cpl_jlc.csv`: LCSC numbers, JLC rotations | — | — | — | **BOM / CPL** |
+| `<board>_hand_fit.csv`: parts JLCPCB does not stock | — | — | — | hand-fit |
+
+- **Panel or single boards?** The breakaway `panel` suits JLCPCB and PCBWay ("panel by customer"). AISLER and
+  Eurocircuits panelise themselves: order the six boards individually there (each folder has the full set).
+- **Parts:** the generic BOM lists every part by MPN. The `assembly` column marks the few that JLCPCB does not stock
+  (`AS3935`, `MA5532-AE`, `LTR-390UV-01`, `GUVB-C31SM`, XIAO): turn-key houses usually source them by MPN; otherwise
+  supply them or fit them by hand.
+- **Rotations:** `_cpl.csv` uses KiCad's convention (what PCBWay and Eurocircuits expect from a KiCad design);
+  `_cpl_jlc.csv` is already corrected for JLCPCB's footprints. Check the placement preview of each house.
+- **Same board settings everywhere:** 4 layers, FR-4, `1.6 mm`, ENIG, 1 oz outer / 0.5 oz inner, tented vias (below).
+
+#### Breakaway panel (`hardware/releases/v1/panel/`) at JLCPCB
+
+1. **PCB Fabrication Settings (`panel/panel_gerbers.zip`):**
    - **Base Material:** `FR-4` · **Layers:** `4` · **Dimensions:** panel `140.6 × 63.2 mm` ("Panel by Customer"; edge rails + fiducials: added by JLCPCB)
    - **PCB Thickness:** **`1.6 mm`** *(required — `probe_sleeve` slots, snap-clips and standoffs are sized for `1.6 mm`)*
    - **Surface Finish:** **`ENIG (Immersion Gold)`** *(essential for outdoor corrosion resistance on `probe`, `dome`, and `reflector` instead of HASL tin/lead)*

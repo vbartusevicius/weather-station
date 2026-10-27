@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import fab_outputs
 import jlc_parts
 import panelize
 import pcbnew
@@ -59,18 +60,15 @@ def gate(board, out, checks):
     return problems
 
 
-def gerbers(board, out):
-    pcb = pcbnew.LoadBoard(str(layout_path(board)))
+def gerber_layers(pcb):
     copper = [pcbnew.LayerName(layer) for layer in pcb.GetEnabledLayers().CuStack()]
-    layers = copper + ["F.Mask", "B.Mask", "F.Paste", "B.Paste", "F.SilkS", "B.SilkS", "Edge.Cuts"]
-    target = out / "gerbers"
-    target.mkdir()
-    run("kicad-cli", "pcb", "export", "gerbers", "--output", f"{target}/",
-        "--layers", ",".join(layers), "--no-protel-ext", str(layout_path(board)))
-    run("kicad-cli", "pcb", "export", "drill", "--output", f"{target}/",
-        "--format", "excellon", "--excellon-separate-th", str(layout_path(board)))
-    shutil.make_archive(str(out / f"{board}_gerbers"), "zip", target)
-    shutil.rmtree(target)
+    return copper + ["F.Mask", "B.Mask", "F.Paste", "B.Paste", "F.SilkS", "B.SilkS", "Edge.Cuts"]
+
+
+def fab_files(board, out):
+    """ODB++, Gerbers + drills + IPC-D-356, generic BOM / CPL (fab_outputs.py)."""
+    fab_outputs.export_fab(layout_path(board), parts(board), out, board,
+                           gerber_layers(pcbnew.LoadBoard(str(layout_path(board)))))
 
 
 def assembly_files(board, out, checks):
@@ -128,7 +126,7 @@ def release_board(board, root):
         return problems, ([], []), []
     for suffix in (".kicad_pcb", ".kicad_pro", ".kicad_dru"):
         shutil.copy(layout_path(board).with_suffix(suffix), out)
-    gerbers(board, out)
+    fab_files(board, out)
     placement = assembly_files(board, out, checks)
     step = REPO / "hardware/build" / VARIANT / board / f"{board}.step"
     run("kicad-cli", "pcb", "export", "step", "--grid-origin", "--subst-models", "--force",
@@ -179,7 +177,9 @@ def main(version, boards=BOARDS):
                 if old.suffix in (".stl", ".step", ".png") and not (enclosure / sub / old.name).exists():
                     old.unlink()
         shutil.copytree(enclosure, root / "enclosure", dirs_exist_ok=True,
-                        ignore=shutil.ignore_patterns("fit_*.png", "front_legend.png"))
+                        ignore=shutil.ignore_patterns("fit_*.png", "front_legend.png", "*.3mf", "*_obj.zip"))
+        for colour_model in (*(root / "enclosure").glob("*.3mf"), *(root / "enclosure").glob("*_obj.zip")):
+            colour_model.unlink()   # colour 3D-print formats are no longer produced
     return 1 if failed else 0
 
 

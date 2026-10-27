@@ -75,8 +75,9 @@ sensor) for wired loggers.
 
 ## Build one
 
-1. **Order the boards**: one 4-layer breakaway panel at JLCPCB (Gerbers, BOM, CPL in
-   [`hardware/releases/v1/panel/`](hardware/releases/v1/panel/)); a few parts are hand-fitted.
+1. **Order the boards** with assembly: ODB++ for AISLER, Gerbers + MPN BOM + CPL for PCBWay / Eurocircuits, or the
+   JLCPCB files for the breakaway panel ([`hardware/releases/v1/`](hardware/releases/v1/); which file goes where:
+   [docs/building.md](docs/building.md#3-ordering-the-pcbs-and-assembly)).
 2. **Print the enclosure**: 8 print plates in [`enclosure/print/`](hardware/releases/v1/enclosure/print/) (MJF / SLS
    nylon or ASA), plus standard O-rings and a turned PTFE dome.
 3. **Assemble and seal**: harnesses, conformal coating and sealing in **[docs/building.md](docs/building.md)**.

@@ -149,7 +149,7 @@ jobs:
           | :--- | :--- |
           | `usb-flash-firmware.bin` | First flash of a new station over USB: `esptool.py --chip esp32c6 write_flash 0x0 usb-flash-firmware.bin` |
           | `firmware.bin` | Updates from the Web UI (Setup → Firmware update); includes the crown firmware |
-          | `aeromet-hardware-v1.zip` | Manufacturing package: panel + per-board Gerbers / BOM / CPL, enclosure STL / STEP / print plates, drawings, renders, assembly parts list, build and calibration guides |
+          | `aeromet-hardware-v1.zip` | Manufacturing package: per board and panel ODB++ (AISLER), Gerber X2 + drills + IPC-D-356, MPN BOM + CPL (PCBWay, Eurocircuits), JLCPCB BOM / CPL; enclosure STL / STEP / print plates, drawings, renders, assembly parts list, build and calibration guides (docs/building.md: which file goes where) |
           | `SHA256SUMS.txt` | Checksums of the files above |
           NOTES
           if ! gh release view "$TAG" > /dev/null 2>&1; then

@@ -106,7 +106,7 @@ def main():
     parser.add_argument("variants", nargs="*", help="v1 (or board names when inside a container)")
     parser.add_argument("--boards", nargs="*", default=[], help="subset of boards (e.g. main crown probe)")
     parser.add_argument("--eda", action="store_true", help="run circuit generation + layout/routing + board renders")
-    parser.add_argument("--cad", action="store_true", help="run enclosure + fit + legend + 3MF/embossed + 3D renders")
+    parser.add_argument("--cad", action="store_true", help="run enclosure + drawings + 3D renders")
     parser.add_argument("--release", action="store_true", help="run release.py")
     parser.add_argument("--test", action="store_true", help="run EDA + CAD pytest suites")
     parser.add_argument("--firmware", action="store_true",

@@ -10,6 +10,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import fab_outputs
 import jlc_parts as jp
 import pcbnew
 
@@ -449,14 +450,8 @@ def build_panel(
 
     copper = [pcbnew.LayerName(layer) for layer in panel.GetEnabledLayers().CuStack()]
     layers = copper + ["F.Mask", "B.Mask", "F.Paste", "B.Paste", "F.SilkS", "B.SilkS", "Edge.Cuts"]
-    gtarget = panel_dir / "gerbers"
-    gtarget.mkdir()
-    run("kicad-cli", "pcb", "export", "gerbers", "--output", f"{gtarget}/",
-        "--layers", ",".join(layers), "--no-protel-ext", str(panel_pcb_path))
-    run("kicad-cli", "pcb", "export", "drill", "--output", f"{gtarget}/",
-        "--format", "excellon", "--excellon-separate-th", str(panel_pcb_path))
-    shutil.make_archive(str(panel_dir / "panel_gerbers"), "zip", gtarget)
-    shutil.rmtree(gtarget)
+    # ODB++, Gerbers + drills + IPC-D-356, generic BOM / CPL (same set as every board)
+    fab_outputs.export_fab(panel_pcb_path, combined_parts, panel_dir, "panel", layers)
 
     renders_dir = panel_dir / "renders"
     renders_dir.mkdir(exist_ok=True)
