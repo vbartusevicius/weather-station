@@ -2,6 +2,7 @@
 
 import csv
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -40,7 +41,13 @@ def parts(board):
     return json.loads((REPO / "hardware/build" / VARIANT / board / "parts.json").read_text())
 
 
-def assembly_checks(board, *, live=True):
+# Live = fresh JLCPCB / EasyEDA records and stock (local releases). CI sets JLC_LIVE=0 and checks against the
+# committed snapshot hardware/product/jlc_reference.json: GitHub runners get blocked by lceda.cn / JLCPCB, and stock
+# changes daily, so a live CI check fails at random.
+LIVE = os.environ.get("JLC_LIVE", "1") != "0"
+
+
+def assembly_checks(board, *, live=LIVE):
     return jlc_parts.check_board(pcbnew.LoadBoard(str(layout_path(board))), parts(board), live=live)
 
 
@@ -148,9 +155,9 @@ def main(version, boards=BOARDS):
         board_checks[board] = checks
         if problems:
             failed = True
-            print(f"{board}: NOT released:")
+            print(f"{board}: NOT released:", flush=True)
             for problem in problems:
-                print(f"  {problem}")
+                print(f"  {problem}", flush=True)
         else:
             print(f"{board}: released; every JLC part lands pin for pin. Rotation differs from KiCad's "
                   f"for {', '.join(turned) or 'none'}; bottom side: {', '.join(bottom) or 'none'} "

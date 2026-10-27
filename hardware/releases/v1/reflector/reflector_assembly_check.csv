@@ -1,8 +1,8 @@
 Designator,LCSC,Manufacturer part,JLCPCB footprint,Layer,KiCad rotation,JLCPCB rotation,Stock,Library,Result
-C1,C14663,CC0603KRX7R9BB104,C0603,Top,0,0,49455221,base,lands pin for pin
-J1,C41417361,HX PZ2.54-1x4P TP-YQ,CONN-SMD_HX-PZ2.54-1X4P-TP-YQ,Bottom,0,0,61437,expand,lands pin for pin
-R1,C7276687,RC2512FK-7W120RL,R2512,Top,0,0,9829,expand,lands pin for pin
-R2,C7276687,RC2512FK-7W120RL,R2512,Top,0,0,9829,expand,lands pin for pin
-R3,C7276687,RC2512FK-7W120RL,R2512,Top,0,0,9829,expand,lands pin for pin
-R4,C7276687,RC2512FK-7W120RL,R2512,Top,0,0,9829,expand,lands pin for pin
-TH1,C279936,SDNT1608X103F3950FTF,R0603,Top,0,0,127133,expand,lands pin for pin
+C1,C14663,CC0603KRX7R9BB104,C0603,Top,0,0,,base,lands pin for pin
+J1,C41417361,HX PZ2.54-1x4P TP-YQ,CONN-SMD_HX-PZ2.54-1X4P-TP-YQ,Bottom,0,0,,expand,lands pin for pin
+R1,C7276687,RC2512FK-7W120RL,R2512,Top,0,0,,expand,lands pin for pin
+R2,C7276687,RC2512FK-7W120RL,R2512,Top,0,0,,expand,lands pin for pin
+R3,C7276687,RC2512FK-7W120RL,R2512,Top,0,0,,expand,lands pin for pin
+R4,C7276687,RC2512FK-7W120RL,R2512,Top,0,0,,expand,lands pin for pin
+TH1,C279936,SDNT1608X103F3950FTF,R0603,Top,0,0,,expand,lands pin for pin

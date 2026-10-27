@@ -74,8 +74,10 @@ def run_cad(*, do_test=False):
 
 
 def docker_run(variant, service, cmd):
+    # CI (GitHub sets CI=true): part checks use the committed JLCPCB snapshot instead of live requests (release.py)
+    ci = ["-e", "JLC_LIVE=0"] if os.environ.get("CI") else []
     full = ["docker", "compose", "--profile", "hardware", "run", "--rm", "-T",
-            "-e", f"HARDWARE_VARIANT={variant}", service, cmd]
+            "-e", f"HARDWARE_VARIANT={variant}", *ci, service, cmd]
     proc = subprocess.run(full, cwd=REPO, text=True, capture_output=True, check=False)
     for line in (proc.stdout + proc.stderr).splitlines():
         if not any(skip in line for skip in ("Container ", "platform (", "Debug: ", 'assert "Pgm')):
