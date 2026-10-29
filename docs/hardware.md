@@ -33,11 +33,11 @@ printing and weatherproofing: [building.md](building.md); bring-up and calibrati
 </details>
 
 <details>
-<summary><b>UV-A/B, Solar & Night Sky</b> · LTR-390UV + TSL25911 + GUVB-C31SM under a PTFE dome · UVI 0–16+, 0.0002–157 000 lx</summary>
+<summary><b>UV-A/B, Solar & Night Sky</b> · GUVB-C21SD + GUVA-C22SD photodiodes + TSL25911 under a PTFE dome · UVI 0–16+, 0.0002–88 000 lx</summary>
 
-- **Sensor / circuit:** `Lite-On LTR-390UV-01` (`U1`) + `ams OSRAM TSL25911FN` (`U2`, `C176812`) + `GenUV GUVB-C31SM` (`U3`)
+- **Sensor / circuit:** Genicom `GUVB-C21SD` UV-B (`D1`) + `GUVA-C22SD` UV-A (`D2`) photodiodes → `TLV9062` transimpedance → `ADS1115` (I²C 0x49), + `ams OSRAM TSL25911FN` (`U2`). Backup board `dome_legacy`: `LTR-390UV-01` + `TSL25911FN` + `GUVB-C31SM`
 - **Range & resolution:** `UVI 0–16+`, `0.00018–157,000 lx`, `NIR 700–1100 nm`
-- **Location & protection:** Mounted on the elevated round `dome` PCB under a turned PTFE dome diffuser with a flat-faced `Ø 20.4 × 1.5 mm` flange (the `18 × 1.0 mm` O-ring is squeezed flat between the flange top and the collar lip; the nut pushes the flat flange bottom) in two shapes: **lathe** version (default: `Ø 17.8 mm` cylinder with a flat top, turned from round rod) and **CNC** version (`Ø 17.8 mm` hemisphere), both `0.8 mm` wall (~10–12 % flat 250–2500 nm transmission, calibrated per CALIBRATION.md step 8), in a low flush collar: nothing of the lid rises within 3° of the sensors' horizon, so they see sunrise / sunset. The stock `Ø 20 × 2 mm` `JGS1` window in the `crown_window` top is the backup (sky above ~19–34° only). `U3` `GUVB-C31SM` populated by default; primary UV-index source.
+- **Location & protection:** Mounted on the elevated round `dome` PCB under a turned PTFE dome diffuser with a flat-faced `Ø 20.4 × 1.5 mm` flange (the `18 × 1.0 mm` O-ring is squeezed flat between the flange top and the collar lip; the nut pushes the flat flange bottom) in two shapes: **lathe** version (default: `Ø 17.8 mm` cylinder with a flat top, turned from round rod) and **CNC** version (`Ø 17.8 mm` hemisphere), both `0.8 mm` wall (~10–12 % flat 250–2500 nm transmission, calibrated per CALIBRATION.md step 8), in a low flush collar: nothing of the lid rises within 3° of the sensors' horizon, so they see sunrise / sunset. The stock `Ø 20 × 2 mm` `JGS1` window in the `crown_window` top is the backup (sky above ~19–34° only). The UV-B photodiode is the UV-index source.
 
 </details>
 
@@ -297,9 +297,9 @@ Horizontal de-icing heater board under the wind-tunnel cone: 4× `120 Ω` `2512`
 </details>
 
 <details>
-<summary><b>4. dome</b> · Ø 13.6 mm round</summary>
+<summary><b>4. dome</b> · Ø 15.6 mm round (backup: dome_legacy, Ø 13.6 mm)</summary>
 
-Elevated UV, visible & NIR micro-PCB under the flanged PTFE dome diffuser (lathe or CNC version; backup: the `Ø 20 × 2 mm` `JGS1` window) in the crown lid: `LTR-390UV-01` (`U1`), `TSL25911FN` (`U2`, `C176812`), and `GUVB-C31SM` (`U3`, populated by default) on `F.Cu` (`zero top passives to avoid horizon shadows`), with `C1`, `C2`, `C3`, and the 4-pin vertical B2B male header `J1` on `B.Cu`.
+Elevated UV, visible & NIR micro-PCB under the flanged PTFE dome diffuser (lathe or CNC version; backup: the `Ø 20 × 2 mm` `JGS1` window) in the crown lid: `GUVB-C21SD` (`D1`, UV-B), `TSL25911FN` (`U2`) and `GUVA-C22SD` (`D2`, UV-A) in a row on `F.Cu`, with the `TLV9062` transimpedance stage, `ADS1115` (0x49) and resistors (all below the 1.0 mm sensor tops); every ceramic capacitor and the 4-pin B2B header `J1` on `B.Cu`. The backup `dome_legacy` (Ø 13.6 mm, `LTR-390UV-01` + `TSL25911FN` + `GUVB-C31SM`) uses the same riser.
 
 [`hardware/releases/v1/dome/`](../hardware/releases/v1/dome/) · [Top SVG](../hardware/releases/v1/dome/renders/top.svg) · [Bottom SVG](../hardware/releases/v1/dome/renders/bottom.svg) · [circuit source (SKiDL)](../hardware/circuits/variants/v1/dome.py)
 

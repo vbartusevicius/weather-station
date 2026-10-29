@@ -60,6 +60,7 @@ constexpr std::uint8_t i2c_addr_scd41 = 0x62;
 constexpr std::uint8_t i2c_addr_pmsa003i = 0x12;  // Plantower PMSA003I in the base pod via main J4 (100 kHz)
 constexpr std::uint8_t i2c_addr_lsm6ds3 = 0x6A;
 constexpr std::uint8_t i2c_addr_ads1115 = 0x48;  // main U4 heater power monitor
+constexpr std::uint8_t i2c_addr_dome_adc = 0x49;  // photodiode dome U3 ADS1115 (UV-B / UV-A transimpedance outputs)
 constexpr float refl_shunt_ohm = 0.1F;    // main R16 (reflector heater return)
 constexpr float probe_shunt_ohm = 1.0F;   // main R17 (probe heater return, CO2_HEAT_RTN)
 constexpr float rail5_divider = 2.0F;     // main R24/R25 (+5V electronics rail), 10k/10k

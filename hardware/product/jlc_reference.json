@@ -760,6 +760,44 @@
         "14": "14"
       }
     },
+    "C163421": {
+      "record": {
+        "componentModelEn": "RC0603FR-076K49L",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0603",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_YAGEO-RC0603FR-076K49L_C163421.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C163421",
+            "attribute_value_name": "6.49kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C163421",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0603",
+      "pads": [
+        [
+          "2",
+          0.7533639999999732,
+          -0.0
+        ],
+        [
+          "1",
+          -0.7533639999999732,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
     "C1663": {
       "record": {
         "componentModelEn": "CL10C330JB8NNNC",
@@ -891,44 +929,6 @@
         "4": "NC",
         "5": "VDD",
         "6": "SDA"
-      }
-    },
-    "C177475": {
-      "record": {
-        "componentModelEn": "RCT034M7FLF",
-        "componentBrandEn": "HKR(Hong Kong Resistors)",
-        "componentSpecificationEn": "0603",
-        "dataManualUrl": "https://datasheet.lcsc.com/lcsc/2304140030_HKR-Hong-Kong-Resistors-RCT034M7FLF_C177475.pdf",
-        "componentLibraryType": "expand",
-        "attributes": [
-          {
-            "attribute_name_en": "Resistance",
-            "component_code": "C177475",
-            "attribute_value_name": "4.7MΩ"
-          },
-          {
-            "attribute_name_en": "Operating Temperature",
-            "component_code": "C177475",
-            "attribute_value_name": "-55℃~+155℃"
-          }
-        ]
-      },
-      "footprint": "R0603",
-      "pads": [
-        [
-          "2",
-          0.7533639999999732,
-          -0.0
-        ],
-        [
-          "1",
-          -0.7533639999999732,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "2": "2",
-        "1": "1"
       }
     },
     "C18184976": {
@@ -1113,6 +1113,108 @@
         "2": "2"
       }
     },
+    "C2044314": {
+      "record": {
+        "componentModelEn": "SRN6045TA-220M",
+        "componentBrandEn": "BOURNS",
+        "componentSpecificationEn": "SMD,6x6mm",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2410010302_BOURNS-SRN6045TA-220M_C2044314.pdf",
+        "componentLibraryType": "expand",
+        "attributes": []
+      },
+      "footprint": "IND-SMD_L6.0-W6.0",
+      "pads": [
+        [
+          "2",
+          2.4999949999999354,
+          -0.0
+        ],
+        [
+          "1",
+          -2.499995000000051,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C2058009": {
+      "record": {
+        "componentModelEn": "TLV9062IDSGR",
+        "componentBrandEn": "Texas Instruments",
+        "componentSpecificationEn": "WSON-8(2x2)",
+        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2303012230_Texas-Instruments-TLV9062IDSGR_C2058009.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C2058009",
+            "attribute_value_name": "-40℃~+125℃"
+          }
+        ]
+      },
+      "footprint": "WSON-8_L2.0-W2.0-P0.50-TL-EP",
+      "pads": [
+        [
+          "1",
+          -0.9499599999999445,
+          0.7500619999999936
+        ],
+        [
+          "2",
+          -0.9499599999999445,
+          0.2499359999999806
+        ],
+        [
+          "3",
+          -0.9499599999999445,
+          -0.2499360000000961
+        ],
+        [
+          "4",
+          -0.9499599999999445,
+          -0.7500619999999936
+        ],
+        [
+          "5",
+          0.9499600000000601,
+          -0.7500619999999936
+        ],
+        [
+          "6",
+          0.9499600000000601,
+          -0.2499360000000961
+        ],
+        [
+          "7",
+          0.9499600000000601,
+          0.2499359999999806
+        ],
+        [
+          "8",
+          0.9499600000000601,
+          0.7500619999999936
+        ],
+        [
+          "9",
+          0.0,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "3": "IN1+",
+        "2": "IN1-",
+        "1": "OUT1",
+        "8": "V+",
+        "4": "V-",
+        "5": "IN2+",
+        "6": "IN2-",
+        "7": "OUT2",
+        "9": "EP"
+      }
+    },
     "C20917": {
       "record": {
         "componentModelEn": "AO3400A",
@@ -1264,6 +1366,44 @@
       "pin_names": {
         "2": "2",
         "1": "1"
+      }
+    },
+    "C227938": {
+      "record": {
+        "componentModelEn": "AC0603FR-074M7L",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0603",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2311211101_YAGEO-AC0603FR-074M7L_C227938.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C227938",
+            "attribute_value_name": "4.7MΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C227938",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0603",
+      "pads": [
+        [
+          "2",
+          0.7533639999999732,
+          -0.0
+        ],
+        [
+          "1",
+          -0.7533639999999732,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
       }
     },
     "C22795": {
@@ -1510,44 +1650,6 @@
           {
             "attribute_name_en": "Operating Temperature",
             "component_code": "C23074",
-            "attribute_value_name": "-55℃~+155℃"
-          }
-        ]
-      },
-      "footprint": "R0603",
-      "pads": [
-        [
-          "2",
-          0.7533639999999732,
-          -0.0
-        ],
-        [
-          "1",
-          -0.7533639999999732,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "2": "2",
-        "1": "1"
-      }
-    },
-    "C23088": {
-      "record": {
-        "componentModelEn": "0603WAF6491T5E",
-        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
-        "componentSpecificationEn": "0603",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010116_UNI-ROYAL-Uniroyal-Elec-0603WAF6491T5E_C23088.pdf",
-        "componentLibraryType": "expand",
-        "attributes": [
-          {
-            "attribute_name_en": "Resistance",
-            "component_code": "C23088",
-            "attribute_value_name": "6.49kΩ"
-          },
-          {
-            "attribute_name_en": "Operating Temperature",
-            "component_code": "C23088",
             "attribute_value_name": "-55℃~+155℃"
           }
         ]
@@ -2124,6 +2226,87 @@
         "1": "1"
       }
     },
+    "C2651328": {
+      "record": {
+        "componentModelEn": "ADS1115IRUGR",
+        "componentBrandEn": "Texas Instruments",
+        "componentSpecificationEn": "X2-QFN-10(1.5x2)",
+        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2302221130_Texas-Instruments-ADS1115IRUGR_C2651328.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C2651328",
+            "attribute_value_name": "-40℃~+125℃"
+          }
+        ]
+      },
+      "footprint": "X2QFN-10_L2.0-W1.5-P0.50-BL",
+      "pads": [
+        [
+          "1",
+          -0.7500112000000063,
+          -0.635
+        ],
+        [
+          "2",
+          -0.24988519999999334,
+          -0.635
+        ],
+        [
+          "3",
+          0.24998679999996784,
+          -0.635
+        ],
+        [
+          "4",
+          0.7501127999999808,
+          -0.635
+        ],
+        [
+          "6",
+          0.7501127999999808,
+          0.635
+        ],
+        [
+          "7",
+          0.24998679999996784,
+          0.635
+        ],
+        [
+          "8",
+          -0.24988519999999334,
+          0.635
+        ],
+        [
+          "9",
+          -0.7500112000000063,
+          0.635
+        ],
+        [
+          "10",
+          -0.8599932000000045,
+          -0.0
+        ],
+        [
+          "5",
+          0.860094799999979,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "ADDR",
+        "2": "ALERT/RDY",
+        "3": "GND",
+        "4": "AIN0",
+        "5": "AIN1",
+        "6": "AIN2",
+        "7": "AIN3",
+        "8": "VDD",
+        "9": "SDA",
+        "10": "SCL"
+      }
+    },
     "C27675": {
       "record": {
         "componentModelEn": "CL10C221JB8NNNC",
@@ -2192,39 +2375,6 @@
         [
           "1",
           -0.700023999999964,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "1": "1",
-        "2": "2"
-      }
-    },
-    "C279936": {
-      "record": {
-        "componentModelEn": "SDNT1608X103F3950FTF",
-        "componentBrandEn": "Sunlord",
-        "componentSpecificationEn": "0603",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2110081430_Sunlord-SDNT1608X103F3950FTF_C279936.pdf",
-        "componentLibraryType": "expand",
-        "attributes": [
-          {
-            "attribute_name_en": "Operating Temperature",
-            "component_code": "C279936",
-            "attribute_value_name": "-55℃~+125℃"
-          }
-        ]
-      },
-      "footprint": "R0603",
-      "pads": [
-        [
-          "2",
-          0.7533639999999732,
-          -0.0
-        ],
-        [
-          "1",
-          -0.7533639999999732,
           -0.0
         ]
       ],
@@ -3782,6 +3932,39 @@
         "6": "SDA"
       }
     },
+    "C49247666": {
+      "record": {
+        "componentModelEn": "HNTC0603-103F3950FB",
+        "componentBrandEn": "hongjiacheng",
+        "componentSpecificationEn": "0603",
+        "dataManualUrl": null,
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C49247666",
+            "attribute_value_name": "-40℃~+125℃"
+          }
+        ]
+      },
+      "footprint": "R0603",
+      "pads": [
+        [
+          "2",
+          0.7533639999999732,
+          -0.0
+        ],
+        [
+          "1",
+          -0.7533639999999732,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
+      }
+    },
     "C49318488": {
       "record": {
         "componentModelEn": "2920L110/60V",
@@ -4046,6 +4229,77 @@
         "7": "OUTB"
       }
     },
+    "C6565190": {
+      "record": {
+        "componentModelEn": "GUVB-C21SD",
+        "componentBrandEn": "Genicom",
+        "componentSpecificationEn": "SMD,2.4x1.8mm",
+        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2312132138_Genicom-GUVB-C21SD_C6565190.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C6565190",
+            "attribute_value_name": "-30℃~+85℃"
+          }
+        ]
+      },
+      "footprint": "LED-SMD_L2.4-W1.8_GUVA-C22SD",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "A",
+        "2": "C"
+      }
+    },
+    "C7250": {
+      "record": {
+        "componentModelEn": "0603WAF1005T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0603",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010216_UNI-ROYAL-Uniroyal-Elec-0603WAF1005T5E_C7250.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C7250",
+            "attribute_value_name": "10MΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C7250",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0603",
+      "pads": [
+        [
+          "2",
+          0.7533639999999732,
+          -0.0
+        ],
+        [
+          "1",
+          -0.7533639999999732,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
     "C7276687": {
       "record": {
         "componentModelEn": "RC2512FK-7W120RL",
@@ -4076,6 +4330,33 @@
         [
           "1",
           -3.0662880000000294,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C7427168": {
+      "record": {
+        "componentModelEn": "ANR6045T8R2M",
+        "componentBrandEn": "APV",
+        "componentSpecificationEn": "SMD,6x6mm",
+        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2309201138_APV-ANR6045T8R2M_C7427168.pdf",
+        "componentLibraryType": "expand",
+        "attributes": []
+      },
+      "footprint": "IND-SMD_L6.0-W6.0",
+      "pads": [
+        [
+          "2",
+          2.4999949999999354,
+          -0.0
+        ],
+        [
+          "1",
+          -2.499995000000051,
           -0.0
         ]
       ],
@@ -4127,33 +4408,6 @@
         "3": "VDD",
         "4": "VSS",
         "5": "EP"
-      }
-    },
-    "C83454": {
-      "record": {
-        "componentModelEn": "SWPA6045S220MT",
-        "componentBrandEn": "Sunlord",
-        "componentSpecificationEn": "SMD,6x6mm",
-        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2310251551_Sunlord-SWPA6045S220MT_C83454.pdf",
-        "componentLibraryType": "expand",
-        "attributes": []
-      },
-      "footprint": "IND-SMD_L6.0-W6.0_SWPA6045S",
-      "pads": [
-        [
-          "1",
-          -2.602992000000012,
-          -0.0
-        ],
-        [
-          "2",
-          2.6029919999998965,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "2": "2",
-        "1": "1"
       }
     },
     "C8963": {
@@ -4393,33 +4647,6 @@
         "12": "CS",
         "13": "SCL",
         "14": "SDA"
-      }
-    },
-    "C96963": {
-      "record": {
-        "componentModelEn": "SWPA6045S8R2MT",
-        "componentBrandEn": "Sunlord",
-        "componentSpecificationEn": "SMD,6x6mm",
-        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2310251551_Sunlord-SWPA6045S8R2MT_C96963.pdf",
-        "componentLibraryType": "expand",
-        "attributes": []
-      },
-      "footprint": "IND-SMD_L6.0-W6.0",
-      "pads": [
-        [
-          "2",
-          2.4999949999999354,
-          -0.0
-        ],
-        [
-          "1",
-          -2.499995000000051,
-          -0.0
-        ]
-      ],
-      "pin_names": {
-        "2": "2",
-        "1": "1"
       }
     },
     "C9900124963": {

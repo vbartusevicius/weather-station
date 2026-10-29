@@ -22,7 +22,7 @@ only the LQFP-64 package bonds out).
      bias on them would forward-bias the T/R diodes into the idle (low) driver and short the echo (found in
      hardware/sim/crown_us_link.py), hence the AC coupling. During a 24 Vpp burst the 47k limits the mux input-diode current to ~0.2 mA (74HC4052 +/-20 mA).
      Timing: 8 MHz +/-10 ppm crystal.
-2. Rain: 4 x 20 mm Murata 7BB-20-6L0 piezo discs in parallel -> BAV99 clamp -> 1k -> TLV9062 charge amplifier
+2. Rain: 4 x 20 mm piezo discs (Same Sky CEB-20D64; was Murata 7BB-20-6L0, discontinued) in parallel -> BAV99 clamp -> 1k -> TLV9062 charge amplifier
    (22 nF || 4.7 MOhm, biased at VREF, 1.5 Hz high-pass, 45 mV per nC) -> 22k / 1 nF (7.2 kHz anti-alias) -> STM32
    ADC2 (continuous, 50 kSPS).
 3. Lightning: ScioSense AS3935 on SPI1 (SI = GND selects SPI) + Coilcraft MA5532-AE 100 uH ferrite-rod antenna and

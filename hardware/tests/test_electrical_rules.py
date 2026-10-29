@@ -21,8 +21,8 @@ DATASHEET_MIN_C = {
     "B360A-13-F": -65,        # Diodes Inc. B360A: -65..+150 C
     "AS3935-BQFT": -40,       # ScioSense AS3935 datasheet: -40..+85 C
     "SHT40-AD1F-R2": -40,     # Sensirion SHT4x: -40..+125 C
-    "SWPA6045S220MT": -40,    # Sunlord SWPA series: -40..+125 C
-    "SWPA6045S8R2MT": -40,
+    "SRN6045TA-220M": -55,    # Bourns SRN6045TA datasheet: -55..+125 C
+    "ANR6045T8R2M": -45,      # APV ANR6045 datasheet: -45..+125 C incl. self heating
     "MA5532-AEB": -40,        # Coilcraft MA5532-AE: -40..+85 C
     "XIAO-ESP32-C6": -40,     # Seeed XIAO ESP32-C6 product brief (Digi-Key 102010574): working -40..+85 C
     "HX PM2.54-1x4P WT": -40, # PBT header, reflector <-> probe (heated zone)
@@ -42,6 +42,9 @@ ACCEPTED_COLD = {
     "SCD41-D-R2": "-10 C: probe heater holds the SCD41 zone at -7.6 C or warmer (S5)",
     "SGP41-D-R4": "datasheet -20 C: next to the heated SCD41 zone; readings flagged in deep cold (S5)",
     "GUVB-C31SM": "GenUV -30 C (distributor data): UV measurement only, inside the sun-warmed dome (S4)",
+    "GUVB-C21SD": "Genicom GUVB-C21SD / GUVA-C22SD (same COB2418 record) -30 C operating, -40 C storage: passive "
+                  "zero-bias photodiodes, UV measurement only, inside the sun-warmed dome (S4)",
+    "GUVA-C22SD": "Genicom -30 C operating, -40 C storage: passive zero-bias photodiode inside the dome (S4)",
 }
 
 

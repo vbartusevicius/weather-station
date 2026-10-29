@@ -16,6 +16,7 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 
+#include "environment/UvPhotodiodes.hpp"
 #include "../calibration/Calibration.hpp"
 #include "../conditioning/Conditioners.hpp"
 #include "../core/Pipeline.hpp"
@@ -80,6 +81,16 @@ firmware::Mmc5603 g_mag;
 firmware::Ltr390 g_ltr;
 firmware::Tsl2591 g_tsl;
 firmware::GuvbC31sm g_guvb;
+// Photodiode dome (GUVB-C21SD / GUVA-C22SD + TLV9062 + ADS1115 at 0x49); the legacy dome answers 0x53 / 0x39 instead.
+firmware::Ads1115 g_dome_adc;
+struct PdChannel {
+    std::uint8_t mux;      // ADS1115 MUX: 0b001 = AIN0 - AIN3 (UV-B), 0b010 = AIN1 - AIN3 (UV-A)
+    float rf_ohm;
+    std::uint8_t range;    // index into environment::uvpd::kFullScaleV
+    environment::uvpd::DarkZero zero;
+};
+PdChannel g_pd[2] = {{0b001, environment::uvpd::kRfUvbOhm, 0, {}}, {0b010, environment::uvpd::kRfUvaOhm, 0, {}}};
+std::uint8_t g_pd_next = 0;   // channel whose conversion is running
 firmware::CrownLink g_crown;
 std::string g_rs485_frame;   // latest $AM telemetry frame, answered on STATE?
 rs485::BusStats g_rs485_stats;   // bus activity (Setup -> RS-485)
@@ -184,6 +195,7 @@ void task_slow_i2c(void*) {
         core::StationConfig cal_cfg{};
         float guvb_scale = 0.0F;
         float optics_tr = 1.0F;
+        bool night = false;
         core::Reading<float> sht_t{}, sht_rh{};
         {
             Lock l;
@@ -192,6 +204,7 @@ void task_slow_i2c(void*) {
             cal_cfg = g_cfg;
             guvb_scale = g_cfg.guvb_counts_per_uvi;
             optics_tr = g_cfg.optics_transmission;
+            night = g_derived.astro.is_night;
             sht_t = g_raw.thermo.temp_c;
             sht_rh = g_raw.thermo.rh_pct;
         }
@@ -236,6 +249,23 @@ void task_slow_i2c(void*) {
             float uvb_counts = 0.0F, uvb_uvi = 0.0F;
             bool uvb_uvi_ok = false;
             const bool guvb_ok = g_guvb.read(guvb_scale, uvb_counts, uvb_uvi, uvb_uvi_ok);
+            // Photodiode dome: read the conversion started 500 ms ago (16 SPS = 62.5 ms), auto-range, start the other channel
+            namespace pd = environment::uvpd;
+            float pd_na = 0.0F, pd_v = 0.0F;
+            const std::uint8_t pd_ch = g_pd_next;
+            const bool pd_ok = g_dome_adc.present() && g_dome_adc.read(pd_v);
+            if (pd_ok) {
+                PdChannel& c = g_pd[pd_ch];
+                const float raw_na = pd::na_from_volts(pd_v, c.rf_ohm);
+                c.zero.update(raw_na, night);
+                pd_na = c.zero.apply(raw_na);
+                c.range = pd::next_range(c.range, pd_v);
+            }
+            if (g_dome_adc.present()) {
+                g_pd_next = static_cast<std::uint8_t>(1 - pd_ch);
+                const PdChannel& n = g_pd[g_pd_next];
+                g_dome_adc.start_raw(n.mux, pd::kPgaCode[n.range], pd::kFullScaleV[n.range]);
+            }
             // free-sky values: the cover (PTFE diffuser / JGS1) transmission; a field GUVB scale already includes it
             using core::cover_corrected;
             Lock l;
@@ -243,6 +273,12 @@ void task_slow_i2c(void*) {
                 g_raw.optical.guvb_counts.set(uvb_counts, t);
                 if (uvb_uvi_ok) g_raw.optical.guvb_uvi.set(guvb_scale > 0.0F ? uvb_uvi : cover_corrected(uvb_uvi, optics_tr), t);
             }
+            if (pd_ok && pd_ch == 0) {   // UV-B: the UV index (and UV-B calibration counts = nA behind the cover)
+                g_raw.optical.guvb_counts.set(pd_na, t);
+                g_raw.optical.guvb_uvi.set(pd::uv_index(pd_na, optics_tr, guvb_scale), t);
+                g_raw.optical.pd_uvb_w_m2.set(pd::uvb_w_m2(pd_na, optics_tr), t);
+            }
+            if (pd_ok && pd_ch == 1) g_raw.optical.pd_uva_w_m2.set(pd::uva_w_m2(pd_na, optics_tr), t);
             if (ltr_ok && is_uvs) g_raw.optical.ltr_uvi.set(cover_corrected(v, optics_tr), t);
             if (ltr_ok && !is_uvs) g_raw.optical.ltr_lux.set(cover_corrected(v, optics_tr), t);
             if (tsl_ok) {
@@ -1202,6 +1238,9 @@ extern "C" void app_main(void) {
     g_ltr.begin(g_i2c, b::i2c_addr_ltr390);
     g_tsl.begin(g_i2c, b::i2c_addr_tsl25911);
     g_guvb.begin(g_i2c, b::i2c_addr_guvb_c31sm);
+    if (g_dome_adc.begin(g_i2c, b::i2c_addr_dome_adc)) {   // photodiode dome fitted: start the first UV-B conversion
+        g_dome_adc.start_raw(g_pd[0].mux, environment::uvpd::kPgaCode[0], environment::uvpd::kFullScaleV[0]);
+    }
     const bool crown_up = g_crown.begin(g_i2c, b::crown_irq_pin, b::crown_nrst_pin, b::crown_boot0_pin);
     {
         // Keep the crown on the firmware this station release was built with; a factory-blank crown (no answer at

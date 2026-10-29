@@ -141,6 +141,18 @@ def collect_assembly_parts(variant, spec):
             "description": f"Intrinsic wide-bandgap AlGaN UV-B (240-320 nm) digital I2C sensor on dome PCB ({locs}); primary UV-index source, fused 80/20 with U1",
             "source": "GenUV / Digi-Key / Mouser",
         })
+    for mpn, band, data in (("GUVB-C21SD", "UV-B", "AlGaN, 240-320 nm, 0.11 A/W at 300 nm"),
+                            ("GUVA-C22SD", "UV-A", "GaN, 240-370 nm, 0.14 A/W at 350 nm")):
+        if mpn in hand_by_mpn:
+            locs = ", ".join(hand_by_mpn[mpn]["locs"])
+            items.append({
+                "item": f"{band} photodiode (hand-reflowed)",
+                "qty": len(hand_by_mpn[mpn]["locs"]),
+                "part": f"Genicom {mpn} (COB2418 1.8 x 2.4 x 1.0 mm, pad 1 = anode)",
+                "description": f"{data} Schottky photodiode, zero-bias into the TLV9062 transimpedance stage ({locs}); "
+                               "not stocked at LCSC / JLCPCB",
+                "source": "Digi-Key / Win Source / SensorInStock (Genicom)",
+            })
     if "AS3935-BQFT" in hand_by_mpn:
         locs = ", ".join(hand_by_mpn["AS3935-BQFT"]["locs"])
         items.append({
@@ -171,9 +183,9 @@ def collect_assembly_parts(variant, spec):
     items.append({
         "item": "20 mm Piezoelectric Haptic Rain Discs (4-Quadrant Symmetric Array)",
         "qty": 4,
-        "part": "Murata 7BB-20-6L0 (Ø 20 mm brass/ceramic piezoelectric disc element)",
+        "part": "Same Sky CEB-20D64 (Ø 20 x 0.43 mm brass/ceramic piezo diaphragm, 6.5 kHz, 13 nF, wire leads; replaces the Murata 7BB-20-6L0, whose 7BB series Murata discontinued: last order 31 Mar 2026)",
         "description": "4 discs bonded (brass face only, using thin rigid cyanoacrylate Loctite 401) to the 4 coplanar Ø 20.4 mm ceiling pockets of crown.stl (NE, NW, SW, SE at r=26.8 mm) and plugged into crown J6..J9",
-        "source": "Murata / Mouser / Digi-Key / LCSC",
+        "source": "Digi-Key 102-1126-ND / Farnell 4893404 (Same Sky)",
     })
     items.append({
         "item": "Flanged PTFE dome diffuser (default UV / light cover, turned part)",
@@ -210,6 +222,16 @@ def collect_assembly_parts(variant, spec):
         "description": "main J2 and crown J1 are 12-pin BM12B-SRSS-TB. The crown cable passes the 13x11 mm umbrella cutout, the 4.1 mm deep rear conduit of probe_sleeve_back (tested with a Ø 3.2 mm cable on a 10 mm bend radius; a Ø 4.2 mm cable does NOT fit) and the 45-deg NE split-C strut; crimp one end after threading it through the strut nut",
         "source": "Digi-Key / Mouser / LCSC / AliExpress",
     })
+    for item, qty, part in (
+            ("JST SH 12-pin housing (crown cable, both ends)", 2, "JST SHR-12V-S-B(LF)(SN) (LCSC C265336)"),
+            ("JST SH 10-pin housing (probe jumper, both ends)", 2, "JST SHR-10V-S-B (LCSC C394370)"),
+            ("JST SH 2-pin housing (4 transducer + 4 piezo pigtails)", 8, "JST SHR-02V-S-B (LCSC C246754)"),
+            ("JST SH crimp contacts, 28-32 AWG (24 crown cable + 20 probe jumper + 16 pigtails)", 60, "JST SSH-003T-P0.2 (LCSC C160231)"),
+            ("JST ZH 6-pin housing (PMSA003I harness, main J4 end)", 1, "JST ZHR-6 (LCSC C160379)"),
+            ("JST ZH crimp contacts, 26-28 AWG (PMSA003I harness)", 6, "JST SZH-002T-P0.5 (LCSC C246761)")):
+        items.append({"item": item, "qty": qty, "part": part,
+                      "description": "Connector parts for the harnesses above (crimp with an SH / ZH-capable tool)",
+                      "source": "LCSC"})
     items.append({
         "item": "Stainless Steel M6 Fastener Set (Pagoda Through-Bolts & Mast Clamp Bolts)",
         "qty": 1,
@@ -241,7 +263,7 @@ def collect_assembly_parts(variant, spec):
     items.append({
         "item": "2.4 GHz U.FL (IPEX-1) Flexible PCB Dipole Antenna (dual-band parts also fit; the ESP32-C6 uses 2.4 GHz only)",
         "qty": 1,
-        "part": "Molex 1461530100 / Taoglas FXP830 (42x12 mm, +4.5 dBi, 100 mm U.FL coax)",
+        "part": "Molex 1461530100 (LCSC C152350; 2.4 / 5 GHz flexible dipole, 100 mm U.FL coax; alternative Taoglas FXP830)",
         "description": "Plugs into XIAO ESP32-C6 U.FL jack (activated via GPIO3=LOW, GPIO14=HIGH); stick it (its own adhesive) horizontally on the inner bay wall above the umbrella, away from the main board (V1 has no printed cradle)",
         "source": "Mouser / Digi-Key / LCSC",
     })
@@ -277,7 +299,7 @@ def main():
 
     pkg = f"variants.{variant}"
     modules = {name: importlib.import_module(f"{pkg}.{name}")
-               for name in spec["variants"][variant]["boards"]}
+               for name in (*spec["variants"][variant]["boards"], *spec["variants"][variant].get("legacy_boards", ()))}
     logs = {name: generate_board(variant, name, module.build, module.NET_CLASSES)
             for name, module in modules.items()}
     write_derived({name: module.NET_CLASSES for name, module in modules.items()})

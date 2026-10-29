@@ -1,0 +1,50 @@
+# LCSC store substitutes for the self-assembly parts order (order_lcsc.csv, hardware/scripts/order_parts.py).
+# JLCPCB assembly draws on its own warehouse; the LCSC store is a separate stock. A JLCPCB number that the LCSC store
+# does not sell (or has none of) is replaced here for the store order only; the board BOM keeps the JLCPCB number.
+# Every entry was verified live on wmsc.lcsc.com (product detail: model, package, stock); re-check with
+# `python3 hardware/scripts/order_parts.py --check`.
+substitutes:
+  C14663:   # YAGEO CC0603KRX7R9BB104 100 nF 50 V X7R 0603: LCSC store stock 0 (2026-10-29)
+    lcsc: C314282
+    mpn: 0603B104K500CT
+    value: 100n 50V
+    note: Walsin 100 nF 50 V X7R 0603 (same rating; C113803 went out of stock too); stock 760000
+  C25804:   # UNI-ROYAL 0603WAF1002T5E 10 kOhm 1 % 0603: LCSC store stock 0
+    lcsc: C965184
+    mpn: NQ03WAF1002T5E
+    note: UNI-ROYAL 10 kOhm 1 % 0603 (LCSC alternate of C25804); stock 68900
+  C22936:   # UNI-ROYAL 0603WAF100KT5E 1 Ohm 1 % 0603: LCSC store stock 0
+    lcsc: C2782502
+    mpn: NS03WAF100KT5E
+    note: UNI-ROYAL 1 Ohm 1 % 0603; stock 5000
+  C176812:  # ams OSRAM TSL25911FN: LCSC store stock 0
+    lcsc: C22459879
+    mpn: TSL25911FN
+    note: OSRAM TSL25911FN, the same part under the LCSC store's number; stock 25 (2026-10-29)
+  C113803:  # YAGEO CC0603KRX7R0BB104 100 nF 100 V X7R 0603 (power board): LCSC store stock 0 (2026-10-29)
+    lcsc: C116838
+    mpn: 0603B104K101CT
+    note: Walsin 100 nF 100 V X7R 0603 (same rating); stock 132620
+  C2500:    # Nexperia BAV99,215 (crown T/R isolation, SOT-23 series pair): LCSC store stock 0 (2026-10-29)
+    lcsc: C81174
+    mpn: PMBD7000,215
+    note: Nexperia PMBD7000 high-speed double diode, series pair, same SOT-23 pinout as BAV99; stock 98750
+
+# Parts the LCSC store does not sell or stock (JLCPCB assembly still uses the board BOM number): ordered elsewhere.
+# Stock via findchips.com, 2026-10-29 (Mouser / Digi-Key product pages could not be checked automatically).
+elsewhere:
+  C3659294:   # Sensirion SCD41-D-R2 (600-piece reel): not sold in the LCSC store
+    part: Sensirion SCD41-D-R1 (the same sensor on a 60-piece reel; Sensirion product number 3.000.960)
+    tme: SCD41-D-R1
+    source: TME SCD41-D-R1 (79 in stock) / Farnell 3677906 (58) / RS 2151860 (42)
+  C3659325:   # Sensirion SGP41-D-R4: not sold in the LCSC store; Farnell 3858683 has 0
+    part: Sensirion SGP41-D-R4
+    tme: SGP41-D-R4
+    source: TME SGP41-D-R4 (21 in stock) / Rutronik ICENVI1397 (75, Germany)
+  C7461846:   # Sensirion SHT40-AD1F-R2: the LCSC store only has the Tokmas part C54823945
+    part: Sensirion SHT40-AD1F-R2
+    source: Farnell 4134535 (6917 in stock)
+  C3178344:   # ScioSense AS3935-BQFT: LCSC stock 0
+    part: ScioSense AS3935-BQFT
+    digikey: AS3935-BQFTCT-ND
+    source: Digi-Key (product 3182213, ~1200 in stock, checked 2026-10-29)

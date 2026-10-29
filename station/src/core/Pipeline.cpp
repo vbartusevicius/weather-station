@@ -337,8 +337,17 @@ void Pipeline::process_solar(const RawState& raw, DerivedState& d) {
     const OpticalRaw& o = raw.optical;
     const bool tsl = o.tsl_lux.fresh(raw.now_ms, kOpticalMaxAgeMs);
     const bool ltr = o.ltr_lux.fresh(raw.now_ms, kOpticalMaxAgeMs);
-    if (tsl || ltr) {
-        const float lux = MetCalculator::fuse_uv_hardened_lux(tsl ? o.tsl_lux.value : 0.0F, ltr ? o.ltr_lux.value : 0.0F);
+    const bool pd_uva = o.pd_uva_w_m2.fresh(raw.now_ms, kOpticalMaxAgeMs);
+    // Photodiode dome (no LTR-390): learn lux per UV-A W/m^2 from bright unsaturated TSL25911 readings; while the
+    // TSL saturates (> ~88 klx behind the clear JGS1 window) estimate lux from the UV-A channel with that ratio.
+    if (tsl && pd_uva && o.tsl_lux.value > 10000.0F && o.pd_uva_w_m2.value > 1.0F) {
+        const float ratio = o.tsl_lux.value / o.pd_uva_w_m2.value;
+        lux_per_uva_ = lux_per_uva_ > 0.0F ? 0.99F * lux_per_uva_ + 0.01F * ratio : ratio;
+    }
+    const bool uva_lux = !tsl && !ltr && pd_uva && lux_per_uva_ > 0.0F && o.pd_uva_w_m2.value > 1.0F;
+    if (tsl || ltr || uva_lux) {
+        const float lux = uva_lux ? o.pd_uva_w_m2.value * lux_per_uva_
+                                  : MetCalculator::fuse_uv_hardened_lux(tsl ? o.tsl_lux.value : 0.0F, ltr ? o.ltr_lux.value : 0.0F);
         s.lux.set(lux);
         const float g = lux / kLuxPerWm2;
         s.irradiance_w_m2.set(g);
@@ -358,9 +367,13 @@ void Pipeline::process_solar(const RawState& raw, DerivedState& d) {
     const bool guvb_uv = o.guvb_uvi.fresh(raw.now_ms, kOpticalMaxAgeMs);
     if (ltr_uv) s.uv_index_ltr.set(std::max(0.0F, o.ltr_uvi.value));
     if (guvb_uv) s.uv_index_guvb.set(std::max(0.0F, o.guvb_uvi.value));
+    const bool pd_uvb = o.pd_uvb_w_m2.fresh(raw.now_ms, kOpticalMaxAgeMs);
     if (ltr_uv || guvb_uv) {
         float uvi = 0.0F;
-        if (ltr_uv && guvb_uv) {
+        if (pd_uvb && guvb_uv) {   // photodiode dome: the UV-B channel gives the UV index
+            uvi = s.uv_index_guvb.v;
+            s.uv_source = "GUVB-C21SD";
+        } else if (ltr_uv && guvb_uv) {
             uvi = 0.8F * s.uv_index_guvb.v + 0.2F * s.uv_index_ltr.v;
             s.uv_source = "GUVB-C31SM + LTR-390";
         } else if (guvb_uv) {
@@ -371,8 +384,8 @@ void Pipeline::process_solar(const RawState& raw, DerivedState& d) {
             s.uv_source = "LTR-390";
         }
         s.uv_index.set(uvi);
-        s.uvb_w_m2.set(uvi * 0.18F);  // typical ground-level UV-B (280-315 nm) per UV index unit
-        s.uva_w_m2.set(uvi * 5.0F);
+        s.uvb_w_m2.set(pd_uvb ? o.pd_uvb_w_m2.value : uvi * 0.18F);  // measured, or typical UV-B per UV index unit
+        s.uva_w_m2.set(pd_uva ? o.pd_uva_w_m2.value : uvi * 5.0F);
         if (uvi >= 1.0F) {
             // 1 MED (skin type II) = 250 J/m^2 erythemal; erythemal irradiance = UVI / 40 W/m^2.
             s.burn_time_min.set(250.0F / (uvi / 40.0F) / 60.0F);

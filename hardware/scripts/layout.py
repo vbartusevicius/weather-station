@@ -287,6 +287,8 @@ def apply_frame(board, plan):
     settings.SetBoardThickness(pcbnew.FromMM(frame["thickness"]))
     settings.m_MinThroughDrill = pcbnew.FromMM(frame["min_drill"])
     settings.m_TrackMinWidth = pcbnew.FromMM(frame["min_track"])
+    if "via" in frame:
+        settings.m_ViasMinSize = pcbnew.FromMM(frame["via"]["diameter"])
     settings.m_CopperEdgeClearance = pcbnew.FromMM(frame["edge_clearance"])
     settings.m_MinSilkTextHeight = pcbnew.FromMM(0.6)
     corners = [tuple(p) for p in frame["outline"]] if "outline" in frame else \
@@ -429,15 +431,15 @@ def net_classes(board, frame):
     return classes
 
 
-def project_net_settings(classes, power_width=0.3):
+def project_net_settings(classes, power_width=0.3, signal_width=0.2, via=(0.6, 0.3)):
     def netclass(name, priority, width):
         return {"name": name, "priority": priority, "clearance": 0.2, "track_width": width,
-                "via_diameter": 0.6, "via_drill": 0.3, "microvia_diameter": 0.3,
+                "via_diameter": via[0], "via_drill": via[1], "microvia_diameter": 0.3,
                 "microvia_drill": 0.1, "diff_pair_gap": 0.25, "diff_pair_via_gap": 0.25,
                 "diff_pair_width": 0.2, "wire_width": 6, "bus_width": 12, "line_style": 0,
                 "pcb_color": "rgba(0,0,0,0)", "schematic_color": "rgba(0,0,0,0)"}
-    defs = [netclass("Default", 2147483647, 0.2)]
-    defs += [netclass(d, 2, 0.2) for d in POWER_CLASS]
+    defs = [netclass("Default", 2147483647, signal_width)]
+    defs += [netclass(d, 2, signal_width) for d in POWER_CLASS]
     defs += [netclass(p, 1, power_width) for p in POWER_CLASS.values()]
     patterns = [{"netclass": c, "pattern": n} for n, c in sorted(classes.items())]
     return defs, patterns
@@ -449,10 +451,16 @@ def write_rules(board, plan, board_name, pcb_path):
                     SPEC["boards"].get(board_name, {}).get("isolation"),
                     DRU_4LAYER + neck_down_rule(frame.get("fine_pitch_power_pads", []))
                     + raised_module_rule(frame.get("raised_modules", [])))
+    if "power_track_min" in frame:   # low-current boards (dome: < 2 mA) may neck power tracks down below 0.22 mm
+        dru = dru.replace("(constraint track_width (min 0.22mm))", f"(constraint track_width (min {frame['power_track_min']}mm))")
     pcb_path.with_suffix(".kicad_dru").write_text(dru)
     pro_path = pcb_path.with_suffix(".kicad_pro")
     project = json.loads(pro_path.read_text()) if pro_path.exists() else {}
-    defs, patterns = project_net_settings(net_classes(board, frame), frame.get("power_track_width", 0.3))
+    # small boards with fine-pitch parts (dome: WSON-8 / X2QFN-10) may set narrower signal tracks and smaller vias
+    via = frame.get("via", {})
+    defs, patterns = project_net_settings(net_classes(board, frame), frame.get("power_track_width", 0.3),
+                                          frame.get("signal_track_width", 0.2),
+                                          (via.get("diameter", 0.6), via.get("drill", 0.3)))
     project.setdefault("net_settings", {}).update({"classes": defs, "netclass_patterns": patterns})
     pro_path.write_text(json.dumps(project, indent=2))
 
@@ -627,7 +635,46 @@ def current_board(board_name, plan):
         placed = place_parts(board, plan, list(plan["parts"]))
         print(f"{board_name}: new layout, placed {len(placed)} planned parts")
     apply_frame(board, plan)
+    add_planned_tracks(board, plan)
     return board
+
+
+def add_planned_tracks(board, plan):
+    """Hand-routed, locked tracks / vias from the plan's `tracks:` ({net, layer, width, points: [[x, y], ...]}) and
+    `vias:` ({net, at: [x, y]}, frame via size) lists: they
+    survive re-routing (export_dsn keeps locked tracks, so Freerouting treats them as fixed) and are rebuilt from the
+    plan on every sync, so editing the plan moves them."""
+    tracks, vias = plan.get("tracks", []), plan.get("vias", [])
+    if not tracks and not vias:
+        return
+    for item in list(board.GetTracks()):
+        if item.IsLocked():
+            board.RemoveNative(item)
+    for t in tracks:
+        net = board.FindNet(t["net"])
+        if net is None:
+            sys.exit(f"planned track on unknown net {t['net']}")
+        for a, b in zip(t["points"], t["points"][1:]):
+            seg = pcbnew.PCB_TRACK(board)
+            seg.SetStart(pos(*a))
+            seg.SetEnd(pos(*b))
+            seg.SetWidth(pcbnew.FromMM(t.get("width", 0.15)))
+            seg.SetLayer(LAYERS[t.get("layer", "F.Cu")])
+            seg.SetLocked(True)
+            board.Add(seg)
+            seg.SetNet(net)
+    size = plan["frame"].get("via", {"diameter": 0.6, "drill": 0.3})
+    for v in vias:
+        net = board.FindNet(v["net"])
+        if net is None:
+            sys.exit(f"planned via on unknown net {v['net']}")
+        via = pcbnew.PCB_VIA(board)
+        via.SetPosition(pos(*v["at"]))
+        via.SetWidth(pcbnew.FromMM(size["diameter"]))
+        via.SetDrill(pcbnew.FromMM(size["drill"]))
+        via.SetLocked(True)
+        board.Add(via)
+        via.SetNet(net)
 
 
 def sync(board_name):
@@ -669,8 +716,27 @@ def export_dsn(board_name):
     project = json.loads(routable.with_suffix(".kicad_pro").read_text())
     text = with_net_classes(dsn.read_text(), nets, project["net_settings"])
     text = with_inset_boundary(without_plane_layers(text, plan["frame"]), plan["frame"])
-    dsn.write_text(text)
+    dsn.write_text(with_via_size(text, plan["frame"]))
     print(f"{board_name}: exported {dsn.relative_to(REPO)}")
+
+
+def with_via_size(dsn_text, frame):
+    """The loaded board exports the default 0.6 / 0.3 mm via; a frame `via` override renames the padstack (the SES
+    import takes the via size from that name) and shrinks its copper rings."""
+    via = frame.get("via")
+    if not via:
+        return dsn_text
+    dia, drill = round(via["diameter"] * 1000), round(via["drill"] * 1000)
+    m = re.search(r'\(padstack "(Via\[0-3\]_(\d+):(\d+)_um)"', dsn_text)
+    if not m:
+        sys.exit("no via padstack in DSN")
+    name, old_dia = m.group(1), m.group(2)
+    new = f"Via[0-3]_{dia}:{drill}_um"
+    dsn_text = dsn_text.replace(f'"{name}"', f'"{new}"')
+    start = dsn_text.index(f'(padstack "{new}"')
+    end = dsn_text.index("(attach", start)
+    block = re.sub(rf"\(circle (\S+) {old_dia}\)", rf"(circle \1 {dia})", dsn_text[start:end])
+    return dsn_text[:start] + block + dsn_text[end:]
 
 
 def with_inset_boundary(dsn_text, frame):

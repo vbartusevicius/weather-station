@@ -26,9 +26,9 @@ L_SWPA6045 = "Inductor_SMD:L_Sunlord_SWPA6045S"
 
 # per-rail values: inductor (value, mpn, lcsc, note), output cap, compensation zero cap, FB divider (top, bottom)
 RAILS = {
-    5.0: {"l": ("8.2uH", "SWPA6045S8R2MT", "C96963", "Isat 3.9 A, Irms 2.6 A, 56 mOhm"),
+    5.0: {"l": ("8.2uH", "ANR6045T8R2M", "C7427168", "APV", "Isat 3.96 A, Irms 2.64 A, 60 mOhm max"),
           "cout": "47u 10V", "c5": ("33n 50V", "f_z = 742 Hz"), "fb": ("53k6", "10k2")},
-    12.0: {"l": ("22uH", "SWPA6045S220MT", "C83454", "Isat 1.9 A, Irms 1.6 A, 140 mOhm"),
+    12.0: {"l": ("22uH", "SRN6045TA-220M", "C2044314", "Bourns", "Isat 3.3 A, Irms 2.3 A, 96 mOhm"),
            "cout": "22u 25V", "c5": ("18n 50V", "f_z = 1.36 kHz"), "fb": ("140k", "10k")},
 }
 
@@ -54,9 +54,9 @@ def tps54360(name, vin, vout, gnd, u, l, d, c, r, volts=5.0):
     for pin, net in (("1", bst), ("2", vin), ("3", en), ("4", rt), ("5", fb), ("6", comp), ("7", gnd),
                      ("8", sw), ("9", gnd)):
         ic[pin] += net
-    l_val, l_mpn, l_lcsc, l_note = cfg["l"]
+    l_val, l_mpn, l_lcsc, l_mfr, l_note = cfg["l"]
     ind = part("Device", "L", l_val, L_SWPA6045,
-               src(mpn=l_mpn, mfr="Sunlord", lcsc=l_lcsc,
+               src(mpn=l_mpn, mfr=l_mfr, lcsc=l_lcsc,
                    source=f"{l_val} shielded power inductor, {l_note} (6 x 6 x 4.5 mm)"),
                ref=l)
     ind[1] += sw

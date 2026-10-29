@@ -52,6 +52,9 @@ struct OpticalRaw {          // dome: TSL25911 (vis+NIR, auto-gain), LTR-390 (AL
     Reading<float> ltr_uvi;        // LTR-390 UVS converted to UV index
     Reading<float> guvb_uvi;       // GUVB-C31SM UV index from its factory NVM calibration (or the configured scale)
     Reading<float> guvb_counts;    // range-normalised UV-B counts minus the factory dark offset (diagnostics)
+                                   // photodiode dome: guvb_uvi / guvb_counts carry its UV-B channel (counts = nA)
+    Reading<float> pd_uvb_w_m2;    // photodiode dome (GUVB-C21SD): UV-B irradiance, free sky
+    Reading<float> pd_uva_w_m2;    // photodiode dome (GUVA-C22SD): UV-A irradiance (240-370 nm), free sky
 };
 
 struct AirRaw {              // PMSA003I (PM1/2.5/10), SGP41 (raw MOx ticks), SCD41 (CO2, in-sensor pressure comp.)

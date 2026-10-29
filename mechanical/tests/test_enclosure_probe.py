@@ -10,6 +10,8 @@ sys.path.insert(0, str(REPO / "mechanical/scripts"))
 import build_enclosure as be
 import enclosure_features as ef
 
+DOME_OPTICS = {"D1", "D2", "U2"}   # optical sensors on the `dome` board (layout_dome.yaml)
+
 
 def _board_solids():
     out = {}
@@ -522,7 +524,8 @@ def test_uv_dome_crown_top_fits():
     above = be.ring_cone_y(d["gland_y"] + u, d["gland_y"] + u + 0.05, d["lip_r"] + 0.05, o["id"] / 2 + o["cs"],
                            d["lip_r"] + 0.05, o["id"] / 2 + o["cs"]).translate(at)
     assert lid.intersect(above).val().Volume() > 0.01, "lip material must back the O-ring"
-    sensors = [p for p in ef.part_boxes() if p["board"] == "dome" and p["side"] == "front"]
+    # the optical sensors' view (dome: D1 UV-B, D2 UV-A, U2 TSL25911), not the low op-amp / ADC / resistors beside them
+    sensors = [p for p in ef.part_boxes() if p["board"] == "dome" and p["side"] == "front" and p["ref"] in DOME_OPTICS]
     y_s = min(p["y1"] for p in sensors)
     r_s = max(math.hypot(x - win["x"], z - win["z"]) for p in sensors for x in (p["x0"], p["x1"]) for z in (p["z0"], p["z1"]))
     for r in (9.2, 9.7, 10.5, 11.0, 11.5, 12.5, 14.0, 16.0, 20.0, 26.0, 34.0):

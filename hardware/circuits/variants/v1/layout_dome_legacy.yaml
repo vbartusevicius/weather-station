@@ -1,0 +1,65 @@
+frame:
+  size: { x: 13.6, y: 13.6 }
+  # 16-segment true circular disc outline (Ø 13.6 mm centered at 6.8, 6.8) with a 4.4 mm bottom chord (y=0.0, x=4.6..9.0)
+  # where the mouse-bite breakaway tab connects `dome` to the top of `reflector`!
+  outline:
+    - [4.6, 0.0]
+    - [9.0, 0.0]
+    - [10.8, 0.7]
+    - [12.2, 1.9]
+    - [13.1, 3.5]
+    - [13.6, 5.4]
+    - [13.6, 8.2]
+    - [13.1, 10.1]
+    - [12.2, 11.7]
+    - [10.8, 12.9]
+    - [9.0, 13.6]
+    - [4.6, 13.6]
+    - [2.8, 12.9]
+    - [1.4, 11.7]
+    - [0.5, 10.1]
+    - [0.0, 8.2]
+    - [0.0, 5.4]
+    - [0.5, 3.5]
+    - [1.4, 1.9]
+    - [2.8, 0.7]
+  copper_layers: 4
+  thickness: 1.6
+  min_drill: 0.2
+  min_track: 0.12
+  edge_clearance: 0.3
+  silk_inside: true
+  fine_pitch_power_pads: [J1, U1, U2, U3]
+  raised_modules: []
+  plane_layers: [In1.Cu]
+  domains: [SELV-DOME]
+  domain_regions:
+    SELV-DOME:
+      - { x0: 1.5, y0: 1.5, x1: 12.1, y1: 12.1 }
+  isolators: []
+  power_nets: [+3V3]
+  pours:
+    - { net: GND, layers: [In1.Cu], region: { x0: 2.0, y0: 2.0, x1: 11.6, y1: 11.6 } }
+  no_coat_keepouts:
+    - { x0: 2.2, y0: 3.2, x1: 11.4, y1: 10.8, layer: F.SilkS }
+  connector_labels: { J1: "CROWN" }   # destination board / port, placed next to each connector
+  silk_labels: []
+
+heights:
+  default: 1.2
+  J1: 2.5
+  U1: 0.8
+  U2: 0.8
+  U3: 1.4
+
+parts:
+  # --- Top (+y, F.Cu under the Ø 20 x 2 mm JGS1 window): Symmetric 3-sensor triad around (6.8, 6.8) ---
+  U1:  { x: 4.3,   y: 5.5,   rot: 0,   block: uv_als, locked: true }
+  U2:  { x: 9.3,   y: 5.5,   rot: 0,   block: uv_als, locked: true }
+  U3:  { x: 6.8,   y: 9.3,   rot: 0,   block: uv_als, locked: true }
+
+  # --- Bottom (-y, B.Cu, shaded underneath the PCB): 4-pin vertical B2B male header J1 dead-center at (6.8, 6.8) + C1, C2, C3 ---
+  J1:  { x: 6.8,   y: 6.8,   rot: 0,   side: back, block: int_crown, locked: true }
+  C1:  { x: 4.4,   y: 11.2,  rot: 0,   side: back, block: uv_als }
+  C2:  { x: 9.2,   y: 11.2,  rot: 0,   side: back, block: uv_als }
+  C3:  { x: 6.8,   y: 2.1,   rot: 0,   side: back, block: uv_als }

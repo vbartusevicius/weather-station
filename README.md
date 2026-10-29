@@ -23,7 +23,7 @@ dashboard and appears in Home Assistant by itself.
 | :--- | :--- | :--- |
 | Wind speed & direction | 4× 40 kHz ultrasonic transducers, time of flight (STM32G431 crown) | 0–60 m/s, 0.1° |
 | Rain & hail | 4 piezo discs under the lid, acoustic impacts | 0–200 mm/h, hail size |
-| UV index, sunlight, night sky | LTR-390UV + GUVB-C31SM + TSL25911 under a PTFE dome | UVI 0–16+, 0.0002–157 000 lx |
+| UV index, UV-A / UV-B, sunlight, night sky | GUVB-C21SD + GUVA-C22SD photodiodes + TSL25911 under a PTFE dome | UVI 0–16+, 0.0002–88 000 lx |
 | Temperature & humidity | Sensirion SHT40 in a 5-plate radiation shield | ±0.2 °C, ±1.8 % RH |
 | Pressure & thunder | Bosch BMP585 | ±0.06 hPa |
 | Particulates | Plantower PMSA003I | PM1 / PM2.5 / PM10 |

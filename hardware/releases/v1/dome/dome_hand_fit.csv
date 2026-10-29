@@ -1,3 +1,3 @@
 Designator,Value,Manufacturer part,Notes
-U1,LTR-390UV-01,LTR-390UV-01,UV-A/B + 157k lux ALS sensor elevated inside hollow JGS1 hemisphere (I2C 0x53)
-U3,GUVB-C31SM,GUVB-C31SM,AlGaN true UV-B (240-320 nm) digital I2C sensor on dome PCB (I2C 0x39)
+D1,GUVB-C21SD,GUVB-C21SD,"AlGaN UV-B photodiode 240-320 nm (COB2418), zero-bias into U1A"
+D2,GUVA-C22SD,GUVA-C22SD,"GaN UV-A photodiode 240-370 nm (COB2418), zero-bias into U1B"

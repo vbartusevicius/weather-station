@@ -179,7 +179,10 @@ def value_problems(part, record):
 
 
 PIN_ALIASES = {"CAT": "K", "CATHODE": "K", "AN": "A", "ANODE": "A", "COL": "C", "EM": "E", "EP": "EPAD",
-               "G": "GND", "VSS": "GND", "GNDPAD": "EPAD", "VO": "VOUT", "VI": "VIN"}
+               "G": "GND", "VSS": "GND", "GNDPAD": "EPAD", "VO": "VOUT", "VI": "VIN",
+               # dual op-amps: channel A / B = 1 / 2, VCC = V+, VEE/GND = V-
+               "OUTA": "OUT1", "INA-": "IN1-", "INA+": "IN1+", "OUTB": "OUT2", "INB-": "IN2-", "INB+": "IN2+",
+               "VCC": "V+", "VEEGND": "V-", "VEE": "V-"}
 
 
 def canonical_pin(ref, name):
@@ -366,7 +369,7 @@ if __name__ == "__main__":
 
     spec = load_spec()
     variant = spec["active_variant"]
-    boards = sys.argv[1:] or spec["variants"][variant]["boards"]
+    boards = sys.argv[1:] or (*spec["variants"][variant]["boards"], *spec["variants"][variant].get("legacy_boards", ()))
     failed = False
     for name in boards:
         pcb = pcbnew.LoadBoard(str(REPO / f"hardware/layout/{variant}/{name}/{name}.kicad_pcb"))

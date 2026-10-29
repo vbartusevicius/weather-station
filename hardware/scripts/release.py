@@ -10,6 +10,7 @@ from pathlib import Path
 
 import fab_outputs
 import jlc_parts
+import order_parts
 import panelize
 import pcbnew
 import yaml
@@ -21,6 +22,7 @@ from product_spec import load_spec
 SPEC = load_spec()
 VARIANT = SPEC["active_variant"]
 BOARDS = tuple(SPEC["variants"][VARIANT]["boards"])
+LEGACY = tuple(SPEC["variants"][VARIANT].get("legacy_boards", ()))   # released separately, not panelised
 RELEASE = SPEC["product"]["release"]
 
 
@@ -145,7 +147,7 @@ def release_board(board, root):
     return [], placement, checks
 
 
-def main(version, boards=BOARDS):
+def main(version, boards=BOARDS + LEGACY):
     root = REPO / "hardware/releases" / version
     root.mkdir(parents=True, exist_ok=True)
     failed = False
@@ -162,7 +164,7 @@ def main(version, boards=BOARDS):
             print(f"{board}: released; every JLC part lands pin for pin. Rotation differs from KiCad's "
                   f"for {', '.join(turned) or 'none'}; bottom side: {', '.join(bottom) or 'none'} "
                   "(confirm these in JLCPCB's placement preview)")
-    if not failed and tuple(boards) == BOARDS:
+    if not failed and set(BOARDS) <= set(boards):
         panel_problems = panelize.build_panel(VARIANT, BOARDS, root, board_checks)
         if panel_problems:
             failed = True
@@ -187,8 +189,10 @@ def main(version, boards=BOARDS):
                         ignore=shutil.ignore_patterns("fit_*.png", "front_legend.png", "*.3mf", "*_obj.zip"))
         for colour_model in (*(root / "enclosure").glob("*.3mf"), *(root / "enclosure").glob("*_obj.zip")):
             colour_model.unlink()   # colour 3D-print formats are no longer produced
+    if not failed:
+        order_parts.write(root)   # order_lcsc / order_mouser / order_elsewhere.csv for self-assembly
     return 1 if failed else 0
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else RELEASE, tuple(sys.argv[2:]) or BOARDS))
+    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else RELEASE, tuple(sys.argv[2:]) or BOARDS + LEGACY))

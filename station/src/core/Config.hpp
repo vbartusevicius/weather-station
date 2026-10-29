@@ -25,7 +25,8 @@ struct StationConfig {
     float pressure_wind_coef{0.22F};      // fraction of dynamic pressure q seen by the barometer port
     float rain_gain{1.0F};                // tipping-cup cross calibration of the piezo rain estimate
     std::uint8_t as3935_tun_cap{0};       // AS3935 antenna tuning capacitor (0..15, 8 pF steps)
-    float guvb_counts_per_uvi{0.0F};      // GUVB-C31SM field calibration; 0 = use the factory NVM B_Scale
+    float guvb_counts_per_uvi{0.0F};      // UV-B field calibration per UV index, behind the cover: GUVB-C31SM counts
+                                          // (legacy dome) or GUVB-C21SD nA (photodiode dome); 0 = factory / datasheet
     bool as3935_indoor{false};
 
     // Networking

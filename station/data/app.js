@@ -205,7 +205,8 @@ function openInspectModal(kind, d) {
       ["Global irradiance / clear-sky", `${fv(s.irradiance_w_m2, 0)} / ${fv(s.clear_sky_w_m2, 0, " W/m²")}`],
       ["Visible / near-infrared", `${fv(s.visible_w_m2, 0)} / ${fv(s.nir_w_m2, 0, " W/m²")}`],
       ["UV index (fused) / source", `${fv(s.uv_index, 1)} · ${s.uv_source}`],
-      ["UV index GUVB-C31SM (UV-B) / LTR-390", `${fv(s.uv_index_guvb, 1)} / ${fv(s.uv_index_ltr, 1)}`],
+      ["UV index UV-B sensor / LTR-390", `${fv(s.uv_index_guvb, 1)} / ${fv(s.uv_index_ltr, 1)}`],
+      ["UV-B / UV-A irradiance", `${fv(s.uvb_w_m2, 2)} / ${fv(s.uva_w_m2, 1)} W/m²`],
       ["UV-A / UV-B (estimated from UVI)", `${fv(s.uva_w_m2, 1)} / ${fv(s.uvb_w_m2, 2, " W/m²")}`],
       ["Illuminance", isNum(s.lux) ? (s.lux < 1 ? `${(s.lux * 1000).toFixed(2)} mlx` : `${Math.round(s.lux).toLocaleString()} lx`) : "—"],
       ["Sun altitude / azimuth", `${fv(a.sun_alt_deg, 1, "°")} / ${fv(a.sun_az_deg, 0, "°")}`],
@@ -1531,7 +1532,7 @@ const CAL_LIVE = {
   station_mm: ["Station rain so far", 2, " mm"], station_hpa: ["Station pressure", 2, " hPa"],
   elevation_m: ["Implied elevation", 1, " m"], lux_behind_cover: ["Light behind the dome", 0, " lx"],
   expected_lux: ["Clear-sky light (model)", 0, " lx"], sun_alt_deg: ["Sun height", 1, "°"],
-  variation_pct: ["Light varies", 1, " %"], guvb_counts: ["GUVB-C31SM counts", 1, ""],
+  variation_pct: ["Light varies", 1, " %"], guvb_counts: ["UV-B sensor (counts or nA)", 2, ""],
   ltr_uvi_behind_cover: ["LTR-390 UVI behind dome", 2, ""], rh_pct: ["RH (last minute)", 2, " %"],
   expected_pct: ["Salt equilibrium", 2, " %"], temp_c: ["Temperature (last minute)", 2, " °C"],
   co2_ppm: ["CO₂ mean", 0, " ppm"], co2_std_ppm: ["CO₂ spread", 0, " ppm"],
@@ -1542,7 +1543,7 @@ const CAL_SUGGEST = {
   heading_mode: ["Heading source (0 compass, 1 fixed)", 0, ""], heading_fixed_deg: ["Fixed heading", 1, "°"],
   heading_offset_deg: ["Compass correction", 1, "°"], wind_speed_gain: ["Wind speed gain", 4, ""],
   rain_impact_scale: ["Rain impact scale", 3, ""], rain_gain: ["Rain gain", 3, ""], altitude_m: ["Elevation", 1, " m"],
-  optics_transmission: ["Dome transmission", 4, ""], guvb_counts_per_uvi: ["GUVB counts per UVI", 2, ""],
+  optics_transmission: ["Dome transmission", 4, ""], guvb_counts_per_uvi: ["UV-B sensor per UVI", 3, ""],
   rh_offset_pct: ["Humidity offset", 2, " %"], temp_offset_c: ["Temperature offset", 2, " °C"],
 };
 // Calibration header: only what the procedures need beyond Station health (sun position, solar noon)

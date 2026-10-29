@@ -91,6 +91,8 @@ public:
 
     bool begin(I2cBus& bus, std::uint8_t addr);
     bool start(std::uint8_t channel, Range range);   // AIN0..AIN3 against GND
+    // Raw MUX code (0b001 = AIN0 - AIN3, 0b010 = AIN1 - AIN3, ...) and PGA code (0b000..0b111), full scale in volts.
+    bool start_raw(std::uint8_t mux, std::uint8_t pga, float full_scale_v);
     bool read(float& volts);                         // result of the last start() (>= 63 ms later)
     bool present() const { return present_; }
 

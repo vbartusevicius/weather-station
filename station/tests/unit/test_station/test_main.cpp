@@ -37,6 +37,7 @@
 #include "../../../src/crown/CrownDecode.hpp"
 #include "../../../src/crown/StmI2cBootloader.hpp"
 #include "../../../src/environment/MetCalculations.hpp"
+#include "../../../src/environment/UvPhotodiodes.hpp"
 #include "../../../src/firmware/ButtonController.hpp"
 #include "../../../src/heater/DeIcingHeater.hpp"
 #include "../../../src/history/Climate.hpp"
@@ -874,6 +875,60 @@ void test_pipeline_uv_fusion_and_sgp41_gas_indices(void) {
 }
 
 
+void test_uv_photodiode_dome_conversions(void) {
+    namespace pd = station::environment::uvpd;
+    // 0.46 mV across the 10 MOhm UV-B gain = 46 pA (UV index 0.3 behind the PTFE dome)
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 0.046F, pd::na_from_volts(0.46e-3F, pd::kRfUvbOhm));
+    // 1.4 nA per UV index in sunlight (datasheet), divided by the cover transmission
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 0.3F, pd::uv_index(0.046F, 0.11F, 0.0F));
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 2.0F, pd::uv_index(0.3F, 0.11F, 0.15F));   // field scale: nA behind the cover / UVI
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 1.0F, pd::uvb_w_m2(7.1F, 1.0F));   // 71 nA per mW/cm^2
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 50.0F, pd::uva_w_m2(565.0F, 1.0F));
+    // PGA steps: up near the full scale, down when the reading fits the smaller range comfortably
+    TEST_ASSERT_EQUAL_UINT8(1, pd::next_range(0, 0.24F));
+    TEST_ASSERT_EQUAL_UINT8(0, pd::next_range(1, 0.05F));
+    TEST_ASSERT_EQUAL_UINT8(3, pd::next_range(3, 2.0F));
+    TEST_ASSERT_EQUAL_UINT8(1, pd::next_range(1, 0.3F));
+    // dark offset learnt at night only, subtracted by day, never negative
+    pd::DarkZero z;
+    z.update(0.02F, false);
+    TEST_ASSERT_FLOAT_WITHIN(1e-6F, 0.0F, z.offset_na());
+    for (int i = 0; i < 400; ++i) z.update(0.02F, true);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 0.02F, z.offset_na());
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 0.08F, z.apply(0.10F));
+    TEST_ASSERT_FLOAT_WITHIN(1e-6F, 0.0F, z.apply(0.01F));
+}
+
+void test_pipeline_photodiode_dome_uv_and_lux_fallback(void) {
+    Pipeline p;
+    RawState raw{};
+    EventQueues ev{};
+    StationConfig cfg{};
+    DerivedState d{};
+    // bright unsaturated TSL25911 + UV-A: the pipeline learns lux per UV-A W/m^2 (50 klx / 40 W/m^2)
+    for (int s = 0; s < 5; ++s) {
+        const std::uint32_t t = 1000U + static_cast<std::uint32_t>(s) * 1000U;
+        fill_steady(raw, t);
+        raw.optical.tsl_lux.set(50000.0F, t);
+        raw.optical.pd_uva_w_m2.set(40.0F, t);
+        raw.optical.pd_uvb_w_m2.set(1.2F, t);
+        raw.optical.guvb_uvi.set(6.0F, t);
+        p.step(raw, ev, cfg, d);
+    }
+    TEST_ASSERT_EQUAL_STRING("GUVB-C21SD", d.solar.uv_source);
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 6.0F, d.solar.uv_index.v);
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 1.2F, d.solar.uvb_w_m2.v);   // measured, not estimated from the UV index
+    TEST_ASSERT_FLOAT_WITHIN(0.01F, 40.0F, d.solar.uva_w_m2.v);
+    // TSL saturated (no reading, no LTR-390): lux from the UV-A channel with the learnt ratio
+    fill_steady(raw, 30000);   // the last TSL reading (5 s) is stale by now
+    raw.optical.pd_uva_w_m2.set(48.0F, 30000);
+    raw.optical.pd_uvb_w_m2.set(1.4F, 30000);
+    raw.optical.guvb_uvi.set(7.0F, 30000);
+    p.step(raw, ev, cfg, d);
+    TEST_ASSERT_TRUE(d.solar.lux.ok);
+    TEST_ASSERT_FLOAT_WITHIN(500.0F, 60000.0F, d.solar.lux.v);
+}
+
 void test_heater_power_monitor_and_heat_check(void) {
     Pipeline p;
     RawState raw{};
@@ -1658,6 +1713,8 @@ int main(void) {
     RUN_TEST(test_pipeline_daytime_cloud_cover_rain_lightning_and_thunder);
     RUN_TEST(test_sgp41_gas_index_algorithm_blackout_baseline_event_and_state);
     RUN_TEST(test_pipeline_uv_fusion_and_sgp41_gas_indices);
+    RUN_TEST(test_uv_photodiode_dome_conversions);
+    RUN_TEST(test_pipeline_photodiode_dome_uv_and_lux_fallback);
     RUN_TEST(test_heater_power_monitor_and_heat_check);
     RUN_TEST(test_crown_blocks_decode_into_pipeline_types);
     RUN_TEST(test_crown_rom_bootloader_flashes_and_verifies);

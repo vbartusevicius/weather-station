@@ -76,6 +76,9 @@ variants:
   v1:
     description: "Monolithic solid-state ultrasonic, haptic-rain & multi-gas air-quality roof weather station (12-32V wired)"
     boards: [main, crown, reflector, dome, probe, power]
+    # Built, routed, released and tested like the others, but not in the enclosure model, the panel or the order files:
+    # alternatives that fit the same place (dome_legacy = the LTR-390UV + GUVB-C31SM dome, same riser and outline).
+    legacy_boards: [dome_legacy]
 
 boards:
   main:
@@ -110,6 +113,16 @@ boards:
     domains:
       SELV-REFLECTOR: all
   dome:
+    plane: horizontal-xz     # round Ø 15.6 mm UV-A / UV-B / light micro-PCB (PTFE dome bore Ø 16.2) raised on 4-pin vertical B2B riser right under the Ø 20 x 2 mm JGS1 window in the crown lid boss
+    shape: circle
+    thickness: 1.6
+    y: 197.4                 # sensor tops at y <= 198.8, 0.5 mm below the UV window (build_enclosure.UV_WIN)
+    x_offset: 0.0
+    z_offset: 0.0
+    max_outline: { width: 15.6, height: 15.6 }
+    domains:
+      SELV-DOME: all
+  dome_legacy:
     plane: horizontal-xz     # round Ø 13.6 mm UV/Light micro-PCB raised on 4-pin vertical B2B riser right under the Ø 20 x 2 mm JGS1 window in the crown lid boss
     shape: circle
     thickness: 1.6
@@ -327,6 +340,11 @@ derived:
       - I2C_SDA
       - I2C_SCL
       - Net-*
+      - UV_VB
+      - UVB_IN
+      - UVA_IN
+      - UVB_OUT
+      - UVA_OUT
       DOME-Power:
       - +3V3
     probe:
@@ -367,4 +385,13 @@ derived:
       - +3V3_PROBE
       - LOGIC_SW
       - HEAT_SW
+    dome_legacy:
+      SELV-DOME:
+      - GND
+      - +3V3
+      - I2C_SDA
+      - I2C_SCL
+      - Net-*
+      DOME-Power:
+      - +3V3
 # --- END GENERATED ---

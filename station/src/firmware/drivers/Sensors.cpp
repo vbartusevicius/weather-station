@@ -262,15 +262,22 @@ bool Ads1115::begin(I2cBus& bus, std::uint8_t addr) {
 }
 
 bool Ads1115::start(std::uint8_t channel, Range range) {
-    if (!present_ || channel > 3) {
+    if (channel > 3) {
         return false;
     }
-    // OS=1 (start), MUX=1xx (AINx vs GND), PGA, MODE=1 (single-shot), DR=001 (16 SPS), comparator disabled
-    const std::uint16_t cfg = static_cast<std::uint16_t>(0x8000U | ((0x4U | channel) << 12) |
-                                                         (static_cast<std::uint16_t>(range) << 9) | 0x0100U |
+    return start_raw(static_cast<std::uint8_t>(0x4U | channel), static_cast<std::uint8_t>(range),
+                     range == Range::Fs256mV ? 0.256F : 4.096F);   // MUX=1xx: AINx vs GND
+}
+
+bool Ads1115::start_raw(std::uint8_t mux, std::uint8_t pga, float full_scale_v) {
+    if (!present_) {
+        return false;
+    }
+    // OS=1 (start), MUX, PGA, MODE=1 (single-shot), DR=001 (16 SPS), comparator disabled
+    const std::uint16_t cfg = static_cast<std::uint16_t>(0x8000U | ((mux & 0x7U) << 12) | ((pga & 0x7U) << 9) | 0x0100U |
                                                          (0x1U << 5) | 0x0003U);
     const std::uint8_t b[3] = {0x01, static_cast<std::uint8_t>(cfg >> 8), static_cast<std::uint8_t>(cfg & 0xFF)};
-    fs_v_ = range == Range::Fs256mV ? 0.256F : 4.096F;
+    fs_v_ = full_scale_v;
     return dev_.write(b, sizeof(b));
 }
 

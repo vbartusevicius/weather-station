@@ -218,7 +218,8 @@ def transducer_pockets():
 
 
 def uv_window():
-    cx, _, cz = board_point("dome", 6.8, 6.8)
+    size = SPEC["boards"]["dome"]["max_outline"]
+    cx, _, cz = board_point("dome", size["width"] / 2.0, size["height"] / 2.0)   # optical axis = dome board centre
     return {
         "x": round(cx, 3),
         "z": round(cz, 3),

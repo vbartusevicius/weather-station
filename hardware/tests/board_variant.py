@@ -7,7 +7,7 @@ from product_spec import load_spec
 
 SPEC = load_spec()
 VARIANT = SPEC["active_variant"]
-BOARDS = tuple(SPEC["variants"][VARIANT]["boards"])
+BOARDS = (*SPEC["variants"][VARIANT]["boards"], *SPEC["variants"][VARIANT].get("legacy_boards", ()))
 
 
 def layout_path(board):

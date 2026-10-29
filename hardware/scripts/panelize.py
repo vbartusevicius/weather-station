@@ -376,6 +376,15 @@ def build_panel(
     for suffix in (".kicad_pro", ".kicad_dru"):
         shutil.copy(base_path.with_suffix(suffix), panel_dir / f"panel{suffix}")
     panel = loaded[base_name][0]
+    # boards with finer per-board rules (dome: 0.45 mm vias, 0.15 mm power neck-downs) set the panel minimum
+    settings = panel.GetDesignSettings()
+    settings.m_ViasMinSize = min(b[0].GetDesignSettings().m_ViasMinSize for b in loaded.values())
+    power_min = re.compile(r"(\(rule power_track_width\n  \(constraint track_width \(min )([\d.]+)mm")
+    widths = [float(m.group(2)) for b in boards
+              for m in [power_min.search((REPO / "hardware/layout" / variant / b / f"{b}.kicad_dru").read_text())] if m]
+    if widths:
+        dru = panel_dir / "panel.kicad_dru"
+        dru.write_text(power_min.sub(lambda m: f"{m.group(1)}{min(widths)}mm", dru.read_text()))
 
     placements: list[tuple[str, float, float, float, float, float, float]] = []
     combined_parts: list[dict] = []
@@ -474,8 +483,10 @@ def build_panel(
 
     cpl_rows = []
     check_rows = []
+    unplaced = [f"panel: {c.ref} ({c.lcsc}) has no JLCPCB placement fit: {'; '.join(c.problems) or 'no fit'}"
+                for c in panel_checks if c.assembly == "jlc" and c.placement is None]
     for c in panel_checks:
-        if c.assembly != "jlc":
+        if c.assembly != "jlc" or c.placement is None:
             continue
         pref = c.ref
         fp = panel.FindFootprintByReference(pref)
@@ -510,4 +521,4 @@ def build_panel(
     ph_mm = pcbnew.ToMM(pbb.GetHeight())
     print(f"panel ({'+'.join(boards)}): released {pw_mm:.1f}x{ph_mm:.1f}mm breakaway mouse-bite panel "
           f"(0 DRC errors, {len(groups)} consolidated BOM lines, {len(cpl_rows)} SMT placements)")
-    return []
+    return unplaced

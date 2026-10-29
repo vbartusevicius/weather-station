@@ -4,7 +4,7 @@
   (constraint clearance (min 0.2mm))
   (constraint hole_size (min 0.2mm)))
 (rule power_track_width
-  (constraint track_width (min 0.22mm))
+  (constraint track_width (min 0.15mm))
   (condition "A.hasNetclass('MAIN-Power') || A.hasNetclass('CROWN-Power') || A.hasNetclass('REFLECTOR-Power') || A.hasNetclass('DOME-Power') || A.hasNetclass('PROBE-Power')"))
 (rule power_neck_down_at_fine_pitch_pins
   (constraint track_width (min 0.15mm))

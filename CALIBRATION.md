@@ -38,7 +38,7 @@ API: `GET /api/calibration` (status), `POST /api/calibration {"cmd": "start" | "
 | 5 | Wind speed (`car_run`) | ≥ 2 runs of a known air speed: A car in calm air (pole ≥ 50 cm above the roof, GPS, both directions); B hand-held on a 1–1.5 m pole while walking / jogging / cycling (GPS, or a measured distance ≥ 100 m and its time; both directions; USB-C power bank with a 12 V PD trigger cable); C a handheld vane anemometer beside the station in steady wind or 1–2 m in front of a ≥ 50 cm box fan (a hair dryer's jet is narrower than the sound paths and too uneven) | `wind_speed_gain` = Σ reference / Σ station (before gain) | A, C ±3–5 %, B ±5–10 % (body wake) |
 | 6 | Pressure (`pressure`) | A (`p2` 1): ground elevation from a map (Google Earth, OpenTopoMap, national geoportal / LiDAR) + barometer height above it, no measurement; B: reference sea-level pressure ≤ 50 km, ≤ 30 min old (airport METAR `Q`, national weather service, SYNOP via ogimet.com), wind < 5 m/s | `altitude_m` (B: inverse of the pipeline's QNH reduction) | A ±1–3 m, B ±0.3 hPa ≈ ±3 m |
 | 7 | Light cover (`clear_sky`) | cloudless sky, sun ≥ 25°, light steady within 4 % for 2 min, against the pipeline's clear-sky model × 122 lm/W | `optics_transmission` | ±10–15 % (aerosols); average 2–3 days |
-| 8 | UV (`uv_reference`, optional: the GUVB-C31SM has a factory scale) | A (`p2` 1): no reference, the LTR-390 factory UV index through the cover ÷ `optics_transmission` from step 7, UVI ≥ 1; B: TEMIS (temis.nl) clear-sky UV index at solar noon for the site, cloudless, within 15 min of solar noon (shown in the live bar); C: a UV-index meter beside the dome | `guvb_counts_per_uvi` | A ±15–20 %, B ±10 %, C ±5–10 % |
+| 8 | UV (`uv_reference`, optional: photodiode dome = Genicom datasheet scale 1.4 nA per UVI, legacy dome = GUVB-C31SM factory scale) | A (`p2` 1, legacy dome only): no reference, the LTR-390 factory UV index through the cover ÷ `optics_transmission` from step 7, UVI ≥ 1; B: TEMIS (temis.nl) clear-sky UV index at solar noon for the site, cloudless, within 15 min of solar noon (shown in the live bar); C: a UV-index meter beside the dome | `guvb_counts_per_uvi` | A ±15–20 %, B ±10 %, C ±5–10 % |
 | 9 | Rain drops (`drop_test`) | syringe drops (counted per ml) from a measured height, ≥ 8 impacts; impact speed with quadratic drag, amplitude ∝ kinetic energy at the HapticRain drop model | `rain_impact_scale` = expected / median | ±15 % |
 | 10 | Rain amount (`rain_gauge`) | cheap gauge, or a straight-walled container + kitchen scale (mm = g × 1000 / area mm²), ≥ 1 mm on both | `rain_gain` × gauge / station | ±10–20 % per event |
 | 11 | Humidity (`salt_rh`) | probe sealed over damp NaCl 6–12 h (75.3–75.7 %, Greenspan 1977), drift < 1 % over the 10 min | `rh_offset_pct` | ±0.5 % RH |
@@ -189,8 +189,8 @@ Two settings: `rain_impact_scale` maps the crown charge-amplifier deviation to t
 ## 8. UV / light
 
 The default cover is the flanged PTFE dome diffuser, lathe or CNC version (`optics_transmission` = 0.11, an estimate:
-PTFE batches differ); with the backup `crown_window` JGS1 disc set `optics_transmission` ≈ 0.92 first. LTR-390 UVI / lux, TSL25911 lux
-and the factory-scaled GUVB UVI are divided by it.
+PTFE batches differ); with the backup `crown_window` JGS1 disc set `optics_transmission` ≈ 0.92 first. TSL25911 lux, the photodiode
+UV-B / UV-A (datasheet scale) and, on the legacy dome, LTR-390 UVI / lux and the factory-scaled GUVB UVI are divided by it.
 
 1. Clear-sky solar noon, UV meter next to the station: compare `solar.uv_index_ltr` with the reference and set
    `optics_transmission` = current value × station UVI / reference UVI (0.02–1). Check the illuminance against a lux
@@ -204,8 +204,8 @@ and the factory-scaled GUVB UVI are divided by it.
    than the lathe version, whose flat top is closer to a cosine diffuser). Note the ratio at 10° and
    20° in the record; it does not matter for UVI (small at low sun) but does for illuminance / irradiance at dawn.
 4. PTFE changes its transmission by a few % around +19 °C (crystal transition); calibrate on a day near the season's
-   typical temperature and note it. With the JGS1 window, lux above ~88 klx saturates the TSL25911 and the LTR-390
-   provides the illuminance; behind the diffuser the TSL25911 covers full sun.
+   typical temperature and note it. With the JGS1 window, lux above ~88 klx saturates the TSL25911: the photodiode dome then
+   estimates lux from the UV-A channel (ratio learnt from bright unsaturated TSL readings), the legacy dome uses the LTR-390; behind the diffuser the TSL25911 covers full sun.
 
 ## 9. Lightning interference (checklist Q4, once per design and after crown changes)
 

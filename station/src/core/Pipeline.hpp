@@ -106,6 +106,7 @@ private:
 
     // smoothed / cached state
     float cloud_ema_{-1.0F};
+    float lux_per_uva_{0.0F};      // learnt TSL25911 lux / photodiode UV-A W/m^2 (lux estimate while the TSL saturates)
     float thermo_hold_c_{0.0F};
     float thermo_hold_rh_{0.0F};
     bool thermo_hold_ok_{false};

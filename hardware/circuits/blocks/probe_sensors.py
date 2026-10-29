@@ -7,7 +7,7 @@
   - Backside Closed-Loop Regulated 0.42 W Local Heater (B.Cu directly behind U1 SCD41 pad 21):
     * R1, R2: 2x 680R 1206 0.5 W resistors in PARALLEL on the +12V_HEAT rail (340 Ohm, 0.42 W at 12 V, 42 % of rating each);
       the heater current returns to main over CO2_HEAT_RTN through the 1 ohm monitor shunt (ADS1115 on main)
-    * TH1: SDNT1608X103F3950FTF 10k 1% B=3950K NTC thermistor right between R1 & R2 on back of SCD41
+    * TH1: HNTC0603-103F3950FB 10k 1% B=3950K NTC thermistor right between R1 & R2 on back of SCD41
     * U4 (LM2903DR2G on +12V_HEAT, 2-36 V) + Q1 (AO3400A, gate pulled to +3V3): analog thermostat holding the SCD41
       at -7.6 C, just above its -10 C rating (R7 470k positive feedback gives ~2.3 K hysteresis). The heater stays off
       above -8 C, so it cannot bias the SHT40 in the common -8..+8 C winter range; below that the SHT40 sits two slots
@@ -77,7 +77,7 @@ def build(gnd, v3, sda, scl, v5, heat_rtn):
 
     # TH1: 10k 1% B3950 NTC thermistor on B.Cu right between R1 and R2 measuring SCD41 backside temperature
     th1 = part("Device", "Thermistor_NTC", "10k NTC", R0603,
-               src(mpn="SDNT1608X103F3950FTF", mfr="Sunlord", lcsc="C279936",
+               src(mpn="HNTC0603-103F3950FB", mfr="R+O", lcsc="C49247666",
                    source="10k 1% B=3950K NTC thermistor on B.Cu measuring SCD41 backside temperature"),
                ref="TH1")
     r_ntc_pu = res("10k", src(source="10k 1% reference pull-up for SCD41 backside NTC thermistor"))

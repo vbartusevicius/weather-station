@@ -1,6 +1,15 @@
 Designator,LCSC,Manufacturer part,JLCPCB footprint,Layer,KiCad rotation,JLCPCB rotation,Stock,Library,Result
-C1,C14663,CC0603KRX7R9BB104,C0603,Bottom,0,0,,base,lands pin for pin
-C2,C14663,CC0603KRX7R9BB104,C0603,Bottom,0,0,,base,lands pin for pin
-C3,C15849,CL10A105KB8NNNC,C0603,Bottom,0,0,,base,lands pin for pin
-J1,C41417361,HX PZ2.54-1x4P TP-YQ,CONN-SMD_HX-PZ2.54-1X4P-TP-YQ,Bottom,0,0,,expand,lands pin for pin
-U2,C176812,TSL25911FN,DFN-6_L2.4-W2.0-P0.65-BL,Top,0,0,,expand,lands pin for pin
+C1,C14663,CC0603KRX7R9BB104,C0603,Bottom,0,0,49455221,base,lands pin for pin
+C2,C14663,CC0603KRX7R9BB104,C0603,Bottom,0,0,49455221,base,lands pin for pin
+C3,C14663,CC0603KRX7R9BB104,C0603,Bottom,0,0,49455221,base,lands pin for pin
+C4,C1589,CL10B103KB8NNNC,C0603,Bottom,0,0,1338523,expand,lands pin for pin
+C5,C106222,CC0603KRX7R9BB223,C0603,Bottom,0,0,405835,expand,lands pin for pin
+C6,C15849,CL10A105KB8NNNC,C0603,Bottom,0,0,9428375,base,lands pin for pin
+J1,C41417361,HX PZ2.54-1x4P TP-YQ,CONN-SMD_HX-PZ2.54-1X4P-TP-YQ,Bottom,0,0,61437,expand,lands pin for pin
+R1,C7250,0603WAF1005T5E,R0603,Top,180,180,989578,base,lands pin for pin
+R2,C227938,AC0603FR-074M7L,R0603,Top,0,0,1717,expand,lands pin for pin
+R3,C25803,0603WAF1003T5E,R0603,Top,0,0,19491131,base,lands pin for pin
+R4,C25804,0603WAF1002T5E,R0603,Top,0,0,31516754,base,lands pin for pin
+U1,C2058009,TLV9062IDSGR,WSON-8_L2.0-W2.0-P0.50-TL-EP,Top,0,0,1816,expand,lands pin for pin
+U2,C176812,TSL25911FN,DFN-6_L2.4-W2.0-P0.65-BL,Top,0,0,105,expand,lands pin for pin
+U3,C2651328,ADS1115IRUGR,X2QFN-10_L2.0-W1.5-P0.50-BL,Top,0,0,5676,expand,lands pin for pin

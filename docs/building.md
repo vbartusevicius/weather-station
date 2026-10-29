@@ -52,7 +52,7 @@ Every board folder (and `panel/`) carries the same set; pick by fab house:
 - **Panel or single boards?** The breakaway `panel` suits JLCPCB and PCBWay ("panel by customer"). AISLER and
   Eurocircuits panelise themselves: order the six boards individually there (each folder has the full set).
 - **Parts:** the generic BOM lists every part by MPN. The `assembly` column marks the few that JLCPCB does not stock
-  (`AS3935`, `MA5532-AE`, `LTR-390UV-01`, `GUVB-C31SM`, XIAO): turn-key houses usually source them by MPN; otherwise
+  (`AS3935`, `MA5532-AE`, `GUVB-C21SD`, `GUVA-C22SD`, XIAO): turn-key houses usually source them by MPN; otherwise
   supply them or fit them by hand.
 - **Rotations:** `_cpl.csv` uses KiCad's convention (what PCBWay and Eurocircuits expect from a KiCad design);
   `_cpl_jlc.csv` is already corrected for JLCPCB's footprints. Check the placement preview of each house.
@@ -96,7 +96,7 @@ Every board folder (and `panel/`) carries the same set; pick by fab house:
   is a diffuser, not a window, and cannot be made clear by polishing. The backup is the `crown_window`
   top with a stock uncoated `JGS1` disc `Ø 20 × 2 mm` (AliExpress, see `drawings/jgs1_window.svg`; avoid AR-coated
   laser windows). `AS3935-BQFT`,
-  `MA5532-AE`, `LTR-390UV-01` and `GUVB-C31SM` are not stocked by JLCPCB: buy them (Digi-Key / Mouser) and either
+  `MA5532-AE`, `GUVB-C21SD` and `GUVA-C22SD` are not stocked by JLCPCB: buy them (Digi-Key / Mouser) and either
   consign them to JLCPCB or use its Global Sourcing so they are placed with the rest; see `REVIEW_CHECKLIST.md` B2 / B5
   for current stock, prices and the per-station budget.
 * **Reflector heater:** put a silicone-free thermal gap filler (BOM) between the four heater resistors and the

@@ -286,8 +286,11 @@ void QualityControl::health(const core::RawState& raw, const core::StationConfig
     }
     // TSL25911 saturates above ~88 klx behind a clear (JGS1) cover; the LTR-390 then measures (not a fault)
     const float tr = cfg.optics_transmission > 0.0F ? cfg.optics_transmission : 1.0F;
-    const bool tsl_saturated = raw.optical.ltr_lux.fresh(now, 5000) && raw.optical.ltr_lux.value * tr > 60000.0F;
-    const int optics = (raw.optical.tsl_lux.fresh(now, 5000) || tsl_saturated ? 1 : 0) + (raw.optical.ltr_lux.fresh(now, 5000) || raw.optical.ltr_uvi.fresh(now, 5000) ? 1 : 0) +
+    // photodiode dome: UV-A channel instead of the LTR-390; the TSL saturates when the UV-A says full sun
+    const bool pd_uva = raw.optical.pd_uva_w_m2.fresh(now, 5000);
+    const bool tsl_saturated = (raw.optical.ltr_lux.fresh(now, 5000) && raw.optical.ltr_lux.value * tr > 60000.0F) ||
+                               (pd_uva && raw.optical.pd_uva_w_m2.value * tr > 20.0F);
+    const int optics = (raw.optical.tsl_lux.fresh(now, 5000) || tsl_saturated ? 1 : 0) + (raw.optical.ltr_lux.fresh(now, 5000) || raw.optical.ltr_uvi.fresh(now, 5000) || pd_uva ? 1 : 0) +
                        (raw.optical.guvb_counts.fresh(now, 5000) ? 1 : 0);
     {
         const core::QcValue ir = qc(QcMetric::Irradiance), uv = qc(QcMetric::UvIndex);

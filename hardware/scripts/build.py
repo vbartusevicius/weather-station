@@ -31,7 +31,8 @@ def run_eda(boards, *, fresh=False, do_release=False, do_test=False):
     gen_circuits.main()
     os.chdir(REPO)
     variant = layout.VARIANT
-    target_boards = boards or layout.SPEC["variants"][variant]["boards"]
+    v = layout.SPEC["variants"][variant]
+    target_boards = boards or (*v["boards"], *v.get("legacy_boards", ()))
     for b in target_boards:
         pcb_path = layout.stored_board_path(b)
         if fresh and pcb_path.exists():

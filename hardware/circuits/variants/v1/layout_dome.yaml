@@ -1,32 +1,41 @@
 frame:
-  size: { x: 13.6, y: 13.6 }
-  # 16-segment true circular disc outline (Ø 13.6 mm centered at 6.8, 6.8) with a 4.4 mm bottom chord (y=0.0, x=4.6..9.0)
-  # where the mouse-bite breakaway tab connects `dome` to the top of `reflector`!
+  size: { x: 15.6, y: 15.6 }
+  # Ø 15.6 mm disc: every corner on r = 7.8 around (7.8, 7.8), 0.3 mm inside the PTFE dome bore (Ø 16.2) and
+  # 0.4 mm inside the JGS1 window nut bore (Ø 16.4); 5.0 mm bottom chord at y = 0.41 for the breakaway tab.
   outline:
-    - [4.6, 0.0]
-    - [9.0, 0.0]
-    - [10.8, 0.7]
-    - [12.2, 1.9]
-    - [13.1, 3.5]
-    - [13.6, 5.4]
-    - [13.6, 8.2]
-    - [13.1, 10.1]
-    - [12.2, 11.7]
-    - [10.8, 12.9]
-    - [9.0, 13.6]
-    - [4.6, 13.6]
-    - [2.8, 12.9]
-    - [1.4, 11.7]
-    - [0.5, 10.1]
-    - [0.0, 8.2]
-    - [0.0, 5.4]
-    - [0.5, 3.5]
-    - [1.4, 1.9]
-    - [2.8, 0.7]
+    - [5.30, 0.41]
+    - [10.30, 0.41]
+    - [11.95, 1.20]
+    - [13.37, 2.34]
+    - [14.49, 3.79]
+    - [15.24, 5.45]
+    - [15.58, 7.24]
+    - [15.50, 9.07]
+    - [14.99, 10.82]
+    - [14.09, 12.41]
+    - [12.85, 13.75]
+    - [11.33, 14.76]
+    - [9.61, 15.39]
+    - [7.80, 15.60]
+    - [5.99, 15.39]
+    - [4.27, 14.76]
+    - [2.75, 13.75]
+    - [1.51, 12.41]
+    - [0.61, 10.82]
+    - [0.10, 9.07]
+    - [0.02, 7.24]
+    - [0.36, 5.45]
+    - [1.11, 3.79]
+    - [2.23, 2.34]
+    - [3.65, 1.20]
   copper_layers: 4
   thickness: 1.6
   min_drill: 0.2
   min_track: 0.12
+  signal_track_width: 0.15        # WSON-8 / X2QFN-10 pins at 0.5 mm pitch on a Ø 13.6 mm board
+  power_track_width: 0.22
+  power_track_min: 0.15           # router neck-downs; the whole dome draws < 2 mA (TSL25911 0.2, TLV9062 1.1, ADS1115 0.2 mA)
+  via: { diameter: 0.45, drill: 0.2 }   # JLCPCB 4-layer standard (min 0.3 / 0.15)
   edge_clearance: 0.3
   silk_inside: true
   fine_pitch_power_pads: [J1, U1, U2, U3]
@@ -35,31 +44,44 @@ frame:
   domains: [SELV-DOME]
   domain_regions:
     SELV-DOME:
-      - { x0: 1.5, y0: 1.5, x1: 12.1, y1: 12.1 }
+      - { x0: 1.5, y0: 1.5, x1: 14.1, y1: 14.1 }
   isolators: []
   power_nets: [+3V3]
   pours:
-    - { net: GND, layers: [In1.Cu], region: { x0: 2.0, y0: 2.0, x1: 11.6, y1: 11.6 } }
+    - { net: GND, layers: [In1.Cu], region: { x0: 0.0, y0: 0.0, x1: 15.6, y1: 15.6 } }   # whole disc (clipped to the outline)
   no_coat_keepouts:
-    - { x0: 2.2, y0: 3.2, x1: 11.4, y1: 10.8, layer: F.SilkS }
+    - { x0: 2.3, y0: 6.0, x1: 13.3, y1: 9.6, layer: F.SilkS }
   connector_labels: { J1: "CROWN" }   # destination board / port, placed next to each connector
   silk_labels: []
 
 heights:
-  default: 1.2
+  default: 0.6
   J1: 2.5
-  U1: 0.8
+  D1: 1.0
+  D2: 1.0
   U2: 0.8
-  U3: 1.4
+  U1: 0.8
+  U3: 0.4
 
 parts:
-  # --- Top (+y, F.Cu under the Ø 20 x 2 mm JGS1 window): Symmetric 3-sensor triad around (6.8, 6.8) ---
-  U1:  { x: 4.3,   y: 5.5,   rot: 0,   block: uv_als, locked: true }
-  U2:  { x: 9.3,   y: 5.5,   rot: 0,   block: uv_als, locked: true }
-  U3:  { x: 6.8,   y: 9.3,   rot: 0,   block: uv_als, locked: true }
+  # --- Top (+y, F.Cu, under the PTFE dome / JGS1 window): the three optical sensors in one row through the centre,
+  # the op-amp + gain resistors above, the ADC + VB divider below. No MLCCs on top: under the clear JGS1 window the
+  # sun heats one face of a top-side ceramic capacitor (cracking risk), so every capacitor sits on the shaded bottom ---
+  D1:  { x: 4.13, y: 7.8,  rot: 90,  block: uv, locked: true }     # GUVB-C21SD UV-B
+  U2:  { x: 7.8,  y: 7.8,  rot: 0,   block: light, locked: true }  # TSL25911FN
+  D2:  { x: 11.47, y: 7.8, rot: 90,  block: uv, locked: true }     # GUVA-C22SD UV-A
+  U1:  { x: 7.8,  y: 11.6, rot: 0,   block: uv }                   # TLV9062 (WSON-8)
+  R1:  { x: 4.5,  y: 11.0, rot: 180, block: uv }                   # UV-B gain 10 MOhm (pad 1 = summing node, inner)
+  R2:  { x: 11.1, y: 11.0, rot: 0,   block: uv }                   # UV-A gain 4.7 MOhm (pad 1 = summing node, inner)
+  U3:  { x: 7.8,  y: 3.3,  rot: 0,   block: uv }                   # ADS1115 (X2QFN-10), I2C 0x49
+  R3:  { x: 4.6,  y: 3.6,  rot: 0,   block: uv }                   # VB divider top
+  R4:  { x: 11.0, y: 3.6,  rot: 0,   block: uv }                   # VB divider bottom
 
-  # --- Bottom (-y, B.Cu, shaded underneath the PCB): 4-pin vertical B2B male header J1 dead-center at (6.8, 6.8) + C1, C2, C3 ---
-  J1:  { x: 6.8,   y: 6.8,   rot: 0,   side: back, block: int_crown, locked: true }
-  C1:  { x: 4.4,   y: 11.2,  rot: 0,   side: back, block: uv_als }
-  C2:  { x: 9.2,   y: 11.2,  rot: 0,   side: back, block: uv_als }
-  C3:  { x: 6.8,   y: 2.1,   rot: 0,   side: back, block: uv_als }
+  # --- Bottom (-y, B.Cu, shaded): riser J1 dead centre as on dome_legacy; capacitors in a row above and below it ---
+  J1:  { x: 7.8,  y: 7.8,  rot: 0,   side: back, block: int_crown, locked: true }
+  C4:  { x: 4.8,  y: 12.45, rot: 0,  side: back, block: uv }       # UV-B feedback capacitor (under R1)
+  C2:  { x: 7.8,  y: 12.45, rot: 0,  side: back, block: uv }       # TLV9062 decoupling (under U1)
+  C5:  { x: 10.8, y: 12.45, rot: 0,  side: back, block: uv }       # UV-A feedback capacitor (under R2)
+  C3:  { x: 4.8,  y: 3.15, rot: 0,   side: back, block: uv }       # ADS1115 decoupling
+  C6:  { x: 7.8,  y: 3.15, rot: 0,   side: back, block: uv }       # VB reservoir
+  C1:  { x: 10.8, y: 3.15, rot: 0,   side: back, block: light }    # TSL25911 decoupling
