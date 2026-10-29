@@ -1,1 +1,5 @@
 Mouser Part Number,Quantity,Part,Item
+200-CES10702GS,2,"Samtec CES-107-02-G-S (1x7 2.54 mm closed-entry low-profile socket, 5.08 mm tall, gold)",XIAO sockets (hand-soldered)
+485-4505,1,"Plantower PMSA003I (I2C 0x12, 38.0x35.0x11.8 mm, inlet and fan exhaust on the same face, e.g. Adafruit 4505)",Particulate Matter Sensor Module (PM1.0/2.5/10)
+200-FFSD05D059101N,1,"Samtec FFSD-05-D-05.91-01-N (2x5 1.27 mm Tiger Eye IDC ribbon, 150 mm, 30 AWG; cut off one end) + JST ZHR-6 at the main J4 end; 1.5 mm closed-cell EPDM foam strip (1.2 mm wide, on the duct chamber wall tops)",PMSA003I harness + duct gasket
+58-S2607,1,"LAPP SKINTOP SLR-M 12x1.5 BK with locknut (S2607; IP68, cable Ø 3.5-7 mm, black)",IP68 Waterproof Compression Cable Gland (M12x1.5 / PG7)

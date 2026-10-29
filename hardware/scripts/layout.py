@@ -510,6 +510,9 @@ def save(board, plan, board_name, hidden_refs=()):
     path = stored_board_path(board_name)
     path.parent.mkdir(parents=True, exist_ok=True)
     widen_neckdown_stubs(board)
+    seated = seat_track_ends(board)
+    if seated:
+        print(f"{board_name}: seated {seated} grazing track ends into their pad / via / track")
     for fp in board.Footprints():
         ref = fp.Reference()
         ref.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(SILK_TEXT_MM), pcbnew.FromMM(SILK_TEXT_MM)))
@@ -611,7 +614,20 @@ def place_references_inside(board, frame):
         else:
             print(f"  WARNING: no room for the silk label {label!r} next to {ref_name}")
 
+    # hand-placed references from the plan (`ref_positions: {R1: {x, y, rot}}`) first, then the automatic search
+    fixed = frame.get("ref_positions", {})
+    for name, at in fixed.items():
+        fp = board.FindFootprintByReference(name)
+        if fp is None:
+            continue
+        ref = fp.Reference()
+        ref.SetVisible(True)
+        ref.SetTextAngle(pcbnew.EDA_ANGLE(at.get("rot", 0), pcbnew.DEGREES_T))
+        ref.SetPosition(pos(at["x"], at["y"]))
+        taken[fp.IsFlipped()].append(mm_box(ref.GetBoundingBox(), 0.05))
     for fp in sorted(board.Footprints(), key=area, reverse=True):
+        if fp.GetReference() in fixed:
+            continue
         ref = fp.Reference()
         ref.SetVisible(True)
         ref.SetTextAngle(pcbnew.EDA_ANGLE(0, pcbnew.DEGREES_T))
@@ -824,6 +840,77 @@ def prune_ground_tracks(board, nets=GROUND_NETS):
                 removed += 1
                 changed = True
     return removed
+
+
+def seat_track_ends(board):
+    """A track end whose round cap only grazes its pad or another track (Freerouting / neck-down / pruning leftovers)
+    is a hairline joint on the real board: extend it into the pad / via centre, or onto the other track's centreline;
+    an orphan tail (nothing of its net within two track widths of the free end) is removed.
+    hardware/tests/test_track_joints.py checks the result."""
+    import math
+    tol = pcbnew.FromMM(0.005)
+    tracks = [t for t in board.GetTracks() if t.Type() == pcbnew.PCB_TRACE_T]
+    vias = [v for v in board.GetTracks() if v.Type() == pcbnew.PCB_VIA_T]
+    pads = list(board.GetPads())
+
+    def nearest(p, t):
+        a, b = t.GetStart(), t.GetEnd()
+        dx, dy = b.x - a.x, b.y - a.y
+        length2 = dx * dx + dy * dy
+        u = 0.0 if length2 == 0 else max(0.0, min(1.0, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length2))
+        q = pcbnew.VECTOR2I(int(a.x + u * dx), int(a.y + u * dy))
+        return q, math.hypot(p.x - q.x, p.y - q.y)
+
+    added = 0
+    orphans = []
+    for t in tracks:
+        for end in (t.GetStart(), t.GetEnd()):
+            net, layer, w = t.GetNetCode(), t.GetLayer(), t.GetWidth()
+            same = [o for o in tracks if o is not t and o.GetNetCode() == net and o.GetLayer() == layer]
+            if any(nearest(end, o)[1] <= tol for o in same):
+                continue
+            if any(v.GetNetCode() == net and math.hypot(end.x - v.GetPosition().x, end.y - v.GetPosition().y)
+                   <= v.GetWidth(layer) / 2 for v in vias):
+                continue
+            mine = [p for p in pads if p.GetNetCode() == net and p.IsOnLayer(layer)]
+            if any(p.HitTest(end) for p in mine):
+                continue
+            if any(z.GetNetCode() == net and z.IsOnLayer(layer) and z.HitTestFilledArea(layer, end) for z in board.Zones()):
+                continue
+            target = next((p.GetPosition() for p in mine if p.HitTest(end, w // 2 + tol)), None)
+            if target is None:
+                hits = [nearest(end, o) for o in same]
+                hits = [(q, d) for (q, d), o in zip(hits, same) if d <= (w + o.GetWidth()) / 2 + tol]
+                target = min(hits, key=lambda h: h[1])[0] if hits else None
+            if target is None:   # grazing a via of the net: run into its centre
+                target = next((v.GetPosition() for v in vias if v.GetNetCode() == net and
+                               math.hypot(end.x - v.GetPosition().x, end.y - v.GetPosition().y)
+                               <= v.GetWidth(layer) / 2 + w / 2 + tol), None)
+            if target is None:
+                # an orphan tail: nothing of the net within two track widths of the free end (pruning / router leftover)
+                reach = 2 * w
+                near = (any(p.HitTest(end, reach) for p in mine) or
+                        any(math.hypot(end.x - v.GetPosition().x, end.y - v.GetPosition().y) <= reach + v.GetWidth(layer) / 2
+                            for v in vias if v.GetNetCode() == net) or
+                        any(nearest(end, o)[1] <= reach for o in same))
+                if not near:
+                    orphans.append(t)
+                    continue
+                # a short gap to its own pad (stops just short of it): finish the run into the pad centre (DRC checks it)
+                target = next((p.GetPosition() for p in mine if p.HitTest(end, reach)), None)
+                if target is None:
+                    continue
+            seg = pcbnew.PCB_TRACK(board)
+            seg.SetStart(end)
+            seg.SetEnd(target)
+            seg.SetWidth(w)
+            seg.SetLayer(layer)
+            board.Add(seg)
+            seg.SetNetCode(net)
+            added += 1
+    for t in {id(t): t for t in orphans}.values():
+        board.Remove(t)
+    return added + len(orphans)
 
 
 def widen_neckdown_stubs(board):

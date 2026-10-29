@@ -50,9 +50,30 @@ frame:
   pours:
     - { net: GND, layers: [In1.Cu], region: { x0: 0.0, y0: 0.0, x1: 15.6, y1: 15.6 } }   # whole disc (clipped to the outline)
   no_coat_keepouts:
-    - { x0: 2.3, y0: 6.0, x1: 13.3, y1: 9.6, layer: F.SilkS }
+    - { x0: 2.9, y0: 6.2, x1: 12.7, y1: 9.4, layer: F.SilkS }
   connector_labels: { J1: "CROWN" }   # destination board / port, placed next to each connector
-  silk_labels: []
+  # what each optical part measures, beside its reference (top)
+  silk_labels:
+    - { text: "UV-B", x: 4.13, y: 5.25 }
+    - { text: "LIGHT", x: 7.8, y: 5.25 }
+    - { text: "UV-A", x: 11.47, y: 5.25 }
+  # every reference hand-placed next to its part (the automatic search hid half of them on this small board)
+  ref_positions:
+    D1: { x: 2.2, y: 7.8, rot: 90 }
+    D2: { x: 13.4, y: 7.8, rot: 90 }
+    U2: { x: 5.95, y: 7.8, rot: 90 }
+    U1: { x: 7.8, y: 13.6 }
+    R1: { x: 4.5, y: 12.2 }
+    R2: { x: 11.1, y: 12.2 }
+    U3: { x: 7.8, y: 1.55 }
+    R3: { x: 4.6, y: 2.55 }
+    R4: { x: 11.0, y: 2.55 }
+    C4: { x: 4.8, y: 13.65 }
+    C2: { x: 7.8, y: 13.65 }
+    C5: { x: 10.8, y: 13.65 }
+    C3: { x: 4.8, y: 1.9 }
+    C6: { x: 7.8, y: 1.9 }
+    C1: { x: 10.8, y: 1.9 }
 
 heights:
   default: 0.6

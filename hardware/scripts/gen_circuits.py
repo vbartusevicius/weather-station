@@ -68,6 +68,7 @@ def generate_board(variant, name, build_fn, net_classes):
             "assembly": p.fields.get("Assembly", "jlc"),
             "source": p.fields.get("Source", ""),
             "footprint_ref": p.fields.get("Footprint_Reference", ""),
+            "stock_optional": p.fields.get("Stock_Optional", "") == "yes",
             "pins": {str(pin.num): pin.name for pin in p.pins},
         }
         for p in builtins.default_circuit.parts if not p.ref.startswith("#")
@@ -114,14 +115,14 @@ def collect_assembly_parts(variant, spec):
             "qty": len(hand_by_mpn["102010636"]["locs"]),
             "part": "Seeed Studio XIAO ESP32C6 Pre-Soldered (SKU 102010636)",
             "description": f"ESP32-C6 module with pre-soldered 2x7 pin headers; plugs into two 5.0 mm female sockets ({locs})",
-            "source": "Seeed Studio / Digi-Key / Mouser",
+            "source": "Digi-Key 1597-102010636-ND (17 in stock, checked 2026-10-29) / Seeed Studio",
         })
         items.append({
             "item": "XIAO sockets (hand-soldered)",
             "qty": 2 * len(hand_by_mpn["102010636"]["locs"]),
-            "part": "1x7 2.54 mm female header, 5.0 mm tall (e.g. Hong Cheng HC-PM254-5.0H)",
+            "part": "Samtec CES-107-02-G-S (1x7 2.54 mm closed-entry low-profile socket, 5.08 mm tall, gold)",
             "description": f"1x7 female header, 2.54 mm, 5.0 mm tall, soldered into {locs}; XIAO stays detachable",
-            "source": "LCSC / Mouser",
+            "source": "Mouser 200-CES10702GS (95 in stock, checked 2026-10-29)",
         })
     if "LTR-390UV-01" in hand_by_mpn:
         locs = ", ".join(hand_by_mpn["LTR-390UV-01"]["locs"])
@@ -141,8 +142,9 @@ def collect_assembly_parts(variant, spec):
             "description": f"Intrinsic wide-bandgap AlGaN UV-B (240-320 nm) digital I2C sensor on dome PCB ({locs}); primary UV-index source, fused 80/20 with U1",
             "source": "GenUV / Digi-Key / Mouser",
         })
-    for mpn, band, data in (("GUVB-C21SD", "UV-B", "AlGaN, 240-320 nm, 0.11 A/W at 300 nm"),
-                            ("GUVA-C22SD", "UV-A", "GaN, 240-370 nm, 0.14 A/W at 350 nm")):
+    for mpn, band, data, dk in (
+            ("GUVB-C21SD", "UV-B", "AlGaN, 240-320 nm, 0.11 A/W at 300 nm", "2096-GUVB-C21SDCT-ND (5863 in stock, checked 2026-10-29)"),
+            ("GUVA-C22SD", "UV-A", "GaN, 240-370 nm, 0.14 A/W at 350 nm", "2096-GUVA-C22SDCT-ND (2717 in stock, checked 2026-10-29)")):
         if mpn in hand_by_mpn:
             locs = ", ".join(hand_by_mpn[mpn]["locs"])
             items.append({
@@ -151,7 +153,7 @@ def collect_assembly_parts(variant, spec):
                 "part": f"Genicom {mpn} (COB2418 1.8 x 2.4 x 1.0 mm, pad 1 = anode)",
                 "description": f"{data} Schottky photodiode, zero-bias into the TLV9062 transimpedance stage ({locs}); "
                                "not stocked at LCSC / JLCPCB",
-                "source": "Digi-Key / Win Source / SensorInStock (Genicom)",
+                "source": f"Digi-Key {dk}",
             })
     if "AS3935-BQFT" in hand_by_mpn:
         locs = ", ".join(hand_by_mpn["AS3935-BQFT"]["locs"])
@@ -176,9 +178,9 @@ def collect_assembly_parts(variant, spec):
     items.append({
         "item": "Waterproof 40 kHz Ultrasonic Transceivers (IP68) + 2-Pin JST-SH Pigtails",
         "qty": 4,
-        "part": "Same Sky (CUI) CUSA-TR65-065-2200-TH68: Ø 14 x 9 mm aluminium, IP68, 40 kHz, 150 Vp-p rated, 2200 pF, 65 deg, -40..+80 C (Digi-Key / Mouser, ~$3-6) straight in the Ø 14.6 mm barrels, + 4x 2-pin JST-SH (SHR-02V-S-B) pigtails soldered to its pins (pin 1 = A, pin 2 = B; driven differentially, neither lead is ground). Alternatives with a rated drive voltage: PUI UTR-1440K-TT-R (Ø 14.4, 140 Vp-p), Multicomp MCUSD14A40S09RS (Ø 14, 160 Vp-p). Ø 10 x 7 mm parts (EU10AIF40H07T/R) fit with the printed sleeves but have no published drive rating",
+        "part": "Same Sky CUSA-TR65-065-2200-TH68 (Ø 14 x 9 mm aluminium, IP68, transceiver, 40 kHz, 150 Vp-p, -40..+80 C, 2200 pF, beam 120 x 65 deg at -6 dB: mount all four with the same pin orientation so the narrow 65 deg axis lies the same way) straight in the Ø 14.6 mm barrels + 4x 2-pin JST-SH pigtails (pin 1 = A, pin 2 = B; driven differentially). Not suitable: PUI UTR-1440K-TT-R (IP65 only); 10 mm EU10AIF40H07T/R (split transmitter / receiver pair, no drive or temperature rating)",
         "description": "4 inward-angled (29.0 deg V-beam) transceivers seated in the N/E/S/W covered barrels of crown_base.stl, locked from the back by the 4 slotted press-fit rings in transducer_adapters.stl, plugged into crown J2..J5 (BM02B-SRSS-TB, LCSC C160388). Drive is ~22 Vp-p H-bridge bursts from +12V_HEAT (15 % of the 150 Vp-p rating). All four must be the same type; re-run the still-air calibration (us_delay_us) after changing it",
-        "source": "Digi-Key 102-CUSA-TR65-065-2200-TH68 / Mouser / Same Sky",
+        "source": "Digi-Key 2223-CUSA-TR65-065-2200-TH68-ND (350 in stock, checked 2026-10-29)",
     })
     items.append({
         "item": "20 mm Piezoelectric Haptic Rain Discs (4-Quadrant Symmetric Array)",
@@ -206,14 +208,14 @@ def collect_assembly_parts(variant, spec):
         "qty": 1,
         "part": "Plantower PMSA003I (I2C 0x12, 38.0x35.0x11.8 mm, inlet and fan exhaust on the same face, e.g. Adafruit 4505)",
         "description": "Lies face-down on the left half of the base.stl bay beside main, openings edge outward (fan toward the rear): the inlet/fan face seals onto two duct chambers whose floor slits draw and exhaust outside air only; held by two snap hooks",
-        "source": "Adafruit / Digi-Key / Mouser / LCSC",
+        "source": "Mouser 485-4505 (Adafruit 4505 = bare Plantower PMSA003I; 4 in stock, checked 2026-10-29; the 4632 breakout does not fit the duct bed)",
     })
     items.append({
         "item": "PMSA003I harness + duct gasket",
         "qty": 1,
-        "part": "100 mm 6-wire harness: 6-pin JST-ZH 1.5 mm (ZHR-6) to 2x5 1.27 mm IDC socket (module); 1.5 mm closed-cell EPDM foam strip (1.2 mm wide, on the duct chamber wall tops)",
-        "description": "Harness: main J4 pin 1 +5V -> module pins 1+2 (VCC), 2 GND -> 3+4, 3 SDA -> 9, 4 SCL -> 7; module pins 5/10 (RESET/SET) and 6/8 left open (internal pull-ups). Optional 47 uF/10 V across VCC/GND at the module end (datasheet). The module's connector faces up, next to main J4; the gasket is squeezed to 1.0 mm by the base snap hooks",
-        "source": "LCSC / AliExpress / local hardware",
+        "part": "Samtec FFSD-05-D-05.91-01-N (2x5 1.27 mm Tiger Eye IDC ribbon, 150 mm, 30 AWG; cut off one end) + JST ZHR-6 at the main J4 end; 1.5 mm closed-cell EPDM foam strip (1.2 mm wide, on the duct chamber wall tops)",
+        "description": "Harness: keep the IDC socket on the module, cut the other end and crimp four ribbon wires into the ZHR-6 (JST SZH-003T-P0.5, 28-32 AWG): J4 pin 1 +5V -> wire 1 (VCC), pin 2 GND -> wire 3 (GND), pin 3 SDA -> wire 9, pin 4 SCL -> wire 7; cut wires 2, 4, 5, 6, 8, 10 back (module pins 1/2 and 3/4 are the same supply pins; 5/10 RESET/SET and 6/8 stay open: internal pull-ups)",
+        "source": "Mouser 200-FFSD05D059101N (127 in stock, checked 2026-10-29) / LCSC (ZHR-6, crimps) / foam: local hardware",
     })
     items.append({
         "item": "Crown cable (12-pin JST-SH) + probe jumper (10-pin JST-SH)",
@@ -228,7 +230,7 @@ def collect_assembly_parts(variant, spec):
             ("JST SH 2-pin housing (4 transducer + 4 piezo pigtails)", 8, "JST SHR-02V-S-B (LCSC C246754)"),
             ("JST SH crimp contacts, 28-32 AWG (24 crown cable + 20 probe jumper + 16 pigtails)", 60, "JST SSH-003T-P0.2 (LCSC C160231)"),
             ("JST ZH 6-pin housing (PMSA003I harness, main J4 end)", 1, "JST ZHR-6 (LCSC C160379)"),
-            ("JST ZH crimp contacts, 26-28 AWG (PMSA003I harness)", 6, "JST SZH-002T-P0.5 (LCSC C246761)")):
+            ("JST ZH crimp contacts, 28-32 AWG (PMSA003I harness, 30 AWG ribbon wires)", 4, "JST SZH-003T-P0.5 (LCSC C263766)")):
         items.append({"item": item, "qty": qty, "part": part,
                       "description": "Connector parts for the harnesses above (crimp with an SH / ZH-capable tool)",
                       "source": "LCSC"})
@@ -256,9 +258,9 @@ def collect_assembly_parts(variant, spec):
     items.append({
         "item": "IP68 Waterproof Compression Cable Gland (M12x1.5 / PG7)",
         "qty": 1,
-        "part": "M12x1.5 or PG7 IP68 Nylon Cable Gland with EPDM rubber seal & 15 mm hex locknut (Ø 3.5-6.5 mm cable)",
+        "part": "LAPP SKINTOP SLR-M 12x1.5 BK with locknut (S2607; IP68, cable Ø 3.5-7 mm, black)",
         "description": "Mounts in the single center Ø 12.2 mm bulkhead hole of base.stl (locknut seats in the 15.4 mm internal hex recess; knurled compression dome sits inside the Ø 26 mm protected upper mast chamber above the pole stop). The dome nut reaches below the pole stop into the mast: the mast must be a hollow tube with >= 18 mm inside diameter (e.g. 33.7 x 3.2 mm steel pipe, ID 27.3 mm) and the supply / RS-485 cable runs down inside it",
-        "source": "Mouser / Digi-Key / local electrical",
+        "source": "Mouser 58-S2607 (100 in stock, checked 2026-10-29)",
     })
     items.append({
         "item": "2.4 GHz U.FL (IPEX-1) Flexible PCB Dipole Antenna (dual-band parts also fit; the ESP32-C6 uses 2.4 GHz only)",

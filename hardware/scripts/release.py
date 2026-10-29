@@ -22,7 +22,7 @@ from product_spec import load_spec
 SPEC = load_spec()
 VARIANT = SPEC["active_variant"]
 BOARDS = tuple(SPEC["variants"][VARIANT]["boards"])
-LEGACY = tuple(SPEC["variants"][VARIANT].get("legacy_boards", ()))   # released separately, not panelised
+LEGACY = tuple(SPEC["variants"][VARIANT].get("legacy_boards", ()))   # alternatives: own release folder + on the panel
 RELEASE = SPEC["product"]["release"]
 
 
@@ -165,7 +165,9 @@ def main(version, boards=BOARDS + LEGACY):
                   f"for {', '.join(turned) or 'none'}; bottom side: {', '.join(bottom) or 'none'} "
                   "(confirm these in JLCPCB's placement preview)")
     if not failed and set(BOARDS) <= set(boards):
-        panel_problems = panelize.build_panel(VARIANT, BOARDS, root, board_checks)
+        # the legacy boards ride along on the panel (break them off, or skip their assembly) when released together
+        panel_boards = BOARDS + tuple(b for b in LEGACY if b in boards)
+        panel_problems = panelize.build_panel(VARIANT, panel_boards, root, board_checks)
         if panel_problems:
             failed = True
             for problem in panel_problems:

@@ -30,6 +30,7 @@ BOARD_REF_OFFSET = {
     "dome": 300,
     "probe": 400,
     "power": 500,
+    "dome_legacy": 600,
 }
 
 

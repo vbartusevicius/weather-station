@@ -41,7 +41,7 @@ def build():
     block("uv_als")
     # U1: Lite-On LTR-390UV-01 (I2C 0x53) — UV-A/upper-UV-B + 157,000 lux high-noon ALS
     u1 = part("gateway", "LTR390UV", "LTR-390UV-01", FP_LTR390,
-              src(mpn="LTR-390UV-01", mfr="Lite-On", hand=True, footprint_ref="C492374",
+              src(mpn="LTR-390UV-01", mfr="Lite-On", lcsc="C492374", stock_optional=True,
                   source="UV-A/B + 157k lux ALS sensor elevated inside hollow JGS1 hemisphere (I2C 0x53)"),
               ref="U1")
     u1["1"] += v3

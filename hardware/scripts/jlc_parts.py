@@ -342,7 +342,7 @@ def check_board(pcb, parts, *, live=False):
             check.problems += value_problems(part, record)
         if live and part["assembly"] == "jlc":
             check.stock = int(record.get("stockCount") or 0)
-            if check.stock < quantity[key] * ORDER_BOARDS:
+            if check.stock < quantity[key] * ORDER_BOARDS and not part.get("stock_optional"):
                 check.problems.append(f"stock {check.stock} < {quantity[key] * ORDER_BOARDS} needed")
         pad_map = pad_maps.get(key, {}).get("map")
         ours = our_pads(fp)

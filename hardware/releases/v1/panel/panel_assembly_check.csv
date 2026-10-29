@@ -46,12 +46,12 @@ C304,C1589,CL10B103KB8NNNC,C0603,Bottom,0,0,,expand,lands pin for pin
 C305,C106222,CC0603KRX7R9BB223,C0603,Bottom,0,0,,expand,lands pin for pin
 C306,C15849,CL10A105KB8NNNC,C0603,Bottom,0,0,,base,lands pin for pin
 C4,C19702,CL10A106KP8NNNC,C0603,Top,0,0,,base,lands pin for pin
-C401,C19702,CL10A106KP8NNNC,C0603,Top,0,0,,base,lands pin for pin
-C402,C14663,CC0603KRX7R9BB104,C0603,Top,0,0,,base,lands pin for pin
-C403,C14663,CC0603KRX7R9BB104,C0603,Bottom,90,90,,base,lands pin for pin
-C404,C14663,CC0603KRX7R9BB104,C0603,Top,0,0,,base,lands pin for pin
-C405,C14663,CC0603KRX7R9BB104,C0603,Top,90,90,,base,lands pin for pin
-C406,C14663,CC0603KRX7R9BB104,C0603,Top,0,0,,base,lands pin for pin
+C401,C19702,CL10A106KP8NNNC,C0603,Top,270,270,,base,lands pin for pin
+C402,C14663,CC0603KRX7R9BB104,C0603,Top,270,270,,base,lands pin for pin
+C403,C14663,CC0603KRX7R9BB104,C0603,Bottom,0,0,,base,lands pin for pin
+C404,C14663,CC0603KRX7R9BB104,C0603,Top,270,270,,base,lands pin for pin
+C405,C14663,CC0603KRX7R9BB104,C0603,Top,0,0,,base,lands pin for pin
+C406,C14663,CC0603KRX7R9BB104,C0603,Top,270,270,,base,lands pin for pin
 C5,C14663,CC0603KRX7R9BB104,C0603,Top,0,0,,base,lands pin for pin
 C501,C170101,CL31B225KCHSNNE,C1206,Top,90,90,,expand,lands pin for pin
 C502,C170101,CL31B225KCHSNNE,C1206,Top,90,90,,expand,lands pin for pin
@@ -73,6 +73,9 @@ C517,C107079,CC0603KRX7R9BB183,C0603,Bottom,0,0,,expand,lands pin for pin
 C518,C28262,CL10C680JB8NNNC,C0603,Bottom,0,0,,expand,lands pin for pin
 C519,C15849,CL10A105KB8NNNC,C0603,Top,0,0,,base,lands pin for pin
 C520,C19702,CL10A106KP8NNNC,C0603,Top,90,90,,base,lands pin for pin
+C601,C14663,CC0603KRX7R9BB104,C0603,Bottom,0,0,,base,lands pin for pin
+C602,C14663,CC0603KRX7R9BB104,C0603,Bottom,0,0,,base,lands pin for pin
+C603,C15849,CL10A105KB8NNNC,C0603,Bottom,0,0,,base,lands pin for pin
 C7,C14663,CC0603KRX7R9BB104,C0603,Top,0,0,,base,lands pin for pin
 C8,C14663,CC0603KRX7R9BB104,C0603,Top,0,0,,base,lands pin for pin
 C9,C14663,CC0603KRX7R9BB104,C0603,Bottom,0,0,,base,lands pin for pin
@@ -109,14 +112,15 @@ J201,C41417361,HX PZ2.54-1x4P TP-YQ,CONN-SMD_HX-PZ2.54-1X4P-TP-YQ,Bottom,0,0,,ex
 J3,C160396,BM10B-SRSS-TB(LF)(SN),CONN-SMD_BM10B-SRSS-TB-LF-SN,Top,0,180,,expand,lands pin for pin
 J301,C41417361,HX PZ2.54-1x4P TP-YQ,CONN-SMD_HX-PZ2.54-1X4P-TP-YQ,Bottom,0,0,,expand,lands pin for pin
 J4,C471473,B6B-ZR-SM4-TF(LF)(SN),CONN-SMD_6P-P1.50_JST_B6B-ZR-SM4-TF-LF-SN,Top,0,0,,expand,lands pin for pin
-J401,C160396,BM10B-SRSS-TB(LF)(SN),CONN-SMD_BM10B-SRSS-TB-LF-SN,Top,0,180,,expand,lands pin for pin
-J402,C46061768,HX PM2.54-1x4P WT,CONN-SMD_4P-P2.54_HX-PM2.54-1X4PWT,Top,0,0,,expand,lands pin for pin
+J401,C160396,BM10B-SRSS-TB(LF)(SN),CONN-SMD_BM10B-SRSS-TB-LF-SN,Top,270,90,,expand,lands pin for pin
+J402,C46061768,HX PM2.54-1x4P WT,CONN-SMD_4P-P2.54_HX-PM2.54-1X4PWT,Top,270,270,,expand,lands pin for pin
 J5,C160396,BM10B-SRSS-TB(LF)(SN),CONN-SMD_BM10B-SRSS-TB-LF-SN,Top,90,270,,expand,lands pin for pin
 J501,C160396,BM10B-SRSS-TB(LF)(SN),CONN-SMD_BM10B-SRSS-TB-LF-SN,Top,0,180,,expand,lands pin for pin
+J601,C41417361,HX PZ2.54-1x4P TP-YQ,CONN-SMD_HX-PZ2.54-1X4P-TP-YQ,Bottom,0,0,,expand,lands pin for pin
 L501,C7427168,ANR6045T8R2M,IND-SMD_L6.0-W6.0,Top,0,0,,expand,lands pin for pin
 L502,C2044314,SRN6045TA-220M,IND-SMD_L6.0-W6.0,Top,0,0,,expand,lands pin for pin
 Q1,C20917,AO3400A,SOT-23-3_L2.9-W1.3-P1.90-LS2.4-BR,Bottom,0,0,,base,lands pin for pin
-Q401,C20917,AO3400A,SOT-23-3_L2.9-W1.3-P1.90-LS2.4-BR,Bottom,0,0,,base,lands pin for pin
+Q401,C20917,AO3400A,SOT-23-3_L2.9-W1.3-P1.90-LS2.4-BR,Bottom,270,270,,base,lands pin for pin
 R1,C25803,0603WAF1003T5E,R0603,Bottom,0,0,,base,lands pin for pin
 R10,C23151,0603WAF3900T5E,R0603,Top,0,0,,base,lands pin for pin
 R101,C23138,0603WAF3300T5E,R0603,Top,90,90,,base,lands pin for pin
@@ -167,13 +171,13 @@ R302,C227938,AC0603FR-074M7L,R0603,Top,0,0,,expand,lands pin for pin
 R303,C25803,0603WAF1003T5E,R0603,Top,0,0,,base,lands pin for pin
 R304,C25804,0603WAF1002T5E,R0603,Top,0,0,,base,lands pin for pin
 R4,C25803,0603WAF1003T5E,R0603,Bottom,0,0,,base,lands pin for pin
-R401,C48533685,FRP1206F6800TS,R1206,Bottom,0,0,,expand,lands pin for pin
-R402,C48533685,FRP1206F6800TS,R1206,Bottom,0,0,,expand,lands pin for pin
-R403,C25804,0603WAF1002T5E,R0603,Bottom,90,90,,base,lands pin for pin
-R404,C25804,0603WAF1002T5E,R0603,Bottom,90,90,,base,lands pin for pin
-R405,C23196,0603WAF5102T5E,R0603,Bottom,90,90,,base,lands pin for pin
-R406,C25804,0603WAF1002T5E,R0603,Bottom,0,0,,base,lands pin for pin
-R407,C23178,0603WAF4703T5E,R0603,Bottom,90,90,,base,lands pin for pin
+R401,C48533685,FRP1206F6800TS,R1206,Bottom,270,270,,expand,lands pin for pin
+R402,C48533685,FRP1206F6800TS,R1206,Bottom,270,270,,expand,lands pin for pin
+R403,C25804,0603WAF1002T5E,R0603,Bottom,0,0,,base,lands pin for pin
+R404,C25804,0603WAF1002T5E,R0603,Bottom,0,0,,base,lands pin for pin
+R405,C23196,0603WAF5102T5E,R0603,Bottom,0,0,,base,lands pin for pin
+R406,C25804,0603WAF1002T5E,R0603,Bottom,270,270,,base,lands pin for pin
+R407,C23178,0603WAF4703T5E,R0603,Bottom,0,0,,base,lands pin for pin
 R5,C4190,0603WAF2201T5E,R0603,Top,0,0,,base,lands pin for pin
 R501,C23194,0603WAF5113T5E,R0603,Bottom,0,0,,expand,lands pin for pin
 R502,C23251,0603WAF8252T5E,R0603,Bottom,0,0,,expand,lands pin for pin
@@ -193,7 +197,7 @@ R8,C25804,0603WAF1002T5E,R0603,Top,0,0,,base,lands pin for pin
 R9,C23151,0603WAF3900T5E,R0603,Top,0,0,,base,lands pin for pin
 SW1,C231329,B3U-1000P,KEY-SMD_B3U-1000PM,Bottom,90,90,,expand,lands pin for pin
 TH201,C49247666,HNTC0603-103F3950FB,R0603,Top,0,0,,expand,lands pin for pin
-TH401,C49247666,HNTC0603-103F3950FB,R0603,Bottom,0,0,,expand,lands pin for pin
+TH401,C49247666,HNTC0603-103F3950FB,R0603,Bottom,270,270,,expand,lands pin for pin
 U101,C431633,STM32G431RBT6,LQFP-64_L10.0-W10.0-P0.50-LS12.0-BL,Bottom,0,90,,expand,lands pin for pin
 U102,C185857,UCC27524ADR,SOIC-8_L4.9-W3.9-P1.27-LS6.0-BL,Top,0,270,,expand,lands pin for pin
 U103,C185857,UCC27524ADR,SOIC-8_L4.9-W3.9-P1.27-LS6.0-BL,Top,0,270,,expand,lands pin for pin
@@ -208,14 +212,16 @@ U301,C2058009,TLV9062IDSGR,WSON-8_L2.0-W2.0-P0.50-TL-EP,Top,0,0,,expand,lands pi
 U302,C176812,TSL25911FN,DFN-6_L2.4-W2.0-P0.65-BL,Top,0,0,,expand,lands pin for pin
 U303,C2651328,ADS1115IRUGR,X2QFN-10_L2.0-W1.5-P0.50-BL,Top,0,0,,expand,lands pin for pin
 U4,C37593,ADS1115IDGSR,MSOP-10_L3.0-W3.0-P0.50-LS5.0-BL,Bottom,90,90,,expand,lands pin for pin
-U401,C3659294,SCD41-D-R2,LGA-20_L10.1-W10.1-P1.25-TL_SCD41-D-R2,Top,0,0,,expand,lands pin for pin
-U402,C3659325,SGP41-D-R4,DFN-6_L2.4-W2.4-P0.80-TL-EP,Top,0,0,,expand,lands pin for pin
-U403,C7461846,SHT40-AD1F-R2,DFN-4_L1.5-W1.5-P0.80-TL-EP,Top,0,0,,expand,lands pin for pin
-U404,C57474,LM2903DR2G,SOIC-8_L4.9-W3.9-P1.27-LS6.0-BL,Bottom,90,90,,expand,lands pin for pin
-U405,C18184976,BMP585,LGA-9_L3.3-W3.3-P1.10-TL,Top,0,0,,expand,lands pin for pin
+U401,C3659294,SCD41-D-R2,LGA-20_L10.1-W10.1-P1.25-TL_SCD41-D-R2,Top,270,270,,expand,lands pin for pin
+U402,C3659325,SGP41-D-R4,DFN-6_L2.4-W2.4-P0.80-TL-EP,Top,270,270,,expand,lands pin for pin
+U403,C7461846,SHT40-AD1F-R2,DFN-4_L1.5-W1.5-P0.80-TL-EP,Top,270,270,,expand,lands pin for pin
+U404,C57474,LM2903DR2G,SOIC-8_L4.9-W3.9-P1.27-LS6.0-BL,Bottom,0,0,,expand,lands pin for pin
+U405,C18184976,BMP585,LGA-9_L3.3-W3.3-P1.10-TL,Top,270,270,,expand,lands pin for pin
 U5,C967633,LSM6DS3TR-C,LGA-14_L3.0-W2.5-P0.50-TL,Bottom,0,0,,expand,lands pin for pin
 U501,C44377,TPS54360DDAR,SOIC-8_L5.0-W4.0-P1.27-LS6.0-BL-EP2.0,Top,0,270,,expand,lands pin for pin
 U502,C44377,TPS54360DDAR,SOIC-8_L5.0-W4.0-P1.27-LS6.0-BL-EP2.0,Top,0,270,,expand,lands pin for pin
 U503,C51118,AP2112K-3.3TRG1,SOT-25-5_L2.9-W1.6-P0.95-LS2.8-BL,Top,0,270,,expand,lands pin for pin
+U601,C492374,LTR-390UV-01,SENSOR-SMD_LTR-390UV-01,Top,0,0,,expand,lands pin for pin
+U602,C176812,TSL25911FN,DFN-6_L2.4-W2.0-P0.65-BL,Top,0,0,,expand,lands pin for pin
 U7,C8963,SP3485EN-L/TR,SOIC-8_L5.0-W4.0-P1.27-LS6.0-BL,Top,0,0,,base,lands pin for pin
 Y101,C5181477,3225 8M 20PF 10PPM,CRYSTAL-SMD_4P-L3.2-W2.5-BL,Bottom,90,90,,expand,lands pin for pin

@@ -92,6 +92,15 @@ def orders(release: Path) -> dict[str, list[list]]:
             mouser.append([first(MOUSER_IN_TEXT, *texts), qty, p["Part"], p["Item"]])
         else:
             elsewhere.append([p["Item"], qty, p["Part"], first(DIGIKEY_IN_TEXT, *texts), first(TME_IN_TEXT, *texts), p["Source"]])
+    # legacy (backup) boards: every part of one board, so it can be built too; listed apart, not in the LCSC order
+    for bom in sorted(release.glob("*/*_bom.csv")):
+        board = bom.parent.name
+        if board not in LEGACY or bom.name != f"{board}_bom.csv":
+            continue
+        for r in csv.DictReader(bom.open()):
+            src = f"LCSC {r['LCSC']}" if r["LCSC"] else "Digi-Key / brokers (not stocked at LCSC / JLCPCB)"
+            elsewhere.append([f"{board} (legacy board only): {r['Designators'].replace(',', ' ')}", int(r["Qty"]),
+                              f"{r['Manufacturer']} {r['MPN']} ({r['Value']}, {r['Package']})", "", "", src])
     for lcsc, (qty, refs) in sorted(moved.items()):
         a = away[lcsc]
         elsewhere.append([" ".join(sorted(refs)), qty, a["part"], a.get("digikey", ""), a.get("tme", ""), a["source"]])

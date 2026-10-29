@@ -125,7 +125,7 @@ def part(lib, symbol, value="", footprint="", fields=None, ref=None):
     return p
 
 
-def src(mpn="", mfr="", lcsc="", source="", hand=False, footprint_ref="", board_only=False):
+def src(mpn="", mfr="", lcsc="", source="", hand=False, footprint_ref="", board_only=False, stock_optional=False):
     """Sourcing fields. `hand`: fitted by hand (not JLC-placed); `board_only`: copper-only feature (test pad,
     programming pad) with nothing to buy or place."""
     fields = {"Manufacturer": mfr, "Manufacturer_Part_Number": mpn, "LCSC": lcsc,
@@ -134,6 +134,8 @@ def src(mpn="", mfr="", lcsc="", source="", hand=False, footprint_ref="", board_
         fields["Assembly"] = "none"
     if hand:
         fields["Assembly"] = "hand"
+    if stock_optional:   # JLC-placed when in stock; skipped at assembly otherwise (release does not fail on stock)
+        fields["Stock_Optional"] = "yes"
     return fields
 
 
