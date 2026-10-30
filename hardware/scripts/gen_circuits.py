@@ -169,9 +169,9 @@ def collect_assembly_parts(variant, spec):
         items.append({
             "item": "AS3935 lightning antenna (hand-soldered)",
             "qty": len(hand_by_mpn["MA5532-AE"]["locs"]),
-            "part": "Coilcraft MA5532-AED (100 uH +/-2 %, 11.7 x 3.5 mm open ferrite rod)",
+            "part": "Coilcraft MA5532-AED (100 uH +/-2 %, 11.7 x 3.5 mm open ferrite rod) or Premo SDTR1103-HF1-0100J (100 uH, 11.8 x 3.6 mm, same pads; then R26 = 6.8k)",
             "description": f"ScioSense AS3935-AN04 recommended antenna ({locs}); tuned with 2x 470 pF C0G + the AS3935 internal 0..120 pF array",
-            "source": "Coilcraft / Digi-Key / Mouser (not stocked at JLCPCB)",
+            "source": "Coilcraft direct (coilcraft.com, MA5532-AEB cut tape / MA5532-AED reel: 1738 in stock, 1.18 EUR, checked 2026-10-30) / Mouser 994-MA5532-AE (restricted: not sold to the EU / LT region); not at Digi-Key or LCSC. alternative on the same pads: Premo SDTR1103-HF1-0100J (grupopremo.com; not at Digi-Key)",
         })
 
     # Off-board sensors & transducers
@@ -283,7 +283,16 @@ def collect_assembly_parts(variant, spec):
         "description": "Mask the silkscreened NO-COAT sensor windows (SHT40, SCD41, SGP41, BMP585, dome optics) with Kapton tape; coat both sides of main/crown/probe and pot the probe J1 connector cofferdam cup (NEVER use RTV silicone near the SGP41: its vapours poison the MOx gas sensor)",
         "source": "Mouser / Digi-Key / TME",
     })
+    for it in items:
+        it["category"] = ("printed" if it["source"] == "printed" else
+                          "utility" if it["item"].startswith(UTILITY_ITEMS) else "electronics")
     return items
+
+
+# General-purpose hardware and materials (bought locally / anywhere): listed in assembly_parts.csv only, never in the
+# order files. Everything else off-board is electronics: LCSC order when it names an LCSC number, else order_elsewhere.
+UTILITY_ITEMS = ("Stainless Steel M6", "Elastomeric O-Ring", "Silicone-free thermal", "IP68 Waterproof Compression Cable Gland",
+                 "Non-siloxane", "Flanged PTFE dome", "JGS1 Fused Silica", "Crown cable")
 
 
 def sync_assembly_parts(variant, spec):

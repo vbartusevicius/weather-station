@@ -32,10 +32,9 @@ fails when they differ from a fresh export. Live stock check: `python3 hardware/
 | File | Upload to | Column mapping |
 | :--- | :--- | :--- |
 | `order_lcsc.csv` | lcsc.com → **BOM Tool** → Upload BOM | `LCSC Part Number` → *LCSC Part #*, `Quantity` → *Quantity*; optional `Manufacturer Part Number` → *MPN*, `Designators` → *Designator*, `Value` / `Footprint` → *Comment* / *Footprint*. Set the multiplier to 1 (one station); LCSC rounds each line up to its minimum order. |
-| `order_mouser.csv` | mouser.com → **BOM Tool** → Upload | `Mouser Part Number` → *Mouser Part Number*, `Quantity` → *Quantity 1*; `Part` → *Description*, `Item` → *Customer Part Number* |
-| `order_elsewhere.csv` | by hand | parts neither store above sells; `Digi-Key` / `TME` numbers where the parts list gives one, else `Source` |
+| `order_elsewhere.csv` | by hand, per shop | electronics the LCSC store does not sell: `Mouser` / `Digi-Key` / `TME` columns (several numbers per shop separated by ` / `, the first preferred) + `Other sources`. General hardware (fasteners, O-rings, cable gland, thermal filler, coating, UV cover) and printed parts are only in `assembly_parts.csv` (column `Category`) |
 
-`order_lcsc.csv` merges all six boards into one line per LCSC number (designators `board:ref`) and adds the off-board
+`order_lcsc.csv` merges all boards (the legacy dome as `dome_legacy:ref`) into one line per LCSC number (designators `board:ref`) and adds the off-board
 parts whose `Part` names an LCSC number. JLCPCB numbers the LCSC store does not stock are swapped for verified store
 numbers in `hardware/product/lcsc_store.yaml` (the board BOMs keep the JLCPCB numbers). Parts the LCSC store does not sell (Sensirion SCD41 / SGP41 / SHT40, AS3935) are listed in
 `order_elsewhere.csv` with a verified distributor (TME / Farnell / RS) from the `elsewhere:` section of that file. Run `--check` before ordering:

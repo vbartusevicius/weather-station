@@ -25,6 +25,10 @@ substitutes:
     lcsc: C116838
     mpn: 0603B104K101CT
     note: Walsin 100 nF 100 V X7R 0603 (same rating); stock 132620
+  C227938:  # YAGEO AC0603FR-074M7L 4.7 MOhm 1 % 0603 (crown R23): LCSC store stock 0 (2026-10-30)
+    lcsc: C23163
+    mpn: 0603WAF4704T5E
+    note: UNI-ROYAL 4.7 MOhm 1 % 100 mW 75 V 0603 (same rating); stock 50800
   C2500:    # Nexperia BAV99,215 (crown T/R isolation, SOT-23 series pair): LCSC store stock 0 (2026-10-29)
     lcsc: C81174
     mpn: PMBD7000,215
@@ -48,3 +52,11 @@ elsewhere:
     part: ScioSense AS3935-BQFT
     digikey: AS3935-BQFTCT-ND
     source: Digi-Key (product 3182213, ~1200 in stock, checked 2026-10-29)
+
+# Legacy-board parts without any LCSC number (hand-fitted): where to get them, by MPN (order_elsewhere.csv)
+legacy:
+  GUVB-C31SM:
+    item: UV-B digital sensor (I2C 0x39)
+    mouser: 932-MIKROE-4145
+    source: "Genicom GUVB-C31SM is obsolete (Digi-Key: not available): MikroE UVB Click carries it, desolder it (Mouser 932-MIKROE-4145, 3 in stock, checked 2026-10-30) / brokers"
+

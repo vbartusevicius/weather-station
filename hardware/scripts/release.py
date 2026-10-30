@@ -174,9 +174,9 @@ def main(version, boards=BOARDS + LEGACY):
                 print(f"  {problem}")
     with open(root / "assembly_parts.csv", "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["Item", "Qty", "Part", "Description", "Source"])
+        w.writerow(["Item", "Qty", "Category", "Part", "Description", "Source"])
         for p in yaml.safe_load(assembly_parts_path().read_text()):
-            w.writerow([p["item"], p["qty"], p["part"], p["description"], p["source"]])
+            w.writerow([p["item"], p["qty"], p["category"], p["part"], p["description"], p["source"]])
     enclosure = REPO / "mechanical/build" / VARIANT
     if enclosure.exists():
         # print plates are regrouped over time (PRINT_GROUPS): drop plates the CAD build no longer produces
@@ -192,7 +192,7 @@ def main(version, boards=BOARDS + LEGACY):
         for colour_model in (*(root / "enclosure").glob("*.3mf"), *(root / "enclosure").glob("*_obj.zip")):
             colour_model.unlink()   # colour 3D-print formats are no longer produced
     if not failed:
-        order_parts.write(root)   # order_lcsc / order_mouser / order_elsewhere.csv for self-assembly
+        order_parts.write(root)   # order_lcsc / order_elsewhere.csv for self-assembly
     return 1 if failed else 0
 
 

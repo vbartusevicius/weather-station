@@ -25,7 +25,7 @@ only the LQFP-64 package bonds out).
 2. Rain: 4 x 20 mm piezo discs (Same Sky CEB-20D64; was Murata 7BB-20-6L0, discontinued) in parallel -> BAV99 clamp -> 1k -> TLV9062 charge amplifier
    (22 nF || 4.7 MOhm, biased at VREF, 1.5 Hz high-pass, 45 mV per nC) -> 22k / 1 nF (7.2 kHz anti-alias) -> STM32
    ADC2 (continuous, 50 kSPS).
-3. Lightning: ScioSense AS3935 on SPI1 (SI = GND selects SPI) + Coilcraft MA5532-AE 100 uH ferrite-rod antenna and
+3. Lightning: ScioSense AS3935 on SPI1 (SI = GND selects SPI) + Coilcraft MA5532-AE (or Premo SDTR1103-HF1-0100J, same pads) 100 uH ferrite-rod antenna and
    2 x 470 pF C0G tank (AS3935-AN04), IRQ to the STM32 (EXTI). No copper under the antenna (layout keepout).
 4. Compass: MEMSIC MMC5603NJ on the main I2C bus (0x30), unchanged.
 Power: XC6206 3.3 V LDO from +5V (crown, dome sensors); VDDA through 10R / 1 uF.
@@ -49,7 +49,7 @@ FP_MMC5603 = "gateway_fp:MEMSIC_MMC5603NJ_WLCSP-4"
 FP_AS3935 = "gateway_fp:ScioSense_AS3935_QFN-16"
 FP_SOT23 = "Package_TO_SOT_SMD:SOT-23"
 FP_XTAL = "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm"
-L_MA5532 = "RF_Antenna:Coilcraft_MA5532-AE_RFID"
+L_MA5532 = "gateway_fp:AS3935_Antenna_MA5532_SDTR1103"   # dual land pattern: MA5532-AE or Premo SDTR1103-HF1-0100J
 TC2030 = "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical"
 
 AXES = ("N", "E", "S", "W")
@@ -301,12 +301,14 @@ def build(nets):
     two(cap("1u 50V", "AS3935 VDD decoupling (datasheet CBAT 1 uF)", "C25"), v3, gnd)
     l1 = part("Device", "L", "100uH", L_MA5532,
               src(mpn="MA5532-AE", mfr="Coilcraft", hand=True, footprint_ref="C5361233",
-                  source="AS3935 500 kHz lightning antenna (Coilcraft MA5532-AE 100 uH open ferrite rod, Q 30)"),
+                  source="AS3935 500 kHz lightning antenna: Coilcraft MA5532-AE (100 uH, Q 30) or Premo "
+                         "SDTR1103-HF1-0100J (100 uH, Q 45) on the same pads (AN04 lists both)"),
               ref="L1")
     two(l1, n["AS_INP"], gnd)
     for ref in ("C27", "C28"):
         two(cap("470p C0G 50V", "AS3935 500 kHz tank capacitor (2x 470 pF C0G = 940 pF, AN04)", ref), n["AS_INP"], gnd)
-    two(res("10k", "AS3935 tank Q-factor damping resistor (AN04)", "R26"), n["AS_INP"], gnd)
+    # Q damping to ~15 (AN04): 10k for the MA5532-AE (Q 34); with the Premo SDTR1103 (Q 45) fit 6.8k instead
+    two(res("10k", "AS3935 tank Q-factor damping resistor (AN04; 6.8k with the Premo SDTR1103 antenna)", "R26"), n["AS_INP"], gnd)
 
     # ---------------------------------------------------------------- compass
     block("compass")

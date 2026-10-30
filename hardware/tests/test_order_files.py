@@ -30,3 +30,19 @@ def test_lcsc_order_has_one_line_per_number_and_every_board_part():
     for board, r in order_parts.board_boms(RELEASE):
         if r["LCSC"]:
             assert {f"{board}:{x}" for x in r["Designators"].split(",")} <= ordered
+
+
+def test_only_the_two_order_files_exist():
+    assert sorted(p.name for p in RELEASE.glob("order_*.csv")) == ["order_elsewhere.csv", "order_lcsc.csv"]
+
+
+def test_off_board_electronics_in_exactly_one_order_and_utility_in_none():
+    lcsc = order_parts.render(FRESH["order_lcsc.csv"])
+    elsewhere = {name for r in csv.DictReader(io.StringIO(order_parts.render(FRESH["order_elsewhere.csv"])))
+                 for name in (r["Item"], *(d.split(":", 1)[1] for d in r["Item"].split(" off-board:") if ":" in d))}
+    for p in csv.DictReader((RELEASE / "assembly_parts.csv").open()):
+        in_lcsc, in_elsewhere = f"off-board:{p['Item']}" in lcsc, p["Item"] in elsewhere
+        if p["Category"] == "electronics" and int(p["Qty"]):
+            assert in_lcsc != in_elsewhere, f"{p['Item']}: must be in exactly one order file"
+        else:
+            assert not (in_lcsc or in_elsewhere), f"{p['Item']} ({p['Category']}) belongs in assembly_parts.csv only"
