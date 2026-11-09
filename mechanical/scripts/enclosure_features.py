@@ -136,18 +136,58 @@ PM = {
     "inlet_slits": {"xs": [-33.6, -31.2, -28.8], "z0": -20.6, "z1": -9.8},
     "slit_w": 1.2,
     "hooks_x": (-24.0, -16.0), "hook_t": 1.6, "hook_lip": 1.0,    # snap hooks over both z ends of the module
+    "hook_gap": 0.2, "foam": 1.5,                     # hook post 0.2 mm off the module side; uncompressed gasket
     "pads": [(-5.0, -12.0), (-5.0, 12.0)],                          # hard stops under the inner edge (= face height)
 }
 
 
 # Snap clips holding the horizontal base-bay boards: (enc x, enc z, hook direction toward the board). Each sits just off
-# a board edge, >= 1 mm clear of the bay wall so its 1.5 mm post can flex outward while the board is pressed in, and
-# where the hook (reaching 1.1 mm over the board edge) lands on bare board. 4 per board + the 4 support posts.
-CLIP_REACH = 1.1
+# a board edge (post centre 0.9 mm from it), >= 1 mm clear of the bay wall so its post can flex outward while the board
+# is pressed in, and where the hook lands on bare board. 4 per board + the 4 support posts. Beam sizes: `SNAP`.
 CLIPS = {
     "main": [(21.5, -26.9, (0, 1)), (7.5, 26.9, (0, -1)), (32.4, -22.0, (-1, 0)), (-1.4, 22.0, (1, 0))],
     "power": [(36.0, -14.9, (0, 1)), (12.5, 8.4, (0, -1)), (8.6, -6.1, (1, 0)), (8.6, 4.0, (1, 0))],   # clear of J1 / between the buck rows
 }
+
+# Powder-printed (MJF / SLS PA12) snap features. A cantilever snap of thickness t, free length L (root -> hook) and
+# deflection d strains 1.5 t d / L^2 (fixed-guided beam: 3 t d / L^2); PA12 takes <= 2.5 % on repeated snapping (the
+# knx-dali-gateway DIN latch at ~28 % nearly broke). `d` = how far the hook overlaps the part it holds. Hook undersides
+# start HOOK_GAP above the board (MJF tolerance ~ +-0.3 mm) and have a lead-in ramp, so the board cams the beam outward.
+PA12_MAX_STRAIN = 0.025
+HOOK_GAP = 0.3
+BAY_FLOOR_Y = 34.5             # base bay floor top (clip roots)
+CROWN_FLOOR_Y = 175.8          # crown_base cavity floor top, design frame (crown clip roots)
+CROWN_CLIP_EDGE = 30.75        # crown clip post centres, |x| or |z| (the 60 x 60 board edge is at 30.0)
+SNAP = {   # t: beam thickness in the flex direction, w: width, overlap: hook reach over the board edge
+    "main": {"t": 1.5, "w": 1.5, "overlap": 1.1},
+    "power": {"t": 1.2, "w": 1.5, "overlap": 0.7},     # was t 1.5, overlap 1.1 on a 7.3 mm beam: 4.6 % strain
+    "crown": {"t": 1.2, "w": 2.4, "overlap": 0.65},    # was t 1.5, overlap 1.2 on a 7.1 mm beam: 5.3 % strain
+}
+
+
+def cantilever_strain(t, deflection, length, guided=False):
+    return (3.0 if guided else 1.5) * t * deflection / length ** 2
+
+
+def snap_beams():
+    """Every flexing snap feature of the enclosure with the numbers its strain depends on (lengths from the real root:
+    the bay / crown_base floor, or for the PMSA003I hooks the duct-chamber wall top their posts are fused to)."""
+    beams = []
+    for board in ("main", "power"):
+        s = SNAP[board]
+        top = SPEC["boards"][board]["y"]
+        beams.append({"name": f"{board} board clips", "t": s["t"], "deflection": s["overlap"],
+                      "length": top + HOOK_GAP - BAY_FLOOR_Y, "hook_gap": HOOK_GAP})
+    s = SNAP["crown"]
+    beams.append({"name": "crown board clips", "t": s["t"], "deflection": s["overlap"],
+                  "length": SPEC["boards"]["crown"]["y"] + HOOK_GAP - CROWN_FLOOR_Y, "hook_gap": HOOK_GAP})
+    # PMSA003I hooks clamp the module onto its 1.5 mm foam gasket (squeezed to `gasket` = 1.0 mm): the hook sits on the
+    # module top and the foam's 0.5 mm give is the tolerance compliance
+    beams.append({"name": "PMSA003I duct hooks", "t": PM["hook_t"], "deflection": PM["hook_lip"] + PM["hook_gap"],
+                  "length": PM["top_y"] - (PM["face_y"] - PM["gasket"]), "hook_gap": PM["foam"] - PM["gasket"]})
+    for b in beams:
+        b["strain"] = cantilever_strain(b["t"], b["deflection"], b["length"])
+    return beams
 
 
 def part_boxes():

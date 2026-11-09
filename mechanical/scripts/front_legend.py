@@ -38,14 +38,13 @@ class Label:
 
 
 def labels():
+    # font sizes giving >= 3 mm glyphs (cap height ~0.73 x size); test_print_rules checks size, stroke and spacing
     return [
-        Label("N", 0.0, 31.0, 4.2),
-        Label("S", 0.0, -31.0, 3.6),
-        Label("E", 31.0, 0.0, 3.6),
-        Label("W", -31.0, 0.0, 3.6),
-        Label("AEROMET V1", 0.0, -17.0, 2.6),
-        Label("ULTRASONIC", 0.0, 17.0, 2.2),
-    ]
+        Label("N", 0.0, 31.0, 4.8),
+        Label("S", 0.0, -31.0, 4.2),
+        Label("E", 31.0, 0.0, 4.2),
+        Label("W", -31.0, 0.0, 4.2),
+    ]   # only information: the decorative "AEROMET V1" / "ULTRASONIC" (2.2-2.6 mm, unreadable on a powder print) are gone
 
 
 def render_legend():

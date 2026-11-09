@@ -69,7 +69,7 @@ def run_cad(*, do_test=False):
     if do_test:
         subprocess.run([
             sys.executable, "-m", "pytest",
-            "mechanical/tests/test_enclosure_probe.py",
+            "mechanical/tests/test_enclosure_probe.py", "mechanical/tests/test_print_rules.py",
             "-q", "-p", "no:cacheprovider",
         ], cwd=REPO, check=True)
 
@@ -101,7 +101,7 @@ def run_variant_on_host(variant, args):
         docker_run(variant, "eda",
                    "python3 -m pytest hardware/tests mechanical/tests/test_fit.py -q -p no:cacheprovider --tb=short")
         docker_run(variant, "cad",
-                   "python3 -m pytest mechanical/tests/test_enclosure_probe.py -q -p no:cacheprovider --tb=short")
+                   "python3 -m pytest mechanical/tests/test_enclosure_probe.py mechanical/tests/test_print_rules.py -q -p no:cacheprovider --tb=short")
 
 
 def main():

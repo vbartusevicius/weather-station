@@ -87,7 +87,8 @@ def test_boards_clear_enclosure_and_threads_truly_mesh():
     assert sleeve_back.intersect(sleeve_front).val().Volume() < 1e-3
     assert pagoda.intersect(sleeve_back).val().Volume() < 1e-3
     assert pagoda.intersect(sleeve_front).val().Volume() < 1e-3
-    assert pagoda.intersect(sleeve_back.union(sleeve_front).rotate((0, 0, 0), (0, 1, 0), 180)).val().Volume() > 25.0
+    # (20 mm^3: the 0.30 mm per-side powder-print flank clearance leaves less clash than the old 0.18 mm did)
+    assert pagoda.intersect(sleeve_back.union(sleeve_front).rotate((0, 0, 0), (0, 1, 0), 180)).val().Volume() > 20.0
     assert sleeve_back.intersect(sleeve_front.translate((0.4, 0, 0))).val().Volume() > 10.0
 
     # 4. Pagoda M6 x 55 through-bolts at real size (DIN 7984 low head d 10 x k 3.5, ISO 4032 nut 10 AF x 5.2 under the
@@ -275,10 +276,11 @@ def test_board_snap_clips_stand_free_of_the_wall_and_grip_the_boards():
     plates = _board_solids()
     for board, clips in ef.CLIPS.items():
         slab = ef.board_slab(board)
+        h = max(ef.SNAP[board]["t"], ef.SNAP[board]["w"]) / 2.0
         for cx, cz, (dx, dz) in clips:
-            corners = [(cx + sx * 0.75, cz + sz * 0.75) for sx in (-1, 1) for sz in (-1, 1)]
+            corners = [(cx + sx * h, cz + sz * h) for sx in (-1, 1) for sz in (-1, 1)]
             assert max(math.hypot(x, z) for x, z in corners) <= 42.6 - 1.0, f"{board} clip at ({cx}, {cz}) touches the wall"
-            post = be.box(cx - 0.75, cx + 0.75, 33.9, slab["y1"], cz - 0.75, cz + 0.75)
+            post = be.box(cx - h, cx + h, 33.9, slab["y1"], cz - h, cz + h)
             assert plates[board].intersect(post).val().Volume() < 1e-3, f"{board} clip at ({cx}, {cz}) cuts into the board"
             inside_x = slab["x0"] <= cx + dx * 2.0 <= slab["x1"]
             inside_z = slab["z0"] <= cz + dz * 2.0 <= slab["z1"]

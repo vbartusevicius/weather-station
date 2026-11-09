@@ -3,8 +3,9 @@
                                       + sealed duct bed for the flat PMSA003I particulate module beside the `main` board
   2.  `mast_clamp.stl/.step`:         Detachable front half-moon pole clamp saddle with flat M6 bolt/washer faces
   3.  `orings.stl/.step`:             4-piece elastomeric gasket set (3x full-perimeter Ø 90 mm housing seals + 1x JGS1 dome seal)
-  4.  `probe_sleeve_back.stl/.step`:  Rear clamshell half for `probe` PCB with 4 external snap-fit ramp catches
-  5.  `probe_sleeve_front.stl/.step`: Front clamshell half for `probe` PCB with 4 external cantilevered snap-fit latch hooks
+  4.  `probe_sleeve_back.stl/.step`:  Rear clamshell half for `probe` PCB (side grooves; no snap features)
+  5.  `probe_sleeve_front.stl/.step`: Front clamshell half for `probe` PCB (side tongues into the rear grooves; the halves are held by the M22 thread
+      and the pagoda / wind_tunnel bores, no snap features)
   6.  `pagoda.stl/.step`:             5-plate Stevenson shield with M90x1.8 bottom female thread, M90x1.8 top male thread,
                                       and an enclosed vertical cable conduit through all 5 plates at the 45-deg NE strut axis
   7.  `wind_tunnel.stl/.step`:        Compact heated conical reflector deck with M90x1.8 bottom female thread & 4 strut bores
@@ -107,6 +108,10 @@ CROWN_CLIPS = ((-30.75, 15.0, (1, 0)), (-15.0, 30.75, (0, -1)), (-15.0, -30.75, 
 # Printed M12x1.75 strut locknuts: the internal thread groove reaches r = 6.22 mm, so 15 mm across flats leaves a
 # 1.28 mm wall at the flats (12 mm AF cut straight through them). Corners r = 8.66 mm -> 9.0 mm pockets.
 STRUT_NUT_AF = 15.0
+# Reset button: pin r 2.15 / flange r 3.65 in bore r 2.55 / counterbore r 4.05 = 0.40 mm radial (powder-print fit)
+BTN_PIN_R, BTN_FLANGE_R, BTN_BORE_R, BTN_CBORE_R = 2.15, 3.65, 2.55, 4.05
+# Printed thread flank clearance per side (MJF / SLS PA12: ~+-0.3 mm; 0.18-0.20 mm binds in powder prints)
+THREAD_CLEARANCE = 0.30
 STRUT_NUT_POCKET_R = 9.0
 
 
@@ -184,11 +189,12 @@ def add_external_thread_y(body, y_centres, r_root, depth=0.95, half_base=0.62, h
     return body.union(helix.intersect(clip))
 
 
-def cut_internal_thread_y(body, y_centres, r_minor, depth=0.95, half_base=0.62, half_crest=0.18, clearance=0.18, cx=0.0, cz=0.0):
+def cut_internal_thread_y(body, y_centres, r_minor, depth=0.95, half_base=0.62, half_crest=0.18, clearance=None, cx=0.0, cz=0.0):
     """Cut a matching true right-hand helical internal (female) screw groove into a bore of radius `r_minor`.
     Starts exactly 1.000 full pitch below `y_start` of the male thread so the male and female helices are
     100% phase-locked around all 360 degrees and advance by +P/2 when rotated by 180 degrees!"""
     pitch = round(y_centres[1] - y_centres[0], 4) if len(y_centres) > 1 else 1.8
+    clearance = THREAD_CLEARANCE if clearance is None else clearance
     hb = half_base + clearance
     hc = half_crest + clearance
     y_min = y_centres[0] - hb - 0.5 * pitch
@@ -240,7 +246,21 @@ def cut_internal_bayonet_y(body, y0, r_minor=44.18, r_slot=45.40, n_lugs=8):
     return body
 
 
-def cut_lock_triangles_y(body, y_base, y_tip, half_w=1.45, depth=0.45):
+def snap_clip(cx, cz, dx, dz, t, w, reach, y_root, y_hook, hook_h=1.6, ramp=0.8):
+    """Free-standing snap clip: a beam `t` thick (in the hook direction) and `w` wide from `y_root` (0.7 mm sunk into
+    the floor) up past the hook, and a hook reaching `reach` from the beam centre toward the board (direction dx, dz),
+    its underside at `y_hook`. The hook top is a lead-in ramp (tip only `ramp` mm tall) so a board pressed down cams the
+    beam outward instead of landing on a flat ledge (tip 0.8 mm tall: >= the 0.75 mm printed-wall minimum)."""
+    y_top = y_hook + hook_h
+    beam = cq.Workplane("XY").polyline([(-t / 2, y_root - 0.7), (t / 2, y_root - 0.7), (t / 2, y_top + 0.2),
+                                        (-t / 2, y_top + 0.2)]).close().extrude(w / 2, both=True)
+    hook = cq.Workplane("XY").polyline([(-t / 2, y_hook), (reach, y_hook), (reach, y_hook + ramp), (t / 2, y_top),
+                                        (-t / 2, y_top)]).close().extrude(w / 2, both=True)
+    angle = -math.degrees(math.atan2(dz, dx))   # local +x -> hook direction
+    return beam.union(hook).rotate((0, 0, 0), (0, 1, 0), angle).translate((cx, 0, cz))
+
+
+def cut_lock_triangles_y(body, y_base, y_tip, half_w=1.5, depth=0.60):
     """Engrave 4 cardinal lock-alignment triangles (at 0, 90, 180, 270 deg around `r = OUTER_R`):
       - `y_tip > y_base`: Triangle-UP (▲) on the lower part's top edge pointing up at the seam
       - `y_tip < y_base`: Triangle-DOWN (▼) on the upper part's bottom edge pointing down at the seam
@@ -314,13 +334,10 @@ def build_base(umbrella=True):
         for st in ef.standoffs(board):
             post = cone_y(33.8, bot_y, 1.65, 1.65).translate((st["x"], 0, st["z"]))
             body = body.union(post)
-        for cx, cz, (dx, dz) in ef.CLIPS[board]:   # free-standing edge clips (see `ef.CLIPS`)
-            guide = box(cx - 0.75, cx + 0.75, 33.8, top_y + 1.4, cz - 0.75, cz + 0.75)
-            reach = 0.9 + ef.CLIP_REACH   # from the post centre: 0.9 mm to the board edge + 1.1 mm over the board
-            hx = sorted((cx - 0.75 * dx, cx + reach * dx)) if dx else (cx - 0.75, cx + 0.75)
-            hz = sorted((cz - 0.75 * dz, cz + reach * dz)) if dz else (cz - 0.75, cz + 0.75)
-            hook = box(hx[0], hx[1], top_y + 0.12, top_y + 1.2, hz[0], hz[1])
-            body = body.union(guide).union(hook)
+        s = ef.SNAP[board]
+        for cx, cz, (dx, dz) in ef.CLIPS[board]:   # free-standing edge clips (see `ef.CLIPS`, `ef.SNAP`)
+            # post centre 0.9 mm from the board edge; the hook reaches `overlap` over it
+            body = body.union(snap_clip(cx, cz, dx, dz, s["t"], s["w"], 0.9 + s["overlap"], 33.8, top_y + ef.HOOK_GAP))
 
     # 7. Cut 4x 4-slit 1.2 mm anti-spider micro-grilles through the bottom overhang (`r = 32..40 mm`)
     #    + 4x lowest-point perimeter condensation weep slots at the floor corner (`y = 34.4..35.3 mm`)!
@@ -339,10 +356,10 @@ def build_base(umbrella=True):
     #    under `main SW1`, clear of the front mast saddle, the clamp flange band and the `main` standoffs):
     #    - No O-ring (so zero friction prevents `SW1`'s 1.5 N spring + gravity from returning the button!).
     #    - `btn_boss` (`y = 29.2..40.0 mm, Ø 10.4 mm OD`) has a stepped through-bore:
-    #      * Lower guide bore (`y = 24.0..37.8 mm, r = 2.50 mm` = Ø 5.0 mm ID)
-    #      * Upper T-flange counterbore (`y = 37.8..40.5 mm, r = 4.00 mm` = Ø 8.0 mm ID), forming a 1.50 mm-wide
+    #      * Lower guide bore (`y = 24.0..37.8 mm, r = 2.55 mm` = Ø 5.1 mm ID)
+    #      * Upper T-flange counterbore (`y = 37.8..40.5 mm, r = 4.05 mm` = Ø 8.1 mm ID), forming a 1.50 mm-wide
     #        internal annular stop shelf at `y = 37.8 mm` so the T-button drops in from above and can NEVER fall through!
-    #    - The Inverted-`T` Button Pin (`t_button`, with 0.35 mm radial and 0.30 mm vertical sliding clearance so it is
+    #    - The Inverted-`T` Button Pin (`t_button`, with 0.40 mm radial and 0.40 mm vertical sliding clearance so it is
     #      a separate non-touching manifold shell in `base.stl`/`base.step`!) has:
     #      * Bottom protruding finger tip (`y = 27.0..38.10 mm, r = 2.15 mm` = Ø 4.3 mm)
     #      * Wide `T`-retaining flange (`y = 38.10..39.50 mm, r = 3.65 mm` = Ø 7.3 mm) resting above the `y = 37.80 mm` shelf
@@ -352,10 +369,10 @@ def build_base(umbrella=True):
     up = BTN_UP
     btn_boss = cone_y(29.2, 42.0 + up, 5.2, 5.2).translate((bx, 0, bz))
     btn_bottom_flat = cone_y(24.0, 29.2, 5.6, 5.6).translate((bx, 0, bz))
-    btn_lower_bore = cone_y(24.0, 44.0 + up, 2.50, 2.50).translate((bx, 0, bz))
-    btn_upper_counterbore = cone_y(39.80 + up, 44.0 + up, 4.00, 4.00).translate((bx, 0, bz))
-    t_button = (cone_y(27.0, 40.10 + up, 2.15, 2.15)
-                .union(cone_y(40.10 + up, 41.50 + up, 3.65, 3.65))
+    btn_lower_bore = cone_y(24.0, 44.0 + up, BTN_BORE_R, BTN_BORE_R).translate((bx, 0, bz))
+    btn_upper_counterbore = cone_y(39.80 + up, 44.0 + up, BTN_CBORE_R, BTN_CBORE_R).translate((bx, 0, bz))
+    t_button = (cone_y(27.0, 40.20 + up, BTN_PIN_R, BTN_PIN_R)
+                .union(cone_y(40.20 + up, 41.50 + up, BTN_FLANGE_R, BTN_FLANGE_R))
                 .union(cone_y(41.50 + up, 43.55 + up, 1.80, 1.80))
                 .translate((bx, 0, bz)))
     body = body.union(btn_boss).cut(btn_bottom_flat).cut(btn_lower_bore).cut(btn_upper_counterbore).union(t_button)
@@ -417,6 +434,10 @@ def add_pm_bed(body):
         post = box(hx0, hx1, pm["floor_y"] - 0.1, pm["top_y"] + 1.2, min(z_in, z_out), max(z_in, z_out))
         hook = box(hx0, hx1, pm["top_y"], pm["top_y"] + 1.2, min(sz * (zh - lip), z_out), max(sz * (zh - lip), z_out))
         body = body.union(post).union(hook)
+        if sz > 0:   # the +z post stands 0.2 mm off the fan-chamber wall: joined solid up to the wall top instead of a
+            #          gap that fuses at random in a powder print (its flexing length then starts at the wall top)
+            wall_z = pm["fan"]["z1"] + w
+            body = body.union(box(hx0, hx1, pm["floor_y"] - 0.1, top, wall_z - 0.1, z_in + 0.1))
     for slits, ch in ((pm["fan_slits"], pm["fan"]), (pm["inlet_slits"], pm["inlet"])):
         for x in slits["xs"]:
             body = body.cut(box(x - pm["slit_w"] / 2.0, x + pm["slit_w"] / 2.0, 26.0, pm["floor_y"] + 0.1,
@@ -609,7 +630,7 @@ def _build_pagoda():
     bot_shed_cone = ring_cone_y(73.5, 74.6, 13.5, 44.5, 13.5, 22.0)
     bot_hub = ring_cone_y(67.8, 74.4, 10.58, 15.0, 10.58, 15.0)
     bot_hub = cut_internal_thread_y(bot_hub, (69.8, 71.3, 72.8),
-                                    r_minor=10.58, depth=0.65, half_base=0.45, half_crest=0.14, clearance=0.18)
+                                    r_minor=10.58, depth=0.65, half_base=0.45, half_crest=0.14)
     bot_hub = bot_hub.cut(cone_y(67.7, 68.6, 11.4, 10.5))   # thread lead-in chamfer (no 0.6 mm lip at the bore mouth)
     bot_oring_seat = cone_y(73.4, 74.8, 13.6, 13.6)
     body = skirt.union(bot_deck).union(bot_shed_cone).union(bot_hub.cut(bot_oring_seat))
@@ -799,12 +820,12 @@ def _build_struts():
         bot_nut = hex_prism_y(123.5, 125.9, across_flats=STRUT_NUT_AF, cx=sx, cz=sz).cut(
             cone_y(123.3, 126.1, 5.12, 5.12).translate((sx, 0, sz)))
         bot_nut = cut_internal_thread_y(bot_nut, (123.9, 125.65),
-                                        r_minor=5.12, depth=0.90, half_base=0.55, half_crest=0.16, clearance=0.20, cx=sx, cz=sz)
+                                        r_minor=5.12, depth=0.90, half_base=0.55, half_crest=0.16, cx=sx, cz=sz)
 
         top_nut = hex_prism_y(175.8, 178.4, across_flats=STRUT_NUT_AF, cx=sx, cz=sz).cut(
             cone_y(175.6, 178.6, 5.12, 5.12).translate((sx, 0, sz)))
         top_nut = cut_internal_thread_y(top_nut, (176.1, 177.85),
-                                        r_minor=5.12, depth=0.90, half_base=0.55, half_crest=0.16, clearance=0.20, cx=sx, cz=sz)
+                                        r_minor=5.12, depth=0.90, half_base=0.55, half_crest=0.16, cx=sx, cz=sz)
 
         assy = strut.union(bot_nut).union(top_nut)
         all_struts = assy if all_struts is None else all_struts.union(assy)
@@ -901,16 +922,11 @@ def _build_crown_base():
 
     # 4x Snap-Fit Retention Clips over straight edges of the 60 x 60 mm `crown` PCB (rotationally symmetric, >= 11 mm
     # from the strut nut pockets and the transducer barrels): (clip x, clip z, hook direction toward the board)
+    s = ef.SNAP["crown"]
+    edge = ef.CROWN_CLIP_EDGE - 30.0   # post centre -> board edge
     for cx, cz, (dx, dz) in CROWN_CLIPS:
-        if dx:
-            guide = box(cx - 0.75, cx + 0.75, 175.8, 184.0, cz - 1.2, cz + 1.2)
-            hook = box(min(cx - dx * 0.75, cx + dx * 1.95), max(cx - dx * 0.75, cx + dx * 1.95), 182.92, 183.9,
-                       cz - 1.2, cz + 1.2)
-        else:
-            guide = box(cx - 1.2, cx + 1.2, 175.8, 184.0, cz - 0.75, cz + 0.75)
-            hook = box(cx - 1.2, cx + 1.2, 182.92, 183.9,
-                       min(cz - dz * 0.75, cz + dz * 1.95), max(cz - dz * 0.75, cz + dz * 1.95))
-        body = body.union(guide).union(hook)
+        body = body.union(snap_clip(cx, cz, dx, dz, s["t"], s["w"], edge + s["overlap"], ef.CROWN_FLOOR_Y,
+                                    SPEC["boards"]["crown"]["y"] + ef.HOOK_GAP))
 
     return body
 
@@ -986,7 +1002,7 @@ def _build_crown(cover="dome"):
             slot = box(b["ap_r"] - 0.5, b["r"] + 0.5, lip, lip + b["drain_h"], -0.6, 0.6).rotate((0, 0, 0), (0, 1, 0), deg)
             body = body.cut(slot.translate(at))
     body = cut_internal_thread_y(body, (191.2, 192.7),
-                                 r_minor=10.40, depth=0.70, half_base=0.45, half_crest=0.14, clearance=0.20,
+                                 r_minor=10.40, depth=0.70, half_base=0.45, half_crest=0.14,
                                  cx=win["x"], cz=win["z"])
     return body
 
