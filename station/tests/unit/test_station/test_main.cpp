@@ -38,6 +38,7 @@
 #include "../../../src/crown/StmI2cBootloader.hpp"
 #include "../../../src/environment/MetCalculations.hpp"
 #include "../../../src/environment/UvPhotodiodes.hpp"
+#include "../../../src/environment/Mmc5983.hpp"
 #include "../../../src/firmware/ButtonController.hpp"
 #include "../../../src/heater/DeIcingHeater.hpp"
 #include "../../../src/history/Climate.hpp"
@@ -929,6 +930,21 @@ void test_pipeline_photodiode_dome_uv_and_lux_fallback(void) {
     TEST_ASSERT_FLOAT_WITHIN(500.0F, 60000.0F, d.solar.lux.v);
 }
 
+void test_mmc5983_output_decoding(void) {
+    // null field (131072 = 0x20000): every axis 0 uT
+    const std::uint8_t null_field[7] = {0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x00};
+    auto f = station::environment::mmc5983_field_ut(null_field);
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 0.0F, f.x);
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 0.0F, f.z);
+    // X = 131072 + 16384 (+1 G = 100 uT): 0x24000 -> 0x90, 0x00, low bits 00; Y = 131072 - 8192 (-50 uT) = 0x1E000;
+    // Z = 131072 + 3 (low bits only, 3 counts = 0.0183 uT)
+    const std::uint8_t b[7] = {0x90, 0x00, 0x78, 0x00, 0x80, 0x00, 0x0C};
+    f = station::environment::mmc5983_field_ut(b);
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, 100.0F, f.x);
+    TEST_ASSERT_FLOAT_WITHIN(1e-3F, -50.0F, f.y);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4F, 3.0F / 16384.0F * 100.0F, f.z);
+}
+
 void test_heater_power_monitor_and_heat_check(void) {
     Pipeline p;
     RawState raw{};
@@ -1714,6 +1730,7 @@ int main(void) {
     RUN_TEST(test_sgp41_gas_index_algorithm_blackout_baseline_event_and_state);
     RUN_TEST(test_pipeline_uv_fusion_and_sgp41_gas_indices);
     RUN_TEST(test_uv_photodiode_dome_conversions);
+    RUN_TEST(test_mmc5983_output_decoding);
     RUN_TEST(test_pipeline_photodiode_dome_uv_and_lux_fallback);
     RUN_TEST(test_heater_power_monitor_and_heat_check);
     RUN_TEST(test_crown_blocks_decode_into_pipeline_types);

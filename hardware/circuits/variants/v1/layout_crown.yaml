@@ -45,6 +45,8 @@ frame:
   power_nets: [+5V, +12V_HEAT, +3V3, VDRV]
   pours:
     - { net: GND, layers: [In1.Cu], region: { x0: 0.5, y0: 0.5, x1: 59.5, y1: 59.5 } }
+    # outer-layer GND fill: with 0805 passives the router no longer finds room for a via at every GND pad
+    - { net: GND, layers: [F.Cu, B.Cu], region: { x0: 0.5, y0: 0.5, x1: 59.5, y1: 59.5 } }
   # AS3935-AN04: no copper under the 500 kHz ferrite-rod antenna L1 on any layer (eddy currents kill its sensitivity)
   copper_keepout:
     - { x0: 6.3, y0: 3.8, x1: 19.7, y1: 9.2, layers: [In1.Cu, In2.Cu] }   # no planes under the ferrite rod
@@ -82,7 +84,7 @@ heights:
   U8: 1.75
   U9: 0.9
   U10: 1.25
-  Y1: 0.9
+  Y1: 4.2            # HC-49S-SMD (X49SM8MSD2SI) height
   C13: 1.6
 
 parts:
@@ -99,31 +101,32 @@ parts:
   J9:  { x: 38.5, y: 21.5, rot: 180, block: rain_afe, locked: true }      # piezo SE
   J11: { x: 9.0,  y: 44.0, rot: 0,   block: aux_heat, locked: true }
 
-  U6:  { x: 30.0, y: 38.0, rot: 0,   block: compass }
-  C29: { x: 32.8, y: 38.0, rot: 90,  block: compass }
+  U6:  { x: 29.89, y: 38.0, rot: 0,   block: compass }
+  C34: { x: 26.1, y: 38.0, rot: 90,  block: compass }              # MMC5983MA CAP 10 uF, next to pin 10
+  C29: { x: 32.91, y: 38.0, rot: 90,  block: compass }
 
   # Lightning: antenna at the SW edge (copper keep-out on all layers), AS3935 beside it
   L1:  { x: 13.0, y: 6.5,  rot: 0,   block: lightning }
   U9:  { x: 12.5, y: 13.5, rot: 0,   block: lightning }
   C25: { x: 16.8, y: 13.5, rot: 90,  block: lightning }
   C26: { x: 16.8, y: 17.5, rot: 90,  block: lightning }
-  C27: { x: 5.0,  y: 6.5,  rot: 90,  block: lightning }   # tank caps at the AS_INP end (L1 pin 1, x = 8.35)
-  C28: { x: 7.2,  y: 11.1, rot: 0,   block: lightning }
+  C27: { x: 5.0,  y: 6.35,  rot: 90,  block: lightning }   # tank caps at the AS_INP end (L1 pin 1, x = 8.35)
+  C28: { x: 7.26,  y: 11.04, rot: 0,   block: lightning }
   R26: { x: 13.3, y: 17.8, rot: 0,   block: lightning }
 
   # Transducer H-bridge drivers + T/R isolation diodes, one group per corner near its connector
-  U2:  { x: 17.0, y: 51.0, rot: 0,   block: us_tx }    # N
+  U2:  { x: 17.0, y: 50.96, rot: 0,   block: us_tx }    # N
   D1:  { x: 11.0, y: 51.0, rot: 0,   block: us_tx }
   D2:  { x: 17.0, y: 56.0, rot: 0,   block: us_tx }
   C14: { x: 17.0, y: 46.8, rot: 0,   block: us_tx }
-  R13: { x: 21.0, y: 55.5, rot: 90,  block: us_tx }
+  R13: { x: 21.0, y: 55.54, rot: 90,  block: us_tx }
   R1:  { x: 11.5, y: 55.0, rot: 90,  block: us_tx }
 
-  U3:  { x: 52.5, y: 17.0, rot: 0,   block: us_tx }    # E
+  U3:  { x: 52.5, y: 16.98, rot: 0,   block: us_tx }    # E
   D3:  { x: 52.5, y: 11.5, rot: 0,   block: us_tx }
   D4:  { x: 46.5, y: 13.0, rot: 0,   block: us_tx }
   C15: { x: 47.3, y: 17.0, rot: 90,  block: us_tx }
-  R14: { x: 52.5, y: 20.8, rot: 0,   block: us_tx }
+  R14: { x: 52.5, y: 20.82, rot: 0,   block: us_tx }
   R2:  { x: 56.8, y: 11.5, rot: 90,  block: us_tx }
 
   U4:  { x: 43.0, y: 8.0,  rot: 0,   block: us_tx }    # S
@@ -133,70 +136,70 @@ parts:
   R15: { x: 39.3, y: 14.8, rot: 0,   block: us_tx }
   R3:  { x: 55.5, y: 6.5,  rot: 0,   block: us_tx }
 
-  U5:  { x: 4.5,  y: 15.9, rot: 90,  block: us_tx }    # W
-  D7:  { x: 3.5,  y: 9.8,  rot: 0,   block: us_tx }
-  D8:  { x: 9.5,  y: 20.0, rot: 0,   block: us_tx }
-  C17: { x: 8.3,  y: 16.5, rot: 90,  block: us_tx }
-  R16: { x: 4.5,  y: 20.7, rot: 0,   block: us_tx }
-  R4:  { x: 13.0, y: 21.0, rot: 0,   block: us_tx }
+  U5:  { x: 4.46,  y: 15.91, rot: 90,  block: us_tx }    # W
+  D7:  { x: 3.44,  y: 9.95,  rot: 0,   block: us_tx }
+  D8:  { x: 9.35,  y: 20.05, rot: 0,   block: us_tx }
+  C17: { x: 8.34,  y: 16.45, rot: 90,  block: us_tx }
+  R16: { x: 4.5,  y: 20.75, rot: 0,   block: us_tx }
+  R4:  { x: 13.15, y: 21.0, rot: 0,   block: us_tx }
 
   # ======================= BOTTOM (B.Cu, faces the crown_base floor) =======================
   # Posts (r = 16 mm, 22.5 deg off the axes) at (44.8, 36.1), (23.9, 44.8), (15.2, 23.9), (36.1, 15.2): keep 2.6 mm clear
-  U1:  { x: 30.0, y: 30.0, rot: 0,   side: back, block: crown_mcu }
-  C3:  { x: 21.5, y: 26.0, rot: 90,  side: back, block: crown_mcu }
-  C4:  { x: 38.5, y: 26.0, rot: 90,  side: back, block: crown_mcu }
-  C5:  { x: 38.5, y: 34.0, rot: 90,  side: back, block: crown_mcu }
-  C6:  { x: 26.0, y: 38.5, rot: 0,   side: back, block: crown_mcu }
-  C7:  { x: 29.3, y: 38.5, rot: 0,   side: back, block: crown_mcu }
-  R25: { x: 35.9, y: 21.5, rot: 0,   side: back, block: crown_mcu }   # BOOT0 (pin 61 lands on the lower edge when flipped)
-  R28: { x: 39.3, y: 22.4, rot: 0,   side: back, block: crown_mcu }   # PA10 bootloader USART1_RX pull-up
-  R29: { x: 38.6, y: 37.8, rot: 90,  side: back, block: crown_mcu }   # PB12 bootloader SPI2_NSS pull-up
-  C10: { x: 21.5, y: 34.0, rot: 90,  side: back, block: crown_mcu }
-  Y1:  { x: 18.0, y: 27.5, rot: 90,  side: back, block: crown_mcu }   # next to PF0 / PF1 (pins 5-6, lower left when flipped)
-  C11: { x: 18.0, y: 31.3, rot: 0,   side: back, block: crown_mcu }
-  C12: { x: 21.0, y: 21.6, rot: 0,   side: back, block: crown_mcu }
-  C8:  { x: 26.0, y: 21.5, rot: 0,   side: back, block: crown_power }
-  C9:  { x: 29.3, y: 21.5, rot: 0,   side: back, block: crown_power }
-  R27: { x: 32.6, y: 21.5, rot: 0,   side: back, block: crown_power }
+  U1:  { x: 30.0, y: 30.0, rot: 0,   side: back, block: crown_mcu, locked: true }
+  C3:  { x: 17.6, y: 18.5, rot: 0,   side: back, block: crown_mcu }   # below Y1, beside C12
+  C4:  { x: 40.06, y: 26.0, rot: 90,  side: back, block: crown_mcu }
+  C5:  { x: 40.06, y: 34.0, rot: 90,  side: back, block: crown_mcu }
+  C6:  { x: 25.85, y: 38.5, rot: 0,   side: back, block: crown_mcu }
+  C7:  { x: 29.45, y: 38.5, rot: 0,   side: back, block: crown_mcu }
+  R25: { x: 36.26, y: 21.5, rot: 0,   side: back, block: crown_mcu }   # BOOT0 (pin 61 lands on the lower edge when flipped)
+  R28: { x: 40.76, y: 22.4, rot: 0,   side: back, block: crown_mcu }   # PA10 bootloader USART1_RX pull-up
+  R29: { x: 40.03, y: 37.62, rot: 90,  side: back, block: crown_mcu }   # PB12 bootloader SPI2_NSS pull-up
+  C10: { x: 22.13, y: 35.64, rot: 90,  side: back, block: crown_mcu }
+  Y1:  { x: 20.3, y: 27.0, rot: 90,  side: back, block: crown_mcu, locked: true }   # HC-49S-SMD between the crown_base post at (15.2, 23.9) and U1   # next to PF0 / PF1 (pins 5-6, lower left when flipped)
+  C11: { x: 18.55, y: 34.92, rot: 0,   side: back, block: crown_mcu }
+  C12: { x: 21.95, y: 19.08, rot: 0,   side: back, block: crown_mcu }
+  C8:  { x: 25.54, y: 21.5, rot: 0,   side: back, block: crown_power }
+  C9:  { x: 29.14, y: 21.5, rot: 0,   side: back, block: crown_power }
+  R27: { x: 32.71, y: 21.5, rot: 0,   side: back, block: crown_power }
   J12: { x: 4.0,  y: 43.0, rot: 90,  side: back, block: crown_mcu }   # SWD debug (Tag-Connect TC2030-NL)
 
-  U10: { x: 44.0, y: 22.0, rot: 0,   side: back, block: crown_power }
+  U10: { x: 44.56, y: 21.95, rot: 0,   side: back, block: crown_power }
   C1:  { x: 48.5, y: 19.3, rot: 90,  side: back, block: crown_power }
   C2:  { x: 44.0, y: 17.5, rot: 0,   side: back, block: crown_power }
-  C13: { x: 41.5, y: 30.0, rot: 90,  side: back, block: us_tx }
-  R17: { x: 44.5, y: 30.0, rot: 90,  side: back, block: us_tx }
+  C13: { x: 42.38, y: 30.0, rot: 90,  side: back, block: us_tx }
+  R17: { x: 44.67, y: 30.0, rot: 90,  side: back, block: us_tx }
 
   # 47k + 10 nF receive coupling right under their transducer connectors (one RX net per channel crosses the board)
-  R5:  { x: 28.4, y: 45.5, rot: 0,   side: back, block: us_rx }   # N (under J2)
-  C30: { x: 31.6, y: 45.5, rot: 0,   side: back, block: us_rx }
+  R5:  { x: 28.21, y: 45.5, rot: 0,   side: back, block: us_rx }   # N (under J2)
+  C30: { x: 31.79, y: 45.5, rot: 0,   side: back, block: us_rx }
   R6:  { x: 44.8, y: 26.0, rot: 90,  side: back, block: us_rx }   # E (under J3)
-  C31: { x: 41.5, y: 25.5, rot: 90,  side: back, block: us_rx }
-  R7:  { x: 28.4, y: 16.5, rot: 0,   side: back, block: us_rx }   # S (under J4)
-  C32: { x: 31.6, y: 16.5, rot: 0,   side: back, block: us_rx }
-  R8:  { x: 14.0, y: 31.5, rot: 90,  side: back, block: us_rx }   # W (under J5)
-  C33: { x: 16.0, y: 35.4, rot: 90,  side: back, block: us_rx }
+  C31: { x: 42.21, y: 25.55, rot: 90,  side: back, block: us_rx }
+  R7:  { x: 28.21, y: 16.5, rot: 0,   side: back, block: us_rx }   # S (under J4)
+  C32: { x: 31.79, y: 16.5, rot: 0,   side: back, block: us_rx }
+  R8:  { x: 13.56, y: 34.9, rot: 90,  side: back, block: us_rx }   # W (under J5)
+  C33: { x: 15.68, y: 35.95, rot: 90,  side: back, block: us_rx }
 
   # Receive mux, 1M bias, TLV9062 preamp + VREF (NW quadrant)
-  U7:  { x: 16.0, y: 44.0, rot: 0,   side: back, block: us_rx }
-  C24: { x: 12.0, y: 38.8, rot: 0,   side: back, block: us_rx }
-  R9:  { x: 9.0,  y: 44.0, rot: 90,  side: back, block: us_rx }   # per-channel 1M bias at the mux inputs
-  R10: { x: 9.0,  y: 40.6, rot: 90,  side: back, block: us_rx }
-  R11: { x: 20.2, y: 37.2, rot: 0,   side: back, block: us_rx }
-  R12: { x: 20.2, y: 39.0, rot: 0,   side: back, block: us_rx }
+  U7:  { x: 16.0, y: 44.24, rot: 0,   side: back, block: us_rx }
+  C24: { x: 14.6, y: 38.97, rot: 0,   side: back, block: us_rx }
+  R9:  { x: 9.0,  y: 43.98, rot: 90,  side: back, block: us_rx }   # per-channel 1M bias at the mux inputs
+  R10: { x: 9.0,  y: 40.43, rot: 90,  side: back, block: us_rx }
+  R11: { x: 19.28, y: 37.04, rot: 0,   side: back, block: us_rx }
+  R12: { x: 20.2, y: 39.13, rot: 0,   side: back, block: us_rx }
   U8:  { x: 15.1, y: 53.0, rot: 90,  side: back, block: us_rx }
-  C23: { x: 20.2, y: 51.0, rot: 90,  side: back, block: us_rx }
-  R20: { x: 9.0,  y: 51.0, rot: 90,  side: back, block: us_rx }
-  C19: { x: 9.0,  y: 47.5, rot: 90,  side: back, block: us_rx }
-  R21: { x: 20.2, y: 54.5, rot: 90,  side: back, block: us_rx }
-  C20: { x: 20.2, y: 57.6, rot: 90,  side: back, block: us_rx }
-  R18: { x: 11.5, y: 57.8, rot: 0,   side: back, block: us_rx }
-  R19: { x: 15.0, y: 57.8, rot: 0,   side: back, block: us_rx }
-  C18: { x: 17.7, y: 49.0, rot: 0,   side: back, block: us_rx }
+  C23: { x: 20.39, y: 50.61, rot: 90,  side: back, block: us_rx }
+  R20: { x: 9.0,  y: 51.13, rot: 90,  side: back, block: us_rx }
+  C19: { x: 9.0,  y: 47.55, rot: 90,  side: back, block: us_rx }
+  R21: { x: 20.2, y: 54.18, rot: 90,  side: back, block: us_rx }
+  C20: { x: 20.2, y: 57.75, rot: 90,  side: back, block: us_rx }
+  R18: { x: 11.47, y: 57.8, rot: 0,   side: back, block: us_rx }
+  R19: { x: 15.03, y: 57.8, rot: 0,   side: back, block: us_rx }
+  C18: { x: 17.51, y: 49.38, rot: 0,   side: back, block: us_rx }
 
   # Rain charge amplifier (U8B) passives + piezo clamp (NE quadrant)
-  R22: { x: 41.0, y: 41.0, rot: 0,   side: back, block: rain_afe }
-  R23: { x: 41.0, y: 42.7, rot: 0,   side: back, block: rain_afe }
-  C21: { x: 41.0, y: 44.4, rot: 0,   side: back, block: rain_afe }
-  R24: { x: 41.0, y: 46.1, rot: 0,   side: back, block: rain_afe }
+  R22: { x: 41.0, y: 40.44, rot: 0,   side: back, block: rain_afe }
+  R23: { x: 41.0, y: 42.53, rot: 0,   side: back, block: rain_afe }
+  C21: { x: 41.0, y: 44.65, rot: 0,   side: back, block: rain_afe }
+  R24: { x: 41.0, y: 46.77, rot: 0,   side: back, block: rain_afe }
   C22: { x: 45.5, y: 41.0, rot: 0,   side: back, block: rain_afe }
   D9:  { x: 45.5, y: 44.5, rot: 0,   side: back, block: rain_afe }

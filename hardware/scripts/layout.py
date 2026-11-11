@@ -317,6 +317,8 @@ def apply_frame(board, plan):
         txt.SetPosition(pos(lbl["x"], lbl["y"]))
         size = lbl.get("size", SILK_TEXT_MM)   # optional larger marking text (mm)
         txt.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(size), pcbnew.FromMM(size)))
+        if lbl.get("rot"):
+            txt.SetTextAngle(pcbnew.EDA_ANGLE(lbl["rot"], pcbnew.DEGREES_T))
         txt.SetTextThickness(pcbnew.FromMM(max(SILK_STROKE_MM, 0.15 * size)))
         if lyr == pcbnew.B_SilkS:
             txt.SetMirrored(True)
@@ -936,7 +938,69 @@ def import_ses(board_name):
     print(f"{board_name}: removed {removed} ground tracks the pours already cover, "
           f"widened {widened} neck-down stubs")
     save(board, plan, board_name)
-    print(f"{board_name}: imported {ses.relative_to(REPO)}")
+    shifted = shift_near_miss_tracks(board_name)
+    print(f"{board_name}: imported {ses.relative_to(REPO)}" + (f", shifted {shifted} near-miss tracks" if shifted else ""))
+
+
+def shift_near_miss_tracks(board_name, max_short_mm=0.01, rounds=3):
+    """Freerouting rounds 45-degree geometry onto the DSN grid and can leave a track 1-10 um inside a clearance.
+    Read KiCad's DRC report, move each offending segment away from the other item by the shortfall + 1 um
+    (perpendicular to the segment), drag the track ends joined to it along, save and check again (knx-dali-gateway)."""
+    import math
+    import re
+    path = stored_board_path(board_name)
+    report = build_dir(board_name) / "near_miss_drc.json"
+    total = 0
+    for _ in range(rounds):
+        subprocess.run(["kicad-cli", "pcb", "drc", "--format", "json", "--output", str(report), str(path)],
+                       capture_output=True, check=False)
+        board = pcbnew.LoadBoard(str(path))
+        tracks = [t for t in board.GetTracks() if t.Type() == pcbnew.PCB_TRACE_T]
+        moved = 0
+        for v in json.loads(report.read_text())["violations"]:
+            m = re.search(r"clearance ([\d.]+) mm; actual ([\d.]+) mm", v.get("description", ""))
+            if v["type"] != "clearance" or not m:
+                continue
+            short = float(m.group(1)) - float(m.group(2))
+            item = next((i for i in v["items"] if i["description"].startswith("Track")), None)
+            other = next((i for i in v["items"] if i is not item), None)
+            if not 0 < short <= max_short_mm or item is None or other is None:
+                continue
+            px, py = pcbnew.FromMM(item["pos"]["x"]), pcbnew.FromMM(item["pos"]["y"])
+            net = item["description"].split("[")[1].split("]")[0]
+
+            def dist(t, px=px, py=py):
+                a, b = t.GetStart(), t.GetEnd()
+                dx, dy = b.x - a.x, b.y - a.y
+                u = max(0.0, min(1.0, ((px - a.x) * dx + (py - a.y) * dy) / max(1, dx * dx + dy * dy)))
+                return math.hypot(px - (a.x + u * dx), py - (a.y + u * dy))
+            cand = [t for t in tracks if t.GetNetname() == net]
+            if not cand:
+                continue
+            t = min(cand, key=dist)
+            a, b = t.GetStart(), t.GetEnd()
+            ln = math.hypot(b.x - a.x, b.y - a.y) or 1.0
+            nx, ny = -(b.y - a.y) / ln, (b.x - a.x) / ln
+            ox, oy = pcbnew.FromMM(other["pos"]["x"]), pcbnew.FromMM(other["pos"]["y"])
+            sign = 1.0 if (px - ox) * nx + (py - oy) * ny >= 0 else -1.0
+            step = pcbnew.FromMM(short + 0.001)
+            mx, my = round(sign * nx * step), round(sign * ny * step)
+            for end in (pcbnew.VECTOR2I(a.x, a.y), pcbnew.VECTOR2I(b.x, b.y)):
+                for o in tracks:
+                    if o is t or o.GetNetname() != net:
+                        continue
+                    if o.GetStart() == end:
+                        o.SetStart(pcbnew.VECTOR2I(end.x + mx, end.y + my))
+                    if o.GetEnd() == end:
+                        o.SetEnd(pcbnew.VECTOR2I(end.x + mx, end.y + my))
+            t.SetStart(pcbnew.VECTOR2I(a.x + mx, a.y + my))
+            t.SetEnd(pcbnew.VECTOR2I(b.x + mx, b.y + my))
+            moved += 1
+        if not moved:
+            break
+        board.Save(str(path))
+        total += moved
+    return total
 
 
 FREEROUTING = ["java", "-jar", os.environ.get("FREEROUTING_JAR", "/opt/freerouting.jar"),

@@ -1,18 +1,16 @@
-"""MCU & RS-485 block: Seeed XIAO ESP32-C6 on 2x7 female headers, powered from +5V via a TI LM66100 ideal diode,
+"""MCU & RS-485 block: Seeed XIAO ESP32-C6 on 2x7 female headers, powered from +5V via an SS14 Schottky (back-feed block),
 onboard service button, SP3485EN-L/TR half-duplex RS-485 transceiver (UART1 TX / RX + driver-enable on separate pins)
 and the crown-MCU control lines (reset, boot-mode select, data-ready interrupt).
 
 The wind / rain front ends are digitised on the crown board by its own STM32G431 (I2C peripheral), so the XIAO needs
 no analog or 40 kHz timing pins any more: those GPIOs now carry RS-485 RX / DE and the crown control lines."""
 
-from builtins import NC
-
 from common import block, part, src
 from skidl import Net
 
-R0603 = "Resistor_SMD:R_0603_1608Metric"
-C0603 = "Capacitor_SMD:C_0603_1608Metric"
-SC70_6 = "Package_TO_SOT_SMD:SOT-363_SC-70-6"
+R0805 = "Resistor_SMD:R_0805_2012Metric"   # 0805: hand soldering
+C0805 = "Capacitor_SMD:C_0805_2012Metric"   # 0805: hand soldering
+D_SMA = "Diode_SMD:D_SMA"
 XIAO_FP = "gateway_fp:XIAO_ESP32C6_Header"
 SW_B3U = "Button_Switch_SMD:SW_SPST_B3U-1000P"
 FP_SOIC8 = "gateway_fp:ON_LM393DR2G_SOIC-8"
@@ -32,11 +30,11 @@ MCU_PINS = {
 }
 
 
-def res(value, fields=None, footprint=R0603, ref=None):
+def res(value, fields=None, footprint=R0805, ref=None):
     return part("Device", "R", value, footprint, fields, ref=ref)
 
 
-def cap(value, fields=None, footprint=C0603, ref=None):
+def cap(value, fields=None, footprint=C0805, ref=None):
     return part("Device", "C", value, footprint, fields, ref=ref)
 
 
@@ -49,17 +47,15 @@ def build(gnd, v3, v5, vin_adc, heat_pwm, rs485_a, rs485_b):
     rs485_tx, rs485_rx, rs485_de = Net("RS485_TX"), Net("RS485_RX"), Net("RS485_DE")
     crown_boot0, crown_irq, crown_nrst = Net("CROWN_BOOT0"), Net("CROWN_IRQ"), Net("CROWN_NRST")
 
-    # --- LM66100 ideal diode: +5V -> +5V_XIAO ---
+    # --- SS14 Schottky: +5V -> +5V_XIAO (blocks USB-C back-feed into +5V; ~0.45 V drop leaves the XIAO's 3.3 V
+    # regulator ~0.9 V of headroom; SMA: two large pads instead of the LM66100's 0.65 mm SC-70) ---
     block("mcu_power")
-    u2 = part("Power_Management", "LM66100DCK", "LM66100", SC70_6,
-              src(mpn="LM66100DCKR", mfr="TI", lcsc="C2869734",
-                  source="TI LM66100 ideal diode preventing USB-C back-feed into +5V rail"),
-              ref="U2")
-    u2["VIN"] += v5
-    u2["~{CE}"] += gnd
-    u2["GND"] += gnd
-    u2["VOUT"] += v5_xiao
-    u2["ST"] += NC
+    d5 = part("Device", "D_Schottky", "SS14", D_SMA,
+              src(mpn="SS14", mfr="MDD", lcsc="C2480",
+                  source="1 A 40 V Schottky preventing USB-C back-feed into +5V rail"),
+              ref="D5")
+    d5["A"] += v5
+    d5["K"] += v5_xiao
     c_v5 = cap("10u 10V", src(source="XIAO 5V decoupling"), ref="C4")
     c_v5[1] += v5_xiao
     c_v5[2] += gnd

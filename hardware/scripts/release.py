@@ -8,6 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import assembly_drawing
 import fab_outputs
 import jlc_parts
 import order_parts
@@ -136,6 +137,7 @@ def release_board(board, root):
     for suffix in (".kicad_pcb", ".kicad_pro", ".kicad_dru"):
         shutil.copy(layout_path(board).with_suffix(suffix), out)
     fab_files(board, out)
+    assembly_drawing.write(board, out / f"{board}_assembly.pdf")   # hand-assembly drawing (every part labelled)
     placement = assembly_files(board, out, checks)
     step = REPO / "hardware/build" / VARIANT / board / f"{board}.step"
     run("kicad-cli", "pcb", "export", "step", "--grid-origin", "--subst-models", "--force",

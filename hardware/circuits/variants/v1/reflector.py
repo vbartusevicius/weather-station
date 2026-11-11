@@ -5,7 +5,7 @@ T-assembly directly under the ultrasonic reflector cone):
   - R1, R2, R3, R4 (top side): 4x 120R 2512 2 W (YAGEO RC2512FK-7W120RL) resistors wired 100% in PARALLEL on
     +12V_HEAT (30 Ohm net, 4.8 W at 12 V / 100 % PWM, 1.2 W per resistor = 60 % of rating; the firmware regulates
     4.5 W, 3.6 W max on a weak 12 V supply)
-  - TH1 (top center): HNTC0603-103F3950FB 10k 1% B=3950K NTC thermistor measuring the
+  - TH1 (top center): HNTC0805-103F3950FB 10k 1% B=3950K NTC thermistor measuring the
     true temperature of the horizontal reflector plate
   - C1: 100n 50V NTC sense noise filter capacitor
 """
@@ -16,9 +16,9 @@ from skidl import Net
 from variants.v1.main import wire
 from variants.v1.probe import REFLECTOR_LINK
 
-R0603 = "Resistor_SMD:R_0603_1608Metric"
+R0805 = "Resistor_SMD:R_0805_2012Metric"   # 0805: hand soldering
 R2512 = "Resistor_SMD:R_2512_6332Metric"
-C0603 = "Capacitor_SMD:C_0603_1608Metric"
+C0805 = "Capacitor_SMD:C_0805_2012Metric"   # 0805: hand soldering
 HDR_1X4_SMD = "gateway_fp:HX_PZ2.54-1x4P-SMD"
 
 
@@ -52,14 +52,14 @@ def build():
         r[1] += v5
         r[2] += heat_sw
 
-    th1 = part("Device", "Thermistor_NTC", "10k NTC", R0603,
-               src(mpn="HNTC0603-103F3950FB", mfr="R+O", lcsc="C49247666",
+    th1 = part("Device", "Thermistor_NTC", "10k NTC", R0805,
+               src(mpn="HNTC0805-103F3950FB", mfr="R+O", lcsc="C49247662",
                    source="10k 1% B=3950K NTC thermistor at centre of horizontal reflector plate"),
                ref="TH1")
     th1[1] += ntc_sense
     th1[2] += gnd
 
-    c1 = part("Device", "C", "100n 50V", C0603,
+    c1 = part("Device", "C", "100n 50V", C0805,
               src(source="Reflector NTC sense high-frequency filter capacitor"), ref="C1")
     c1[1] += ntc_sense
     c1[2] += gnd

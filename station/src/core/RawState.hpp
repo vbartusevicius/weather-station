@@ -42,7 +42,7 @@ struct BaroRaw {             // BMP581, 100 Hz FIFO reduced to 1 s
 struct WindRaw {             // reciprocal ultrasonic ToF, already rotated to true north and tilt-corrected
     Reading<WindSecond> second;
     Reading<float> tilt_deg;
-    Reading<float> heading_deg;   // crown orientation from MMC5603 + LSM6DS3 tilt compensation
+    Reading<float> heading_deg;   // crown orientation from MMC5983MA + LSM6DS3 tilt compensation
 };
 
 struct OpticalRaw {          // dome: TSL25911 (vis+NIR, auto-gain), LTR-390 (ALS + UVS), GUVB-C31SM (UV-B)

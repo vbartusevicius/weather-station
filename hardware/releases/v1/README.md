@@ -24,6 +24,10 @@ flanged PTFE dome, lathe version from round rod or CNC hemisphere version; match
 the CNC quote) and `jgs1_window.svg` (backup window, `crown_window`
 top).
 
+Hand assembly: every board folder has `<board>_assembly.pdf`: one page per populated side (bottom mirrored, as seen
+from below), every part with reference + value, a red dot on pin 1 (ICs, connectors, diodes), `[H]` on hand-fitted
+parts, same value = same colour, large parts dashed (fit them last), and a value list with quantities and references.
+
 Print process: the enclosure is designed for MJF / SLS PA12 (powder nylon, ~±0.3 mm), but **no part of it has been
 printed yet** (no tested process). Design rules it follows (`mechanical/tests/test_print_rules.py`): snap beams ≤ 2.5 %
 strain, hook undersides ≥ 0.3 mm above the board with a lead-in ramp, printed threads 0.30 mm flank clearance per side,

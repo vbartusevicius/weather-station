@@ -77,7 +77,7 @@ firmware::Pmsa003i g_pm;
 firmware::Sgp41 g_sgp;
 firmware::Ads1115 g_heatmon;
 firmware::Lsm6ds3 g_imu;
-firmware::Mmc5603 g_mag;
+firmware::Mmc5983 g_mag;
 firmware::Ltr390 g_ltr;
 firmware::Tsl2591 g_tsl;
 firmware::GuvbC31sm g_guvb;
@@ -1234,7 +1234,7 @@ extern "C" void app_main(void) {
     g_sgp.begin(g_i2c, b::i2c_addr_sgp41);
     g_heatmon.begin(g_i2c, b::i2c_addr_ads1115);
     g_imu.begin(g_i2c, b::i2c_addr_lsm6ds3);
-    g_mag.begin(g_i2c, b::i2c_addr_mmc5603);
+    g_mag.begin(g_i2c, b::i2c_addr_mmc5983);
     g_ltr.begin(g_i2c, b::i2c_addr_ltr390);
     g_tsl.begin(g_i2c, b::i2c_addr_tsl25911);
     g_guvb.begin(g_i2c, b::i2c_addr_guvb_c31sm);

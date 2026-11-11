@@ -52,28 +52,28 @@ frame:
   no_coat_keepouts:
     - { x0: 2.9, y0: 6.2, x1: 12.7, y1: 9.4, layer: F.SilkS }
   connector_labels: { J1: "CROWN" }   # destination board / port, placed next to each connector
-  # what each optical part measures, beside its reference (top)
+  # what each optical part measures, beside its reference (top; vertical along the edges)
   silk_labels:
-    - { text: "UV-B", x: 4.13, y: 5.25 }
-    - { text: "LIGHT", x: 7.8, y: 5.25 }
-    - { text: "UV-A", x: 11.47, y: 5.25 }
+    - { text: "UV-B", x: 1.5, y: 9.0, rot: 90 }
+    - { text: "LIGHT", x: 9.65, y: 7.8, rot: 90, size: 0.6 }
+    - { text: "UV-A", x: 14.1, y: 9.0, rot: 90 }
   # every reference hand-placed next to its part (the automatic search hid half of them on this small board)
   ref_positions:
-    D1: { x: 2.2, y: 7.8, rot: 90 }
-    D2: { x: 13.4, y: 7.8, rot: 90 }
+    D1: { x: 1.5, y: 6.3, rot: 90 }
+    D2: { x: 14.1, y: 6.3, rot: 90 }
     U2: { x: 5.95, y: 7.8, rot: 90 }
-    U1: { x: 7.8, y: 13.6 }
-    R1: { x: 4.5, y: 12.2 }
-    R2: { x: 11.1, y: 12.2 }
-    U3: { x: 7.8, y: 1.55 }
-    R3: { x: 4.6, y: 2.55 }
-    R4: { x: 11.0, y: 2.55 }
-    C4: { x: 4.8, y: 13.65 }
-    C2: { x: 7.8, y: 13.65 }
-    C5: { x: 10.8, y: 13.65 }
-    C3: { x: 4.8, y: 1.9 }
-    C6: { x: 7.8, y: 1.9 }
-    C1: { x: 10.8, y: 1.9 }
+    U1: { x: 7.8, y: 14.2 }
+    R1: { x: 1.9, y: 11.6, rot: 90 }
+    R2: { x: 13.7, y: 11.6, rot: 90 }
+    U3: { x: 7.8, y: 1.3 }
+    R3: { x: 1.9, y: 3.9, rot: 90 }
+    R4: { x: 13.7, y: 3.9, rot: 90 }
+    C4: { x: 5.9, y: 14.15 }
+    C5: { x: 9.7, y: 14.15 }
+    C2: { x: 13.85, y: 10.3, rot: 90 }
+    C1: { x: 1.75, y: 10.3, rot: 90 }
+    C3: { x: 5.9, y: 1.45 }
+    C6: { x: 9.7, y: 1.45 }
 
 heights:
   default: 0.6
@@ -86,23 +86,23 @@ heights:
 
 parts:
   # --- Top (+y, F.Cu, under the PTFE dome / JGS1 window): the three optical sensors in one row through the centre,
-  # the op-amp + gain resistors above, the ADC + VB divider below. No MLCCs on top: under the clear JGS1 window the
-  # sun heats one face of a top-side ceramic capacitor (cracking risk), so every capacitor sits on the shaded bottom ---
+  # the leaded op-amp (VSSOP-8) + gain resistors above, the leaded ADC (VSSOP-10) + VB divider below. No MLCCs on top:
+  # under the clear JGS1 window the sun heats one face of a top-side ceramic capacitor (cracking risk). Passives 0805.
   D1:  { x: 4.13, y: 7.8,  rot: 90,  block: uv, locked: true }     # GUVB-C21SD UV-B
   U2:  { x: 7.8,  y: 7.8,  rot: 0,   block: light, locked: true }  # TSL25911FN
   D2:  { x: 11.47, y: 7.8, rot: 90,  block: uv, locked: true }     # GUVA-C22SD UV-A
-  U1:  { x: 7.8,  y: 11.6, rot: 0,   block: uv }                   # TLV9062 (WSON-8)
-  R1:  { x: 4.5,  y: 11.0, rot: 180, block: uv }                   # UV-B gain 10 MOhm (pad 1 = summing node, inner)
-  R2:  { x: 11.1, y: 11.0, rot: 0,   block: uv }                   # UV-A gain 4.7 MOhm (pad 1 = summing node, inner)
-  U3:  { x: 7.8,  y: 3.3,  rot: 0,   block: uv }                   # ADS1115 (X2QFN-10), I2C 0x49
-  R3:  { x: 4.6,  y: 3.6,  rot: 0,   block: uv }                   # VB divider top
-  R4:  { x: 11.0, y: 3.6,  rot: 0,   block: uv }                   # VB divider bottom
+  U1:  { x: 7.8,  y: 11.9, rot: 0,   block: uv }                   # TLV9062 (VSSOP-8)
+  R1:  { x: 3.6,  y: 11.6, rot: 90,  block: uv }                   # UV-B gain 10 MOhm
+  R2:  { x: 12.0, y: 11.6, rot: 90,  block: uv }                   # UV-A gain 4.7 MOhm
+  U3:  { x: 7.8,  y: 3.6,  rot: 90,  block: uv }                   # ADS1115 (VSSOP-10, pins along x), I2C 0x49
+  R3:  { x: 3.6,  y: 3.9,  rot: 90,  block: uv }                   # VB divider top
+  R4:  { x: 12.0, y: 3.9,  rot: 90,  block: uv }                   # VB divider bottom
 
-  # --- Bottom (-y, B.Cu, shaded): riser J1 dead centre as on dome_legacy; capacitors in a row above and below it ---
+  # --- Bottom (-y, B.Cu, shaded): riser J1 dead centre; capacitors above, below and beside it ---
   J1:  { x: 7.8,  y: 7.8,  rot: 0,   side: back, block: int_crown, locked: true }
-  C4:  { x: 4.8,  y: 12.45, rot: 0,  side: back, block: uv }       # UV-B feedback capacitor (under R1)
-  C2:  { x: 7.8,  y: 12.45, rot: 0,  side: back, block: uv }       # TLV9062 decoupling (under U1)
-  C5:  { x: 10.8, y: 12.45, rot: 0,  side: back, block: uv }       # UV-A feedback capacitor (under R2)
-  C3:  { x: 4.8,  y: 3.15, rot: 0,   side: back, block: uv }       # ADS1115 decoupling
-  C6:  { x: 7.8,  y: 3.15, rot: 0,   side: back, block: uv }       # VB reservoir
-  C1:  { x: 10.8, y: 3.15, rot: 0,   side: back, block: light }    # TSL25911 decoupling
+  C4:  { x: 5.9,  y: 12.5, rot: 0,   side: back, block: uv }       # UV-B feedback capacitor
+  C5:  { x: 9.7,  y: 12.5, rot: 0,   side: back, block: uv }       # UV-A feedback capacitor
+  C2:  { x: 13.85, y: 7.8, rot: 90,  side: back, block: uv }       # TLV9062 decoupling
+  C1:  { x: 1.75, y: 7.8,  rot: 90,  side: back, block: light }    # TSL25911 decoupling
+  C3:  { x: 5.9,  y: 3.1,  rot: 0,   side: back, block: uv }       # ADS1115 decoupling
+  C6:  { x: 9.7,  y: 3.1,  rot: 0,   side: back, block: uv }       # VB reservoir

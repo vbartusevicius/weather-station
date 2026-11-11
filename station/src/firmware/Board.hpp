@@ -11,7 +11,7 @@
 //   D2  / GPIO2  = CROWN_BOOT0 (crown STM32 BOOT0: high + reset = ROM I2C bootloader)
 //   D3  / GPIO21 = HEAT_PWM   (LEDC PWM driving AO3400A reflector de-icing heater MOSFET)
 //   D4  / GPIO22 = I2C_SDA    (crown STM32 0x2A, BMP585, LSM6DS3, ADS1115, PMSA003I, SHT40, SGP41, SCD41, LTR390,
-//                              TSL25911, GUVB-C31SM, MMC5603NJ)
+//                              TSL25911, GUVB-C31SM, MMC5983MA)
 //   D5  / GPIO23 = I2C_SCL    (I2C clock, 100 kHz standard mode for every device)
 //   D6  / GPIO16 = RS485_TX   (UART1 TX -> SP3485 DI)
 //   D7  / GPIO17 = RS485_RX   (UART1 RX <- SP3485 RO)
@@ -49,7 +49,7 @@ constexpr gpio_num_t rf_antenna_select_pin = GPIO_NUM_14;
 constexpr std::int8_t wifi_max_tx_power_quarter_dbm = 82;  // 82 * 0.25 dBm = +20.5 dBm (112 mW max linear PA)
 
 // I2C 7-bit addresses of all onboard & probe/crown/dome sensors
-constexpr std::uint8_t i2c_addr_mmc5603 = 0x30;  // crown U6 MEMSIC MMC5603NJ 20-bit AMR compass
+constexpr std::uint8_t i2c_addr_mmc5983 = 0x30;  // crown U6 MEMSIC MMC5983MA 18-bit AMR compass
 constexpr std::uint8_t i2c_addr_tsl25911 = 0x29;
 constexpr std::uint8_t i2c_addr_guvb_c31sm = 0x39;  // dome U3 GenUV GUVB-C31SM AlGaN UV-B sensor
 constexpr std::uint8_t i2c_addr_sht4x = 0x44;   // probe U3 SHT40-AD1F (SHT4x command set)

@@ -17,6 +17,13 @@ OUTDOOR_MIN_C = -40
 # Datasheet operating ranges for parts whose JLCPCB record has no temperature attribute.
 DATASHEET_MIN_C = {
     "SS16": -55,              # MDD SS12..SS16 datasheet: Tj / Tstg -55..+150 C
+    "SS14": -55,              # MDD SS12..SS16 datasheet: Tj / Tstg -55..+150 C (main D5)
+    "CC0805JRNPO9BN221": -55,   # YAGEO CC0805 NP0 (C0G) MLCC: -55..+125 C
+    "CC0805JRNPO9BN330": -55,   # YAGEO CC0805 NP0 (C0G) MLCC: -55..+125 C
+    "CC0805JRNPO9BN471": -55,   # YAGEO CC0805 NP0 (C0G) MLCC: -55..+125 C
+    "CC0805JRNPO9BN680": -55,   # YAGEO CC0805 NP0 (C0G) MLCC: -55..+125 C
+    "CC0805JRNPO9BN180": -55,   # YAGEO CC0805 NP0 (C0G) MLCC: -55..+125 C
+    "CC0805JRNPO9BN220": -55,   # YAGEO CC0805 NP0 (C0G) MLCC: -55..+125 C
     "BAV99,215": -65,         # Nexperia BAV99: Tamb -65..+150 C
     "B360A-13-F": -65,        # Diodes Inc. B360A: -65..+150 C
     "AS3935-BQFT": -40,       # ScioSense AS3935 datasheet: -40..+85 C

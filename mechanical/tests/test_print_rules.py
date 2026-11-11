@@ -150,3 +150,15 @@ def test_push_in_terminal_j1_is_reachable():
     for side in (be.box(j["x1"], j["x1"] + 10.0, y0, y1, j["z0"], j["z1"]), be.box(j["x0"] - 10.0, j["x0"], y0, y1, j["z0"], j["z1"]),
                  be.box(j["x0"], j["x1"], y0, y1, j["z1"], j["z1"] + 10.0), be.box(j["x0"], j["x1"], y0, y1, j["z0"] - 10.0, j["z0"])):
         assert base.intersect(side).val().Volume() < 1e-3, "less than 10 mm free beside J1"
+
+
+def test_pagoda_weep_grilles_stay_clear_of_the_louver_rings():
+    """The top-piece weep slits must not cut through the louver skirt / rim rings (they sliced the skirt into slivers
+    at r 30.5): every slit edge >= 0.6 mm from each ring's radial span."""
+    half = be.PAGODA_VENT_W / 2.0
+    rings = (be.LOUVER_SKIRT[:2], be.LOUVER_RIM[:2])
+    for off in be.PAGODA_VENT_OFFSETS:
+        r0, r1 = be.PAGODA_VENT_R + off - half, be.PAGODA_VENT_R + off + half
+        for a, b in rings:
+            gap = max(a - r1, r0 - b)
+            assert gap >= 0.6, f"slit r {r0:.1f}..{r1:.1f} only {gap:.2f} mm from the ring r {a}..{b}"

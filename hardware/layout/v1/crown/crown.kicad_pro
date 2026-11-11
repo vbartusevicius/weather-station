@@ -588,6 +588,10 @@
       },
       {
         "netclass": "SELV-CROWN",
+        "pattern": "MAG_CAP"
+      },
+      {
+        "netclass": "SELV-CROWN",
         "pattern": "MUX_S0"
       },
       {

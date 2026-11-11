@@ -17,8 +17,8 @@ B360A (60 V, 3 A); UVLO 511k / 82.5k (start 8.0 V, stop 6.25 V); gm_ps = 12 A/V,
 from common import block, part, src
 from skidl import Net
 
-R0603 = "Resistor_SMD:R_0603_1608Metric"
-C0603 = "Capacitor_SMD:C_0603_1608Metric"
+R0805 = "Resistor_SMD:R_0805_2012Metric"   # 0805: hand soldering
+C0805 = "Capacitor_SMD:C_0805_2012Metric"   # 0805: hand soldering
 C1206 = "Capacitor_SMD:C_1206_3216Metric"
 POWERPAD8 = "Package_SO:TI_SO-PowerPAD-8_ThermalVias"
 D_SMA = "Diode_SMD:D_SMA"
@@ -34,10 +34,10 @@ RAILS = {
 
 
 def res(value, source, ref):
-    return part("Device", "R", value, R0603, src(source=source), ref=ref)
+    return part("Device", "R", value, R0805, src(source=source), ref=ref)
 
 
-def cap(value, source, ref, footprint=C0603):
+def cap(value, source, ref, footprint=C0805):
     return part("Device", "C", value, footprint, src(source=source), ref=ref)
 
 
@@ -70,13 +70,13 @@ def tps54360(name, vin, vout, gnd, u, l, d, c, r, volts=5.0):
     c5_val, c5_note = cfg["c5"]
     caps = (("2u2 100V", vin, gnd, "TPS54360 input capacitor 1 (100 V X7R, >= 3 uF effective with C2)", C1206),
             ("2u2 100V", vin, gnd, "TPS54360 input capacitor 2", C1206),
-            ("100n 100V", vin, gnd, "TPS54360 input high-frequency decoupling (at VIN/GND pins)", C0603),
-            ("100n 50V", bst, sw, "TPS54360 bootstrap capacitor (datasheet 0.1 uF)", C0603),
+            ("100n 100V", vin, gnd, "TPS54360 input high-frequency decoupling (at VIN/GND pins)", C0805),
+            ("100n 50V", bst, sw, "TPS54360 bootstrap capacitor (datasheet 0.1 uF)", C0805),
             (cfg["cout"], vout, gnd, "TPS54360 output capacitor 1", C1206),
             (cfg["cout"], vout, gnd, "TPS54360 output capacitor 2", C1206),
-            ("100n 50V", vout, gnd, "TPS54360 output high-frequency decoupling", C0603),
-            (c5_val, cc, gnd, f"TPS54360 compensation zero capacitor C5 ({c5_note})", C0603),
-            ("68p C0G 50V", comp, gnd, "TPS54360 compensation pole capacitor C8", C0603))
+            ("100n 50V", vout, gnd, "TPS54360 output high-frequency decoupling", C0805),
+            (c5_val, cc, gnd, f"TPS54360 compensation zero capacitor C5 ({c5_note})", C0805),
+            ("68p C0G 50V", comp, gnd, "TPS54360 compensation pole capacitor C8", C0805))
     for ref, (val, a, b, source, fp) in zip(c, caps):
         x = cap(val, f"{source} [{name}]", ref, fp)
         x[1] += a

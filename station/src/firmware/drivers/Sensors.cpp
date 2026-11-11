@@ -1,5 +1,7 @@
 #include "Sensors.hpp"
 
+#include "environment/Mmc5983.hpp"
+
 #include <algorithm>
 #include <cmath>
 
@@ -364,51 +366,48 @@ bool Lsm6ds3::read_accel(core::Vec3& g) {
     return true;
 }
 
-// -------------------------------------------------------------------------------------- MMC5603
-bool Mmc5603::begin(I2cBus& bus, std::uint8_t addr) {
+// ------------------------------------------------------------------------------------- MMC5983MA
+// MEMSIC MMC5983MA register map (datasheet Rev A): 0x00..0x05 X/Y/Z bits 17..2, 0x06 bits 1..0 of X (7:6), Y (5:4),
+// Z (3:2); 0x08 status (bit 0 Meas_M_Done); 0x09 internal control 0 (bit 0 TM_M, bit 3 SET); 0x0A control 1 (BW);
+// 0x2F product ID = 0x30. 18 bit: null field 131072, 16384 counts per gauss.
+bool Mmc5983::begin(I2cBus& bus, std::uint8_t addr) {
     if (!bus.probe(addr)) {
         return false;
     }
     dev_ = bus.add(addr);
     std::uint8_t pid = 0;
-    if (!dev_.read_regs(0x39, &pid, 1) || pid != 0x10) {
+    if (!dev_.read_regs(0x2F, &pid, 1) || pid != 0x30) {
         return false;
     }
-    dev_.write_reg(0x1C, 0x00);  // Control1: BW 6.6 ms
+    dev_.write_reg(0x0A, 0x00);  // Control 1: BW 100 Hz (8 ms measurement)
     present_ = true;
     return true;
 }
 
-bool Mmc5603::read(core::Vec3& field_ut) {
+bool Mmc5983::read(core::Vec3& field_ut) {
     if (!present_) {
         return false;
     }
     if ((reads_++ % 100U) == 0U) {
-        dev_.write_reg(0x1B, 0x08);  // SET pulse: removes sensor offset drift / magnetisation
+        dev_.write_reg(0x09, 0x08);  // SET pulse: removes sensor offset drift / magnetisation
         delay_ms(1);
     }
-    dev_.write_reg(0x1B, 0x01);  // TM_M: one magnetic measurement
+    dev_.write_reg(0x09, 0x01);  // TM_M: one magnetic measurement
     std::uint8_t st = 0;
     for (int i = 0; i < 10; ++i) {
         delay_ms(2);
-        if (dev_.read_regs(0x18, &st, 1) && (st & 0x40)) {
+        if (dev_.read_regs(0x08, &st, 1) && (st & 0x01)) {
             break;
         }
     }
-    if ((st & 0x40) == 0) {
+    if ((st & 0x01) == 0) {
         return false;
     }
-    std::uint8_t b[9];
-    if (!dev_.read_regs(0x00, b, 9)) {
+    std::uint8_t b[7];
+    if (!dev_.read_regs(0x00, b, 7)) {
         return false;
     }
-    auto axis = [](std::uint8_t hi, std::uint8_t mid, std::uint8_t lo4) {
-        const std::uint32_t raw = (static_cast<std::uint32_t>(hi) << 12) | (static_cast<std::uint32_t>(mid) << 4) | (lo4 >> 4);
-        return (static_cast<float>(raw) - 524288.0F) / 16384.0F * 100.0F;  // 16384 counts / gauss
-    };
-    field_ut.x = axis(b[0], b[1], b[6]);
-    field_ut.y = axis(b[2], b[3], b[7]);
-    field_ut.z = axis(b[4], b[5], b[8]);
+    field_ut = environment::mmc5983_field_ut(b);
     return true;
 }
 

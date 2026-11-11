@@ -24,21 +24,21 @@ from skidl import Net
 from variants.v1.crown import DOME_B2B_LINK
 from variants.v1.main import wire
 
-C0603 = "Capacitor_SMD:C_0603_1608Metric"
-R0603 = "Resistor_SMD:R_0603_1608Metric"
+C0805 = "Capacitor_SMD:C_0805_2012Metric"   # 0805: hand soldering
+R0805 = "Resistor_SMD:R_0805_2012Metric"   # 0805: hand soldering
 B2B_HDR4 = "gateway_fp:HX_PZ2.54-1x4P-SMD"
 FP_TSL25911 = "gateway_fp:AMS_TSL25911FN"
 FP_PD = "gateway_fp:Genicom_COB2418"
-FP_WSON8 = "Package_SON:Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm"
-FP_ADS_X2QFN = "gateway_fp:TI_ADS1115_X2QFN-10"
+FP_VSSOP8 = "gateway_fp:TI_TLV9062_VSSOP-8"
+FP_ADS_VSSOP = "gateway_fp:TI_ADS1115_VSSOP-10"
 
 
 def cap(value, source, ref):
-    return part("Device", "C", value, C0603, src(source=source), ref=ref)
+    return part("Device", "C", value, C0805, src(source=source), ref=ref)
 
 
 def res(value, source, ref):
-    return part("Device", "R", value, R0603, src(source=source), ref=ref)
+    return part("Device", "R", value, R0805, src(source=source), ref=ref)
 
 
 def two(p, a, b):
@@ -88,9 +88,9 @@ def build():
     d2["A"] += vb
     d2["K"] += uva_in
 
-    u1 = part("gateway", "TLV9062", "TLV9062IDSGR", FP_WSON8,
-              src(mpn="TLV9062IDSGR", mfr="Texas Instruments", lcsc="C2058009",
-                  source="Dual 0.5 pA CMOS op-amp (WSON-8 2x2): UV-B / UV-A photodiode transimpedance amplifiers"),
+    u1 = part("gateway", "TLV9062", "TLV9062IDGKR", FP_VSSOP8,
+              src(mpn="TLV9062IDGKR", mfr="Texas Instruments", lcsc="C398356",
+                  source="Dual 0.5 pA CMOS op-amp (VSSOP-8, leaded): UV-B / UV-A photodiode transimpedance amplifiers"),
               ref="U1")
     for pin, net in (("1", uvb_out), ("2", uvb_in), ("3", vb), ("4", gnd),
                      ("5", vb), ("6", uva_in), ("7", uva_out), ("8", v3)):
@@ -104,9 +104,9 @@ def build():
     two(res("10k", "Photodiode bias divider bottom", "R4"), vb, gnd)
     two(cap("1u 50V", "Photodiode bias VB reservoir", "C6"), vb, gnd)
 
-    u3 = part("gateway", "ADS1115", "ADS1115IRUGR", FP_ADS_X2QFN,
-              src(mpn="ADS1115IRUGR", mfr="Texas Instruments", lcsc="C2651328",
-                  source="16-bit I2C ADC (X2QFN-10), I2C 0x49: UV-B / UV-A transimpedance outputs against VB"),
+    u3 = part("gateway", "ADS1115", "ADS1115IDGSR", FP_ADS_VSSOP,
+              src(mpn="ADS1115IDGSR", mfr="Texas Instruments", lcsc="C37593",
+                  source="16-bit I2C ADC (VSSOP-10, leaded; same pinout as the X2QFN), I2C 0x49: UV-B / UV-A transimpedance outputs against VB"),
               ref="U3")
     for pin, net in (("1", v3), ("2", NC), ("3", gnd), ("4", uvb_out), ("5", uva_out), ("6", gnd),
                      ("7", vb), ("8", v3), ("9", sda), ("10", scl)):

@@ -10,19 +10,19 @@ from builtins import NC
 from common import block, part, src
 from skidl import Net
 
-R0603 = "Resistor_SMD:R_0603_1608Metric"
+R0805 = "Resistor_SMD:R_0805_2012Metric"   # 0805: hand soldering
 R1206 = "Resistor_SMD:R_1206_3216Metric"
-C0603 = "Capacitor_SMD:C_0603_1608Metric"
+C0805 = "Capacitor_SMD:C_0805_2012Metric"   # 0805: hand soldering
 FP_LSM6DS3 = "gateway_fp:ST_LSM6DS3TR-C_LGA-14"
 FP_B6B_ZR = "gateway_fp:JST_B6B-ZR-SM4-TF"
 FP_MSOP10 = "gateway_fp:TI_ADS1115_VSSOP-10"
 
 
-def res(value, fields=None, footprint=R0603, ref=None):
+def res(value, fields=None, footprint=R0805, ref=None):
     return part("Device", "R", value, footprint, fields, ref=ref)
 
 
-def cap(value, fields=None, footprint=C0603, ref=None):
+def cap(value, fields=None, footprint=C0805, ref=None):
     return part("Device", "C", value, footprint, fields, ref=ref)
 
 

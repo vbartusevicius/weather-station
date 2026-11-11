@@ -14,6 +14,7 @@ D1,24.600mm,7.000mm,Top,90
 D2,28.600mm,7.000mm,Top,90
 D3,25.000mm,27.500mm,Bottom,0
 D4,8.655mm,11.800mm,Bottom,180
+D5,19.000mm,12.000mm,Bottom,0
 F1,19.600mm,7.000mm,Top,90
 J1,8.600mm,7.000mm,Top,180
 J2,23.500mm,48.238mm,Top,180
@@ -40,7 +41,6 @@ R7,23.500mm,23.000mm,Top,0
 R8,11.000mm,43.500mm,Top,0
 R9,11.000mm,45.700mm,Top,0
 SW1,19.000mm,6.000mm,Bottom,90
-U2,23.631mm,14.600mm,Top,270
 U4,9.500mm,37.000mm,Bottom,90
 U5,8.000mm,46.000mm,Bottom,0
 U7,5.000mm,44.500mm,Top,0

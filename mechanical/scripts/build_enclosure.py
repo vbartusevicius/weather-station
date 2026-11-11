@@ -108,6 +108,8 @@ CROWN_CLIPS = ((-30.75, 15.0, (1, 0)), (-15.0, 30.75, (0, -1)), (-15.0, -30.75, 
 # Printed M12x1.75 strut locknuts: the internal thread groove reaches r = 6.22 mm, so 15 mm across flats leaves a
 # 1.28 mm wall at the flats (12 mm AF cut straight through them). Corners r = 8.66 mm -> 9.0 mm pockets.
 STRUT_NUT_AF = 15.0
+# Pagoda top-piece weep grilles: 3 slits 1.2 mm wide, radial centres PAGODA_VENT_R + offsets
+PAGODA_VENT_R, PAGODA_VENT_OFFSETS, PAGODA_VENT_W = 35.5, (-2.4, 0.0, 2.4), 1.2
 # Reset button: pin r 2.15 / flange r 3.65 in bore r 2.55 / counterbore r 4.05 = 0.40 mm radial (powder-print fit)
 BTN_PIN_R, BTN_FLANGE_R, BTN_BORE_R, BTN_CBORE_R = 2.15, 3.65, 2.55, 4.05
 # Printed thread flank clearance per side (MJF / SLS PA12: ~+-0.3 mm; 0.18-0.20 mm binds in powder prints)
@@ -290,9 +292,11 @@ def build_base(umbrella=True):
     cradle_cyl = cone_y(MAST_Y0, 34.0, mast_or, mast_or).cut(box(-40.0, 40.0, MAST_Y0 - 0.5, 30.0, -40.0, -1.0))
     flange = box(-33.0, 33.0, MAST_Y0, 28.0, -1.0, 8.0)
     neck = cone_y(28.0, 35.0, mast_or, OUTER_R)
+    # flat ear pockets end at y = 28.0 where the neck cone starts: ending them higher (30.5) left a knife-edge wedge of
+    # cone wall that the PMSA003I exhaust slits cut into zero-thickness slivers (non-manifold mesh, see-through in a slicer)
     rear_ear_flat = (
-        box(-35.0, -19.2, MAST_Y0 - 0.5, 30.5, 8.0, 30.0)
-        .union(box(19.2, 35.0, MAST_Y0 - 0.5, 30.5, 8.0, 30.0))
+        box(-35.0, -19.2, MAST_Y0 - 0.5, 28.0, 8.0, 30.0)
+        .union(box(19.2, 35.0, MAST_Y0 - 0.5, 28.0, 8.0, 30.0))
     )
     body = cradle_cyl.union(flange).union(neck).cut(rear_ear_flat)
 
@@ -710,12 +714,14 @@ def _build_pagoda():
         m6_bore = cone_y(68.0, 121.6, 3.1, 3.1).translate((px, 0, pz))
         body = body.union(top_well_boss).cut(top_female_sock).cut(bolt_head_well).cut(m6_bore)
 
-    # 4x Sheltered Ventilation & Moisture-Weep Micro-Grilles in `pagoda`'s Top Piece (`at 0, 90, 180, 270 deg`, `r = 25..36 mm`, `y = 114.8..120.2 mm`)
+    # 4x Sheltered Ventilation & Moisture-Weep Micro-Grilles in `pagoda`'s Top Piece (`at 0, 90, 180, 270 deg`, `r = 32.5..38.5 mm`, `y = 114.8..120.2 mm`)
     # so any moisture or condensation entering through the C-shaped struts or joints dissipates downward into the 5th louver space!
+    # (r = PAGODA_VENT_R: outside the louver skirt ring r 30.0..31.4 hanging under the top piece; at r 30.5 the slits
+    #  sliced that ring into slivers)
     for deg in (0, 90, 180, 270):
         rad = math.radians(deg)
-        gx, gz = 30.5 * math.cos(rad), 30.5 * math.sin(rad)
-        for off in (-2.4, 0.0, 2.4):
+        gx, gz = PAGODA_VENT_R * math.cos(rad), PAGODA_VENT_R * math.sin(rad)
+        for off in PAGODA_VENT_OFFSETS:
             if deg in (90, 270):
                 vent_slit = box(gx - 3.5, gx + 3.5, 114.8, 120.2, gz + off - 0.6, gz + off + 0.6)
             else:

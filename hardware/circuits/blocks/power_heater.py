@@ -5,8 +5,8 @@ The two supply rails (+5V electronics, +12V_HEAT heaters / transducer drive) com
 from common import block, part, power_flag, src
 from skidl import Net
 
-R0603 = "Resistor_SMD:R_0603_1608Metric"
-C0603 = "Capacitor_SMD:C_0603_1608Metric"
+R0805 = "Resistor_SMD:R_0805_2012Metric"   # 0805: hand soldering
+C0805 = "Capacitor_SMD:C_0805_2012Metric"   # 0805: hand soldering
 C1206 = "Capacitor_SMD:C_1206_3216Metric"
 D_SMA = "Diode_SMD:D_SMA"
 FUSE2920 = "Fuse:Fuse_2920_7451Metric"
@@ -14,11 +14,11 @@ TERM_KF250_4P = "gateway_fp:TerminalBlock_Kefa_KF250-3.5-4P"
 SOT23_AO3400 = "gateway_fp:AOS_AO3400A_SOT-23"
 
 
-def res(value, fields=None, footprint=R0603, ref=None):
+def res(value, fields=None, footprint=R0805, ref=None):
     return part("Device", "R", value, footprint, fields, ref=ref)
 
 
-def cap(value, fields=None, footprint=C0603, ref=None):
+def cap(value, fields=None, footprint=C0805, ref=None):
     return part("Device", "C", value, footprint, fields, ref=ref)
 
 

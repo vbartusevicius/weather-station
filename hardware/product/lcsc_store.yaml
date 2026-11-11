@@ -29,6 +29,14 @@ substitutes:
     lcsc: C23163
     mpn: 0603WAF4704T5E
     note: UNI-ROYAL 4.7 MOhm 1 % 100 mW 75 V 0603 (same rating); stock 50800
+  C26108:   # UNI-ROYAL 0805W8F1005T5E 10 MOhm 1 % 0805 (dome R1): LCSC store stock 0 (2026-11-11)
+    lcsc: C2778934
+    mpn: HV05W8F1005T5E
+    note: UNI-ROYAL 10 MOhm 1 % 0805 high-voltage series (same value / tolerance); stock 1300
+  C170101:  # Samsung CL31B225KCHSNNE 2.2 uF 100 V X7R 1206 (power): LCSC store stock 0 (2026-11-11)
+    lcsc: C1021612
+    mpn: FS31X225K101EPG
+    note: PSA 2.2 uF 100 V X7R 1206 (same rating); stock 68850
   C2500:    # Nexperia BAV99,215 (crown T/R isolation, SOT-23 series pair): LCSC store stock 0 (2026-10-29)
     lcsc: C81174
     mpn: PMBD7000,215

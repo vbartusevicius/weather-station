@@ -3,7 +3,7 @@
   - J5: 10-pin JST-SH to the `power` board (VIN_PROT out, +5V / +12V_HEAT from two TPS54360 bucks, +3V3_PROBE from
     its LDO straight through to the probe connector J3)
   - Q1: AO3400A low-side PWM de-icing heater MOSFET switch + SS16 flyback diode
-  - U2, U3: LM66100 ideal diode + Seeed XIAO ESP32-C6 on 5 mm female headers + SW1 service button
+  - D5, U3: SS14 Schottky (back-feed block) + Seeed XIAO ESP32-C6 on 5 mm female headers + SW1 service button
   - U7/D4: SP3485 RS-485 (UART1 TX / RX + RTS-driven DE), 390R fail-safe bias, SM712 surge TVS, optional 120R (R26)
   - U4: ADS1115 heater monitor, U5: LSM6DS3TR-C IMU (the AS3935 lightning detector moved to the crown board)
   - J2: 12-pin JST-SH to crown J1; J3: 10-pin JST-SH to probe J1; J4: 6-pin JST-ZH to Plantower PMSA003I PM module

@@ -86,6 +86,77 @@
         "2": "2"
       }
     },
+    "C106243": {
+      "record": {
+        "componentModelEn": "CC0805KKX7R0BB104",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_1810311438_YAGEO-CC0805KKX7R0BB104_C106243.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C106243",
+            "attribute_value_name": "100V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C106243",
+            "attribute_value_name": "100nF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
+      }
+    },
+    "C106809": {
+      "record": {
+        "componentModelEn": "X49SM8MSD2SI",
+        "componentBrandEn": "YXC Crystal Oscillators",
+        "componentSpecificationEn": "HC-49S-SMD",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2403291504_YXC-Crystal-Oscillators-X49SM8MSD2SI_C106809.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C106809",
+            "attribute_value_name": "-40℃~+85℃"
+          }
+        ]
+      },
+      "footprint": "HC-49S_L11.4-W4.8",
+      "pads": [
+        [
+          "1",
+          -4.552950000000046,
+          -0.0
+        ],
+        [
+          "2",
+          4.552949999999931,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "OSC1",
+        "2": "OSC2"
+      }
+    },
     "C106856": {
       "record": {
         "componentModelEn": "CC0603KRX7R9BB333",
@@ -154,6 +225,196 @@
         [
           "1",
           -0.700023999999964,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
+      }
+    },
+    "C107112": {
+      "record": {
+        "componentModelEn": "CC0805JRNPO9BN221",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_YAGEO-CC0805JRNPO9BN221_C107112.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C107112",
+            "attribute_value_name": "50V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C107112",
+            "attribute_value_name": "220pF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
+      }
+    },
+    "C107115": {
+      "record": {
+        "componentModelEn": "CC0805JRNPO9BN330",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_YAGEO-CC0805JRNPO9BN330_C107115.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C107115",
+            "attribute_value_name": "50V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C107115",
+            "attribute_value_name": "33pF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
+      }
+    },
+    "C107120": {
+      "record": {
+        "componentModelEn": "CC0805JRNPO9BN680",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_YAGEO-CC0805JRNPO9BN680_C107120.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C107120",
+            "attribute_value_name": "50V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C107120",
+            "attribute_value_name": "68pF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
+      }
+    },
+    "C107147": {
+      "record": {
+        "componentModelEn": "CC0805KRX7R9BB223",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2304140030_YAGEO-CC0805KRX7R9BB223_C107147.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C107147",
+            "attribute_value_name": "50V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C107147",
+            "attribute_value_name": "22nF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
+      }
+    },
+    "C107150": {
+      "record": {
+        "componentModelEn": "CC0805KRX7R9BB333",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_YAGEO-CC0805KRX7R9BB333_C107150.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C107150",
+            "attribute_value_name": "50V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C107150",
+            "attribute_value_name": "33nF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
           -0.0
         ]
       ],
@@ -424,6 +685,44 @@
       "pin_names": {
         "1": "1",
         "2": "2"
+      }
+    },
+    "C149504": {
+      "record": {
+        "componentModelEn": "0805W8F1003T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2205312316_UNI-ROYAL-Uniroyal-Elec-0805W8F1003T5E_C149504.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C149504",
+            "attribute_value_name": "100kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C149504",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
       }
     },
     "C15849": {
@@ -874,6 +1173,614 @@
         "2": "2"
       }
     },
+    "C17024": {
+      "record": {
+        "componentModelEn": "CL21A106KPFNNNE",
+        "componentBrandEn": "Samsung Electro-Mechanics",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Samsung-Electro-Mechanics-CL21A106KPFNNNE_C17024.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C17024",
+            "attribute_value_name": "10V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C17024",
+            "attribute_value_name": "10uF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
+      }
+    },
+    "C17402": {
+      "record": {
+        "componentModelEn": "0805W8F1022T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010216_UNI-ROYAL-Uniroyal-Elec-0805W8F1022T5E_C17402.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17402",
+            "attribute_value_name": "10.2kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17402",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17414": {
+      "record": {
+        "componentModelEn": "0805W8F1002T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2411221126_UNI-ROYAL-Uniroyal-Elec-0805W8F1002T5E_C17414.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17414",
+            "attribute_value_name": "10kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17414",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17415": {
+      "record": {
+        "componentModelEn": "0805W8F100JT5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010216_UNI-ROYAL-Uniroyal-Elec-0805W8F100JT5E_C17415.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17415",
+            "attribute_value_name": "10Ω"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17415",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805_NEW",
+      "pads": [
+        [
+          "1",
+          -0.9662160000000222,
+          -0.0
+        ],
+        [
+          "2",
+          0.9662160000000222,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17437": {
+      "record": {
+        "componentModelEn": "0805W8F1200T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010216_UNI-ROYAL-Uniroyal-Elec-0805W8F1200T5E_C17437.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17437",
+            "attribute_value_name": "120Ω"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17437",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17450": {
+      "record": {
+        "componentModelEn": "0805W8F1303T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010216_UNI-ROYAL-Uniroyal-Elec-0805W8F1303T5E_C17450.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17450",
+            "attribute_value_name": "130kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17450",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17460": {
+      "record": {
+        "componentModelEn": "0805W8F1403T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010216_UNI-ROYAL-Uniroyal-Elec-0805W8F1403T5E_C17460.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17460",
+            "attribute_value_name": "140kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17460",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17513": {
+      "record": {
+        "componentModelEn": "0805W8F1001T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2205311800_UNI-ROYAL-Uniroyal-Elec-0805W8F1001T5E_C17513.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17513",
+            "attribute_value_name": "1kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17513",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17514": {
+      "record": {
+        "componentModelEn": "0805W8F1004T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010200_UNI-ROYAL-Uniroyal-Elec-0805W8F1004T5E_C17514.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17514",
+            "attribute_value_name": "1MΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17514",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17520": {
+      "record": {
+        "componentModelEn": "0805W8F2201T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010200_UNI-ROYAL-Uniroyal-Elec-0805W8F2201T5E_C17520.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17520",
+            "attribute_value_name": "2.2kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17520",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17560": {
+      "record": {
+        "componentModelEn": "0805W8F2202T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010200_UNI-ROYAL-Uniroyal-Elec-0805W8F2202T5E_C17560.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17560",
+            "attribute_value_name": "22kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17560",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17621": {
+      "record": {
+        "componentModelEn": "0805W8F3002T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2205311830_UNI-ROYAL-Uniroyal-Elec-0805W8F3002T5E_C17621.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17621",
+            "attribute_value_name": "30kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17621",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17630": {
+      "record": {
+        "componentModelEn": "0805W8F3300T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2205311830_UNI-ROYAL-Uniroyal-Elec-0805W8F3300T5E_C17630.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17630",
+            "attribute_value_name": "330Ω"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17630",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17655": {
+      "record": {
+        "componentModelEn": "0805W8F3900T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010200_UNI-ROYAL-Uniroyal-Elec-0805W8F3900T5E_C17655.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17655",
+            "attribute_value_name": "390Ω"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17655",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17673": {
+      "record": {
+        "componentModelEn": "0805W8F4701T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010200_UNI-ROYAL-Uniroyal-Elec-0805W8F4701T5E_C17673.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17673",
+            "attribute_value_name": "4.7kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17673",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17674": {
+      "record": {
+        "componentModelEn": "0805W8F4704T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010200_UNI-ROYAL-Uniroyal-Elec-0805W8F4704T5E_C17674.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17674",
+            "attribute_value_name": "4.7MΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17674",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
     "C176812": {
       "record": {
         "componentModelEn": "TSL25911FN",
@@ -929,6 +1836,234 @@
         "4": "NC",
         "5": "VDD",
         "6": "SDA"
+      }
+    },
+    "C17709": {
+      "record": {
+        "componentModelEn": "0805W8F4703T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010200_UNI-ROYAL-Uniroyal-Elec-0805W8F4703T5E_C17709.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17709",
+            "attribute_value_name": "470kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17709",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17713": {
+      "record": {
+        "componentModelEn": "0805W8F4702T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010200_UNI-ROYAL-Uniroyal-Elec-0805W8F4702T5E_C17713.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17713",
+            "attribute_value_name": "47kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17713",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17735": {
+      "record": {
+        "componentModelEn": "0805W8F5113T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010200_UNI-ROYAL-Uniroyal-Elec-0805W8F5113T5E_C17735.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17735",
+            "attribute_value_name": "511kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17735",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17737": {
+      "record": {
+        "componentModelEn": "0805W8F5102T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010200_UNI-ROYAL-Uniroyal-Elec-0805W8F5102T5E_C17737.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17737",
+            "attribute_value_name": "51kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17737",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17769": {
+      "record": {
+        "componentModelEn": "0805W8F6491T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2205311830_UNI-ROYAL-Uniroyal-Elec-0805W8F6491T5E_C17769.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17769",
+            "attribute_value_name": "6.49kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17769",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C17772": {
+      "record": {
+        "componentModelEn": "0805W8F6801T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2205311830_UNI-ROYAL-Uniroyal-Elec-0805W8F6801T5E_C17772.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C17772",
+            "attribute_value_name": "6.8kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C17772",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
       }
     },
     "C18184976": {
@@ -1284,6 +2419,44 @@
         [
           "1",
           -0.7533639999999732,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
+    "C21398": {
+      "record": {
+        "componentModelEn": "0805W8F5362T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010130_UNI-ROYAL-Uniroyal-Elec-0805W8F5362T5E_C21398.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C21398",
+            "attribute_value_name": "53.6kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C21398",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
           -0.0
         ]
       ],
@@ -2014,6 +3187,33 @@
         "1": "1"
       }
     },
+    "C2480": {
+      "record": {
+        "componentModelEn": "SS14",
+        "componentBrandEn": "MDD(Microdiode Semiconductor)",
+        "componentSpecificationEn": "SMA(DO-214AC)",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2407101109_MDD-Microdiode-Semiconductor-SS14_C2480.pdf",
+        "componentLibraryType": "base",
+        "attributes": []
+      },
+      "footprint": "SMA_L4.2-W2.6-LS5.0-RD_1",
+      "pads": [
+        [
+          "2",
+          1.9649439999999687,
+          -0.0
+        ],
+        [
+          "1",
+          -1.9649439999999687,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "A",
+        "1": "K"
+      }
+    },
     "C2481": {
       "record": {
         "componentModelEn": "SS16",
@@ -2072,6 +3272,44 @@
         "1": "1",
         "2": "2",
         "3": "3"
+      }
+    },
+    "C25271": {
+      "record": {
+        "componentModelEn": "0805W8F100KT5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2205311845_UNI-ROYAL-Uniroyal-Elec-0805W8F100KT5E_C25271.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C25271",
+            "attribute_value_name": "1Ω"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C25271",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
       }
     },
     "C25334": {
@@ -2226,6 +3464,44 @@
         "1": "1"
       }
     },
+    "C26108": {
+      "record": {
+        "componentModelEn": "0805W8F1005T5E",
+        "componentBrandEn": "UNI-ROYAL(Uniroyal Elec)",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010030_UNI-ROYAL-Uniroyal-Elec-0805W8F1005T5E_C26108.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C26108",
+            "attribute_value_name": "10MΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C26108",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
+      }
+    },
     "C2651328": {
       "record": {
         "componentModelEn": "ADS1115IRUGR",
@@ -2305,6 +3581,44 @@
         "8": "VDD",
         "9": "SDA",
         "10": "SCL"
+      }
+    },
+    "C276314": {
+      "record": {
+        "componentModelEn": "RC0805FR-0782K5L",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2304140030_YAGEO-RC0805FR-0782K5L_C276314.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Resistance",
+            "component_code": "C276314",
+            "attribute_value_name": "82.5kΩ"
+          },
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C276314",
+            "attribute_value_name": "-55℃~+155℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
       }
     },
     "C27675": {
@@ -2413,6 +3727,44 @@
         [
           "1",
           -0.700023999999964,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
+      }
+    },
+    "C28323": {
+      "record": {
+        "componentModelEn": "CL21B105KBFNNNE",
+        "componentBrandEn": "Samsung Electro-Mechanics",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Samsung-Electro-Mechanics-CL21B105KBFNNNE_C28323.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C28323",
+            "attribute_value_name": "50V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C28323",
+            "attribute_value_name": "1uF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
           -0.0
         ]
       ],
@@ -3026,6 +4378,75 @@
         "7": "OUTB"
       }
     },
+    "C398356": {
+      "record": {
+        "componentModelEn": "TLV9062IDGKR",
+        "componentBrandEn": "Texas Instruments",
+        "componentSpecificationEn": "VSSOP-8",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_Texas-Instruments-TLV9062IDGKR_C398356.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C398356",
+            "attribute_value_name": "-40℃~+125℃"
+          }
+        ]
+      },
+      "footprint": "VSSOP-8_L3.0-W3.0-P0.65-LS4.9-BL",
+      "pads": [
+        [
+          "1",
+          -0.9751059999999853,
+          -2.1998940000000147
+        ],
+        [
+          "2",
+          -0.3248659999999991,
+          -2.1998940000000147
+        ],
+        [
+          "3",
+          0.3251200000000508,
+          -2.1998940000000147
+        ],
+        [
+          "4",
+          0.9751059999999853,
+          -2.1998940000000147
+        ],
+        [
+          "8",
+          -0.9751059999999853,
+          2.1998940000000147
+        ],
+        [
+          "7",
+          -0.3248659999999991,
+          2.1998940000000147
+        ],
+        [
+          "6",
+          0.3251200000000508,
+          2.1998940000000147
+        ],
+        [
+          "5",
+          0.9751059999999853,
+          2.1998940000000147
+        ]
+      ],
+      "pin_names": {
+        "3": "IN1+",
+        "2": "IN1-",
+        "1": "OUT1",
+        "8": "V+",
+        "4": "V-",
+        "5": "IN2+",
+        "6": "IN2-",
+        "7": "OUT2"
+      }
+    },
     "C404328": {
       "record": {
         "componentModelEn": "MMC5603NJ",
@@ -3069,6 +4490,123 @@
         "A2": "SCL",
         "B1": "VDD",
         "B2": "SDA"
+      }
+    },
+    "C404329": {
+      "record": {
+        "componentModelEn": "MMC5983MA",
+        "componentBrandEn": "MEMSIC",
+        "componentSpecificationEn": "LGA-16(3x3)",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2410121619_MEMSIC-MMC5983MA_C404329.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C404329",
+            "attribute_value_name": "-40℃~+105℃"
+          }
+        ]
+      },
+      "footprint": "LGA-16_L3.0-W3.0-P0.50-BL_SQ",
+      "pads": [
+        [
+          "16",
+          -1.2630149999999631,
+          -0.7501890000000194
+        ],
+        [
+          "15",
+          -1.2630149999999631,
+          -0.2500630000000065
+        ],
+        [
+          "14",
+          -1.2630149999999631,
+          0.24980899999995473
+        ],
+        [
+          "13",
+          -1.2630149999999631,
+          0.7499349999999677
+        ],
+        [
+          "12",
+          -0.7501890000000194,
+          1.2630149999999631
+        ],
+        [
+          "11",
+          -0.2500630000000065,
+          1.2630149999999631
+        ],
+        [
+          "10",
+          0.24980899999995473,
+          1.2630149999999631
+        ],
+        [
+          "9",
+          0.7499349999999677,
+          1.2630149999999631
+        ],
+        [
+          "8",
+          1.2630149999999631,
+          0.750188999999904
+        ],
+        [
+          "7",
+          1.2630149999999631,
+          0.2500630000000065
+        ],
+        [
+          "6",
+          1.2630149999999631,
+          -0.24980900000007022
+        ],
+        [
+          "5",
+          1.2630149999999631,
+          -0.7499350000000832
+        ],
+        [
+          "4",
+          0.7501890000000194,
+          -1.2630150000000786
+        ],
+        [
+          "3",
+          0.2500630000000065,
+          -1.2630150000000786
+        ],
+        [
+          "2",
+          -0.24980899999995473,
+          -1.2630150000000786
+        ],
+        [
+          "1",
+          -0.7499349999999677,
+          -1.2630150000000786
+        ]
+      ],
+      "pin_names": {
+        "1": "SCL/SPI_SCK",
+        "2": "VDD",
+        "3": "NC",
+        "4": "SPI_CS",
+        "5": "SPI_SDO",
+        "6": "NC",
+        "7": "NC",
+        "8": "NC",
+        "9": "GND",
+        "10": "CAP",
+        "11": "GND",
+        "12": "NC",
+        "13": "VDDIO",
+        "14": "NC",
+        "15": "INT",
+        "16": "SDA/SPI_SDI"
       }
     },
     "C41417361": {
@@ -3932,6 +5470,39 @@
         "6": "SDA"
       }
     },
+    "C49247662": {
+      "record": {
+        "componentModelEn": "HNTC0805-103F3950FB",
+        "componentBrandEn": "hongjiacheng",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": null,
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Operating Temperature",
+            "component_code": "C49247662",
+            "attribute_value_name": "-40℃~+125℃"
+          }
+        ]
+      },
+      "footprint": "R0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
+      }
+    },
     "C49247666": {
       "record": {
         "componentModelEn": "HNTC0603-103F3950FB",
@@ -3996,6 +5567,44 @@
       "pin_names": {
         "1": "1",
         "2": "2"
+      }
+    },
+    "C49678": {
+      "record": {
+        "componentModelEn": "CC0805KRX7R9BB104",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_YAGEO-CC0805KRX7R9BB104_C49678.pdf",
+        "componentLibraryType": "base",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C49678",
+            "attribute_value_name": "50V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C49678",
+            "attribute_value_name": "100nF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "2": "2",
+        "1": "1"
       }
     },
     "C51118": {
@@ -4092,6 +5701,44 @@
         "3": "3",
         "4": "GND",
         "2": "GND"
+      }
+    },
+    "C520032": {
+      "record": {
+        "componentModelEn": "CC0805JRX7R9BB183",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2006011836_YAGEO-CC0805JRX7R9BB183_C520032.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C520032",
+            "attribute_value_name": "50V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C520032",
+            "attribute_value_name": "18nF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
       }
     },
     "C5361233": {
@@ -4227,6 +5874,44 @@
         "5": "INB+",
         "6": "INB-",
         "7": "OUTB"
+      }
+    },
+    "C62771": {
+      "record": {
+        "componentModelEn": "CC0805JRNPO9BN471",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2304140030_YAGEO-CC0805JRNPO9BN471_C62771.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C62771",
+            "attribute_value_name": "50V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C62771",
+            "attribute_value_name": "470pF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
       }
     },
     "C6565190": {
@@ -4410,6 +6095,44 @@
         "5": "EP"
       }
     },
+    "C83170": {
+      "record": {
+        "componentModelEn": "CC0805KRX7R9BB103",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://www.lcsc.com/datasheet/lcsc_datasheet_2304140030_YAGEO-CC0805KRX7R9BB103_C83170.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C83170",
+            "attribute_value_name": "50V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C83170",
+            "attribute_value_name": "10nF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
+      }
+    },
     "C8963": {
       "record": {
         "componentModelEn": "SP3485EN-L/TR",
@@ -4477,6 +6200,44 @@
         "6": "A",
         "7": "B",
         "8": "VCC"
+      }
+    },
+    "C94121": {
+      "record": {
+        "componentModelEn": "CC0805KRX7R9BB102",
+        "componentBrandEn": "YAGEO",
+        "componentSpecificationEn": "0805",
+        "dataManualUrl": "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/1810311439_YAGEO-CC0805KRX7R9BB102_C94121.pdf",
+        "componentLibraryType": "expand",
+        "attributes": [
+          {
+            "attribute_name_en": "Voltage Rating",
+            "component_code": "C94121",
+            "attribute_value_name": "50V"
+          },
+          {
+            "attribute_name_en": "Capacitance",
+            "component_code": "C94121",
+            "attribute_value_name": "1nF"
+          }
+        ]
+      },
+      "footprint": "C0805",
+      "pads": [
+        [
+          "2",
+          0.9999979999999742,
+          -0.0
+        ],
+        [
+          "1",
+          -0.9999979999999742,
+          -0.0
+        ]
+      ],
+      "pin_names": {
+        "1": "1",
+        "2": "2"
       }
     },
     "C94193": {

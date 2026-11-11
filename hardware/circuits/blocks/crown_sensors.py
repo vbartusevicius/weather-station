@@ -27,7 +27,7 @@ only the LQFP-64 package bonds out).
    ADC2 (continuous, 50 kSPS).
 3. Lightning: ScioSense AS3935 on SPI1 (SI = GND selects SPI) + Coilcraft MA5532-AE (or Premo SDTR1103-HF1-0100J, same pads) 100 uH ferrite-rod antenna and
    2 x 470 pF C0G tank (AS3935-AN04), IRQ to the STM32 (EXTI). No copper under the antenna (layout keepout).
-4. Compass: MEMSIC MMC5603NJ on the main I2C bus (0x30), unchanged.
+4. Compass: MEMSIC MMC5983MA (LGA-16 edge pads) on the main I2C bus (0x30).
 Power: XC6206 3.3 V LDO from +5V (crown, dome sensors); VDDA through 10R / 1 uF.
 ROM bootloader hygiene: PA10 (USART1_RX) and PB12 (SPI2_NSS) pulled up (R28, R29).
 """
@@ -37,18 +37,18 @@ from builtins import NC
 from common import block, part, power_flag, src
 from skidl import Net
 
-R0603 = "Resistor_SMD:R_0603_1608Metric"
-C0603 = "Capacitor_SMD:C_0603_1608Metric"
+R0805 = "Resistor_SMD:R_0805_2012Metric"   # 0805: hand soldering
+C0805 = "Capacitor_SMD:C_0805_2012Metric"   # 0805: hand soldering
 C1206 = "Capacitor_SMD:C_1206_3216Metric"
 FP_JST2 = "gateway_fp:JST_BM02B-SRSS-TB"
 FP_LQFP64 = "Package_QFP:LQFP-64_10x10mm_P0.5mm"
 FP_SOIC8 = "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
 FP_CD4052 = "gateway_fp:TI_CD4052BM96_SOIC-16"
 FP_TLV9062 = "gateway_fp:TI_TLV9062IDR_SOIC-8"
-FP_MMC5603 = "gateway_fp:MEMSIC_MMC5603NJ_WLCSP-4"
+FP_MMC5983 = "gateway_fp:MEMSIC_MMC5983MA_LGA-16"
 FP_AS3935 = "gateway_fp:ScioSense_AS3935_QFN-16"
 FP_SOT23 = "Package_TO_SOT_SMD:SOT-23"
-FP_XTAL = "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm"
+FP_XTAL = "Crystal:Crystal_SMD_HC49-SD"   # HC-49S-SMD: bent leads, hand-solderable
 L_MA5532 = "gateway_fp:AS3935_Antenna_MA5532_SDTR1103"   # dual land pattern: MA5532-AE or Premo SDTR1103-HF1-0100J
 TC2030 = "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical"
 
@@ -93,11 +93,11 @@ MCU_PIN_NETS = {
 }
 
 
-def res(value, source, ref, footprint=R0603, **kw):
+def res(value, source, ref, footprint=R0805, **kw):
     return part("Device", "R", value, footprint, src(source=source, **kw), ref=ref)
 
 
-def cap(value, source, ref, footprint=C0603):
+def cap(value, source, ref, footprint=C0805):
     return part("Device", "C", value, footprint, src(source=source), ref=ref)
 
 
@@ -171,13 +171,11 @@ def build(nets):
     # floating pins cannot capture the bootloader before the station talks to it over I2C2.
     two(res("10k", "PA10 (bootloader USART1_RX) pull-up: idle high", "R28"), n["BL_PA10"], v3)
     two(res("10k", "PB12 (bootloader SPI2_NSS) pull-up: SPI2 deselected", "R29"), n["BL_PB12"], v3)
-    y1 = part("Device", "Crystal_GND24", "8MHz", FP_XTAL,
-              src(mpn="3225 8M 20PF 10PPM", mfr="YXC", lcsc="C5181477",
-                  source="8 MHz +/-10 ppm HSE crystal (CL 20 pF): time-of-flight timebase"), ref="Y1")
+    y1 = part("Device", "Crystal", "8MHz", FP_XTAL,
+              src(mpn="X49SM8MSD2SI", mfr="YXC", lcsc="C106809",
+                  source="8 MHz +/-20 ppm HSE crystal (CL 20 pF, -40..+85 C, HC-49S-SMD): time-of-flight timebase"), ref="Y1")
     y1[1] += n["XTAL_IN"]
-    y1[3] += n["XTAL_OUT"]
-    y1[2] += gnd
-    y1[4] += gnd
+    y1[2] += n["XTAL_OUT"]
     two(cap("33p C0G 50V", "HSE load capacitor (2 x (CL 20 pF - 5 pF stray))", "C11"), n["XTAL_IN"], gnd)
     two(cap("33p C0G 50V", "HSE load capacitor", "C12"), n["XTAL_OUT"], gnd)
     # SWD debug port J12: Tag-Connect TC2030-NL footprint (copper pads + 3 alignment holes, nothing to buy or place;
@@ -312,13 +310,23 @@ def build(nets):
 
     # ---------------------------------------------------------------- compass
     block("compass")
-    u6 = part("gateway", "MMC5603", "MMC5603NJ", FP_MMC5603,
-              src(mpn="MMC5603NJ", mfr="MEMSIC", lcsc="C404328",
-                  source="20-bit 3-axis AMR magnetometer with on-chip degaussing for Digital North auto-alignment (I2C 0x30)"),
+    # MEMSIC MMC5983MA (LGA-16 3x3 mm, 0.5 mm pitch pads on the package edges: hand-solderable, unlike the
+    # MMC5603NJ's 0.4 mm WLCSP balls). Datasheet: CS tied to VDDIO selects I2C (address 0x30), CAP = >= 10 uF
+    # low-ESR SET/RESET reservoir right at the pin, SDO / INT unused.
+    u6 = part("gateway", "MMC5983MA", "MMC5983MA", FP_MMC5983,
+              src(mpn="MMC5983MA", mfr="MEMSIC", lcsc="C404329",
+                  source="18-bit 3-axis AMR magnetometer with SET/RESET degaussing for Digital North auto-alignment (I2C 0x30)"),
               ref="U6")
-    u6["A1"] += gnd
-    u6["A2"] += n["I2C_SCL"]
-    u6["B1"] += v3
-    u6["B2"] += n["I2C_SDA"]
-    two(cap("100n 50V", "MMC5603NJ VDD decoupling", "C29"), v3, gnd)
+    for pin in ("9", "11"):
+        u6[pin] += gnd
+    u6["1"] += n["I2C_SCL"]
+    u6["16"] += n["I2C_SDA"]
+    for pin in ("2", "13", "4"):
+        u6[pin] += v3          # VDD, VDDIO, CS (I2C mode)
+    cap_net = Net("MAG_CAP")
+    u6["10"] += cap_net
+    for pin in ("3", "5", "6", "7", "8", "12", "14", "15"):
+        u6[pin] += NC
+    two(cap("100n 50V", "MMC5983MA VDD decoupling", "C29"), v3, gnd)
+    two(cap("10u 10V", "MMC5983MA CAP: SET/RESET reservoir (datasheet: >= 10 uF low ESR at the pin)", "C34"), cap_net, gnd)
     return n

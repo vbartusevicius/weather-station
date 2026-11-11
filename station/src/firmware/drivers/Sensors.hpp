@@ -131,8 +131,8 @@ private:
     bool present_{false};
 };
 
-// MEMSIC MMC5603NJ 20-bit AMR compass on the crown (heading for the ultrasonic wind rotation).
-class Mmc5603 {
+// MEMSIC MMC5983MA 18-bit AMR compass on the crown (heading for the ultrasonic wind rotation).
+class Mmc5983 {
 public:
     bool begin(I2cBus& bus, std::uint8_t addr);
     bool read(core::Vec3& field_ut);

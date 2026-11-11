@@ -6,7 +6,7 @@ frame:
   min_track: 0.12
   edge_clearance: 0.3
   silk_inside: true
-  fine_pitch_power_pads: [U2, U4, U5, U7, J2, J3, J4, J5, R1]
+  fine_pitch_power_pads: [U4, U5, U7, J2, J3, J4, J5, R1]
   raised_modules: [U3]
   plane_layers: [In1.Cu]
   domains: [SELV-MAIN]
@@ -40,7 +40,7 @@ heights:
   D3: 2.0
   C1: 1.6
   Q1: 1.1
-  U2: 1.0
+  D5: 2.3
   U3: 11.0
   SW1: 1.5
   U7: 1.65
@@ -64,7 +64,7 @@ parts:
   U3:  { x: 10.0,  y: 25.0,  rot: 0,   block: mcu, locked: true }
   J5:  { x: 28.6,  y: 21.5,  rot: 90,  block: int_power, locked: true }   # 8-pin power cable from the power board
 
-  U2:  { x: 23.5,  y: 14.6,  rot: 0,   block: mcu_power }
+  D5:  { x: 19.0,  y: 12.0,  rot: 0,   side: back, block: mcu_power }   # SS14 (SMA) on the back: no room on top
   C4:  { x: 23.5,  y: 17.0,  rot: 0,   block: mcu_power }
   R5:  { x: 23.5,  y: 19.0,  rot: 0,   block: mcu }
   R6: { x: 23.5,  y: 21.0,  rot: 0,   block: mcu }

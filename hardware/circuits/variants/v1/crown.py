@@ -5,7 +5,7 @@
   - U7 + U8A: 74HC4052 receive mux and 40 kHz band-pass preamp into the STM32 PGA (biased at VREF via PA3) / ADC1
   - U8B + D9: piezo rain charge amplifier into ADC2
   - U9 + L1: AS3935 lightning detector (SPI) with its MA5532-AE ferrite-rod antenna
-  - U6: MMC5603NJ compass (main I2C bus); U10: 3.3 V LDO (crown + dome)
+  - U6: MMC5983MA compass (main I2C bus); U10: 3.3 V LDO (crown + dome)
   - J1: 12-pin JST-SH from main J2; J2..J5 transducers (1 = A, 2 = B); J6..J9 piezo discs; J10 dome riser;
     J11 spare +12V_HEAT outlet; J12 SWD debug port (Tag-Connect TC2030-NL footprint)
 """

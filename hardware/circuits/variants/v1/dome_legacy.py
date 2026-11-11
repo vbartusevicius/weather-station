@@ -11,14 +11,14 @@ from skidl import Net
 from variants.v1.crown import DOME_B2B_LINK
 from variants.v1.main import wire
 
-C0603 = "Capacitor_SMD:C_0603_1608Metric"
+C0805 = "Capacitor_SMD:C_0805_2012Metric"   # 0805: hand soldering
 B2B_HDR4 = "gateway_fp:HX_PZ2.54-1x4P-SMD"
 FP_LTR390 = "gateway_fp:LiteOn_LTR-390UV-01"
 FP_TSL25911 = "gateway_fp:AMS_TSL25911FN"
 FP_GUVB = "gateway_fp:GenUV_GUVB-C31SM"
 
 
-def cap(value, fields=None, footprint=C0603):
+def cap(value, fields=None, footprint=C0805):
     return part("Device", "C", value, footprint, fields)
 
 

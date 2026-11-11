@@ -60,6 +60,6 @@ parts:
 
   # --- Bottom (-y, B.Cu, shaded underneath the PCB): 4-pin vertical B2B male header J1 dead-center at (6.8, 6.8) + C1, C2, C3 ---
   J1:  { x: 6.8,   y: 6.8,   rot: 0,   side: back, block: int_crown, locked: true }
-  C1:  { x: 4.4,   y: 11.2,  rot: 0,   side: back, block: uv_als }
-  C2:  { x: 9.2,   y: 11.2,  rot: 0,   side: back, block: uv_als }
+  C1:  { x: 4.5,   y: 11.35, rot: 0,   side: back, block: uv_als }   # 0805: clear of the riser
+  C2:  { x: 9.1,   y: 11.35, rot: 0,   side: back, block: uv_als }
   C3:  { x: 6.8,   y: 2.1,   rot: 0,   side: back, block: uv_als }

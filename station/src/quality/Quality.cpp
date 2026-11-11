@@ -277,12 +277,12 @@ void QualityControl::health(const core::RawState& raw, const core::StationConfig
     add("seismic", "Vibration / seismic (LSM6DS3)", raw.imu.vibration.fresh(now, 5000) ? HealthStatus::Ok : HealthStatus::Fail,
         "%s", raw.imu.vibration.fresh(now, 5000) ? "" : "no accelerometer data");
     if (cfg.heading_mode == 1) {
-        add("compass", "Compass (MMC5603)", HealthStatus::Off, "not used: fixed heading");
+        add("compass", "Compass (MMC5983MA)", HealthStatus::Off, "not used: fixed heading");
     } else if (raw.wind.heading_deg.fresh(now, 10000)) {
-        add("compass", "Compass (MMC5603)", cfg.cal_unix[kCompassKind] == 0 ? HealthStatus::Warn : HealthStatus::Ok, "%s",
+        add("compass", "Compass (MMC5983MA)", cfg.cal_unix[kCompassKind] == 0 ? HealthStatus::Warn : HealthStatus::Ok, "%s",
             cfg.cal_unix[kCompassKind] == 0 ? "not calibrated" : "");
     } else {
-        add("compass", "Compass (MMC5603)", HealthStatus::Fail, "no data");
+        add("compass", "Compass (MMC5983MA)", HealthStatus::Fail, "no data");
     }
     // TSL25911 saturates above ~88 klx behind a clear (JGS1) cover; the LTR-390 then measures (not a fault)
     const float tr = cfg.optics_transmission > 0.0F ? cfg.optics_transmission : 1.0F;
