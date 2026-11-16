@@ -34,7 +34,8 @@ frame:
   min_track: 0.12
   edge_clearance: 0.3
   silk_inside: true
-  fine_pitch_power_pads: [J1, J2, J3, J4, J5, J6, J7, J8, J9, J10, J11, U1, U2, U3, U4, U5, U6, U7, U8, U9, U10]
+  # C1: VDRV necks down past its GND pad (0.18 mm over ~0.4 mm)
+  fine_pitch_power_pads: [C1, J1, J2, J3, J4, J5, J6, J7, J8, J9, J10, J11, U1, U2, U3, U4, U5, U6, U7, U8, U9, U10]
   raised_modules: []
   plane_layers: [In1.Cu]
   domains: [SELV-CROWN]

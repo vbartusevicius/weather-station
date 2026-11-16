@@ -61,7 +61,7 @@ Every board folder (and `panel/`) carries the same set; pick by fab house:
 #### Breakaway panel (`hardware/releases/v1/panel/`) at JLCPCB
 
 1. **PCB Fabrication Settings (`panel/panel_gerbers.zip`):**
-   - **Base Material:** `FR-4` · **Layers:** `4` · **Dimensions:** panel `140.6 × 63.2 mm` ("Panel by Customer"; edge rails + fiducials: added by JLCPCB)
+   - **Base Material:** `FR-4` · **Layers:** `4` · **Dimensions:** panel `120.1 × 76.1 mm` ("Panel by Customer"; edge rails + fiducials: added by JLCPCB)
    - **PCB Thickness:** **`1.6 mm`** *(required — `probe_sleeve` slots, snap-clips and standoffs are sized for `1.6 mm`)*
    - **Surface Finish:** **`ENIG (Immersion Gold)`** *(essential for outdoor corrosion resistance on `probe`, `dome`, and `reflector` instead of HASL tin/lead)*
    - **Impedance Control:** `Yes` → **`JLC04161H-7628`** (`4-layer 1.6 mm` standard stackup)

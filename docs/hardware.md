@@ -15,9 +15,9 @@ printing and weatherproofing: [building.md](building.md); bring-up and calibrati
 </details>
 
 <details>
-<summary><b>Compass & Mast Tilt</b> · MMC5603NJ compass + LSM6DS3TR-C IMU · ±0.5° heading, ±0.1° tilt</summary>
+<summary><b>Compass & Mast Tilt</b> · MMC5983MA compass + LSM6DS3TR-C IMU · ±0.5° heading, ±0.1° tilt</summary>
 
-- **Sensor / circuit:** `MEMSIC MMC5603NJ` 20-bit AMR compass + `ST LSM6DS3TR-C` 6-axis IMU
+- **Sensor / circuit:** `MEMSIC MMC5983MA` 18-bit AMR compass + `ST LSM6DS3TR-C` 6-axis IMU
 - **Range & resolution:** `±0.5°` heading, `±0.1°` tilt
 - **Location & protection:** Auto-aligns wind direction to North and subtracts pole vibration from the rain sensor.
 
@@ -263,7 +263,7 @@ Four slotted press-fit rings that lock the default `Ø 14 × 9 mm` Same Sky `CUS
 
 ## 6-Board PCB Stack on One Breakaway Panel (`hardware/releases/v1/`)
 
-All six 4-layer `1.6 mm` PCBs are packed onto one **`140.6 × 63.2 mm` mouse-bite breakaway panel** (`crown`, `main`, the vertical `probe`, and a column of `reflector`, `dome` and `power`; `0 DRC errors`, 92 consolidated BOM lines, 206 SMT placements, every board held by ≥ 2 tabs placed ≥ 1 mm from parts). The panel has no own rails or fiducials: order it with **"Edge rails / fiducials: added by JLCPCB"**. Each board also has its own release folder (Gerbers, BOM, CPL).
+All six 4-layer `1.6 mm` PCBs plus the legacy `dome_legacy` are packed onto one **`120.1 × 76.1 mm` mouse-bite breakaway panel** (three columns: `crown` over the turned `probe`, `main` over `power`, and `reflector`, `dome`, `dome_legacy`; `0 DRC errors`, 96 consolidated BOM lines, 227 SMT placements, every board held by ≥ 2 tabs placed ≥ 1 mm from parts). The panel has no own rails or fiducials: order it with **"Edge rails / fiducials: added by JLCPCB"**. Each board also has its own release folder (Gerbers, BOM, CPL).
 
 | Panel Top (`panel/renders/top.svg`) | Panel Bottom (`panel/renders/bottom.svg`) |
 | :---: | :---: |
@@ -272,7 +272,7 @@ All six 4-layer `1.6 mm` PCBs are packed onto one **`140.6 × 63.2 mm` mouse-bit
 <details>
 <summary><b>1. main</b> · 32.0 × 52.0 mm</summary>
 
-4-pole terminal `J1` (`12–32 V` + `RS-485 A/B`), `1.1 A` / `60 V` PTC fuse, `SMAJ36A` TVS, `SM712` RS-485 TVS, `J5` power-board cable (`VIN_PROT` out, `+5V` / `+12V_HEAT` in), `LM66100` ideal diode, socketed `Seeed XIAO ESP32-C6`, `SP3485EN` RS-485 transceiver (separate TX / RX / DE, `390 Ω` fail-safe bias, optional `120 Ω` terminator `R26`), `LSM6DS3TR-C` IMU, crown reset / boot / IRQ lines, `AO3400A` heater switch, `ADS1115` heater power monitor (`0.1 Ω` reflector + `1 Ω` probe heater shunts).
+4-pole terminal `J1` (`12–32 V` + `RS-485 A/B`), `1.1 A` / `60 V` PTC fuse, `SMAJ36A` TVS, `SM712` RS-485 TVS, `J5` power-board cable (`VIN_PROT` out, `+5V` / `+12V_HEAT` in), `SS14` Schottky (USB back-feed block), socketed `Seeed XIAO ESP32-C6`, `SP3485EN` RS-485 transceiver (separate TX / RX / DE, `390 Ω` fail-safe bias, optional `120 Ω` terminator `R26`), `LSM6DS3TR-C` IMU, crown reset / boot / IRQ lines, `AO3400A` heater switch, `ADS1115` heater power monitor (`0.1 Ω` reflector + `1 Ω` probe heater shunts).
 
 [`hardware/releases/v1/main/`](../hardware/releases/v1/main/) · [Top SVG](../hardware/releases/v1/main/renders/top.svg) · [Bottom SVG](../hardware/releases/v1/main/renders/bottom.svg) · [circuit source (SKiDL)](../hardware/circuits/variants/v1/main.py)
 
@@ -281,7 +281,7 @@ All six 4-layer `1.6 mm` PCBs are packed onto one **`140.6 × 63.2 mm` mouse-bit
 <details>
 <summary><b>2. crown</b> · 60 × 60 mm (transducer notches, NE cable chamfer)</summary>
 
-`STM32G431RBT6` I²C peripheral (`0x2A`, firmware in `crown/`, reflashed by the ESP32 through the ROM I²C bootloader; SWD debug port `J12` (Tag-Connect TC2030-NL footprint, optional: a blank crown is flashed by the station)), 4× `UCC27524` H-bridge drivers + `BAV99` T/R isolation, transducer headers `J2..J5` (1 = A, 2 = B), AC-coupled receive → `74HC4052` → `TLV9062` → STM32 PGA / ADC, 4× Murata piezo headers (`J6..J9`) + charge amplifier, `AS3935` + `MA5532-AE` lightning antenna (SPI), `MMC5603NJ` compass, `XC6206` 3.3 V LDO, center 4-pin B2B socket `J10` (`to dome`).
+`STM32G431RBT6` I²C peripheral (`0x2A`, firmware in `crown/`, reflashed by the ESP32 through the ROM I²C bootloader; SWD debug port `J12` (Tag-Connect TC2030-NL footprint, optional: a blank crown is flashed by the station)), 4× `UCC27524` H-bridge drivers + `BAV99` T/R isolation, transducer headers `J2..J5` (1 = A, 2 = B), AC-coupled receive → `74HC4052` → `TLV9062` → STM32 PGA / ADC, 4× Murata piezo headers (`J6..J9`) + charge amplifier, `AS3935` + `MA5532-AE` lightning antenna (SPI), `MMC5983MA` compass, `XC6206` 3.3 V LDO, center 4-pin B2B socket `J10` (`to dome`).
 
 [`hardware/releases/v1/crown/`](../hardware/releases/v1/crown/) · [Top SVG](../hardware/releases/v1/crown/renders/top.svg) · [Bottom SVG](../hardware/releases/v1/crown/renders/bottom.svg) · [circuit source (SKiDL)](../hardware/circuits/variants/v1/crown.py)
 

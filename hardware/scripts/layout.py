@@ -2,7 +2,7 @@
 
     python3 hardware/scripts/layout.py <board> sync
     python3 hardware/scripts/layout.py <board> place <ref-or-block> ...
-    python3 hardware/scripts/layout.py <board> route [attempts]
+    python3 hardware/scripts/layout.py <board> route [time-limit-seconds]
     python3 hardware/scripts/layout.py <board> tidy-silk
     python3 hardware/scripts/layout.py <board> components
 """
@@ -10,7 +10,6 @@
 import itertools
 import json
 import math
-import os
 import re
 import subprocess
 import sys
@@ -511,10 +510,6 @@ def export_components(board, plan, out):
 def save(board, plan, board_name, hidden_refs=()):
     path = stored_board_path(board_name)
     path.parent.mkdir(parents=True, exist_ok=True)
-    widen_neckdown_stubs(board)
-    seated = seat_track_ends(board)
-    if seated:
-        print(f"{board_name}: seated {seated} grazing track ends into their pad / via / track")
     for fp in board.Footprints():
         ref = fp.Reference()
         ref.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(SILK_TEXT_MM), pcbnew.FromMM(SILK_TEXT_MM)))
@@ -733,7 +728,7 @@ def export_dsn(board_name):
     nets = sorted(str(n) for n in board.GetNetsByName() if str(n))
     project = json.loads(routable.with_suffix(".kicad_pro").read_text())
     text = with_net_classes(dsn.read_text(), nets, project["net_settings"])
-    text = with_inset_boundary(without_plane_layers(text, plan["frame"]), plan["frame"])
+    text = with_inset_boundary(text, plan["frame"])
     dsn.write_text(with_via_size(text, plan["frame"]))
     print(f"{board_name}: exported {dsn.relative_to(REPO)}")
 
@@ -784,16 +779,6 @@ def with_inset_boundary(dsn_text, frame):
     return re.sub(r"(\(boundary\s+\(path pcb 0[^)]*\)\s*\)\n)", lambda m: m.group(1) + keepouts, dsn_text, count=1)
 
 
-def without_plane_layers(dsn_text, frame):
-    for layer in map(re.escape, frame.get("plane_layers", [])):
-        dsn_text = re.sub(rf"    \(layer {layer}\n.*?\n    \)\n", "", dsn_text,
-                          count=1, flags=re.DOTALL)
-        dsn_text = re.sub(rf"[ \t]*\(shape \(\w+ {layer} [^()]*\)\)\n", "", dsn_text)
-        dsn_text = re.sub(rf'[ \t]*\(keepout "" \((?:polygon|circle) {layer} [^()]*\)\)\n', "", dsn_text)
-    if any(layer in dsn_text for layer in frame.get("plane_layers", [])):
-        sys.exit("plane layer still referenced in DSN")
-    index = iter(range(100))
-    return re.sub(r"\(index \d+\)", lambda _: f"(index {next(index)})", dsn_text)
 
 
 def with_net_classes(dsn_text, nets, net_settings):
@@ -814,116 +799,16 @@ def with_net_classes(dsn_text, nets, net_settings):
     return dsn_text[:start] + "".join(blocks) + "  )\n" + dsn_text[end:]
 
 
-GROUND_NETS = {"GND"}
-_DETACHED = []
-
-
 def unconnected(board):
     fill_zones(board)
     board.BuildConnectivity()
     return board.GetConnectivity().GetUnconnectedCount(False)
 
 
-def prune_ground_tracks(board, nets=GROUND_NETS):
-    """Remove router tracks of `nets` (GND + every net that has a copper pour) that the pours already connect."""
-    candidates = [t for t in board.GetTracks() if t.GetNetname() in nets
-                  and (t.GetClass() != "PCB_VIA" or t.GetNetname() not in GROUND_NETS)]   # keep GND stitching vias
-    _DETACHED.extend(candidates)
-    baseline = unconnected(board)
-    removed, changed = 0, True
-    while changed:
-        changed = False
-        for track in list(candidates):
-            board.Remove(track)
-            if unconnected(board) > baseline:
-                board.Add(track)
-            else:
-                candidates.remove(track)
-                removed += 1
-                changed = True
-    return removed
 
 
-def seat_track_ends(board):
-    """A track end whose round cap only grazes its pad or another track (Freerouting / neck-down / pruning leftovers)
-    is a hairline joint on the real board: extend it into the pad / via centre, or onto the other track's centreline;
-    an orphan tail (nothing of its net within two track widths of the free end) is removed.
-    hardware/tests/test_track_joints.py checks the result."""
-    import math
-    tol = pcbnew.FromMM(0.005)
-    tracks = [t for t in board.GetTracks() if t.Type() == pcbnew.PCB_TRACE_T]
-    vias = [v for v in board.GetTracks() if v.Type() == pcbnew.PCB_VIA_T]
-    pads = list(board.GetPads())
-
-    def nearest(p, t):
-        a, b = t.GetStart(), t.GetEnd()
-        dx, dy = b.x - a.x, b.y - a.y
-        length2 = dx * dx + dy * dy
-        u = 0.0 if length2 == 0 else max(0.0, min(1.0, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length2))
-        q = pcbnew.VECTOR2I(int(a.x + u * dx), int(a.y + u * dy))
-        return q, math.hypot(p.x - q.x, p.y - q.y)
-
-    added = 0
-    orphans = []
-    for t in tracks:
-        for end in (t.GetStart(), t.GetEnd()):
-            net, layer, w = t.GetNetCode(), t.GetLayer(), t.GetWidth()
-            same = [o for o in tracks if o is not t and o.GetNetCode() == net and o.GetLayer() == layer]
-            if any(nearest(end, o)[1] <= tol for o in same):
-                continue
-            if any(v.GetNetCode() == net and math.hypot(end.x - v.GetPosition().x, end.y - v.GetPosition().y)
-                   <= v.GetWidth(layer) / 2 for v in vias):
-                continue
-            mine = [p for p in pads if p.GetNetCode() == net and p.IsOnLayer(layer)]
-            if any(p.HitTest(end) for p in mine):
-                continue
-            if any(z.GetNetCode() == net and z.IsOnLayer(layer) and z.HitTestFilledArea(layer, end) for z in board.Zones()):
-                continue
-            target = next((p.GetPosition() for p in mine if p.HitTest(end, w // 2 + tol)), None)
-            if target is None:
-                hits = [nearest(end, o) for o in same]
-                hits = [(q, d) for (q, d), o in zip(hits, same) if d <= (w + o.GetWidth()) / 2 + tol]
-                target = min(hits, key=lambda h: h[1])[0] if hits else None
-            if target is None:   # grazing a via of the net: run into its centre
-                target = next((v.GetPosition() for v in vias if v.GetNetCode() == net and
-                               math.hypot(end.x - v.GetPosition().x, end.y - v.GetPosition().y)
-                               <= v.GetWidth(layer) / 2 + w / 2 + tol), None)
-            if target is None:
-                # an orphan tail: nothing of the net within two track widths of the free end (pruning / router leftover)
-                reach = 2 * w
-                near = (any(p.HitTest(end, reach) for p in mine) or
-                        any(math.hypot(end.x - v.GetPosition().x, end.y - v.GetPosition().y) <= reach + v.GetWidth(layer) / 2
-                            for v in vias if v.GetNetCode() == net) or
-                        any(nearest(end, o)[1] <= reach for o in same))
-                if not near:
-                    orphans.append(t)
-                    continue
-                # a short gap to its own pad (stops just short of it): finish the run into the pad centre (DRC checks it)
-                target = next((p.GetPosition() for p in mine if p.HitTest(end, reach)), None)
-                if target is None:
-                    continue
-            seg = pcbnew.PCB_TRACK(board)
-            seg.SetStart(end)
-            seg.SetEnd(target)
-            seg.SetWidth(w)
-            seg.SetLayer(layer)
-            board.Add(seg)
-            seg.SetNetCode(net)
-            added += 1
-    for t in {id(t): t for t in orphans}.values():
-        board.Remove(t)
-    return added + len(orphans)
 
 
-def widen_neckdown_stubs(board):
-    traces = [t for t in board.GetTracks() if t.Type() == pcbnew.PCB_TRACE_T]
-    min_w = pcbnew.FromMM(0.15)
-    widened = 0
-    for track in traces:
-        if track.GetWidth() < min_w:
-            track.SetWidth(min_w)
-            widened += 1
-    return widened
 
 
 def import_ses(board_name):
@@ -932,94 +817,118 @@ def import_ses(board_name):
     ses = build_dir(board_name) / f"{board_name}.ses"
     if not pcbnew.ImportSpecctraSES(board, str(ses)):
         sys.exit("SES import failed")
-    widened = widen_neckdown_stubs(board)
-    pour_nets = GROUND_NETS | {z["net"] for z in plan["frame"].get("pours", [])}
-    removed = prune_ground_tracks(board, pour_nets) if plan["frame"].get("prune_ground_tracks", True) else 0
-    print(f"{board_name}: removed {removed} ground tracks the pours already cover, "
-          f"widened {widened} neck-down stubs")
     save(board, plan, board_name)
-    shifted = shift_near_miss_tracks(board_name)
-    print(f"{board_name}: imported {ses.relative_to(REPO)}" + (f", shifted {shifted} near-miss tracks" if shifted else ""))
+    widened = widen_narrow_tracks(board_name)
+    print(f"{board_name}: imported {ses.relative_to(REPO)}" + (f", widened {widened} necked power tracks" if widened else ""))
 
 
-def shift_near_miss_tracks(board_name, max_short_mm=0.01, rounds=3):
-    """Freerouting rounds 45-degree geometry onto the DSN grid and can leave a track 1-10 um inside a clearance.
-    Read KiCad's DRC report, move each offending segment away from the other item by the shortfall + 1 um
-    (perpendicular to the segment), drag the track ends joined to it along, save and check again (knx-dali-gateway)."""
-    import math
+def widen_narrow_tracks(board_name):
+    """fastroute necks a power track down where it squeezes past other copper (probe HEAT_SW on In2 beside the board
+    edge: 0.18 mm, the same on every attempt), which only fine-pitch courtyards allow (track_width errors). Widen each
+    to its rule's minimum and keep the widening only where DRC finds no new error at it. Not moved to the router input:
+    `--no-neckdown-classes` on the power classes left 1 probe and 12 crown connections unrouted (2026-11)."""
     import re
     path = stored_board_path(board_name)
-    report = build_dir(board_name) / "near_miss_drc.json"
-    total = 0
-    for _ in range(rounds):
+    report = build_dir(board_name) / "track_width_drc.json"
+
+    def errors():
         subprocess.run(["kicad-cli", "pcb", "drc", "--format", "json", "--output", str(report), str(path)],
-                       capture_output=True, check=False)
+                       capture_output=True, check=True)
+        return [v for v in json.loads(report.read_text())["violations"] if v["severity"] == "error"]
+
+    before = errors()
+    narrow = {i["uuid"]: pcbnew.FromMM(float(re.search(r"min width ([\d.]+) mm", v["description"]).group(1)))
+              for v in before if v["type"] == "track_width" for i in v["items"]}
+    if not narrow:
+        return 0
+    board = pcbnew.LoadBoard(str(path))
+    tracks = {t.m_Uuid.AsString(): t for t in board.GetTracks() if t.m_Uuid.AsString() in narrow}
+    old = {u: t.GetWidth() for u, t in tracks.items()}
+    for u, t in tracks.items():
+        t.SetWidth(narrow[u])
+    board.Save(str(path))
+    known = {drc_key(v) for v in before}
+    clashing = {i["uuid"] for v in errors() if drc_key(v) not in known for i in v["items"]} & tracks.keys()
+    if clashing:
         board = pcbnew.LoadBoard(str(path))
-        tracks = [t for t in board.GetTracks() if t.Type() == pcbnew.PCB_TRACE_T]
-        moved = 0
-        for v in json.loads(report.read_text())["violations"]:
-            m = re.search(r"clearance ([\d.]+) mm; actual ([\d.]+) mm", v.get("description", ""))
-            if v["type"] != "clearance" or not m:
-                continue
-            short = float(m.group(1)) - float(m.group(2))
-            item = next((i for i in v["items"] if i["description"].startswith("Track")), None)
-            other = next((i for i in v["items"] if i is not item), None)
-            if not 0 < short <= max_short_mm or item is None or other is None:
-                continue
-            px, py = pcbnew.FromMM(item["pos"]["x"]), pcbnew.FromMM(item["pos"]["y"])
-            net = item["description"].split("[")[1].split("]")[0]
-
-            def dist(t, px=px, py=py):
-                a, b = t.GetStart(), t.GetEnd()
-                dx, dy = b.x - a.x, b.y - a.y
-                u = max(0.0, min(1.0, ((px - a.x) * dx + (py - a.y) * dy) / max(1, dx * dx + dy * dy)))
-                return math.hypot(px - (a.x + u * dx), py - (a.y + u * dy))
-            cand = [t for t in tracks if t.GetNetname() == net]
-            if not cand:
-                continue
-            t = min(cand, key=dist)
-            a, b = t.GetStart(), t.GetEnd()
-            ln = math.hypot(b.x - a.x, b.y - a.y) or 1.0
-            nx, ny = -(b.y - a.y) / ln, (b.x - a.x) / ln
-            ox, oy = pcbnew.FromMM(other["pos"]["x"]), pcbnew.FromMM(other["pos"]["y"])
-            sign = 1.0 if (px - ox) * nx + (py - oy) * ny >= 0 else -1.0
-            step = pcbnew.FromMM(short + 0.001)
-            mx, my = round(sign * nx * step), round(sign * ny * step)
-            for end in (pcbnew.VECTOR2I(a.x, a.y), pcbnew.VECTOR2I(b.x, b.y)):
-                for o in tracks:
-                    if o is t or o.GetNetname() != net:
-                        continue
-                    if o.GetStart() == end:
-                        o.SetStart(pcbnew.VECTOR2I(end.x + mx, end.y + my))
-                    if o.GetEnd() == end:
-                        o.SetEnd(pcbnew.VECTOR2I(end.x + mx, end.y + my))
-            t.SetStart(pcbnew.VECTOR2I(a.x + mx, a.y + my))
-            t.SetEnd(pcbnew.VECTOR2I(b.x + mx, b.y + my))
-            moved += 1
-        if not moved:
-            break
+        for t in board.GetTracks():
+            if t.m_Uuid.AsString() in clashing:
+                t.SetWidth(old[t.m_Uuid.AsString()])
         board.Save(str(path))
-        total += moved
-    return total
+    return len(tracks) - len(clashing)
 
 
-FREEROUTING = ["java", "-jar", os.environ.get("FREEROUTING_JAR", "/opt/freerouting.jar"),
-               "-mp", "100", "-mt", "4", "--gui.enabled=false"]
 
 
-def route(board_name, attempts=4):
+
+
+LIBRARY_ONLY_DRC = {"lib_footprint_issues", "lib_footprint_mismatch"}
+
+
+def drc_violations(pcb_path, report):
+    subprocess.run(["kicad-cli", "pcb", "drc", "--format", "json", "--output", str(report), str(pcb_path)],
+                   capture_output=True, check=True)
+    return [v for v in json.loads(report.read_text())["violations"] if v["type"] not in LIBRARY_ONLY_DRC]
+
+
+def drc_key(violation):
+    return violation["type"], tuple(sorted(item["description"] for item in violation.get("items", [])))
+
+
+def unrouted_baseline(board_name):
+    """The stored board without its unlocked tracks / vias (pours filled), next to its rules: DRC violations already
+    here come from footprints or placement, and its unconnected count is what the router has to connect."""
+    stored = stored_board_path(board_name)
+    board = pcbnew.LoadBoard(str(stored))
+    for track in list(board.GetTracks()):
+        if not track.IsLocked():
+            board.RemoveNative(track)
+    connections = unconnected(board)
+    path = build_dir(board_name) / f"{board_name}.unrouted.kicad_pcb"
+    board.Save(str(path))
+    for suffix in (".kicad_dru", ".kicad_pro"):
+        path.with_suffix(suffix).write_text(stored.with_suffix(suffix).read_text())
+    return connections, drc_violations(path, build_dir(board_name) / "unrouted_drc.json")
+
+
+# jlcpcb_minimum in DRU_4LAYER: the router never necks a track below what the fab makes
+MIN_TRACK_UM = 120
+
+
+def route(board_name, time_limit=300, attempts=3):
+    """Route with fastroute; kicad-cli DRC of the imported board (minus the unrouted baseline's violations) and the
+    board's connectivity are the pass / fail. fastroute's results vary run to run (wall-clock limits), so a failing
+    session is routed again, up to `attempts` times."""
+    connections, baseline = unrouted_baseline(board_name)
+    known = {drc_key(v) for v in baseline}
     export_dsn(board_name)
     bdir = build_dir(board_name)
-    dsn, ses = bdir / f"{board_name}.dsn", bdir / f"{board_name}.ses"
+    dsn, ses, report = bdir / f"{board_name}.dsn", bdir / f"{board_name}.ses", bdir / "fastroute_report.json"
     for attempt in range(1, attempts + 1):
-        run = subprocess.run(FREEROUTING + ["-de", str(dsn), "-do", str(ses)], capture_output=True, text=True,
-                             check=True)
-        summary = next((line for line in (run.stdout + run.stderr).splitlines()
-                        if "Auto-routing stage completed" in line), "no summary")
-        print(f"{board_name}: route attempt {attempt}: {summary.split('completed')[-1].strip()[:120]}")
-        if "(0 unrouted" in summary:
-            break
-    import_ses(board_name)
+        ses.unlink(missing_ok=True)
+        run = subprocess.run(["fastroute", "-de", str(dsn), "-do", str(ses), f"--max-time={time_limit}",
+                              f"--router.min_trace_width_um={MIN_TRACK_UM}", f"--report={report}", "--diagnose"],
+                             capture_output=True, text=True, check=False)
+        if run.returncode or not ses.exists():
+            sys.exit(f"{board_name}: fastroute failed (exit {run.returncode}):\n{run.stdout[-2000:]}{run.stderr[-2000:]}")
+        stats = json.loads(report.read_text())["stats"]
+        print(f"{board_name}: attempt {attempt}: fastroute routed {stats['connections'] - stats['unrouted']}/"
+              f"{stats['connections']} connections, {stats['vias']} vias")
+        import_ses(board_name)
+        board = pcbnew.LoadBoard(str(stored_board_path(board_name)))
+        tracks = sum(t.Type() != pcbnew.PCB_VIA_T for t in board.GetTracks())
+        vias = sum(t.Type() == pcbnew.PCB_VIA_T for t in board.GetTracks())
+        left = unconnected(board)
+        real = [v for v in drc_violations(stored_board_path(board_name), bdir / "routed_drc.json")
+                if drc_key(v) not in known]
+        errors = [v for v in real if v["severity"] == "error"]
+        kinds = sorted({(v["severity"], v["type"]) for v in real})
+        by_kind = ", ".join(f"{sum((v['severity'], v['type']) == k for v in real)} {k[1]} ({k[0]})" for k in kinds)
+        print(f"{board_name}: routed {connections - left}/{connections} connections, {tracks} tracks, {vias} vias; "
+              f"{len(real)} DRC violations beyond the unrouted baseline ({len(baseline)})" + (f": {by_kind}" if real else ""))
+        if not errors and not left:
+            return
+    sys.exit(f"{board_name}: routing fails DRC after {attempts} attempts: {len(errors)} errors, {left} connections unrouted")
 
 
 def components(board_name):

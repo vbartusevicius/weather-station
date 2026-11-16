@@ -1,7 +1,7 @@
 services:
   eda:
     profiles: ["hardware"]
-    image: knx-dali-gateway-eda
+    image: weather-station-eda
     build:
       context: .
       dockerfile: docker/eda/Dockerfile
@@ -10,7 +10,7 @@ services:
 
   cad:
     profiles: ["hardware"]
-    image: knx-dali-gateway-cad
+    image: weather-station-cad
     build:
       context: .
       dockerfile: docker/cad/Dockerfile
@@ -19,7 +19,7 @@ services:
 
   lint:
     profiles: ["lint"]
-    image: knx-dali-gateway-lint
+    image: weather-station-lint
     build:
       context: .
       dockerfile: docker/lint/Dockerfile
@@ -28,7 +28,7 @@ services:
 
   cpp-lint:
     profiles: ["lint"]
-    image: knx-dali-gateway-cpp-lint
+    image: weather-station-cpp-lint
     build:
       context: .
       dockerfile: docker/cpp-lint/Dockerfile

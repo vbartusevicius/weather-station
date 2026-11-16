@@ -1,6 +1,6 @@
 """Every track end must land solidly: on another track end, on another track's centreline (T joint), inside a pad,
 inside a via or inside a filled zone of the same net and layer. An end whose round cap only grazes a pad or track (KiCad counts that as
-connected, a fab would make a hairline joint) fails: release.py / layout.py seat such ends into the pad."""
+connected, a fab would make a hairline joint) fails. Nothing repairs them after routing: the router must not make them."""
 
 import math
 

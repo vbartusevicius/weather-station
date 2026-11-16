@@ -30,16 +30,16 @@ dashboard and appears in Home Assistant by itself.
 | VOC & NOx | Sensirion SGP41 + Gas Index Algorithm | index 1–500 |
 | CO₂ | Sensirion SCD41 (heated below −8 °C) | 400–5000 ppm |
 | Lightning | AS3935 + 500 kHz ferrite antenna | 1–40 km |
-| Compass, tilt, vibration | MMC5603 + LSM6DS3 | heading, mast tilt, ground vibration |
+| Compass, tilt, vibration | MMC5983MA + LSM6DS3 | heading, mast tilt, ground vibration |
 
 Full sensor, enclosure and board reference: **[docs/hardware.md](docs/hardware.md)**.
 
 ## Hardware
 
-| Cutaway | Exploded | Six boards on one breakaway panel |
+| Cutaway | Exploded | Every board on one breakaway panel |
 | :---: | :---: | :---: |
 | <img src="hardware/releases/v1/enclosure/renders/section.png" alt="Cutaway"> | <img src="hardware/releases/v1/enclosure/renders/exploded.png" alt="Exploded view"> | <img src="docs/images/pcb_panel.png" alt="PCB panel, KiCad 3D render"> |
-| radiation shield, probe cartridge, base bay | 13 printed parts, bayonet and threaded joints | crown, main, probe, power, dome, reflector (4-layer, 140.6 × 63.2 mm) |
+| radiation shield, probe cartridge, base bay | 13 printed parts, bayonet and threaded joints | crown, main, probe, power, dome, reflector + legacy dome (4-layer, 120.1 × 76.1 mm) |
 
 <details>
 <summary><b>More renders</b>: inside view, every printed part, board plots</summary>
@@ -118,4 +118,4 @@ docker compose --profile lint run --rm lint check .   # lint
 python3 docs/render_readme_images.py                  # refresh the README screenshots and PCB render
 ```
 
-Architecture, conventions and every command: [AGENTS.md](AGENTS.md).
+Architecture, pipeline internals and every command: [docs/development.md](docs/development.md); agent instructions: [AGENTS.md](AGENTS.md).
