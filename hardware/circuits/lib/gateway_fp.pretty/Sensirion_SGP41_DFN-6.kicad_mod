@@ -8,6 +8,7 @@
   (fp_text value "SGP41" (at 0 2.07) (layer "F.Fab") (effects (font (size 0.6 0.6) (thickness 0.1))))
   (fp_rect (start -1.53 -1.124) (end 1.53 1.124) (stroke (width 0.1) (type solid)) (fill no) (layer "F.Fab"))
   (fp_rect (start -1.68 -1.274) (end 1.68 1.274) (stroke (width 0.05) (type solid)) (fill no) (layer "F.CrtYd"))
+  (fp_circle (center -1.95 -0.8) (end -1.85 -0.8) (stroke (width 0.15) (type solid)) (fill solid) (layer "F.SilkS"))
   (pad "1" smd rect (at -1.1374 -0.8001) (size 0.585 0.448) (layers "F.Cu" "F.Paste" "F.Mask"))
   (pad "2" smd rect (at -1.1374 0.0) (size 0.585 0.448) (layers "F.Cu" "F.Paste" "F.Mask"))
   (pad "3" smd rect (at -1.1374 0.8001) (size 0.585 0.448) (layers "F.Cu" "F.Paste" "F.Mask"))

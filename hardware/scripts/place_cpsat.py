@@ -209,7 +209,7 @@ def board_safe_polygon(board_name: str, plan: dict) -> Polygon:
     # Footprints extend courtyards ~0.25..0.55 mm past copper pads; ultra-small round discs (Ø 13.6 mm dome_legacy)
     # allow courtyards to overhang Edge.Cuts by 0.2 mm while copper pads remain >= 0.35 mm inside Edge.Cuts.
     area = w * h
-    margin = -0.20 if area < 200.0 else (0.10 if area < 350.0 else max(frame.get("edge_clearance", 0.3) - 0.10, 0.20))
+    margin = -0.20 if area < 300.0 else max(frame.get("edge_clearance", 0.3) - 0.10, 0.20)
     safe = poly.buffer(-margin, join_style="mitre")
     for slot in frame.get("slots", []):
         safe = safe.difference(box(slot["x0"] - 0.25, slot["y0"] - 0.25, slot["x1"] + 0.25, slot["y1"] + 0.25))
@@ -318,6 +318,35 @@ def mechanical_keepouts(board_name: str, plan: dict) -> dict[str, list[tuple[int
     for kind, side, half in (("legs", "back", 2.0), ("pegs", "front", 1.5), ("standoffs", "front", 1.5)):
         for p in plan.get("case", {}).get(kind, []):
             add_mm(side, p["x"] - half, p["y"] - half, p["x"] + half, p["y"] + half)
+
+    # Reserve bounding boxes of all frame `silk_labels`, `silk_lines`, `no_coat_keepouts`, and fixed `ref_positions`
+    # (shrunk by 0.10 mm since component courtyards already extend >= 0.25 mm beyond copper pads, leaving >= 0.15 mm
+    # pad-to-silk clearance) so CP-SAT never places soldering pads under silkscreen markings.
+    silk_board = layout.fresh_board(board_name)
+    layout.apply_frame(silk_board, plan)
+    for item in silk_board.GetDrawings():
+        lyr = item.GetLayer()
+        if lyr in (pcbnew.F_SilkS, pcbnew.B_SilkS):
+            s_key = "back" if lyr == pcbnew.B_SilkS else "front"
+            bb = item.GetBoundingBox()
+            inset = 0.25 if isinstance(item, pcbnew.PCB_TEXT) else 0.10
+            add_mm(s_key, pcbnew.ToMM(bb.GetLeft()) + inset, -pcbnew.ToMM(bb.GetBottom()) + inset,
+                   pcbnew.ToMM(bb.GetRight()) - inset, -pcbnew.ToMM(bb.GetTop()) - inset)
+    for r_name, at in frame.get("ref_positions", {}).items():
+        fp = silk_board.FindFootprintByReference(r_name)
+        if fp is None:
+            continue
+        p_cfg = plan["parts"].get(r_name, {})
+        is_back = p_cfg.get("side") == "back"
+        layout.set_side(fp, is_back)
+        ref_txt = fp.Reference()
+        ref_txt.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(layout.SILK_TEXT_MM), pcbnew.FromMM(layout.SILK_TEXT_MM)))
+        ref_txt.SetTextThickness(pcbnew.FromMM(layout.SILK_STROKE_MM))
+        ref_txt.SetTextAngle(pcbnew.EDA_ANGLE(at.get("rot", 0), pcbnew.DEGREES_T))
+        ref_txt.SetPosition(layout.pos(at["x"], at["y"]))
+        bb = ref_txt.GetBoundingBox()
+        add_mm("back" if is_back else "front", pcbnew.ToMM(bb.GetLeft()) + 0.20, -pcbnew.ToMM(bb.GetBottom()) + 0.20,
+               pcbnew.ToMM(bb.GetRight()) - 0.20, -pcbnew.ToMM(bb.GetTop()) - 0.20)
     return ko
 
 
@@ -398,8 +427,15 @@ def solve_board_cpsat(board_name: str, *, unlock_power_stage: bool = False,
     mech_ko = mechanical_keepouts(board_name, plan)
 
     locked_refs = sorted(r for r, s in specs.items() if s.locked)
-    stage1_refs = sorted(r for r, s in specs.items() if not s.locked and not is_small_passive(s))
-    stage2_refs = sorted(r for r, s in specs.items() if not s.locked and is_small_passive(s))
+    unlocked_refs = [r for r, s in specs.items() if not s.locked]
+    # On tiny micro-PCBs (<= 16 unlocked parts, e.g. Ø 15.6 mm `dome`), solve actives + passives jointly in Stage 1 so
+    # ICs leave balanced pockets for adjacent passives inside circular / no-coat boundaries.
+    if len(unlocked_refs) <= 16:
+        stage1_refs = sorted(unlocked_refs)
+        stage2_refs = []
+    else:
+        stage1_refs = sorted(r for r in unlocked_refs if not is_small_passive(specs[r]))
+        stage2_refs = sorted(r for r in unlocked_refs if is_small_passive(specs[r]))
 
     placed: dict[str, tuple[int, int, int]] = {
         r: (g_near(specs[r].init_x), g_near(specs[r].init_y), specs[r].init_rot)
@@ -440,7 +476,7 @@ def solve_board_cpsat(board_name: str, *, unlock_power_stage: bool = False,
             else:
                 for tx0, ty0, tx1, ty1 in og.tht_boxes + og.via_shadow:
                     polys.append(gbox_to_poly(px + tx0, py + ty0, px + tx1, py + ty1))
-        return decompose_union_to_grid_rects(polys, w_mm, h_mm, strip_mm=0.10 if compact_board else 0.5)
+        return decompose_union_to_grid_rects(polys, w_mm, h_mm, strip_mm=0.10)
 
     def y_domain_for(sp: PartSpec) -> tuple[int, int]:
         if board_name == "probe":
@@ -457,9 +493,9 @@ def solve_board_cpsat(board_name: str, *, unlock_power_stage: bool = False,
     pad_ylo = g_hi(min((r["y0"] for r in dom_rects), default=0.0) + 0.05)
     pad_yhi = g_lo(max((r["y1"] for r in dom_rects), default=h_mm) - 0.05)
 
-    s1_fixed_halo = 0.10 if (compact_board or dense_power) else 0.50
-    s1_mov_fine_halo = 0.10 if compact_board else (0.20 if dense_power else 0.50)
-    s1_mov_std_halo = 0.08 if compact_board else (0.12 if dense_power else 0.28)
+    s1_fixed_halo = 0.05 if (compact_board or dense_power) else 0.50
+    s1_mov_fine_halo = 0.05 if compact_board else (0.20 if dense_power else 0.50)
+    s1_mov_std_halo = 0.03 if compact_board else (0.10 if (dense_power or board_name == "power") else 0.28)
     s2_active_halo = 0.05 if (w_mm * h_mm) < 200.0 else (0.12 if compact_board else (0.22 if dense_power else 0.40))
     # 0.26 mm courtyard halo -> >= 1.02 mm pad-to-pad gap between adjacent 0805 passives, fitting a 0.60 mm via + 2x0.20 mm clearance!
     s2_passive_halo = 0.05 if compact_board else (0.12 if board_name == "probe" else 0.26)

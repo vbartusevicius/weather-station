@@ -261,10 +261,10 @@ def test_mated_heaters_shunts_and_probe_thermostat_trip_and_hysteresis():
     t_off = next(temps[i] for i in range(len(t_vec)) if t_vec[i] > 50e-3 and gates[i] < 2.0)
     hyst_k = t_off - t_on
 
-    # With heater OFF (CO2_GATE ~ 0 V), R7 (470k) parallels TH1 to GND (TH1||470k = 51k -> TH1 = 57.2k -> T_on ~ -9.7 C,
-    # above the SCD41 -10 C limit); once ON (CO2_GATE ~ 3.3 V), R7 parallels R3 (10k) -> T_off ~ -7.3 C (~2.4 K hysteresis).
-    assert -10.0 <= t_on <= -7.0, f"probe thermostat turn-ON temp {t_on:.2f} C outside -10.0..-7.0 C (SCD41 min -10 C)"
-    assert -8.2 <= t_off <= -5.0, f"probe thermostat turn-OFF temp {t_off:.2f} C outside -8.2..-5.0 C"
+    # With heater OFF (CO2_GATE ~ 0 V), R7 (470k) parallels TH1 to GND (TH1||470k = 47k -> TH1 = 52.2k -> T_on ~ -8.1 C,
+    # ~1.9 C above the SCD41 -10 C limit); once ON (CO2_GATE ~ 3.3 V), R7 parallels R3 (10k) -> T_off ~ -5.7 C (~2.4 K hysteresis).
+    assert -8.6 <= t_on <= -7.5, f"probe thermostat turn-ON temp {t_on:.2f} C outside -8.6..-7.5 C (~1.9 C margin above -10 C)"
+    assert -6.5 <= t_off <= -5.0, f"probe thermostat turn-OFF temp {t_off:.2f} C outside -6.5..-5.0 C"
     assert 1.8 <= hyst_k <= 3.2, f"probe thermostat hysteresis {hyst_k:.2f} K outside 1.8..3.2 K target (~2.4 K)"
 
 

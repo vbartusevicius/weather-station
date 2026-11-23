@@ -8,10 +8,11 @@
     * R1, R2: 2x 680R 1206 0.5 W resistors in PARALLEL on the +12V_HEAT rail (340 Ohm, 0.42 W at 12 V, 42 % of rating each);
       the heater current returns to main over CO2_HEAT_RTN through the 1 ohm monitor shunt (ADS1115 on main)
     * TH1: HNTC0805-103F3950FB 10k 1% B=3950K NTC thermistor right between R1 & R2 on back of SCD41
-    * U4 (LM2903DR2G on +12V_HEAT, 2-36 V) + Q1 (AO3400A, gate pulled to +3V3): analog thermostat holding the SCD41
-      at -7.6 C, just above its -10 C rating (R7 470k positive feedback gives ~2.3 K hysteresis). The heater stays off
-      above -8 C, so it cannot bias the SHT40 in the common -8..+8 C winter range; below that the SHT40 sits two slots
-      and the gas-sensor zone (~21 mm) away, and the In1 ground plane is cut in the heater-side slot bridges.
+    * U4 (LM2903DR2G on +12V_HEAT, 2-36 V) + Q1 (AO3400A, gate pulled to +3V3): analog thermostat turning ON at -8.1 C
+      and OFF at -5.7 C (~2.4 K hysteresis via R7 470k, ~1.9 C safety margin above the SCD41's -10 C minimum rating).
+      While off, R7 parallels TH1 to GND (TH1 || 470k = 47k -> TH1 = 52.2k = -8.1 C). The heater stays off above -5.7 C,
+      so it cannot bias the SHT40 in the common > -5 C winter range; below that the SHT40 sits two slots and the
+      gas-sensor zone (~21 mm) away, and the In1 ground plane is cut in the heater-side slot bridges.
 """
 
 from builtins import NC
@@ -86,9 +87,10 @@ def build(gnd, v3, sda, scl, v5, heat_rtn):
     th1[1] += co2_ntc
     th1[2] += gnd
 
-    # Setpoint divider (10k / 51k -> V_SET = 2.76 V = NTC 51k = -7.6 C threshold; SCD41 rated -10..+60 C)
-    r_set_top = res("10k", src(source="SCD41 thermostat -7.6 C setpoint divider top"))
-    r_set_bot = res("51k", src(source="SCD41 thermostat -7.6 C setpoint divider bottom"))
+    # Setpoint divider (10k / 47k -> V_SET = 2.72 V; with R7 470k paralleling TH1 to GND while off, TH1 = 52.2k = -8.1 C
+    # turn-ON and 46.0k = -5.7 C turn-OFF, giving ~1.9 C margin above SCD41's -10..+60 C rating)
+    r_set_top = res("10k", src(source="SCD41 thermostat -8.1 C setpoint divider top"))
+    r_set_bot = res("47k", src(source="SCD41 thermostat -8.1 C setpoint divider bottom"))
     r_set_top[1] += v3
     r_set_top[2] += co2_vset
     r_set_bot[1] += co2_vset
@@ -103,9 +105,9 @@ def build(gnd, v3, sda, scl, v5, heat_rtn):
               ref="U4")
     u4["8"] += v5
     u4["4"] += gnd
-    u4["3"] += co2_ntc   # IN/A+ (rises above V_SET when T_SCD41 < -7.6 C)
-    u4["2"] += co2_vset  # IN/A- (-7.6 C threshold)
-    u4["1"] += co2_gate  # OUT/A (releases high when T_SCD41 < -7.6 C -> turns Q1 ON)
+    u4["3"] += co2_ntc   # IN/A+ (rises above V_SET when T_SCD41 < -8.1 C)
+    u4["2"] += co2_vset  # IN/A- (2.72 V = -8.1 C turn-ON / -5.7 C turn-OFF threshold)
+    u4["1"] += co2_gate  # OUT/A (releases high when T_SCD41 < -8.1 C -> turns Q1 ON)
     u4["5"] += co2_vset
     u4["6"] += gnd
     u4["7"] += NC

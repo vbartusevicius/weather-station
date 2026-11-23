@@ -30,8 +30,8 @@ frame:
   connector_labels: { J1: "MAIN" }   # destination board / port, placed next to each connector
   silk_labels:
     - { text: "5V LOGIC", x: 15.0, y: 7.9,  layer: F.SilkS }
-    - { text: "12V HEAT", x: 3.4, y: 16.6, layer: F.SilkS }
-    - { text: "3V3 PROBE", x: 10.2, y: 16.6, layer: F.SilkS }
+    - { text: "12V HEAT", x: 3.4, y: 16.05, layer: F.SilkS }
+    - { text: "3V3 PROBE", x: 10.2, y: 16.05, layer: F.SilkS }
 
 heights:
   default: 1.2
@@ -61,9 +61,9 @@ parts:
   J1:  { x: 21.25, y: 18.6,  rot: 0,   block: int_main, locked: true }
 
   # --- +3V3_PROBE LDO (bottom-left, y 17.5..20.5; >= 3.5 mm from the left edge clips) ---
-  C19: { x: 8.4,   y: 18.95,  rot: 90,   block: ldo_probe }
-  U3:  { x: 11.75,   y: 18.45,  rot: 270,   block: ldo_probe }
-  C20: { x: 5.7,  y: 18.05,  rot: 90,  block: ldo_probe }
+  C19: { x: 4.5,   y: 18.35,  rot: 0,   block: ldo_probe }
+  U3:  { x: 11.6,   y: 18.85,  rot: 180,   block: ldo_probe }
+  C20: { x: 7.9,  y: 19.05,  rot: 90,  block: ldo_probe }
 
   # --- +5V electronics buck (top row, y 0.3..7.3) ---
   C1:  { x: 1.3,   y: 3.8,   rot: 90,  block: buck_logic }
@@ -73,17 +73,17 @@ parts:
   L1:  { x: 20.3,  y: 3.8,   rot: 0,   block: buck_logic }
   C5:  { x: 24.9,  y: 3.8,   rot: 90,  block: buck_logic }
   C6:  { x: 27.3,  y: 3.8,   rot: 90,  block: buck_logic }
-  C3:  { x: 2.25, y: 5.85,   rot: 0,   side: back, block: buck_logic }   # VIN HF, under VIN pin 2
-  C4:  { x: 6.2, y: 4.75,   rot: 90,   side: back, block: buck_logic }   # BOOT-SW, under pins 1 / 8
-  C7:  { x: 24.9, y: 5.85,   rot: 0,   side: back, block: buck_logic }   # VOUT HF, under L1 output
-  R1:  { x: 12.3, y: 4.45,   rot: 0,   side: back, block: buck_logic }
-  R2:  { x: 20.5, y: 4.4,   rot: 0,   side: back, block: buck_logic }
-  R5:  { x: 16.4, y: 1.85,   rot: 0,   side: back, block: buck_logic }
-  R6:  { x: 16.4, y: 4.45,   rot: 0,   side: back, block: buck_logic }
-  C8:  { x: 19.7, y: 7.1,   rot: 0,   side: back, block: buck_logic }
-  R3:  { x: 20.5, y: 1.8,   rot: 0,   side: back, block: buck_logic }
-  R4:  { x: 12.3, y: 1.85,   rot: 0,   side: back, block: buck_logic }
-  C9:  { x: 15.6, y: 7.1,   rot: 0,   side: back, block: buck_logic }
+  C3:  { x: 2.25, y: 15.45,   rot: 0,   side: back, block: buck_logic }   # VIN HF, under VIN pin 2
+  C4:  { x: 13.0, y: 6.75,   rot: 0,   side: back, block: buck_logic }   # BOOT-SW, under pins 1 / 8
+  C7:  { x: 23.05, y: 2.3,   rot: 90,   side: back, block: buck_logic }   # VOUT HF, under L1 output
+  R1:  { x: 2.95, y: 6.15,   rot: 90,   side: back, block: buck_logic }
+  R2:  { x: 16.4, y: 4.1,   rot: 0,   side: back, block: buck_logic }
+  R5:  { x: 17.1, y: 6.7,   rot: 0,   side: back, block: buck_logic }
+  R6:  { x: 16.4, y: 1.5,   rot: 0,   side: back, block: buck_logic }
+  C8:  { x: 19.8, y: 2.25,   rot: 90,   side: back, block: buck_logic }
+  R3:  { x: 12.3, y: 4.1,   rot: 0,   side: back, block: buck_logic }
+  R4:  { x: 12.3, y: 1.5,   rot: 0,   side: back, block: buck_logic }
+  C9:  { x: 6.2, y: 4.1,   rot: 90,   side: back, block: buck_logic }
 
   # --- +12V_HEAT heater buck (top row, y 8.5..15.5) ---
   C10: { x: 1.3,   y: 12.0,  rot: 90,  block: buck_heat }
@@ -94,13 +94,13 @@ parts:
   C14: { x: 24.9,  y: 12.0,  rot: 90,  block: buck_heat }
   C15: { x: 27.3,  y: 12.0,  rot: 90,  block: buck_heat }
   C12: { x: 1.55, y: 12.0,  rot: 90,   side: back, block: buck_heat }
-  C13: { x: 8.9, y: 15.85,  rot: 0,   side: back, block: buck_heat }
-  C16: { x: 24.9, y: 12.0,  rot: 0,   side: back, block: buck_heat }
-  R7:  { x: 5.3, y: 9.75,  rot: 90,   side: back, block: buck_heat }
-  R8:  { x: 5.5, y: 13.1,  rot: 0,   side: back, block: buck_heat }
-  R11: { x: 4.8, y: 15.7,  rot: 0,   side: back, block: buck_heat }
-  R12: { x: 13.0, y: 14.65,  rot: 0,   side: back, block: buck_heat }
-  C17: { x: 13.9, y: 17.3,  rot: 0,   side: back, block: buck_heat }
-  R9:  { x: 16.65, y: 10.1,  rot: 0,   side: back, block: buck_heat }
-  R10: { x: 12.25, y: 8.3,  rot: 90,   side: back, block: buck_heat }
-  C18: { x: 12.55, y: 12.0,  rot: 0,   side: back, block: buck_heat }
+  C13: { x: 6.2, y: 15.35,  rot: 90,   side: back, block: buck_heat }
+  C16: { x: 24.9, y: 9.55,  rot: 0,   side: back, block: buck_heat }
+  R7:  { x: 8.9, y: 8.3,  rot: 0,   side: back, block: buck_heat }
+  R8:  { x: 5.55, y: 8.65,  rot: 90,   side: back, block: buck_heat }
+  R11: { x: 5.5, y: 12.0,  rot: 0,   side: back, block: buck_heat }
+  R12: { x: 15.05, y: 14.6,  rot: 0,   side: back, block: buck_heat }
+  C17: { x: 10.4, y: 16.35,  rot: 0,   side: back, block: buck_heat }
+  R9:  { x: 15.5, y: 9.4,  rot: 0,   side: back, block: buck_heat }
+  R10: { x: 15.05, y: 12.0,  rot: 0,   side: back, block: buck_heat }
+  C18: { x: 11.65, y: 11.65,  rot: 90,   side: back, block: buck_heat }

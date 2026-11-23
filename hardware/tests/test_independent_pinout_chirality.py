@@ -21,8 +21,11 @@ from __future__ import annotations
 
 import ast
 import csv
+import json
 import math
 import re
+import subprocess
+import tempfile
 from pathlib import Path
 
 import pcbnew
@@ -866,3 +869,61 @@ def test_non_swapped_buses_and_unique_i2c_addresses(dome_board: str):
         pins_a = {p.GetNumber(): p.GetNetname() for p in fp_a.Pads() if p.GetNumber().isdigit()}
         pins_b = {p.GetNumber(): p.GetNetname() for p in fp_b.Pads() if p.GetNumber().isdigit()}
         assert pins_a == pins_b, f"connector mismatch {b_a}:{r_a} {pins_a} != {b_b}:{r_b} {pins_b}"
+
+
+@pytest.mark.parametrize("board", BOARDS)
+def test_every_ic_has_pin1_silkscreen_indicator_and_zero_silk_over_pads(board: str):
+    """Every multi-pin IC (`U*`) must have a physical silkscreen Pin-1 indicator closer to Pin 1 than to the opposite
+    corner pin, and `kicad-cli pcb drc --severity-all` must report zero `silk_over_copper` / `silk_overlap` violations."""
+    pcb_path = RELEASE_ROOT / board / f"{board}.kicad_pcb"
+    pcb = pcbnew.LoadBoard(str(pcb_path))
+    problems = []
+
+    for fp in sorted(pcb.Footprints(), key=lambda item: item.GetReference()):
+        ref = fp.GetReference()
+        if ref_prefix(ref) != "U":
+            continue
+        pads = {
+            int(p.GetNumber()): (pcbnew.ToMM(p.GetPosition().x), -pcbnew.ToMM(p.GetPosition().y))
+            for p in fp.Pads() if p.GetNumber().isdigit()
+        }
+        if len(pads) < 4 or 1 not in pads:
+            continue
+        silk_layer = pcbnew.B_SilkS if fp.IsFlipped() else pcbnew.F_SilkS
+        # Prefer explicit pin-1 dot/polygon/arc markers; fall back to silk shapes if package uses chamfer/notch silk.
+        dots = []
+        any_silk = []
+        for gi in fp.GraphicalItems():
+            if gi.GetLayer() == silk_layer and isinstance(gi, pcbnew.PCB_SHAPE):
+                bb = gi.GetBoundingBox()
+                pt = (pcbnew.ToMM(bb.GetCenter().x), -pcbnew.ToMM(bb.GetCenter().y))
+                any_silk.append(pt)
+                if gi.ShowShape() in ("Circle", "Polygon", "Arc"):
+                    dots.append(pt)
+        markers = dots or any_silk
+        if not markers:
+            problems.append(f"{ref} ({fp.GetFPID().GetLibItemName()}): missing Pin-1 silkscreen indicator")
+            continue
+        p1 = pads[1]
+        # Opposite corner pad = farthest pad from Pin 1.
+        opp_pin, p_opp = max(pads.items(), key=lambda kv: math.hypot(kv[1][0] - p1[0], kv[1][1] - p1[1]))
+        d1 = min(math.hypot(mx - p1[0], my - p1[1]) for mx, my in markers)
+        d_opp = min(math.hypot(mx - p_opp[0], my - p_opp[1]) for mx, my in markers)
+        if not (d1 < d_opp):
+            problems.append(
+                f"{ref} ({fp.GetFPID().GetLibItemName()}): Pin-1 silk mark not closer to Pin 1 ({d1:.2f} mm) "
+                f"than Pin {opp_pin} ({d_opp:.2f} mm)"
+            )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        rep = Path(tmp) / "silk_drc.json"
+        subprocess.run(["kicad-cli", "pcb", "drc", "--format", "json", "--severity-all",
+                        "--output", str(rep), str(pcb_path)], check=True, capture_output=True)
+        drc = json.loads(rep.read_text())
+        for v in drc["violations"]:
+            if v["type"] in ("silk_over_copper", "silk_overlap", "silk_edge_clearance"):
+                desc = ", ".join(i["description"] for i in v.get("items", []))
+                problems.append(f"{v['type']}: {desc}")
+
+    assert not problems, f"{board} IC Pin-1 / silkscreen-over-pad errors: " + "; ".join(problems)
+

@@ -8,6 +8,7 @@
   (fp_text value "LSM6DS3" (at 0 2.4) (layer "F.Fab") (effects (font (size 0.6 0.6) (thickness 0.1))))
   (fp_rect (start -1.699 -1.45) (end 1.699 1.45) (stroke (width 0.1) (type solid)) (fill no) (layer "F.Fab"))
   (fp_rect (start -1.849 -1.6) (end 1.849 1.6) (stroke (width 0.05) (type solid)) (fill no) (layer "F.CrtYd"))
+  (fp_circle (center -1.55 -1.35) (end -1.45 -1.35) (stroke (width 0.15) (type solid)) (fill solid) (layer "F.SilkS"))
   (pad "1" smd rect (at -1.262 -0.7501) (size 0.675 0.28) (layers "F.Cu" "F.Paste" "F.Mask"))
   (pad "2" smd rect (at -1.262 -0.2499) (size 0.675 0.28) (layers "F.Cu" "F.Paste" "F.Mask"))
   (pad "3" smd rect (at -1.262 0.2499) (size 0.675 0.28) (layers "F.Cu" "F.Paste" "F.Mask"))
