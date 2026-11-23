@@ -787,15 +787,21 @@ def with_net_classes(dsn_text, nets, net_settings):
     via = dsn_text[start:end].split("(use_via ")[1].split(")")[0]
     assigned = {p["pattern"]: p["netclass"] for p in net_settings["netclass_patterns"]}
     classes = {c["name"]: c for c in net_settings["classes"]}
+    base_clearance = min(c["clearance"] for c in classes.values())
+    base_um = round((base_clearance + 0.003) * 1000)
+    smd_pad_um = round((base_clearance - 0.002) * 1000)   # KiCad LQFP-64 0.5 mm pads sit 199.5 um apart
     groups = {}
     for net in nets:
         groups.setdefault(assigned.get(net, "Default"), []).append(net)
     blocks = []
     for cls, members in sorted(groups.items()):
+        clr_um = round((classes[cls]["clearance"] + 0.003) * 1000)
+        wire_smd = f"\n        (clearance {base_um} (type wire_smd))" if classes[cls]["clearance"] > base_clearance else ""
         blocks.append(f'    (class {cls} {" ".join(members)}\n      (circuit\n        (use_via {via})\n      )\n'
                       f'      (rule\n        (width {classes[cls]["track_width"] * 1000:.0f})\n'
-                      # +10 um over the DRC minimum: Freerouting rounds 45-degree geometry right onto the limit
-                      f'        (clearance {(classes[cls]["clearance"] + 0.01) * 1000:.0f})\n      )\n    )\n')
+                      # +3 um over DRC minimum avoids 45-degree rounding errors while letting traces escape 0.5 mm LQFP pins
+                      f'        (clearance {clr_um}){wire_smd}\n'
+                      f'        (clearance {smd_pad_um} (type smd_smd))\n      )\n    )\n')
     return dsn_text[:start] + "".join(blocks) + "  )\n" + dsn_text[end:]
 
 
@@ -805,10 +811,269 @@ def unconnected(board):
     return board.GetConnectivity().GetUnconnectedCount(False)
 
 
+def _split_planar_segments(segs, snap_nm=500):
+    """Split collinear overlaps, T-junctions and X-crossings among unlocked segments `[(ax, ay, bx, by, width), ...]`
+    on one `(net, layer)`, keeping exact original endpoint coordinates where points coincide within `snap_nm`."""
+    canon = []
+
+    def snap_pt(px, py):
+        for cx, cy in canon:
+            if math.hypot(px - cx, py - cy) <= snap_nm:
+                return (cx, cy)
+        pt = (round(px), round(py))
+        canon.append(pt)
+        return pt
+
+    raw = []
+    for ax, ay, bx, by, w in segs:
+        p, q = snap_pt(ax, ay), snap_pt(bx, by)
+        if p != q:
+            raw.append((p, q, w))
+    if len(raw) <= 1:
+        return raw
+
+    # Collect interior split parameters t in (0, 1) along each segment from other endpoints and proper crossings.
+    cuts = [[0.0, 1.0] for _ in raw]
+    for i, (a, b, _) in enumerate(raw):
+        ax, ay = a
+        dx, dy = b[0] - ax, b[1] - ay
+        len2 = dx * dx + dy * dy
+        length = math.sqrt(len2)
+        for j, (c, d, _) in enumerate(raw):
+            if i == j:
+                continue
+            for px, py in (c, d):
+                t = ((px - ax) * dx + (py - ay) * dy) / len2
+                if 0.0 < t < 1.0 and math.hypot(px - (ax + t * dx), py - (ay + t * dy)) <= snap_nm:
+                    snap_pt(px, py)
+                    cuts[i].append(t)
+            if j > i:
+                ex, ey = d[0] - c[0], d[1] - c[1]
+                denom = dx * ey - dy * ex
+                if abs(denom) > 1e-6 * length * math.hypot(ex, ey):
+                    rx, ry = c[0] - ax, c[1] - ay
+                    ti = (rx * ey - ry * ex) / denom
+                    tj = (rx * dy - ry * dx) / denom
+                    if 0.0 < ti < 1.0 and 0.0 < tj < 1.0:
+                        ix, iy = ax + ti * dx, ay + ti * dy
+                        snap_pt(ix, iy)
+                        cuts[i].append(ti)
+                        cuts[j].append(tj)
+
+    dedup = {}
+    for (a, b, w), ts in zip(raw, cuts):
+        ax, ay = a
+        dx, dy = b[0] - ax, b[1] - ay
+        pts = [snap_pt(ax + t * dx, ay + t * dy) for t in sorted(ts)]
+        for u, v in itertools.pairwise(pts):
+            if u != v:
+                key = (u, v) if u < v else (v, u)
+                dedup[key] = max(dedup.get(key, 0), w)
+    return [(u, v, w) for (u, v), w in dedup.items()]
 
 
+def prune_track_loops(board):
+    """Planar split of collinear/crossing same-net segments per layer, followed by pruning open-air stubs and same-net
+    track/via/pour cycles down to a minimal forest while preserving full pad connectivity."""
+    baseline = unconnected(board)
+    snap_nm = 500
+    unlocked = [t for t in board.GetTracks()
+                if t.Type() == pcbnew.PCB_TRACE_T and not t.IsLocked() and t.GetNetCode() > 0]
+    if not unlocked:
+        return 0, 0
 
+    locked_tracks = [t for t in board.GetTracks()
+                     if t.Type() == pcbnew.PCB_TRACE_T and t.IsLocked() and t.GetNetCode() > 0]
+    vias = [v for v in board.GetTracks() if v.Type() == pcbnew.PCB_VIA_T and v.GetNetCode() > 0]
+    pads_by_net = {}
+    for p in board.GetPads():
+        if p.GetNetCode() > 0:
+            pads_by_net.setdefault(p.GetNetCode(), []).append(p)
+    vias_by_net = {}
+    for v in vias:
+        vias_by_net.setdefault(v.GetNetCode(), []).append(v)
+    locked_by_nl = {}
+    for t in locked_tracks:
+        locked_by_nl.setdefault((t.GetNetCode(), t.GetLayer()), []).append(t)
 
+    # Pre-extract per-(net, layer) filled copper islands so pour-shorted loops and redundant pour tracks are seen.
+    islands_by_nl = {}
+    for z_idx, z in enumerate(zones(board)):
+        if z.GetIsRuleArea() or z.GetNetCode() <= 0:
+            continue
+        for lyr in LAYERS.values():
+            if not z.IsOnLayer(lyr):
+                continue
+            ps = z.GetFilledPolysList(lyr)
+            for idx in range(ps.OutlineCount()):
+                sub = pcbnew.SHAPE_POLY_SET()
+                sub.AddOutline(ps.Outline(idx))
+                for h in range(ps.HoleCount(idx)):
+                    sub.AddHole(ps.Hole(idx, h), 0)
+                islands_by_nl.setdefault((z.GetNetCode(), lyr), []).append((f"zone_{z_idx}_{lyr}_{idx}", z, sub))
+
+    by_net = {}
+    for t in unlocked:
+        by_net.setdefault(t.GetNetCode(), []).append(t)
+
+    split_delta = 0
+    pruned_count = 0
+    replacements = []
+    to_remove = []
+
+    for net_code, net_tracks in by_net.items():
+        net_obj = net_tracks[0].GetNet()
+        by_lyr = {}
+        for t in net_tracks:
+            s, e = t.GetStart(), t.GetEnd()
+            by_lyr.setdefault(t.GetLayer(), []).append((s.x, s.y, e.x, e.y, t.GetWidth()))
+
+        # 1. Split collinear/crossing segments on each layer.
+        layer_segs = {}
+        orig_cnt = len(net_tracks)
+        after_split_cnt = 0
+        for lyr, segs in by_lyr.items():
+            sp = _split_planar_segments(segs, snap_nm)
+            layer_segs[lyr] = sp
+            after_split_cnt += len(sp)
+
+        # 2. Build 3D net connectivity: anchors (pads, vias, locked tracks, filled zone islands) have cost 0;
+        #    unlocked split track segments have positive cost = length / width (keeps shorter, wider tracks).
+        pads = pads_by_net.get(net_code, [])
+        net_vias = vias_by_net.get(net_code, [])
+
+        def point_anchors(pt, lyr, _pads=pads, _vias=net_vias, _nc=net_code):
+            v2 = pcbnew.VECTOR2I(pt[0], pt[1])
+            anc = []
+            for p_idx, p in enumerate(_pads):
+                if p.IsOnLayer(lyr) and p.HitTest(v2):
+                    anc.append(("pad", p_idx))
+            for v_idx, v in enumerate(_vias):
+                vp = v.GetPosition()
+                if math.hypot(pt[0] - vp.x, pt[1] - vp.y) <= v.GetWidth(lyr) / 2:
+                    anc.append(("via", v_idx))
+            for lt_idx, lt in enumerate(locked_by_nl.get((_nc, lyr), ())):
+                ls, le = lt.GetStart(), lt.GetEnd()
+                dx, dy = le.x - ls.x, le.y - ls.y
+                l2 = dx * dx + dy * dy
+                u = 0.0 if l2 == 0 else max(0.0, min(1.0, ((pt[0] - ls.x) * dx + (pt[1] - ls.y) * dy) / l2))
+                if math.hypot(pt[0] - (ls.x + u * dx), pt[1] - (ls.y + u * dy)) <= snap_nm:
+                    anc.append(("locked", lyr, lt_idx))
+            for z_tag, zone_obj, poly in islands_by_nl.get((_nc, lyr), ()):
+                if zone_obj.HitTestFilledArea(lyr, v2) and poly.Collide(v2, 0):
+                    anc.append((z_tag,))
+            return anc
+
+        # Union-Find over zero-cost physical contacts (pads <-> vias <-> zones <-> track vertices).
+        parent = {}
+
+        def find(x, _par=parent):
+            while _par.setdefault(x, x) != x:
+                _par[x] = _par[_par[x]]
+                x = _par[x]
+            return x
+
+        def union(a, b, _find=find, _par=parent):
+            ra, rb = _find(a), _find(b)
+            if ra != rb:
+                _par[rb] = ra
+                return True
+            return False
+
+        # Direct pad <-> via and pad/via <-> zone contacts even without tracks.
+        for lyr in LAYERS.values():
+            for p_idx, p in enumerate(pads):
+                if not p.IsOnLayer(lyr):
+                    continue
+                pp = p.GetPosition()
+                for z_tag, zone_obj, poly in islands_by_nl.get((net_code, lyr), ()):
+                    if zone_obj.HitTestFilledArea(lyr, pp) and poly.Collide(pp, 0):
+                        union(("pad", p_idx), (z_tag,))
+            for v_idx, v in enumerate(net_vias):
+                vp = v.GetPosition()
+                for p_idx, p in enumerate(pads):
+                    if p.IsOnLayer(lyr) and p.HitTest(vp):
+                        union(("via", v_idx), ("pad", p_idx))
+                for z_tag, zone_obj, poly in islands_by_nl.get((net_code, lyr), ()):
+                    if zone_obj.HitTestFilledArea(lyr, vp) and poly.Collide(vp, 0):
+                        union(("via", v_idx), (z_tag,))
+            for lt_idx, lt in enumerate(locked_by_nl.get((net_code, lyr), ())):
+                for end in (lt.GetStart(), lt.GetEnd()):
+                    for anc in point_anchors((end.x, end.y), lyr):
+                        union(("locked", lyr, lt_idx), anc)
+
+        weighted_edges = []
+        vertex_anchors = {}
+        for lyr, sp in layer_segs.items():
+            for u, v, w in sp:
+                nu, nv = ("pt", lyr, u), ("pt", lyr, v)
+                for pt, node in ((u, nu), (v, nv)):
+                    if node not in vertex_anchors:
+                        ancs = point_anchors(pt, lyr)
+                        vertex_anchors[node] = bool(ancs)
+                        for anc in ancs:
+                            union(node, anc)
+                length = math.hypot(v[0] - u[0], v[1] - u[1])
+                weighted_edges.append((length / max(w, 1), lyr, u, v, w, nu, nv))
+
+        # Kruskal's spanning forest over unlocked track segments breaks all same-net cycles & redundant pour tracks.
+        kept = []
+        for _cost, lyr, u, v, w, nu, nv in sorted(weighted_edges, key=lambda item: item[0]):
+            if union(nu, nv):
+                kept.append((lyr, u, v, w, nu, nv))
+
+        # Iteratively peel open-air degree-1 stubs (vertices that are not anchors and have degree <= 1).
+        changed = True
+        while changed:
+            changed = False
+            deg = {}
+            for _lyr, _u, _v, _w, nu, nv in kept:
+                deg[nu] = deg.get(nu, 0) + 1
+                deg[nv] = deg.get(nv, 0) + 1
+            nxt = [e for e in kept
+                   if (deg[e[4]] > 1 or vertex_anchors.get(e[4], False))
+                   and (deg[e[5]] > 1 or vertex_anchors.get(e[5], False))]
+            if len(nxt) < len(kept):
+                kept = nxt
+                changed = True
+
+        split_delta += after_split_cnt - orig_cnt
+        pruned_count += after_split_cnt - len(kept)
+        to_remove.extend(net_tracks)
+        for lyr, u, v, w, _nu, _nv in kept:
+            replacements.append((net_obj, lyr, u, v, w))
+
+    if not split_delta and not pruned_count:
+        return 0, 0
+
+    snapshot = [(t.GetNet(), t.GetLayer(), t.GetStart(), t.GetEnd(), t.GetWidth()) for t in to_remove]
+    for t in to_remove:
+        board.RemoveNative(t)
+    added = []
+    for net_obj, lyr, u, v, w in replacements:
+        seg = pcbnew.PCB_TRACK(board)
+        seg.SetStart(pcbnew.VECTOR2I(u[0], u[1]))
+        seg.SetEnd(pcbnew.VECTOR2I(v[0], v[1]))
+        seg.SetWidth(w)
+        seg.SetLayer(lyr)
+        board.Add(seg)
+        seg.SetNet(net_obj)
+        added.append(seg)
+
+    if unconnected(board) > baseline:
+        for seg in added:
+            board.RemoveNative(seg)
+        for net_obj, lyr, s, e, w in snapshot:
+            seg = pcbnew.PCB_TRACK(board)
+            seg.SetStart(s)
+            seg.SetEnd(e)
+            seg.SetWidth(w)
+            seg.SetLayer(lyr)
+            board.Add(seg)
+            seg.SetNet(net_obj)
+        fill_zones(board)
+        return 0, 0
+    return split_delta, pruned_count
 
 
 def import_ses(board_name):
@@ -817,9 +1082,13 @@ def import_ses(board_name):
     ses = build_dir(board_name) / f"{board_name}.ses"
     if not pcbnew.ImportSpecctraSES(board, str(ses)):
         sys.exit("SES import failed")
+    fill_zones(board)
+    _split_n, pruned_n = prune_track_loops(board)
     save(board, plan, board_name)
     widened = widen_narrow_tracks(board_name)
-    print(f"{board_name}: imported {ses.relative_to(REPO)}" + (f", widened {widened} necked power tracks" if widened else ""))
+    notes = ([f"pruned {pruned_n} loop/stub/pour-redundant segments"] if pruned_n else []) + (
+        [f"widened {widened} necked power tracks"] if widened else [])
+    print(f"{board_name}: imported {ses.relative_to(REPO)}" + (f" ({', '.join(notes)})" if notes else ""))
 
 
 def widen_narrow_tracks(board_name):
@@ -896,9 +1165,9 @@ MIN_TRACK_UM = 120
 
 
 def route(board_name, time_limit=300, attempts=3):
-    """Route with fastroute; kicad-cli DRC of the imported board (minus the unrouted baseline's violations) and the
-    board's connectivity are the pass / fail. fastroute's results vary run to run (wall-clock limits), so a failing
-    session is routed again, up to `attempts` times."""
+    """Route with fastroute (FANOUT=false); kicad-cli DRC of the imported board (minus the unrouted baseline's
+    violations) and the board's connectivity are the pass / fail. Attempt 1 runs deterministically (single-threaded, no
+    per-stage wall-clock limits); any retry falls back to parallel multi-start."""
     connections, baseline = unrouted_baseline(board_name)
     known = {drc_key(v) for v in baseline}
     export_dsn(board_name)
@@ -906,8 +1175,10 @@ def route(board_name, time_limit=300, attempts=3):
     dsn, ses, report = bdir / f"{board_name}.dsn", bdir / f"{board_name}.ses", bdir / "fastroute_report.json"
     for attempt in range(1, attempts + 1):
         ses.unlink(missing_ok=True)
+        det_flags = ["--no-time-limits", "--router.autorouter.max_threads=1"] if attempt == 1 else []
         run = subprocess.run(["fastroute", "-de", str(dsn), "-do", str(ses), f"--max-time={time_limit}",
-                              f"--router.min_trace_width_um={MIN_TRACK_UM}", f"--report={report}", "--diagnose"],
+                              "--router.fanout.enabled=false", f"--router.min_trace_width_um={MIN_TRACK_UM}",
+                              *det_flags, f"--report={report}", "--diagnose"],
                              capture_output=True, text=True, check=False)
         if run.returncode or not ses.exists():
             sys.exit(f"{board_name}: fastroute failed (exit {run.returncode}):\n{run.stdout[-2000:]}{run.stderr[-2000:]}")
@@ -955,12 +1226,24 @@ def place(board_name, names):
     print(f"{board_name}: placed {', '.join(refs)}")
 
 
+def prune_loops(board_name):
+    plan = load_plan(board_name)
+    board = pcbnew.LoadBoard(str(stored_board_path(board_name)))
+    fill_zones(board)
+    split_n, pruned_n = prune_track_loops(board)
+    save(board, plan, board_name)
+    print(f"{board_name}: split {split_n}, pruned {pruned_n} redundant/loop/stub track segments")
+
+
 if __name__ == "__main__":
     name, command, *args = sys.argv[1:]
     if command == "sync":
         sync(name)
     elif command == "place":
         place(name, args)
+    elif command == "autoplace":
+        import place_cpsat
+        place_cpsat.autoplace_cli(name, args)
     elif command == "tidy-silk":
         tidy_silk(name)
     elif command == "components":
@@ -969,6 +1252,8 @@ if __name__ == "__main__":
         unroute(name)
     elif command == "route":
         route(name, *(int(a) for a in args))
+    elif command == "prune-loops":
+        prune_loops(name)
     elif command == "export-dsn":
         export_dsn(name)
     elif command == "import-ses":

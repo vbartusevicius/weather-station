@@ -95,9 +95,9 @@ LEVELS = [
     # crown: STM32G431 (3.3 V, VOH >= VDD - 0.4 V at 8 mA, DS12589) -> UCC27524 EN / IN (SLUSFA9: VEN_H, VIN_H <= 2.3 V)
     ("STM32 -> UCC27524 ENx high", 3.3 - 0.4, 2.3, "high"),
     ("STM32 -> UCC27524 INx high", 3.3 - 0.4, 2.3, "high"),
-    # undriven EN: 200 kOhm internal pull-up to 12.3 V (max regulated) vs the 4.7 kOhm pull-down; VEN_L >= 0.8 V
-    ("UCC27524 EN undriven (reset)", 12.3 * 4.7 / (200 + 4.7), 0.8, "low"),
-    ("UCC27524 EN undriven, R_EN -25 %", 12.3 * 4.7 / (150 + 4.7), 0.8, "low"),
+    # undriven EN: ENA + ENB tied puts 2x 200 kOhm = 100 kOhm typ (50 kOhm SLUSFA9 min) to 12.3 V vs 2.2 kOhm pull-down; VEN_L >= 0.8 V
+    ("UCC27524 EN undriven (reset, 2x 200k typ)", 12.3 * 2.2 / (100 + 2.2), 0.8, "low"),
+    ("UCC27524 EN undriven, R_EN min (2x 100k)", 12.3 * 2.2 / (50 + 2.2), 0.8, "low"),
     # 74HC4052 at 3.3 V: VIH = 0.7 VCC = 2.31 V (Nexperia 74HC4052, 2..6 V CMOS inputs)
     ("STM32 -> 74HC4052 S0/S1 high", 3.3 - 0.4, 0.7 * 3.3, "high"),
     # main: ESP32-C6 VOH >= 0.8 VDD -> SP3485 DI / DE VIH 2.0 V; SP3485 RO VOH >= VCC - 0.4 -> ESP32 VIH 0.75 VDD

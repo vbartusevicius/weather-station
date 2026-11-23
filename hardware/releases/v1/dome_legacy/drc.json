@@ -1,7 +1,7 @@
 {
     "$schema": "https://schemas.kicad.org/drc.v1.json",
     "coordinate_units": "mm",
-    "date": "2026-11-16T22:00:08",
+    "date": "2026-11-23T09:11:12",
     "ignored_checks": [
         {
             "description": "Footprint has no courtyard defined",
@@ -42,22 +42,7 @@
                         "x": 9.3,
                         "y": -5.5
                     },
-                    "uuid": "38052625-51d5-453d-8aee-b8f245e51ae3"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'gateway_fp'",
-            "items": [
-                {
-                    "description": "Footprint U1",
-                    "pos": {
-                        "x": 4.3,
-                        "y": -5.5
-                    },
-                    "uuid": "46a7ea1b-4f10-4e89-84b2-1d1bd4070098"
+                    "uuid": "2ec96453-dd7d-4c98-b73a-d92d7e5c020c"
                 }
             ],
             "severity": "warning",
@@ -72,7 +57,37 @@
                         "x": 6.8,
                         "y": -9.3
                     },
-                    "uuid": "82cefe29-143e-48f9-9a58-1532cb69a69a"
+                    "uuid": "71ef64bb-d506-4d6c-9a89-65288ac5fb58"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'gateway_fp'",
+            "items": [
+                {
+                    "description": "Footprint U1",
+                    "pos": {
+                        "x": 4.3,
+                        "y": -5.5
+                    },
+                    "uuid": "94e98fb4-4fa2-4595-b01a-a8f75586c115"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C2",
+                    "pos": {
+                        "x": 8.35,
+                        "y": -2.1
+                    },
+                    "uuid": "59d66938-6d8c-46c3-9485-656ab47de66f"
                 }
             ],
             "severity": "warning",
@@ -84,10 +99,10 @@
                 {
                     "description": "Footprint C3",
                     "pos": {
-                        "x": 6.8,
-                        "y": -2.1
+                        "x": 7.2,
+                        "y": -11.5
                     },
-                    "uuid": "0b1021d9-2f74-4f89-8803-b7be936d6db0"
+                    "uuid": "7d1c8290-a76d-4623-9000-358d6d77f8d7"
                 }
             ],
             "severity": "warning",
@@ -102,22 +117,7 @@
                         "x": 6.8,
                         "y": -6.8
                     },
-                    "uuid": "461ca76e-3a27-4879-9e55-ea8ccd0b4aaa"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint C2",
-                    "pos": {
-                        "x": 9.1,
-                        "y": -11.35
-                    },
-                    "uuid": "6c2565bf-f71a-4235-95b4-6b089a490ebf"
+                    "uuid": "ee0d779f-b515-4595-ac42-972bab9a4800"
                 }
             ],
             "severity": "warning",
@@ -129,10 +129,10 @@
                 {
                     "description": "Footprint C1",
                     "pos": {
-                        "x": 4.5,
-                        "y": -11.35
+                        "x": 4.6,
+                        "y": -2.1
                     },
-                    "uuid": "6f174144-2575-412f-87ff-b03f4265351f"
+                    "uuid": "fb34ff94-53a8-4332-9df5-3119a69f4b3e"
                 }
             ],
             "severity": "warning",

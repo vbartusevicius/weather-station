@@ -57,23 +57,11 @@ frame:
     - { text: "UV-B", x: 1.5, y: 9.0, rot: 90 }
     - { text: "LIGHT", x: 9.65, y: 7.8, rot: 90, size: 0.6 }
     - { text: "UV-A", x: 14.1, y: 9.0, rot: 90 }
-  # every reference hand-placed next to its part (the automatic search hid half of them on this small board)
+  # locked optical sensor references hand-placed beside their labels; CP-SAT-placed parts use automatic inside placement
   ref_positions:
     D1: { x: 1.5, y: 6.3, rot: 90 }
     D2: { x: 14.1, y: 6.3, rot: 90 }
     U2: { x: 5.95, y: 7.8, rot: 90 }
-    U1: { x: 7.8, y: 14.2 }
-    R1: { x: 1.9, y: 11.6, rot: 90 }
-    R2: { x: 13.7, y: 11.6, rot: 90 }
-    U3: { x: 7.8, y: 1.3 }
-    R3: { x: 1.9, y: 3.9, rot: 90 }
-    R4: { x: 13.7, y: 3.9, rot: 90 }
-    C4: { x: 5.9, y: 14.15 }
-    C5: { x: 9.7, y: 14.15 }
-    C2: { x: 13.85, y: 10.3, rot: 90 }
-    C1: { x: 1.75, y: 10.3, rot: 90 }
-    C3: { x: 5.9, y: 1.45 }
-    C6: { x: 9.7, y: 1.45 }
 
 heights:
   default: 0.6
@@ -88,21 +76,21 @@ parts:
   # --- Top (+y, F.Cu, under the PTFE dome / JGS1 window): the three optical sensors in one row through the centre,
   # the leaded op-amp (VSSOP-8) + gain resistors above, the leaded ADC (VSSOP-10) + VB divider below. No MLCCs on top:
   # under the clear JGS1 window the sun heats one face of a top-side ceramic capacitor (cracking risk). Passives 0805.
-  D1:  { x: 4.13, y: 7.8,  rot: 90,  block: uv, locked: true }     # GUVB-C21SD UV-B
+  D1:  { x: 4.15, y: 7.8,  rot: 90,  block: uv, locked: true }     # GUVB-C21SD UV-B
   U2:  { x: 7.8,  y: 7.8,  rot: 0,   block: light, locked: true }  # TSL25911FN
-  D2:  { x: 11.47, y: 7.8, rot: 90,  block: uv, locked: true }     # GUVA-C22SD UV-A
-  U1:  { x: 7.8,  y: 11.9, rot: 0,   block: uv }                   # TLV9062 (VSSOP-8)
-  R1:  { x: 3.6,  y: 11.6, rot: 90,  block: uv }                   # UV-B gain 10 MOhm
-  R2:  { x: 12.0, y: 11.6, rot: 90,  block: uv }                   # UV-A gain 4.7 MOhm
-  U3:  { x: 7.8,  y: 3.6,  rot: 90,  block: uv }                   # ADS1115 (VSSOP-10, pins along x), I2C 0x49
-  R3:  { x: 3.6,  y: 3.9,  rot: 90,  block: uv }                   # VB divider top
-  R4:  { x: 12.0, y: 3.9,  rot: 90,  block: uv }                   # VB divider bottom
+  D2:  { x: 11.45, y: 7.8, rot: 90,  block: uv, locked: true }     # GUVA-C22SD UV-A
+  U1:  { x: 9.0,  y: 11.95, rot: 0,   block: uv }                   # TLV9062 (VSSOP-8)
+  R1:  { x: 4.65,  y: 12.2, rot: 90,  block: uv }                   # UV-B gain 10 MOhm
+  R2:  { x: 14.0, y: 7.9, rot: 90,  block: uv }                   # UV-A gain 4.7 MOhm
+  U3:  { x: 9.25,  y: 4.0,  rot: 90,  block: uv }                   # ADS1115 (VSSOP-10, pins along x), I2C 0x49
+  R3:  { x: 4.9,  y: 4.2,  rot: 90,  block: uv }                   # VB divider top
+  R4:  { x: 1.6, y: 7.3,  rot: 90,  block: uv }                   # VB divider bottom
 
   # --- Bottom (-y, B.Cu, shaded): riser J1 dead centre; capacitors above, below and beside it ---
   J1:  { x: 7.8,  y: 7.8,  rot: 0,   side: back, block: int_crown, locked: true }
-  C4:  { x: 5.9,  y: 12.5, rot: 0,   side: back, block: uv }       # UV-B feedback capacitor
-  C5:  { x: 9.7,  y: 12.5, rot: 0,   side: back, block: uv }       # UV-A feedback capacitor
-  C2:  { x: 13.85, y: 7.8, rot: 90,  side: back, block: uv }       # TLV9062 decoupling
-  C1:  { x: 1.75, y: 7.8,  rot: 90,  side: back, block: light }    # TSL25911 decoupling
-  C3:  { x: 5.9,  y: 3.1,  rot: 0,   side: back, block: uv }       # ADS1115 decoupling
-  C6:  { x: 9.7,  y: 3.1,  rot: 0,   side: back, block: uv }       # VB reservoir
+  C4:  { x: 5.9,  y: 12.6, rot: 0,   side: back, block: uv }       # UV-B feedback capacitor
+  C5:  { x: 13.7,  y: 7.85, rot: 90,   side: back, block: uv }       # UV-A feedback capacitor
+  C2:  { x: 10.2, y: 12.9, rot: 0,  side: back, block: uv }       # TLV9062 decoupling
+  C1:  { x: 1.9, y: 7.65,  rot: 90,  side: back, block: light }    # TSL25911 decoupling
+  C3:  { x: 10.35,  y: 2.9,  rot: 0,   side: back, block: uv }       # ADS1115 decoupling
+  C6:  { x: 6.75,  y: 2.9,  rot: 0,   side: back, block: uv }       # VB reservoir

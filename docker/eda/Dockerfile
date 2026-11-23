@@ -11,7 +11,7 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
        kicad=${KICAD_VERSION} kicad-footprints=${KICAD_VERSION} kicad-symbols=${KICAD_VERSION} \
-       kicad-templates=${KICAD_VERSION} \
+       kicad-templates=${KICAD_VERSION} ngspice \
        python3-pip python3-venv curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -22,7 +22,8 @@ RUN python3 -m venv --system-site-packages /opt/eda \
        pyyaml==6.0.3 \
        pytest==8.4.2 \
        pillow==11.3.0 \
-       shapely==2.1.1
+       shapely==2.1.1 \
+       ortools==9.15.6755
 
 ENV KICAD10_SYMBOL_DIR=/usr/share/kicad/symbols \
     KICAD_SYMBOL_DIR=/usr/share/kicad/symbols \

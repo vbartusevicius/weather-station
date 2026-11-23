@@ -33,7 +33,7 @@ heights:
 parts:
   # --- Top (+y, F.Cu pressed flat against reflector apex): TH1 at EXACT centre (12.0, 12.0) + 4x 100R 2512 parallel ring ---
   TH1: { x: 12.0,  y: 12.0,  rot: 0,   block: reflector_heater, locked: true }
-  C1:  { x: 12.0,  y: 8.5,   rot: 0,   block: reflector_heater }
+  C1:  { x: 15.4,  y: 12.45,   rot: 90,   block: reflector_heater }
   R1:  { x: 5.5,   y: 18.5,  rot: 0,   block: reflector_heater, locked: true }
   R2:  { x: 18.5,  y: 18.5,  rot: 0,   block: reflector_heater, locked: true }
   R3:  { x: 5.5,   y: 5.5,   rot: 0,   block: reflector_heater, locked: true }
