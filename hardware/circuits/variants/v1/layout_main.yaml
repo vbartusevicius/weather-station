@@ -55,61 +55,61 @@ parts:
   # 32 x 52 mm main board on the right half of the base bay (enc x = -0.5..31.5); the PMSA003I lies on the left.
   # --- Front (+y): 4-pole push-in terminal J1 (12-32 V + RS-485) at the front edge, input protection row ---
   J1:  { x: 8.6,   y: 7.0,   rot: 180, block: power_in, locked: true }
-  F1:  { x: 9.45,  y: 44.55,   rot: 180,  block: power_in }   # 2920 60 V PTC (7.4 x 5.1 mm)
-  D1:  { x: 28.5,  y: 7.0,   rot: 90,  block: power_in }
-  D2:  { x: 4.05,  y: 39.1,   rot: 0,  block: power_in }
-  C1:  { x: 24.9,  y: 3.15,  rot: 270,   block: power_in }
+  F1:  { x: 10.45,  y: 39.95,   rot: 180,  block: power_in }   # 2920 60 V PTC (7.4 x 5.1 mm)
+  D1:  { x: 27.95,  y: 8.9,   rot: 0,  block: power_in }
+  D2:  { x: 3.4,  y: 41.95,   rot: 270,  block: power_in }
+  C1:  { x: 27.95,  y: 12.5,  rot: 0,   block: power_in }
 
   # XIAO ESP32-C6 on 5.0 mm sockets (both 5 V rails now come from the `power` board under main, via J5)
   U3:  { x: 10.0,  y: 25.0,  rot: 0,   block: mcu, locked: true }
   J5:  { x: 28.6,  y: 21.5,  rot: 90,  block: int_power, locked: true }   # 8-pin power cable from the power board
 
   D5:  { x: 19.6,  y: 36.1,  rot: 0,   side: back, block: mcu_power }   # SS14 (SMA) on the back: no room on top
-  C4:  { x: 15.3,  y: 38.15,  rot: 0,   block: mcu_power }
-  R5:  { x: 22.25,  y: 27.35,  rot: 90,   block: mcu }
-  R6: { x: 20.05,  y: 25.95,  rot: 90,   block: mcu }
-  R7: { x: 20.05,  y: 29.65,  rot: 90,   block: mcu }
-  C5: { x: 23.0,  y: 30.35,  rot: 0,   block: mcu }
+  C4:  { x: 22.9,  y: 25.05,  rot: 270,   block: mcu_power }
+  R5:  { x: 20.25,  y: 24.9,  rot: 270,   block: mcu }
+  R6: { x: 20.25,  y: 20.8,  rot: 270,   block: mcu }
+  R7: { x: 20.25,  y: 29.2,  rot: 90,   block: mcu }
+  C5: { x: 22.9,  y: 29.15,  rot: 90,   block: mcu }
 
   SW1: { x: 19.0,  y: 6.0,   rot: 90,  side: back, block: mcu, locked: true }   # over the base button at enc (+18.5, -20.0)
-  U7:  { x: 21.2,   y: 8.8,  rot: 90,   block: rs485 }
-  C7: { x: 21.5,  y: 3.65,  rot: 90,   block: rs485 }
-  R8: { x: 23.7,  y: 13.1,  rot: 0,   block: rs485 }
-  R9: { x: 18.5,  y: 4.4,  rot: 0,   block: rs485 }
-  R10: { x: 20.05,  y: 17.55,  rot: 90,   block: rs485 }
-  C8: { x: 18.5,   y: 2.15,  rot: 0,   block: rs485 }
-  R26: { x: 20.05,  y: 13.85,  rot: 90,   block: rs485 }   # optional 120R terminator (hand-fit at a bus end only)
+  U7:  { x: 19.7,   y: 9.9,  rot: 180,   block: rs485 }
+  C7: { x: 18.7,  y: 1.55,  rot: 180,   block: rs485 }
+  R8: { x: 21.0,  y: 15.6,  rot: 0,   block: rs485 }
+  R9: { x: 24.65,  y: 4.75,  rot: 270,   block: rs485 }
+  R10: { x: 19.1,  y: 4.2,  rot: 180,   block: rs485 }
+  C8: { x: 28.0,   y: 5.45,  rot: 180,   block: rs485 }
+  R26: { x: 22.05,  y: 3.45,  rot: 90,   block: rs485 }   # optional 120R terminator (hand-fit at a bus end only)
 
   J2:  { x: 23.5,  y: 48.3,  rot: 0,   block: int_crown, locked: true }
   J3:  { x: 24.5,  y: 42.5,  rot: 0,   block: int_probe, locked: true }
   J4:  { x: 24.5,  y: 35.5,  rot: 0,   block: pm_sensor, locked: true }
-  C13: { x: 26.7,  y: 30.35,  rot: 0,  block: pm_sensor }
+  C13: { x: 22.9,  y: 20.95,  rot: 90,  block: pm_sensor }
 
   # --- Back (-y): input sense, heater MOSFET, 6-Axis IMU (clear of the XIAO socket pins) ---
-  R1:  { x: 8.3,  y: 32.6,  rot: 90,   side: back, block: vin_sense }
-  R2:  { x: 5.35,  y: 33.5,  rot: 0,   side: back, block: vin_sense }
-  C3:  { x: 5.35,  y: 31.25,  rot: 0,   side: back, block: vin_sense }
+  R1:  { x: 8.25,  y: 30.0,  rot: 0,   side: back, block: vin_sense }
+  R2:  { x: 8.25,  y: 32.6,  rot: 0,   side: back, block: vin_sense }
+  C3:  { x: 4.85,  y: 31.65,  rot: 270,   side: back, block: vin_sense }
   Q1:  { x: 12.05,  y: 38.9,  rot: 180,   side: back, block: heater_drv }
-  R3:  { x: 8.1,  y: 36.85,  rot: 90,   side: back, block: heater_drv }
-  R4:  { x: 11.05,  y: 35.9,  rot: 0,   side: back, block: heater_drv }
-  D3:  { x: 4.05,  y: 13.1,  rot: 0,   side: back, block: heater_drv }
+  R3:  { x: 7.85,  y: 35.7,  rot: 0,   side: back, block: heater_drv }
+  R4:  { x: 11.95,  y: 35.7,  rot: 180,   side: back, block: heater_drv }
+  D3:  { x: 20.9,  y: 42.05,  rot: 270,   side: back, block: heater_drv }
 
   R16: { x: 11.05,  y: 43.45,  rot: 90,  side: back, block: heater_mon }   # reflector heater 0.1 ohm shunt
 
   # --- Back: ADS1115 heater power monitor (filters between the XIAO socket pin rows, ADC next to the IMU) ---
-  U4:  { x: 21.9,   y: 48.0,  rot: 90,  side: back, block: heater_mon }
-  C21: { x: 28.1,  y: 46.35,  rot: 0,  side: back, block: heater_mon }
-  R20: { x: 16.5,   y: 50.2,  rot: 0,  side: back, block: heater_mon }
-  R21: { x: 26.55,   y: 49.35,  rot: 90,  side: back, block: heater_mon }
-  R24: { x: 16.5,   y: 48.0,  rot: 0,  side: back, block: heater_mon }
-  R25: { x: 18.9,   y: 44.4,  rot: 0,  side: back, block: heater_mon }
-  R17: { x: 21.9,   y: 30.7,  rot: 0,  side: back, block: heater_mon }
-  R19: { x: 21.9,   y: 32.9,  rot: 0,  side: back, block: heater_mon }
-  C20: { x: 18.9,   y: 42.15,  rot: 0,  side: back, block: heater_mon }
-  R18: { x: 12.8,  y: 48.0,  rot: 0,  side: back, block: heater_mon }
-  C19: { x: 15.2,  y: 45.75,  rot: 0,  side: back, block: heater_mon }
+  U4:  { x: 21.9,   y: 48.3,  rot: 90,  side: back, block: heater_mon }
+  C21: { x: 16.15,  y: 48.35,  rot: 180,  side: back, block: heater_mon }
+  R20: { x: 23.1,   y: 32.7,  rot: 0,  side: back, block: heater_mon }
+  R21: { x: 21.9,   y: 30.1,  rot: 180,  side: back, block: heater_mon }
+  R24: { x: 7.95,   y: 48.3,  rot: 0,  side: back, block: heater_mon }
+  R25: { x: 12.05,   y: 48.3,  rot: 0,  side: back, block: heater_mon }
+  R17: { x: 25.5,   y: 39.9,  rot: 180,  side: back, block: heater_mon }
+  R19: { x: 16.8,   y: 44.7,  rot: 180,  side: back, block: heater_mon }
+  C20: { x: 25.3,   y: 15.45,  rot: 180,  side: back, block: heater_mon }
+  R18: { x: 16.8,  y: 42.1,  rot: 0,  side: back, block: heater_mon }
+  C19: { x: 21.9,  y: 12.75,  rot: 180,  side: back, block: heater_mon }
 
-  U5:  { x: 23.5,   y: 43.45,  rot: 180,   side: back, block: imu }
-  C9: { x: 27.4,   y: 42.45,  rot: 90,   side: back, block: imu }
+  U5:  { x: 25.4,   y: 43.75,  rot: 180,   side: back, block: imu }
+  C9: { x: 29.5,   y: 41.8,  rot: 270,   side: back, block: imu }
 
-  D4:  { x: 5.8,   y: 17.25,  rot: 180,   side: back, block: rs485 }       # SM712 RS-485 TVS next to J1
+  D4:  { x: 5.8,   y: 13.1,  rot: 90,   side: back, block: rs485 }       # SM712 RS-485 TVS next to J1

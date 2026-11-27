@@ -79,18 +79,18 @@ parts:
   D1:  { x: 4.15, y: 7.8,  rot: 90,  block: uv, locked: true }     # GUVB-C21SD UV-B
   U2:  { x: 7.8,  y: 7.8,  rot: 0,   block: light, locked: true }  # TSL25911FN
   D2:  { x: 11.45, y: 7.8, rot: 90,  block: uv, locked: true }     # GUVA-C22SD UV-A
-  U1:  { x: 7.35,  y: 4.1, rot: 0,   block: uv }                   # TLV9062 (VSSOP-8)
-  R1:  { x: 5.2,  y: 11.4, rot: 90,  block: uv }                   # UV-B gain 10 MOhm
-  R2:  { x: 12.35, y: 4.55, rot: 0,  block: uv }                   # UV-A gain 4.7 MOhm
-  U3:  { x: 9.45,  y: 11.55,  rot: 90,  block: uv }                   # ADS1115 (VSSOP-10, pins along x), I2C 0x49
-  R3:  { x: 3.1,  y: 4.2,  rot: 90,  block: uv }                   # VB divider top
-  R4:  { x: 3.1, y: 11.4,  rot: 90,  block: uv }                   # VB divider bottom
+  U1:  { x: 9.4,  y: 11.5, rot: 0,   block: uv }                   # TLV9062 (VSSOP-8)
+  R1:  { x: 5.15,  y: 12.15, rot: 90,  block: uv }                   # UV-B gain 10 MOhm
+  R2:  { x: 11.55, y: 4.2, rot: 270,  block: uv }                   # UV-A gain 4.7 MOhm
+  U3:  { x: 7.25,  y: 4.05,  rot: 90,  block: uv }                   # ADS1115 (VSSOP-10, pins along x), I2C 0x49
+  R3:  { x: 3.0,  y: 4.3,  rot: 90,  block: uv }                   # VB divider top
+  R4:  { x: 3.05, y: 11.4,  rot: 270,  block: uv }                   # VB divider bottom
 
   # --- Bottom (-y, B.Cu, shaded): riser J1 dead centre; capacitors above, below and beside it ---
   J1:  { x: 7.8,  y: 7.8,  rot: 0,   side: back, block: int_crown, locked: true }
-  C4:  { x: 5.1,  y: 12.5, rot: 0,   side: back, block: uv }       # UV-B feedback capacitor
-  C5:  { x: 13.65,  y: 9.75, rot: 90,   side: back, block: uv }       # UV-A feedback capacitor
-  C2:  { x: 1.95, y: 9.55, rot: 90,  side: back, block: uv }       # TLV9062 decoupling
-  C1:  { x: 13.65, y: 6.15,  rot: 270,  side: back, block: light }    # TSL25911 decoupling
-  C3:  { x: 8.75,  y: 3.1,  rot: 0,   side: back, block: uv }       # ADS1115 decoupling
-  C6:  { x: 1.95,  y: 5.85,  rot: 270,   side: back, block: uv }       # VB reservoir
+  C4:  { x: 7.0,  y: 12.5, rot: 0,   side: back, block: uv }       # UV-B feedback capacitor
+  C5:  { x: 10.6,  y: 12.5, rot: 0,   side: back, block: uv }       # UV-A feedback capacitor
+  C2:  { x: 1.95, y: 5.7, rot: 90,  side: back, block: uv }       # TLV9062 decoupling
+  C1:  { x: 13.65, y: 7.65,  rot: 90,  side: back, block: light }    # TSL25911 decoupling
+  C3:  { x: 10.3,  y: 3.05,  rot: 0,   side: back, block: uv }       # ADS1115 decoupling
+  C6:  { x: 6.1,  y: 3.1,  rot: 0,   side: back, block: uv }       # VB reservoir

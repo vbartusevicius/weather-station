@@ -52,8 +52,275 @@ VARIANT = SPEC["active_variant"]
 GRID_MM = 0.05
 ANGLES = (0, 90, 180, 270)
 PASSIVE_PREFIXES = ("R", "C", "TH")
+SYMMETRIC_2PIN_PREFIXES = ("R", "C", "L", "FB", "TH")
+POLARIZED_FPID_TOKENS = ("CP_", "ELEC", "TANTAL", "POL", "DIODE", "D_", "LED", "TVS")
 GLOBAL_GND = {"GND"}
 HIGH_PRIORITY_PATTERNS = ("SW", "BST", "FB", "COMP", "CC", "RT", "IN", "INV", "XTAL", "AS_INP", "GATE", "SENSE")
+PIN_PAIR_ALIGN_MAX_MM = 4.0
+CROSS_PENALTY_G = round(10.0 / GRID_MM)
+
+
+def is_symmetric_2pin_passive(sp: PartSpec) -> bool:
+    """True for unlocked non-polarized 2-pin passives (`R`, `C`, `L`, `FB`, `TH`) whose courtyard is 180-deg invariant."""
+    if sp.locked or sp.pad_count != 2 or ref_prefix(sp.ref) not in SYMMETRIC_2PIN_PREFIXES:
+        return False
+    fpid_u = sp.fpid.upper()
+    if any(tok in fpid_u for tok in POLARIZED_FPID_TOKENS):
+        return False
+    pnums = list(sp.oris[0].pads.keys())
+    if len(pnums) != 2:
+        return False
+    n0, n1 = sp.oris[0].pads[pnums[0]][2], sp.oris[0].pads[pnums[1]][2]
+    if not n0 or not n1 or n0 == n1 or n0.startswith("unconnected-") or n1.startswith("unconnected-"):
+        return False
+    # Require identical courtyard bounds under 180-deg rotation so flipping has zero overlap risk.
+    for rot in (0, 90):
+        a, b = sp.oris[rot], sp.oris[(rot + 180) % 360]
+        if (a.dx0, a.dy0, a.dx1, a.dy1) != (b.dx0, b.dy0, b.dx1, b.dy1):
+            return False
+    return True
+
+
+def _grid_segs_intersect(a: tuple[int, int], b: tuple[int, int], c: tuple[int, int], d: tuple[int, int]) -> bool:
+    """Strict/touching 2D segment intersection test in integer grid coordinates (ignoring shared endpoints)."""
+    if a in (c, d) or b in (c, d):
+        return False
+
+    def orient(p, q, r):
+        return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+
+    def on_seg(p, q, r):
+        return (min(p[0], r[0]) <= q[0] <= max(p[0], r[0])
+                and min(p[1], r[1]) <= q[1] <= max(p[1], r[1]))
+
+    o1, o2 = orient(a, b, c), orient(a, b, d)
+    o3, o4 = orient(c, d, a), orient(c, d, b)
+    if (o1 > 0 and o2 < 0 or o1 < 0 and o2 > 0) and (o3 > 0 and o4 < 0 or o3 < 0 and o4 > 0):
+        return True
+    return (
+        (o1 == 0 and on_seg(a, c, b))
+        or (o2 == 0 and on_seg(a, d, b))
+        or (o3 == 0 and on_seg(c, a, d))
+        or (o4 == 0 and on_seg(c, b, d))
+    )
+
+
+def find_shared_parent_pin_pair(
+    ref: str,
+    sp: PartSpec,
+    specs: dict[str, PartSpec],
+    nets: dict[str, list[tuple[str, str]]],
+    candidates: set[str],
+    pad_pos: dict[tuple[str, str], tuple[int, int]] | None = None,
+    ref_pos: tuple[int, int] | None = None,
+    assigned_pin: tuple[str, str] | None = None,
+) -> tuple[str, tuple[str, str], tuple[str, str]] | None:
+    """If 2-pin passive `ref` bridges two distinct nets `(net_a, net_b)` that both exist on a single footprint
+    `parent in candidates`, return `(parent, (p_a, parent_pin_a), (p_b, parent_pin_b))` picking the closest
+    matching pin pair on that parent (respecting `assigned_pin` if provided)."""
+    pads_list = list(sp.oris[0].pads.items())
+    if len(pads_list) != 2:
+        return None
+    (pa, (_, _, na)), (pb, (_, _, nb)) = pads_list
+    if not na or not nb or na == nb or na.startswith("unconnected-") or nb.startswith("unconnected-"):
+        return None
+
+    pins_a_by_ref: dict[str, list[str]] = {}
+    for pr, pp in nets.get(na, ()):
+        if pr != ref and pr in candidates:
+            pins_a_by_ref.setdefault(pr, []).append(pp)
+    pins_b_by_ref: dict[str, list[str]] = {}
+    for pr, pp in nets.get(nb, ()):
+        if pr != ref and pr in candidates:
+            pins_b_by_ref.setdefault(pr, []).append(pp)
+
+    shared = sorted(set(pins_a_by_ref) & set(pins_b_by_ref))
+    if not shared:
+        return None
+
+    best_choice = None
+    for parent in shared:
+        is_assigned = assigned_pin is not None and assigned_pin[0] == parent
+        is_active = ref_prefix(parent) not in SYMMETRIC_2PIN_PREFIXES
+        same_blk = specs[parent].block == sp.block
+        same_side = specs[parent].side == sp.side
+        list_a = [assigned_pin[1]] if (is_assigned and assigned_pin[1] in pins_a_by_ref[parent]) else pins_a_by_ref[parent]
+        list_b = [assigned_pin[1]] if (is_assigned and assigned_pin[1] in pins_b_by_ref[parent]) else pins_b_by_ref[parent]
+        for ppa in list_a:
+            for ppb in list_b:
+                if ppa == ppb:
+                    continue
+                if pad_pos and (parent, ppa) in pad_pos and (parent, ppb) in pad_pos:
+                    ta, tb = pad_pos[(parent, ppa)], pad_pos[(parent, ppb)]
+                    pair_d = math.hypot(ta[0] - tb[0], ta[1] - tb[1])
+                    prox_d = (
+                        0.5 * (math.hypot(ref_pos[0] - ta[0], ref_pos[1] - ta[1])
+                               + math.hypot(ref_pos[0] - tb[0], ref_pos[1] - tb[1]))
+                        if ref_pos is not None else 0.0
+                    )
+                else:
+                    # Estimate pin separation in parent's initial orientation when Stage-1 positions aren't frozen yet.
+                    ogp = specs[parent].oris[specs[parent].init_rot]
+                    ta, tb = ogp.pads[ppa][:2], ogp.pads[ppb][:2]
+                    pair_d = math.hypot(ta[0] - tb[0], ta[1] - tb[1])
+                    prox_d = 0.0
+                score = (
+                    0 if is_assigned else 1,
+                    0 if is_active else 1,
+                    0 if same_blk else 1,
+                    0 if same_side else 1,
+                    round(pair_d + 0.35 * prox_d, 3),
+                    -specs[parent].pad_count,
+                    parent,
+                    ppa,
+                    ppb,
+                )
+                if best_choice is None or score < best_choice[0]:
+                    best_choice = (score, (parent, (pa, ppa), (pb, ppb)))
+    return best_choice[1] if best_choice else None
+
+
+def uncross_and_align_passives(
+    specs: dict[str, PartSpec],
+    nets: dict[str, list[tuple[str, str]]],
+    placed: dict[str, tuple[int, int, int]],
+    *,
+    w_g: int,
+    h_g: int,
+    safe_poly: Polygon,
+    mech_ko: dict[str, list[Polygon]],
+    y_domain_fn,
+    decap_target_pin: dict[str, tuple[str, str]] | None = None,
+) -> tuple[int, int]:
+    """Post-placement zero-courtyard 180-deg uncrossing & clash-free adjacent pin-pair midpoint alignment.
+
+    Modifies `placed` in place and returns `(flipped_count, aligned_count)`.
+    """
+    decap_target_pin = decap_target_pin or {}
+    all_placed = set(placed)
+    mech_union = {
+        s: unary_union([box(x0 * GRID_MM, y0 * GRID_MM, x1 * GRID_MM, y1 * GRID_MM) for x0, y0, x1, y1 in mech_ko[s]])
+        if mech_ko.get(s) else None
+        for s in ("front", "back")
+    }
+
+    def pad_lookup():
+        out: dict[tuple[str, str], tuple[int, int]] = {}
+        for ref, (gx, gy, rot) in placed.items():
+            for pnum, (pdx, pdy, _net) in specs[ref].oris[rot].pads.items():
+                out[(ref, pnum)] = (gx + pdx, gy + pdy)
+        return out
+
+    def target_pins_for(ref: str, plook: dict[tuple[str, str], tuple[int, int]]):
+        sp = specs[ref]
+        gx, gy, _rot = placed[ref]
+        shared = find_shared_parent_pin_pair(
+            ref, sp, specs, nets, all_placed, plook, (gx, gy), decap_target_pin.get(ref),
+        )
+        if shared is not None:
+            parent, (pa, ppa), (pb, ppb) = shared
+            return parent, pa, plook[(parent, ppa)], pb, plook[(parent, ppb)]
+        (pa, (_, _, na)), (pb, (_, _, nb)) = list(sp.oris[0].pads.items())
+
+        def nearest_other(net_name: str):
+            cands = []
+            for pr, pp in nets.get(net_name, ()):
+                if pr == ref or (pr, pp) not in plook:
+                    continue
+                tx, ty = plook[(pr, pp)]
+                d = math.hypot(gx - tx, gy - ty)
+                # Prefer non-passive footprints slightly when equidistant.
+                cands.append((d + (0.0 if ref_prefix(pr) not in SYMMETRIC_2PIN_PREFIXES else 2.0), (tx, ty)))
+            return min(cands)[1] if cands else None
+
+        ta, tb = nearest_other(na), nearest_other(nb)
+        if ta is None or tb is None:
+            return None
+        return None, pa, ta, pb, tb
+
+    def orient_cost(sp: PartSpec, gx: int, gy: int, rot: int, pa: str, ta: tuple[int, int], pb: str, tb: tuple[int, int]) -> float:
+        og = sp.oris[rot]
+        p1 = (gx + og.pads[pa][0], gy + og.pads[pa][1])
+        p2 = (gx + og.pads[pb][0], gy + og.pads[pb][1])
+        cross = CROSS_PENALTY_G if _grid_segs_intersect(p1, ta, p2, tb) else 0.0
+        return math.hypot(p1[0] - ta[0], p1[1] - ta[1]) + math.hypot(p2[0] - tb[0], p2[1] - tb[1]) + cross
+
+    def position_clash_free(ref: str, nx: int, ny: int, rot: int) -> bool:
+        sp = specs[ref]
+        ylo, yhi = y_domain_fn(sp)
+        if not (0 <= nx <= w_g and ylo <= ny <= yhi):
+            return False
+        og = sp.oris[rot]
+        rx0, ry0, rx1, ry1 = nx + og.dx0, ny + og.dy0, nx + og.dx1, ny + og.dy1
+        if rx0 < 0 or ry0 < 0 or rx1 > w_g or ry1 > h_g:
+            return False
+        cand_mm = box(rx0 * GRID_MM, ry0 * GRID_MM, rx1 * GRID_MM, ry1 * GRID_MM)
+        if not safe_poly.contains(cand_mm):
+            return False
+        if mech_union[sp.side] is not None and cand_mm.intersects(mech_union[sp.side]):
+            return False
+        # Check against all other footprints on same side and THT/via shadows on opposite side (with 1-grid halo).
+        for other, (ox, oy, orot) in placed.items():
+            if other == ref:
+                continue
+            osp = specs[other]
+            oog = osp.oris[orot]
+            if osp.side == sp.side:
+                if rx0 < ox + oog.dx1 + 1 and ox + oog.dx0 - 1 < rx1 and ry0 < oy + oog.dy1 + 1 and oy + oog.dy0 - 1 < ry1:
+                    return False
+            else:
+                for bx0, by0, bx1, by1 in oog.tht_boxes + oog.via_shadow:
+                    if rx0 < ox + bx1 and ox + bx0 < rx1 and ry0 < oy + by1 and oy + by0 < ry1:
+                        return False
+        return True
+
+    flipped = 0
+    aligned = 0
+    sym_refs = sorted(r for r in placed if is_symmetric_2pin_passive(specs[r]))
+
+    for _sweep in range(6):
+        sweep_changed = False
+        plook = pad_lookup()
+        for ref in sym_refs:
+            sp = specs[ref]
+            gx, gy, rot = placed[ref]
+            info = target_pins_for(ref, plook)
+            if info is None:
+                continue
+            parent, pa, ta, pb, tb = info
+
+            # (a) Zero-courtyard 180-deg uncrossing.
+            rot_flip = (rot + 180) % 360
+            c_cur = orient_cost(sp, gx, gy, rot, pa, ta, pb, tb)
+            c_flip = orient_cost(sp, gx, gy, rot_flip, pa, ta, pb, tb)
+            if c_flip < c_cur - 1e-6:
+                rot = rot_flip
+                placed[ref] = (gx, gy, rot)
+                flipped += 1
+                sweep_changed = True
+
+            # (b) Clash-free adjacent pin-pair midpoint alignment on a shared parent (<= 4.0 mm pin spacing).
+            if parent is not None:
+                pair_mm = math.hypot(ta[0] - tb[0], ta[1] - tb[1]) * GRID_MM
+                if 0.1 < pair_mm <= PIN_PAIR_ALIGN_MAX_MM:
+                    horiz_pair = abs(ta[0] - tb[0]) >= abs(ta[1] - tb[1])
+                    mx = round((ta[0] + tb[0]) / 2)
+                    my = round((ta[1] + tb[1]) / 2)
+                    nx, ny = (mx, gy) if (horiz_pair and rot in (0, 180)) else (
+                        (gx, my) if ((not horiz_pair) and rot in (90, 270)) else (gx, gy)
+                    )
+                    if (nx, ny) != (gx, gy) and position_clash_free(ref, nx, ny, rot):
+                        best_rot = rot
+                        if orient_cost(sp, nx, ny, (rot + 180) % 360, pa, ta, pb, tb) < orient_cost(sp, nx, ny, rot, pa, ta, pb, tb) - 1e-6:
+                            best_rot = (rot + 180) % 360
+                            flipped += 1
+                        if orient_cost(sp, nx, ny, best_rot, pa, ta, pb, tb) < orient_cost(sp, gx, gy, rot, pa, ta, pb, tb) - 1e-6:
+                            placed[ref] = (nx, ny, best_rot)
+                            aligned += 1
+                            sweep_changed = True
+        if not sweep_changed:
+            break
+    return flipped, aligned
 
 
 def g_lo(mm_val: float) -> int:
@@ -413,24 +680,34 @@ def add_fixed_box(model: cp_model.CpModel, intervals_x: list, intervals_y: list,
         intervals_y.append(model.NewFixedSizeIntervalVar(y0, y1 - y0, f"fy_{tag}"))
 
 
-def solve_board_cpsat(board_name: str, *, unlock_power_stage: bool = False,
-                      seed: int = 42, stage1_time: float = 30.0, stage2_time: float = 15.0) -> dict[str, tuple[float, float, int]]:
-    """Run deterministic 2-stage CP-SAT placement and return `{ref: (x_mm, y_mm, rot_deg)}`."""
-    plan = layout.load_plan(board_name)
+def solve_specs_cpsat(
+    board_name: str,
+    plan: dict,
+    specs: dict[str, PartSpec],
+    *,
+    unlock_power_stage: bool = False,
+    seed: int = 42,
+    stage1_time: float = 30.0,
+    stage2_time: float = 15.0,
+    safe_poly: Polygon | None = None,
+    mech_ko: dict[str, list[Polygon]] | None = None,
+    force_two_stage: bool = False,
+) -> dict[str, tuple[float, float, int]]:
+    """Run deterministic 2-stage CP-SAT placement + post-placement uncrossing/alignment on `specs`."""
     frame = plan["frame"]
     w_mm, h_mm = frame["size"]["x"], frame["size"]["y"]
     w_g, h_g = g_hi(w_mm), g_hi(h_mm)
     power_nets = set(frame.get("power_nets", []))
-    specs = extract_part_geoms(board_name, plan, unlock_power_stage=unlock_power_stage)
     nets = build_net_index(specs)
-    outside_poly = box(0.0, 0.0, w_mm, h_mm).difference(board_safe_polygon(board_name, plan))
-    mech_ko = mechanical_keepouts(board_name, plan)
+    safe_poly = safe_poly if safe_poly is not None else board_safe_polygon(board_name, plan)
+    outside_poly = box(0.0, 0.0, w_mm, h_mm).difference(safe_poly)
+    mech_ko = mech_ko if mech_ko is not None else mechanical_keepouts(board_name, plan)
 
     locked_refs = sorted(r for r, s in specs.items() if s.locked)
     unlocked_refs = [r for r, s in specs.items() if not s.locked]
     # On tiny micro-PCBs (<= 16 unlocked parts, e.g. Ø 15.6 mm `dome`), solve actives + passives jointly in Stage 1 so
     # ICs leave balanced pockets for adjacent passives inside circular / no-coat boundaries.
-    if len(unlocked_refs) <= 16:
+    if len(unlocked_refs) <= 16 and not force_two_stage:
         stage1_refs = sorted(unlocked_refs)
         stage2_refs = []
     else:
@@ -648,6 +925,20 @@ def solve_board_cpsat(board_name: str, *, unlock_power_stage: bool = False,
                 for other in act_pins[1:]:
                     add_l1_term(pad_coords[hub], pad_coords[other], w)
 
+        # Shared-parent pin attraction for any 2-pin passives solved in Stage 1 (e.g., 1206 caps or compact boards like dome):
+        # pull each passive pad directly to its matching pin on a shared parent so GND/VDD caps orient cleanly!
+        for r in stage1_refs:
+            sp = specs[r]
+            if not is_symmetric_2pin_passive(sp):
+                continue
+            shared = find_shared_parent_pin_pair(r, sp, specs, nets, active_set)
+            if shared is not None:
+                parent, (pa, ppa), (pb, ppb) = shared
+                if (r, pa) in pad_coords and (parent, ppa) in pad_coords:
+                    add_l1_term(pad_coords[(r, pa)], pad_coords[(parent, ppa)], 36)
+                if (r, pb) in pad_coords and (parent, ppb) in pad_coords:
+                    add_l1_term(pad_coords[(r, pb)], pad_coords[(parent, ppb)], 28)
+
         # 2-hop passive bridges (e.g., IC -> series R/C -> IC or connector, so Stage 1 pulls coupled actives together).
         for pref in stage2_refs:
             psp = specs[pref]
@@ -781,16 +1072,14 @@ def solve_board_cpsat(board_name: str, *, unlock_power_stage: bool = False,
                 ix_s.append(m2.NewIntervalVar(x0_v, w_v, x1_v, f"ivx_{r}"))
                 iy_s.append(m2.NewIntervalVar(y0_v, h_v, y1_v, f"ivy_{r}"))
 
-                # 4-state pad coordinates from `(is_vert, is_flip)` -> `0, 90, 180, 270`.
+                # Exact 4-orientation `(0/90/180/270)` per-pad coordinates coupled linearly to `(is_vert, is_flip)`!
                 b_0 = m2.NewBoolVar(f"b0_{r}")
                 b_90 = m2.NewBoolVar(f"b90_{r}")
                 b_180 = m2.NewBoolVar(f"b180_{r}")
                 b_270 = m2.NewBoolVar(f"b270_{r}")
                 m2.AddExactlyOne([b_0, b_90, b_180, b_270])
-                m2.Add(is_vert == 0).OnlyEnforceIf([b_0, b_180])
-                m2.Add(is_vert == 1).OnlyEnforceIf([b_90, b_270])
-                m2.Add(is_flip == 0).OnlyEnforceIf([b_0, b_90])
-                m2.Add(is_flip == 1).OnlyEnforceIf([b_180, b_270])
+                m2.Add(is_vert == b_90 + b_270)
+                m2.Add(is_flip == b_180 + b_270)
 
                 for pnum in sp.oris[0].pads:
                     px_v = m2.NewIntVar(pad_xlo, pad_xhi, f"px_{r}_{pnum}")
@@ -828,21 +1117,55 @@ def solve_board_cpsat(board_name: str, *, unlock_power_stage: bool = False,
                 _obj2.append(weight * (adx + ady))
 
             batch_set = set(batch)
+            placed_set = set(placed)
             for r in batch:
                 sp = specs[r]
                 parent = parent_map[r]
+
+                # Shared-parent pin attraction: whenever a 2-pin passive bridges two nets that both appear on one
+                # already-placed footprint (e.g., an IC/regulator's VCC and GND pins), pull each passive pad directly
+                # to its matching pin `(tx, ty)` on that parent instead of global HPWL or a distant board GND pin!
+                shared = find_shared_parent_pin_pair(
+                    r, sp, specs, nets, placed_set, frozen_pads,
+                    assigned_pin=decap_target_pin.get(r),
+                )
+                if shared is not None:
+                    sh_parent, (pa, ppa), (pb, ppb) = shared
+                    net_a = sp.oris[0].pads[pa][2]
+                    net_b = sp.oris[0].pads[pb][2]
+                    wa = 30 if net_a in GLOBAL_GND else 42
+                    wb = 30 if net_b in GLOBAL_GND else 42
+                    add_p_dist(batch_pads[(r, pa)], frozen_pads[(sh_parent, ppa)], wa)
+                    add_p_dist(batch_pads[(r, pb)], frozen_pads[(sh_parent, ppb)], wb)
+                    # Still couple any non-global signal pin to other Stage-2 batch peers on the same local net.
+                    for pnum, net in ((pa, net_a), (pb, net_b)):
+                        if net in GLOBAL_GND or net in power_nets or net.startswith("+"):
+                            continue
+                        peers = nets.get(net, ())
+                        w_sig = max(10, net_weight(net, power_nets, len(peers)) // 2)
+                        for pr, pp in peers:
+                            if pr in batch_set and r < pr:
+                                add_p_dist(batch_pads[(r, pnum)], batch_pads[(pr, pp)], w_sig)
+                    continue
+
                 for pnum, (_dx, _dy, net) in sp.oris[0].pads.items():
                     if not net or net.startswith("unconnected-"):
                         continue
                     my_pad = batch_pads[(r, pnum)]
                     peers = nets.get(net, [])
                     if net in GLOBAL_GND:
-                        # Down-weighted GND tie to parent IC's GND pad (keeps return loop tight without pulling to J1).
+                        # Pull GND pad toward the nearest GND pin of parent IC (never a distant board ground centroid!).
                         if parent and parent in placed:
                             parent_gnd = [frozen_pads[(parent, pp)] for pr, pp in peers
                                           if pr == parent and (parent, pp) in frozen_pads]
                             if parent_gnd:
-                                add_p_dist(my_pad, parent_gnd[0], 3)
+                                p_anchor = (
+                                    frozen_pads[decap_target_pin[r]]
+                                    if r in decap_target_pin and decap_target_pin[r] in frozen_pads
+                                    else placed[parent][:2]
+                                )
+                                nearest_gnd = min(parent_gnd, key=lambda pt: math.hypot(pt[0] - p_anchor[0], pt[1] - p_anchor[1]))
+                                add_p_dist(my_pad, nearest_gnd, 18)
                         continue
                     if net in power_nets or net.startswith("+"):
                         # Decoupling / pull-up rail: anchor strongly to assigned supply pin (or parent IC's supply pin)!
@@ -901,7 +1224,26 @@ def solve_board_cpsat(board_name: str, *, unlock_power_stage: bool = False,
                 rot = (270 if f_flag else 90) if v_flag else (180 if f_flag else 0)
                 placed[r] = (solver2.Value(bx_vars[r]), solver2.Value(by_vars[r]), rot)
 
+    # Post-placement zero-courtyard 180-deg uncrossing & clash-free adjacent pin-pair midpoint alignment.
+    uncross_and_align_passives(
+        specs, nets, placed,
+        w_g=w_g, h_g=h_g, safe_poly=safe_poly, mech_ko=mech_ko,
+        y_domain_fn=y_domain_for,
+    )
+
     return {r: (round(gx * GRID_MM, 2), round(gy * GRID_MM, 2), rot) for r, (gx, gy, rot) in sorted(placed.items())}
+
+
+def solve_board_cpsat(board_name: str, *, unlock_power_stage: bool = False,
+                      seed: int = 42, stage1_time: float = 30.0, stage2_time: float = 15.0) -> dict[str, tuple[float, float, int]]:
+    """Run deterministic 2-stage CP-SAT placement and return `{ref: (x_mm, y_mm, rot_deg)}`."""
+    plan = layout.load_plan(board_name)
+    specs = extract_part_geoms(board_name, plan, unlock_power_stage=unlock_power_stage)
+    return solve_specs_cpsat(
+        board_name, plan, specs,
+        unlock_power_stage=unlock_power_stage,
+        seed=seed, stage1_time=stage1_time, stage2_time=stage2_time,
+    )
 
 
 def rewrite_plan_positions(plan_text: str, positions: dict[str, tuple[float, float, int]]) -> str:

@@ -518,6 +518,9 @@ def save(board, plan, board_name, hidden_refs=()):
             ref.SetVisible(False)
     if plan["frame"].get("silk_inside"):
         place_references_inside(board, plan["frame"])
+    for fp in board.Footprints():
+        if fp.GetReference() in hidden_refs:
+            fp.Reference().SetVisible(False)
     add_3d_models(board)
     fill_zones(board)
     board.Save(str(path))

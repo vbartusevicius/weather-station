@@ -54,14 +54,14 @@ parts:
   # --- Front (+z): Bottom SHT40 intake zone + SGP41/BMP585 zone + upper SCD41 CO2 / heater zone + Top 4-pin T-socket J2 ---
   J1:  { x: 7.0,   y: 4.5,   rot: 0,   block: int_main, locked: true }
   U3:  { x: 5.5,   y: 13.5,  rot: 0,   block: thermo_hygro, locked: true }
-  C5:  { x: 8.35,  y: 13.3,  rot: 90,  block: thermo_hygro }
+  C5:  { x: 8.6,  y: 13.5,  rot: 90,  block: thermo_hygro }
 
   U2:  { x: 4.0,   y: 27.5,  rot: 0,   block: air_quality, locked: true }   # under the sleeve slot at y 96.5
-  C4:  { x: 2.95,   y: 24.3,  rot: 0,   block: air_quality }
+  C4:  { x: 3.8,   y: 30.75,  rot: 0,   block: air_quality }
   U5:  { x: 10.0,  y: 27.4,  rot: 0,   block: baro, locked: true }
-  C6:  { x: 8.8,  y: 23.8,  rot: 0,   block: baro }
-  C1:  { x: 7.0,   y: 31.3,  rot: 0,   block: air_quality }
-  C2:  { x: 3.2,  y: 31.3,  rot: 0,   block: air_quality }
+  C6:  { x: 10.25,  y: 31.25,  rot: 180,   block: baro }
+  C1:  { x: 2.4,   y: 23.55,  rot: 270,   block: air_quality }
+  C2:  { x: 5.1,  y: 23.55,  rot: 270,   block: air_quality }
   U1:  { x: 7.0,   y: 38.5,  rot: 0,   block: air_quality, locked: true }   # body y 33.45..43.55, chamber top 44.0
 
   J2:  { x: 7.0,   y: 52.5,  rot: 0,   block: int_reflector, locked: true }
@@ -71,11 +71,11 @@ parts:
   R1:  { x: 7.0,   y: 35.5,  rot: 0,   side: back, block: co2_back_heater, locked: true }
   TH1: { x: 7.0,   y: 38.5,  rot: 0,   side: back, block: co2_back_heater, locked: true }
   R2:  { x: 7.0,   y: 41.5,  rot: 0,   side: back, block: co2_back_heater, locked: true }
-  R3:  { x: 8.1,   y: 23.3,  rot: 90,  side: back, block: co2_back_heater }   # NTC pull-up
-  R7:  { x: 8.1,   y: 27.1,  rot: 90,  side: back, block: co2_back_heater }   # thermostat hysteresis
-  R4:  { x: 5.8,  y: 23.1,  rot: 90,  side: back, block: co2_back_heater }   # setpoint divider
-  R5:  { x: 3.5,  y: 23.1,  rot: 90,  side: back, block: co2_back_heater }
-  U4:  { x: 4.05,   y: 29.5,  rot: 0,  side: back, block: co2_back_heater }
-  C3:  { x: 3.2,  y: 35.9,  rot: 90,  side: back, block: co2_back_heater }
-  R6:  { x: 10.4,   y: 27.1,  rot: 90,   side: back, block: co2_back_heater }
-  Q1:  { x: 8.95,  y: 31.2,  rot: 90,   side: back, block: co2_back_heater }
+  R3:  { x: 3.05,   y: 37.6,  rot: 90,  side: back, block: co2_back_heater }   # NTC pull-up
+  R7:  { x: 5.75,   y: 23.0,  rot: 90,  side: back, block: co2_back_heater }   # thermostat hysteresis
+  R4:  { x: 2.65,  y: 29.35,  rot: 90,  side: back, block: co2_back_heater }   # setpoint divider
+  R5:  { x: 7.75,  y: 32.35,  rot: 180,  side: back, block: co2_back_heater }
+  U4:  { x: 8.45,   y: 28.05,  rot: 90,  side: back, block: co2_back_heater }
+  C3:  { x: 11.15,  y: 33.1,  rot: 90,  side: back, block: co2_back_heater }
+  R6:  { x: 2.65,   y: 25.25,  rot: 90,   side: back, block: co2_back_heater }
+  Q1:  { x: 9.85,  y: 22.5,  rot: 0,   side: back, block: co2_back_heater }
