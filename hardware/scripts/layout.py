@@ -18,7 +18,7 @@ from pathlib import Path
 import kinet2pcb
 import pcbnew
 import yaml
-from shapely.geometry import Polygon
+from shapely.geometry import LineString, Point, Polygon
 
 REPO = Path("/work")
 sys.path.insert(0, str(REPO / "hardware/circuits"))
@@ -1076,6 +1076,674 @@ def prune_track_loops(board):
     return split_delta, pruned_count
 
 
+SMOOTH_SNAP_NM = 15_000        # 0.015 mm endpoint snap tolerance for linking router segments into chains
+SMOOTH_SAFETY_MM = 0.015       # 15 um clearance safety margin above KiCad DRC minimums
+SMOOTH_DIFF_MAX_DELTA_NM = 1_000_000   # <= 1.0 mm per-shortcut reduction cap on length-matched / diff nets
+SMOOTH_MAX_WINDOW = 8
+
+
+def _is_octilinear(a, b):
+    dx = abs(b[0] - a[0])
+    dy = abs(b[1] - a[1])
+    return dx == 0 or dy == 0 or abs(dx - dy) <= 1
+
+
+def _octilinear_candidates(a, b):
+    """Return octilinear (0/45/90 deg) paths from `a` to `b`: either the single straight segment `[a, b]` or both
+    minimal-length 2-segment 45-deg + H/V doglegs `[a, m1, b]` and `[a, m2, b]`."""
+    if a == b:
+        return []
+    if _is_octilinear(a, b):
+        return [[a, b]]
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    d = min(abs(dx), abs(dy))
+    sx = 1 if dx > 0 else -1
+    sy = 1 if dy > 0 else -1
+    m1 = (a[0] + sx * d, a[1] + sy * d)   # 45 deg first, then H/V
+    m2 = (b[0] - sx * d, b[1] - sy * d)   # H/V first, then 45 deg
+    cands = []
+    if m1 != a and m1 != b:
+        cands.append([a, m1, b])
+    if m2 != a and m2 != b and m2 != m1:
+        cands.append([a, m2, b])
+    return cands
+
+
+def _pt_seg_dist(px, py, ax, ay, bx, by):
+    dx, dy = bx - ax, by - ay
+    l2 = dx * dx + dy * dy
+    if l2 <= 1e-18:
+        return math.hypot(px - ax, py - ay)
+    u = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / l2))
+    return math.hypot(px - (ax + u * dx), py - (ay + u * dy))
+
+
+def _seg_intersect(ax, ay, bx, by, cx, cy, dx, dy):
+    def orient(px, py, qx, qy, rx, ry):
+        return (qx - px) * (ry - py) - (qy - py) * (rx - px)
+
+    def on_seg(px, py, qx, qy, rx, ry):
+        return (min(px, rx) - 1e-9 <= qx <= max(px, rx) + 1e-9
+                and min(py, ry) - 1e-9 <= qy <= max(py, ry) + 1e-9)
+
+    o1 = orient(ax, ay, bx, by, cx, cy)
+    o2 = orient(ax, ay, bx, by, dx, dy)
+    o3 = orient(cx, cy, dx, dy, ax, ay)
+    o4 = orient(cx, cy, dx, dy, bx, by)
+    if (o1 > 1e-12 and o2 < -1e-12 or o1 < -1e-12 and o2 > 1e-12) and (
+        o3 > 1e-12 and o4 < -1e-12 or o3 < -1e-12 and o4 > 1e-12
+    ):
+        return True
+    return (
+        (abs(o1) <= 1e-12 and on_seg(ax, ay, cx, cy, bx, by))
+        or (abs(o2) <= 1e-12 and on_seg(ax, ay, dx, dy, bx, by))
+        or (abs(o3) <= 1e-12 and on_seg(cx, cy, ax, ay, dx, dy))
+        or (abs(o4) <= 1e-12 and on_seg(cx, cy, bx, by, dx, dy))
+    )
+
+
+def _seg_seg_dist(ax, ay, bx, by, cx, cy, dx, dy):
+    if _seg_intersect(ax, ay, bx, by, cx, cy, dx, dy):
+        return 0.0
+    return min(
+        _pt_seg_dist(ax, ay, cx, cy, dx, dy),
+        _pt_seg_dist(bx, by, cx, cy, dx, dy),
+        _pt_seg_dist(cx, cy, ax, ay, bx, by),
+        _pt_seg_dist(dx, dy, ax, ay, bx, by),
+    )
+
+
+def _is_length_matched_net(net_name, frame):
+    if net_name in set(frame.get("length_matched_nets", ())):
+        return True
+    upper = net_name.upper()
+    return (
+        upper.endswith(("_P", "_N", "+", "-"))
+        or upper.startswith(("RS485_", "USB_D", "TX_P", "TX_N", "XD_"))
+    )
+
+
+def _board_polygon_kicad_mm(frame):
+    """Board outline minus milled slots in KiCad mm coordinates `(x, -y)`."""
+    w, h = frame["size"]["x"], frame["size"]["y"]
+    pts = [(p[0], -p[1]) for p in frame["outline"]] if "outline" in frame else [
+        (0.0, 0.0), (w, 0.0), (w, -h), (0.0, -h)]
+    poly = Polygon(pts)
+    for s in frame.get("slots", []):
+        slot = Polygon([(s["x0"], -s["y0"]), (s["x1"], -s["y0"]), (s["x1"], -s["y1"]), (s["x0"], -s["y1"])])
+        poly = poly.difference(slot)
+    return poly
+
+
+def _pad_polygon_mm(pad, layer):
+    polyset = pcbnew.SHAPE_POLY_SET()
+    pad.TransformShapeToPolygon(polyset, layer, 0, pcbnew.FromMM(0.01), pcbnew.ERROR_INSIDE)
+    if polyset.OutlineCount() == 0:
+        bb = pad.GetBoundingBox()
+        return Polygon([
+            (pcbnew.ToMM(bb.GetLeft()), pcbnew.ToMM(bb.GetTop())),
+            (pcbnew.ToMM(bb.GetRight()), pcbnew.ToMM(bb.GetTop())),
+            (pcbnew.ToMM(bb.GetRight()), pcbnew.ToMM(bb.GetBottom())),
+            (pcbnew.ToMM(bb.GetLeft()), pcbnew.ToMM(bb.GetBottom())),
+        ])
+    ring = polyset.Outline(0)
+    coords = [(pcbnew.ToMM(ring.CPoint(i).x), pcbnew.ToMM(ring.CPoint(i).y)) for i in range(ring.PointCount())]
+    return Polygon(coords).buffer(0)
+
+
+def _zone_outline_poly_mm(zone):
+    outline = zone.Outline()
+    if outline.OutlineCount() == 0:
+        return None
+    ring = outline.Outline(0)
+    coords = [(pcbnew.ToMM(ring.CPoint(i).x), pcbnew.ToMM(ring.CPoint(i).y)) for i in range(ring.PointCount())]
+    return Polygon(coords).buffer(0) if len(coords) >= 3 else None
+
+
+def smooth_tracks(board, plan):
+    """DRC-safe octilinear (0/45/90 deg) track smoother eliminating autorouter V-detours and micro-staircase jogs.
+
+    Returns `(removed_segments, saved_mm)`. Modifies `board` in-place (with automatic rollback if connectivity changes).
+    """
+    frame = plan["frame"]
+    baseline_unconn = unconnected(board)
+    settings = board.GetDesignSettings()
+    base_clr = max(0.20, pcbnew.ToMM(settings.m_MinClearance))
+    edge_clr = frame["edge_clearance"] + 0.05   # match with_inset_boundary so tracks clear panel mouse-bite holes
+    hole_clr = max(0.25, pcbnew.ToMM(settings.m_HoleClearance), edge_clr)
+    power_nets = set(frame.get("power_nets", ()))
+    power_min_nm = pcbnew.FromMM(frame.get("power_track_min", 0.22))
+
+    # Build per-netclass clearance map (0.20 mm base; respects any larger netclass clearance in `.kicad_pro`).
+    pro_path = Path(board.GetFileName()).with_suffix(".kicad_pro") if board.GetFileName() else None
+    cls_clr_by_name = {}
+    pat_cls_by_net = {}
+    if pro_path is not None and pro_path.exists():
+        ns = json.loads(pro_path.read_text()).get("net_settings", {})
+        cls_clr_by_name = {c["name"]: float(c.get("clearance", base_clr)) for c in ns.get("classes", [])}
+        pat_cls_by_net = {p["pattern"]: p["netclass"] for p in ns.get("netclass_patterns", [])}
+    net_clr_by_code = {0: base_clr}
+    for net in board.GetNetsByNetcode().values():
+        nc = net.GetNetCode()
+        cname = pat_cls_by_net.get(net.GetNetname(), net.GetNetClassName())
+        net_clr_by_code[nc] = max(base_clr, cls_clr_by_name.get(cname, base_clr))
+
+    # Skip plane/pour nets (zones handle their connectivity; smoothing them is unnecessary and risks thermal relief issues).
+    pour_nets = {p["net"] for p in frame.get("pours", ())}
+    for z in zones(board):
+        if not z.GetIsRuleArea() and z.GetNetname():
+            pour_nets.add(z.GetNetname())
+
+    # Fine-pitch power-pad courtyards (where DRU allows power traces to neck below power_min_nm).
+    fine_pitch_polys = []
+    for ref in frame.get("fine_pitch_power_pads", ()):
+        fp = board.FindFootprintByReference(ref)
+        if fp is not None:
+            fp.BuildCourtyardCaches()
+            bb = fp.GetCourtyard(pcbnew.B_CrtYd if fp.IsFlipped() else pcbnew.F_CrtYd).BBox()
+            fine_pitch_polys.append(Polygon([
+                (pcbnew.ToMM(bb.GetLeft()), pcbnew.ToMM(bb.GetTop())),
+                (pcbnew.ToMM(bb.GetRight()), pcbnew.ToMM(bb.GetTop())),
+                (pcbnew.ToMM(bb.GetRight()), pcbnew.ToMM(bb.GetBottom())),
+                (pcbnew.ToMM(bb.GetLeft()), pcbnew.ToMM(bb.GetBottom())),
+            ]))
+
+    # 1. Pre-index static board obstacles: Edge.Cuts segments, board polygon, rule areas, vias, pads, holes, pours.
+    board_poly = _board_polygon_kicad_mm(frame)
+    edge_segs = []
+    for item in board.GetDrawings():
+        if item.GetLayer() != pcbnew.Edge_Cuts or not isinstance(item, pcbnew.PCB_SHAPE):
+            continue
+        if item.GetShape() == pcbnew.SHAPE_T_SEGMENT:
+            s, e = item.GetStart(), item.GetEnd()
+            ax, ay, bx, by = pcbnew.ToMM(s.x), pcbnew.ToMM(s.y), pcbnew.ToMM(e.x), pcbnew.ToMM(e.y)
+            edge_segs.append((ax, ay, bx, by, min(ax, bx), min(ay, by), max(ax, bx), max(ay, by)))
+        else:
+            polyset = pcbnew.SHAPE_POLY_SET()
+            item.TransformShapeToPolygon(polyset, pcbnew.Edge_Cuts, 0, pcbnew.FromMM(0.05), pcbnew.ERROR_INSIDE)
+            for oi in range(polyset.OutlineCount()):
+                ring = polyset.Outline(oi)
+                n = ring.PointCount()
+                for k in range(n):
+                    p1, p2 = ring.CPoint(k), ring.CPoint((k + 1) % n)
+                    ax, ay, bx, by = pcbnew.ToMM(p1.x), pcbnew.ToMM(p1.y), pcbnew.ToMM(p2.x), pcbnew.ToMM(p2.y)
+                    edge_segs.append((ax, ay, bx, by, min(ax, bx), min(ay, by), max(ax, bx), max(ay, by)))
+
+    keepout_polys = {lyr: [] for lyr in LAYERS.values()}
+    other_pour_polys = {lyr: [] for lyr in LAYERS.values()}
+    for z in zones(board):
+        poly = _zone_outline_poly_mm(z)
+        if poly is None or poly.is_empty:
+            continue
+        bounds = poly.bounds
+        if z.GetIsRuleArea():
+            if z.GetDoNotAllowTracks():
+                for lyr in LAYERS.values():
+                    if z.IsOnLayer(lyr):
+                        keepout_polys[lyr].append((poly, bounds))
+        elif z.GetNetname() and z.GetNetname() != "GND":
+            for lyr in LAYERS.values():
+                if z.IsOnLayer(lyr):
+                    other_pour_polys[lyr].append((z.GetNetCode(), poly, bounds, net_clr_by_code.get(z.GetNetCode(), base_clr)))
+
+    vias_all = []
+    vias_by_net = {}
+    for item in board.GetTracks():
+        if item.Type() == pcbnew.PCB_VIA_T:
+            vp = item.GetPosition()
+            nc = item.GetNetCode()
+            vr = pcbnew.ToMM(item.GetWidth(pcbnew.F_Cu)) / 2.0
+            vias_all.append((nc, pcbnew.ToMM(vp.x), pcbnew.ToMM(vp.y), vr, net_clr_by_code.get(nc, base_clr)))
+            vias_by_net.setdefault(nc, []).append((vp.x, vp.y, item.GetWidth(pcbnew.F_Cu) // 2))
+
+    pads_by_layer = {lyr: [] for lyr in LAYERS.values()}
+    pads_by_nl = {}
+    holes_all = []
+    for p in board.GetPads():
+        nc = p.GetNetCode()
+        pp = p.GetPosition()
+        cx, cy = pcbnew.ToMM(pp.x), pcbnew.ToMM(pp.y)
+        clr = net_clr_by_code.get(nc, base_clr)
+        ds = p.GetDrillSize()
+        drill_r = max(pcbnew.ToMM(ds.x), pcbnew.ToMM(ds.y)) / 2.0
+        if drill_r > 0.0:
+            holes_all.append((nc, cx, cy, drill_r, clr))
+        is_circle = p.GetShape() == pcbnew.PAD_SHAPE_CIRCLE
+        for lyr in LAYERS.values():
+            if not p.IsOnLayer(lyr):
+                continue
+            pads_by_nl.setdefault((nc, lyr), []).append(p)
+            if is_circle:
+                pr = pcbnew.ToMM(p.GetSize().x) / 2.0
+                pads_by_layer[lyr].append(("circle", nc, cx, cy, pr, clr, (cx - pr, cy - pr, cx + pr, cy + pr)))
+            else:
+                poly = _pad_polygon_mm(p, lyr)
+                pads_by_layer[lyr].append(("poly", nc, poly, cx, cy, clr, poly.bounds))
+
+    # 2. Index all tracks per copper layer (live mutable table so accepted shortcuts update obstacle geometry).
+    orig_unlocked_by_nl = {}
+    locked_by_nl = {}
+    live_tracks = {lyr: {} for lyr in LAYERS.values()}
+    next_tid = 0
+    for item in board.GetTracks():
+        if item.Type() == pcbnew.PCB_VIA_T:
+            continue
+        lyr = item.GetLayer()
+        if lyr not in live_tracks:
+            continue
+        nc = item.GetNetCode()
+        s, e = item.GetStart(), item.GetEnd()
+        w_nm = item.GetWidth()
+        w_mm = pcbnew.ToMM(w_nm)
+        clr = net_clr_by_code.get(nc, base_clr)
+        if item.Type() == pcbnew.PCB_TRACE_T and not item.IsLocked():
+            next_tid += 1
+            live_tracks[lyr][next_tid] = (nc, pcbnew.ToMM(s.x), pcbnew.ToMM(s.y),
+                                          pcbnew.ToMM(e.x), pcbnew.ToMM(e.y), w_mm, clr)
+            orig_unlocked_by_nl.setdefault((nc, lyr), []).append((next_tid, item))
+        else:
+            locked_by_nl.setdefault((nc, lyr), []).append(item)
+            if item.Type() == pcbnew.PCB_ARC_T:
+                polyset = pcbnew.SHAPE_POLY_SET()
+                item.TransformShapeToPolygon(polyset, lyr, 0, pcbnew.FromMM(0.02), pcbnew.ERROR_INSIDE)
+                for oi in range(polyset.OutlineCount()):
+                    ring = polyset.Outline(oi)
+                    n = ring.PointCount()
+                    for k in range(n):
+                        p1, p2 = ring.CPoint(k), ring.CPoint((k + 1) % n)
+                        next_tid += 1
+                        live_tracks[lyr][next_tid] = (nc, pcbnew.ToMM(p1.x), pcbnew.ToMM(p1.y),
+                                                      pcbnew.ToMM(p2.x), pcbnew.ToMM(p2.y), 0.0, clr)
+            else:
+                next_tid += 1
+                live_tracks[lyr][next_tid] = (nc, pcbnew.ToMM(s.x), pcbnew.ToMM(s.y),
+                                              pcbnew.ToMM(e.x), pcbnew.ToMM(e.y), w_mm, clr)
+
+    def segment_clear(lyr, nc, ax_nm, ay_nm, bx_nm, by_nm, w_nm, ignore_tids, shared_end_pts_mm):
+        """Verify candidate segment `(ax, ay) -> (bx, by)` against outline, cutouts, holes, keepouts, other-net
+        tracks/vias/pads/pours, and same-net self-crossings / non-local copper overlaps."""
+        ax, ay = pcbnew.ToMM(ax_nm), pcbnew.ToMM(ay_nm)
+        bx, by = pcbnew.ToMM(bx_nm), pcbnew.ToMM(by_nm)
+        if math.hypot(bx - ax, by - ay) <= 1e-6:
+            return False
+        hw = pcbnew.ToMM(w_nm) / 2.0
+        my_clr = net_clr_by_code.get(nc, base_clr)
+        sx0, sy0, sx1, sy1 = min(ax, bx), min(ay, by), max(ax, bx), max(ay, by)
+
+        # (a) Board outline & milled slots (must lie strictly inside with edge_clr + safety margin).
+        if not board_poly.contains(Point((ax + bx) * 0.5, (ay + by) * 0.5)):
+            return False
+        req_edge = edge_clr + SMOOTH_SAFETY_MM + hw
+        for eax, eay, ebx, eby, ex0, ey0, ex1, ey1 in edge_segs:
+            if sx1 + req_edge < ex0 or ex1 + req_edge < sx0 or sy1 + req_edge < ey0 or ey1 + req_edge < sy0:
+                continue
+            if _seg_seg_dist(ax, ay, bx, by, eax, eay, ebx, eby) < req_edge:
+                return False
+
+        # (b) Rule-area keepout zones on this layer.
+        req_ko = hw + SMOOTH_SAFETY_MM
+        seg_ls = None
+        for poly, (kx0, ky0, kx1, ky1) in keepout_polys[lyr]:
+            if sx1 + req_ko < kx0 or kx1 + req_ko < sx0 or sy1 + req_ko < ky0 or ky1 + req_ko < sy0:
+                continue
+            if seg_ls is None:
+                seg_ls = LineString([(ax, ay), (bx, by)])
+            if seg_ls.distance(poly) < req_ko:
+                return False
+
+        # (c) Unnetted & other-net drill holes (NPTH & PTH across all layers).
+        for h_nc, hx, hy, hr, h_clr in holes_all:
+            if h_nc == nc:
+                continue
+            req = hr + hw + (max(hole_clr, my_clr) if h_nc == 0 else max(hole_clr, my_clr, h_clr)) + SMOOTH_SAFETY_MM
+            if sx1 + req < hx or hx + req < sx0 or sy1 + req < hy or hy + req < sy0:
+                continue
+            if _pt_seg_dist(hx, hy, ax, ay, bx, by) < req:
+                return False
+
+        # (d) Other-net vias (using GetWidth(F_Cu)).
+        for v_nc, vx, vy, vr, v_clr in vias_all:
+            if v_nc == nc:
+                continue
+            req = vr + hw + max(my_clr, v_clr) + SMOOTH_SAFETY_MM
+            if sx1 + req < vx or vx + req < sx0 or sy1 + req < vy or vy + req < sy0:
+                continue
+            if _pt_seg_dist(vx, vy, ax, ay, bx, by) < req:
+                return False
+
+        # (e) Pads on this layer: exact circular distance for PAD_SHAPE_CIRCLE, exact polygon for others.
+        for pad_rec in pads_by_layer[lyr]:
+            kind = pad_rec[0]
+            p_nc = pad_rec[1]
+            if p_nc == nc:
+                # Reject grazing an unrelated same-net pad that is not one of the segment's endpoints.
+                if kind == "circle":
+                    _, _, px, py, pr, _, _ = pad_rec
+                    if any(math.hypot(px - ex, py - ey) <= pr + 0.02 for ex, ey in ((ax, ay), (bx, by))):
+                        continue
+                    if _pt_seg_dist(px, py, ax, ay, bx, by) < pr + hw + 0.02:
+                        return False
+                else:
+                    _, _, poly, _, _, _, (px0, py0, px1, py1) = pad_rec
+                    if sx1 + hw + 0.02 < px0 or px1 + hw + 0.02 < sx0 or sy1 + hw + 0.02 < py0 or py1 + hw + 0.02 < sy0:
+                        continue
+                    if any(poly.distance(Point(ex, ey)) <= 0.02 for ex, ey in ((ax, ay), (bx, by))):
+                        continue
+                    if seg_ls is None:
+                        seg_ls = LineString([(ax, ay), (bx, by)])
+                    if seg_ls.distance(poly) < hw + 0.02:
+                        return False
+                continue
+
+            if kind == "circle":
+                _, _, px, py, pr, p_clr, _ = pad_rec
+                req = pr + hw + max(my_clr, p_clr) + SMOOTH_SAFETY_MM
+                if sx1 + req < px or px + req < sx0 or sy1 + req < py or py + req < sy0:
+                    continue
+                if _pt_seg_dist(px, py, ax, ay, bx, by) < req:
+                    return False
+            else:
+                _, _, poly, _, _, p_clr, (px0, py0, px1, py1) = pad_rec
+                req = hw + max(my_clr, p_clr) + SMOOTH_SAFETY_MM
+                if sx1 + req < px0 or px1 + req < sx0 or sy1 + req < py0 or py1 + req < sy0:
+                    continue
+                if seg_ls is None:
+                    seg_ls = LineString([(ax, ay), (bx, by)])
+                if seg_ls.distance(poly) < req:
+                    return False
+
+        # (f) Other-net non-GND copper pours on this layer (e.g. priority-1 F.Cu power/SW pours).
+        for z_nc, z_poly, (zx0, zy0, zx1, zy1), z_clr in other_pour_polys[lyr]:
+            if z_nc == nc:
+                continue
+            req = hw + max(my_clr, z_clr) + SMOOTH_SAFETY_MM
+            if sx1 + req < zx0 or zx1 + req < sx0 or sy1 + req < zy0 or zy1 + req < sy0:
+                continue
+            if seg_ls is None:
+                seg_ls = LineString([(ax, ay), (bx, by)])
+            if seg_ls.distance(z_poly) < req:
+                return False
+
+        # (g) All other tracks on this layer (other-net clearance + same-net self-crossing / non-local self-overlap).
+        cdx, cdy = bx - ax, by - ay
+        clen = math.hypot(cdx, cdy)
+        for tid, (t_nc, tax, tay, tbx, tby, tw, t_clr) in live_tracks[lyr].items():
+            if tid in ignore_tids:
+                continue
+            tx0, ty0, tx1, ty1 = min(tax, tbx), min(tay, tby), max(tax, tbx), max(tay, tby)
+            if t_nc != nc:
+                req = hw + tw / 2.0 + max(my_clr, t_clr) + SMOOTH_SAFETY_MM
+                if sx1 + req < tx0 or tx1 + req < sx0 or sy1 + req < ty0 or ty1 + req < sy0:
+                    continue
+                if _seg_seg_dist(ax, ay, bx, by, tax, tay, tbx, tby) < req:
+                    return False
+            else:
+                # Same-net track: reject self-crossings, acute fold-backs (< 45 deg), and non-local copper overlaps.
+                req_self = hw + tw / 2.0 + 0.04
+                if sx1 + req_self < tx0 or tx1 + req_self < sx0 or sy1 + req_self < ty0 or ty1 + req_self < sy0:
+                    continue
+                shared = None
+                for c_end, c_other in (((ax, ay), (bx, by)), ((bx, by), (ax, ay))):
+                    if not any(math.hypot(c_end[0] - se[0], c_end[1] - se[1]) <= 0.02 for se in shared_end_pts_mm):
+                        continue
+                    for t_end, t_other in (((tax, tay), (tbx, tby)), ((tbx, tby), (tax, tay))):
+                        if math.hypot(c_end[0] - t_end[0], c_end[1] - t_end[1]) <= 0.02:
+                            shared = (c_end, c_other, t_other)
+                            break
+                    if shared is not None:
+                        break
+                if shared is not None:
+                    v0, v1, v2 = shared
+                    ux, uy = v1[0] - v0[0], v1[1] - v0[1]
+                    vx, vy = v2[0] - v0[0], v2[1] - v0[1]
+                    ul, vl = math.hypot(ux, uy), math.hypot(vx, vy)
+                    if ul > 1e-9 and vl > 1e-9:
+                        cos_a = (ux * vx + uy * vy) / (ul * vl)
+                        # Reject acute fold-back (< 45 deg, cos > cos(45)=0.707) or collinear reversal.
+                        if cos_a > 0.72:
+                            return False
+                        # Check non-shared endpoints don't cross or graze the other segment.
+                        if _pt_seg_dist(v1[0], v1[1], v0[0], v0[1], v2[0], v2[1]) < req_self and ul > req_self:
+                            return False
+                        if _pt_seg_dist(v2[0], v2[1], v0[0], v0[1], v1[0], v1[1]) < req_self and vl > req_self:
+                            return False
+                else:
+                    if _seg_seg_dist(ax, ay, bx, by, tax, tay, tbx, tby) < req_self:
+                        return False
+        return clen > 1e-6
+
+    def power_width_ok(net_name, ax_nm, ay_nm, bx_nm, by_nm, w_nm):
+        """On power nets, segments extending outside fine_pitch_power_pads courtyards must stay >= power_min_nm."""
+        if net_name not in power_nets or w_nm >= power_min_nm:
+            return w_nm
+        ls = LineString([(pcbnew.ToMM(ax_nm), pcbnew.ToMM(ay_nm)), (pcbnew.ToMM(bx_nm), pcbnew.ToMM(by_nm))])
+        if any(p.contains(ls) for p in fine_pitch_polys):
+            return w_nm
+        return power_min_nm
+
+    # 3. Extract maximal degree-2 chains per (net, layer) with 0.015 mm endpoint snapping and greedily smooth them.
+    modified_nl = {}
+    total_removed = 0
+    total_saved_nm = 0.0
+
+    for (nc, lyr), tid_tracks in sorted(orig_unlocked_by_nl.items()):
+        if len(tid_tracks) < 2:
+            continue
+        net_obj = tid_tracks[0][1].GetNet()
+        net_name = net_obj.GetNetname()
+        if not net_name or net_name in pour_nets:
+            continue
+        length_matched = _is_length_matched_net(net_name, frame)
+
+        # Snap endpoints within SMOOTH_SNAP_NM (0.015 mm) without shifting pad/via anchor coordinates.
+        net_pads = pads_by_nl.get((nc, lyr), ())
+        net_vias = vias_by_net.get(nc, ())
+        net_locked = locked_by_nl.get((nc, lyr), ())
+
+        verts = []   # list of [x_nm, y_nm, is_anchor]
+
+        def get_vid(px, py, _verts=verts, _pads=net_pads, _vias=net_vias):
+            for idx, (vx, vy, _) in enumerate(_verts):
+                if math.hypot(px - vx, py - vy) <= SMOOTH_SNAP_NM:
+                    return idx
+            v2 = pcbnew.VECTOR2I(px, py)
+            pinned_anchor = (
+                any(p.HitTest(v2) or math.hypot(px - p.GetPosition().x, py - p.GetPosition().y) <= SMOOTH_SNAP_NM
+                    for p in _pads)
+                or any(math.hypot(px - vx, py - vy) <= vr + SMOOTH_SNAP_NM for vx, vy, vr in _vias)
+            )
+            _verts.append((px, py, pinned_anchor))
+            return len(_verts) - 1
+
+        edges = []   # [(tid, u, v, w_nm)]
+        adj = {}
+        for tid, trk in tid_tracks:
+            s, e = trk.GetStart(), trk.GetEnd()
+            u = get_vid(s.x, s.y)
+            v = get_vid(e.x, e.y)
+            if u == v:
+                continue
+            eid = len(edges)
+            edges.append((tid, u, v, trk.GetWidth()))
+            adj.setdefault(u, []).append(eid)
+            adj.setdefault(v, []).append(eid)
+
+        # Pin degree != 2 junctions, pad/via anchors, and vertices touching locked tracks.
+        pinned = set()
+        for vid, (vx, vy, is_anc) in enumerate(verts):
+            if is_anc or len(adj.get(vid, ())) != 2:
+                pinned.add(vid)
+                continue
+            for lt in net_locked:
+                ls, le = lt.GetStart(), lt.GetEnd()
+                if _pt_seg_dist(vx, vy, ls.x, ls.y, le.x, le.y) <= SMOOTH_SNAP_NM:
+                    pinned.add(vid)
+                    break
+
+        # Walk maximal chains between pinned endpoints (never splitting on width changes!).
+        used_e = set()
+        chains = []   # list of (pts_xy, widths_nm, tids)
+
+        def walk_chain(start_v, start_eid, _edges=edges, _adj=adj, _verts=verts, _pinned=pinned, _used=used_e):
+            pts = [_verts[start_v][:2]]
+            ws = []
+            tids = []
+            cur_v = start_v
+            cur_e = start_eid
+            while True:
+                _used.add(cur_e)
+                tid, eu, ev, w = _edges[cur_e]
+                nxt_v = ev if eu == cur_v else eu
+                pts.append(_verts[nxt_v][:2])
+                ws.append(w)
+                tids.append(tid)
+                if nxt_v in _pinned:
+                    break
+                nxt_edges = [e for e in _adj[nxt_v] if e not in _used]
+                if not nxt_edges:
+                    break
+                cur_v = nxt_v
+                cur_e = nxt_edges[0]
+            return pts, ws, tids
+
+        for pv in sorted(pinned):
+            for eid in adj.get(pv, ()):
+                if eid not in used_e:
+                    chains.append(walk_chain(pv, eid))
+        # Also handle any closed unpinned loop if present.
+        for eid in range(len(edges)):
+            if eid not in used_e:
+                chains.append(walk_chain(edges[eid][1], eid))
+
+        net_changed = False
+        new_chains = []
+        for pts, ws, tids in chains:
+            if len(pts) < 3:
+                new_chains.append((pts, ws))
+                continue
+            chain_min_w = min(ws)
+            cur_pts = list(pts)
+            cur_ws = list(ws)
+            cur_tids = list(tids)
+
+            for _pass in range(2):
+                pass_changed = False
+                i = 0
+                while i < len(cur_pts) - 2:
+                    max_j = min(len(cur_pts) - 1, i + SMOOTH_MAX_WINDOW)
+                    accepted = False
+                    for j in range(max_j, i + 1, -1):
+                        a, b = cur_pts[i], cur_pts[j]
+                        orig_len = sum(
+                            math.hypot(cur_pts[k + 1][0] - cur_pts[k][0], cur_pts[k + 1][1] - cur_pts[k][1])
+                            for k in range(i, j)
+                        )
+                        orig_verts = j - i + 1
+                        sub_tids = set(cur_tids[i:j])
+                        # Use min(chain_widths) across degree-2 neck-downs (upgraded to power_min_nm outside fine-pitch pads).
+                        raw_w = min(chain_min_w, min(cur_ws[i:j]))
+                        shared_mm = (
+                            (pcbnew.ToMM(a[0]), pcbnew.ToMM(a[1])),
+                            (pcbnew.ToMM(b[0]), pcbnew.ToMM(b[1])),
+                        )
+                        for cand in _octilinear_candidates(a, b):
+                            cand_len = sum(
+                                math.hypot(cand[k + 1][0] - cand[k][0], cand[k + 1][1] - cand[k][1])
+                                for k in range(len(cand) - 1)
+                            )
+                            if cand_len > orig_len + 1_000:
+                                continue
+                            if not (cand_len < orig_len - 5_000 or len(cand) < orig_verts):
+                                continue
+                            if length_matched and (orig_len - cand_len) > SMOOTH_DIFF_MAX_DELTA_NM:
+                                continue
+                            cand_ws = [power_width_ok(net_name, cand[k][0], cand[k][1], cand[k + 1][0], cand[k + 1][1], raw_w)
+                                       for k in range(len(cand) - 1)]
+                            ok = True
+                            for k in range(len(cand) - 1):
+                                end_shared = []
+                                if k == 0:
+                                    end_shared.append(shared_mm[0])
+                                if k == len(cand) - 2:
+                                    end_shared.append(shared_mm[1])
+                                if not segment_clear(lyr, nc, cand[k][0], cand[k][1], cand[k + 1][0], cand[k + 1][1],
+                                                     cand_ws[k], sub_tids, end_shared):
+                                    ok = False
+                                    break
+                            if not ok:
+                                continue
+                            # Commit shortcut to live obstacle table immediately!
+                            for old_tid in sub_tids:
+                                live_tracks[lyr].pop(old_tid, None)
+                            new_tids = []
+                            for k in range(len(cand) - 1):
+                                next_tid += 1
+                                live_tracks[lyr][next_tid] = (
+                                    nc,
+                                    pcbnew.ToMM(cand[k][0]), pcbnew.ToMM(cand[k][1]),
+                                    pcbnew.ToMM(cand[k + 1][0]), pcbnew.ToMM(cand[k + 1][1]),
+                                    pcbnew.ToMM(cand_ws[k]), net_clr_by_code.get(nc, base_clr),
+                                )
+                                new_tids.append(next_tid)
+                            total_removed += (j - i) - (len(cand) - 1)
+                            total_saved_nm += max(0.0, orig_len - cand_len)
+                            cur_pts[i:j + 1] = cand
+                            cur_ws[i:j] = cand_ws
+                            cur_tids[i:j] = new_tids
+                            accepted = True
+                            pass_changed = True
+                            net_changed = True
+                            break
+                        if accepted:
+                            break
+                    i += 1
+                if not pass_changed:
+                    break
+            new_chains.append((cur_pts, cur_ws))
+
+        if net_changed:
+            modified_nl[(nc, lyr)] = (net_obj, [trk for _, trk in tid_tracks], new_chains)
+
+    if not modified_nl:
+        return 0, 0.0
+
+    # 4. Apply replacements to board with full snapshot rollback guard on connectivity.
+    snapshot = []
+    added = []
+    for (_nc, lyr), (net_obj, old_tracks, new_chains) in modified_nl.items():
+        for t in old_tracks:
+            snapshot.append((net_obj, lyr, t.GetStart(), t.GetEnd(), t.GetWidth()))
+            board.RemoveNative(t)
+        for pts, ws in new_chains:
+            for k in range(len(pts) - 1):
+                if pts[k] == pts[k + 1]:
+                    continue
+                seg = pcbnew.PCB_TRACK(board)
+                seg.SetStart(pcbnew.VECTOR2I(pts[k][0], pts[k][1]))
+                seg.SetEnd(pcbnew.VECTOR2I(pts[k + 1][0], pts[k + 1][1]))
+                seg.SetWidth(ws[k])
+                seg.SetLayer(lyr)
+                board.Add(seg)
+                seg.SetNet(net_obj)
+                added.append(seg)
+
+    if unconnected(board) > baseline_unconn:
+        for seg in added:
+            board.RemoveNative(seg)
+        for net_obj, lyr, s, e, w in snapshot:
+            seg = pcbnew.PCB_TRACK(board)
+            seg.SetStart(s)
+            seg.SetEnd(e)
+            seg.SetWidth(w)
+            seg.SetLayer(lyr)
+            board.Add(seg)
+            seg.SetNet(net_obj)
+        fill_zones(board)
+        return 0, 0.0
+
+    return total_removed, total_saved_nm / 1e6
+
+
 def import_ses(board_name):
     plan = load_plan(board_name)
     board = current_board(board_name, plan)
@@ -1084,10 +1752,14 @@ def import_ses(board_name):
         sys.exit("SES import failed")
     fill_zones(board)
     _split_n, pruned_n = prune_track_loops(board)
+    smooth_rm, smooth_mm = smooth_tracks(board, plan)
     save(board, plan, board_name)
     widened = widen_narrow_tracks(board_name)
-    notes = ([f"pruned {pruned_n} loop/stub/pour-redundant segments"] if pruned_n else []) + (
-        [f"widened {widened} necked power tracks"] if widened else [])
+    notes = (
+        ([f"pruned {pruned_n} loop/stub/pour-redundant segments"] if pruned_n else [])
+        + ([f"smoothed -{smooth_rm} segs (-{smooth_mm:.1f} mm)"] if (smooth_rm or smooth_mm >= 0.05) else [])
+        + ([f"widened {widened} necked power tracks"] if widened else [])
+    )
     print(f"{board_name}: imported {ses.relative_to(REPO)}" + (f" ({', '.join(notes)})" if notes else ""))
 
 
@@ -1228,11 +1900,30 @@ def place(board_name, names):
 
 def prune_loops(board_name):
     plan = load_plan(board_name)
-    board = pcbnew.LoadBoard(str(stored_board_path(board_name)))
+    board = current_board(board_name, plan)
     fill_zones(board)
     split_n, pruned_n = prune_track_loops(board)
     save(board, plan, board_name)
     print(f"{board_name}: split {split_n}, pruned {pruned_n} redundant/loop/stub track segments")
+
+
+def smooth_board(board_name):
+    """Run the DRC-safe octilinear track smoother on an already-routed board and assert 0 DRC errors / 0 unrouted."""
+    plan = load_plan(board_name)
+    path = stored_board_path(board_name)
+    backup = path.read_text()
+    board = current_board(board_name, plan)
+    fill_zones(board)
+    removed, saved_mm = smooth_tracks(board, plan)
+    save(board, plan, board_name)
+    left = unconnected(pcbnew.LoadBoard(str(path)))
+    report = build_dir(board_name) / "smoothed_drc.json"
+    errors = [v for v in drc_violations(path, report) if v["severity"] == "error"]
+    if errors or left:
+        path.write_text(backup)
+        sys.exit(f"{board_name}: smoother rolled back ({len(errors)} DRC errors, {left} unrouted): "
+                 f"{[v['type'] for v in errors[:5]]}")
+    print(f"{board_name}: smoothed -{removed} segments (-{saved_mm:.2f} mm), 0 DRC errors, 0 unrouted")
 
 
 if __name__ == "__main__":
@@ -1254,6 +1945,8 @@ if __name__ == "__main__":
         route(name, *(int(a) for a in args))
     elif command == "prune-loops":
         prune_loops(name)
+    elif command == "smooth-tracks":
+        smooth_board(name)
     elif command == "export-dsn":
         export_dsn(name)
     elif command == "import-ses":

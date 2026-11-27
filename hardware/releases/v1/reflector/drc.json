@@ -1,7 +1,7 @@
 {
     "$schema": "https://schemas.kicad.org/drc.v1.json",
     "coordinate_units": "mm",
-    "date": "2026-11-23T10:01:51",
+    "date": "2026-11-27T19:57:34",
     "ignored_checks": [
         {
             "description": "Footprint has no courtyard defined",
@@ -37,12 +37,27 @@
             "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
             "items": [
                 {
+                    "description": "Footprint R2",
+                    "pos": {
+                        "x": 18.5,
+                        "y": -18.5
+                    },
+                    "uuid": "4363695d-b4f2-4054-8dc0-1a780d8ec67c"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
                     "description": "Footprint R3",
                     "pos": {
                         "x": 5.5,
                         "y": -5.5
                     },
-                    "uuid": "1ed81846-cb98-457f-9548-8fa052a9b64e"
+                    "uuid": "667034e4-4906-4729-9654-f1bb46b48777"
                 }
             ],
             "severity": "warning",
@@ -57,22 +72,7 @@
                         "x": 5.5,
                         "y": -18.5
                     },
-                    "uuid": "73509fc7-7fde-44c3-95eb-8db0b61c6c62"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R4",
-                    "pos": {
-                        "x": 18.5,
-                        "y": -5.5
-                    },
-                    "uuid": "a3156379-790e-45d3-8f79-a06d97a61c27"
+                    "uuid": "6d653059-8527-46dc-b0f7-dc5a5eabd3ac"
                 }
             ],
             "severity": "warning",
@@ -87,22 +87,7 @@
                         "x": 15.4,
                         "y": -12.45
                     },
-                    "uuid": "e0955812-9382-4cbc-a66e-24c0638df50e"
-                }
-            ],
-            "severity": "warning",
-            "type": "lib_footprint_issues"
-        },
-        {
-            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
-            "items": [
-                {
-                    "description": "Footprint R2",
-                    "pos": {
-                        "x": 18.5,
-                        "y": -18.5
-                    },
-                    "uuid": "e97a248f-665a-48cd-923d-323564354434"
+                    "uuid": "8dab0a96-e94d-4bc4-b884-518cd5591c6b"
                 }
             ],
             "severity": "warning",
@@ -117,7 +102,22 @@
                         "x": 12.0,
                         "y": -12.0
                     },
-                    "uuid": "fa0d1715-5253-4953-b75f-3cc4718279c0"
+                    "uuid": "9fc48014-9495-41f1-a3fd-1d28a6d48b3a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Resistor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint R4",
+                    "pos": {
+                        "x": 18.5,
+                        "y": -5.5
+                    },
+                    "uuid": "ca2bd30e-861a-4200-9cba-f3a3e7c34b47"
                 }
             ],
             "severity": "warning",
@@ -132,7 +132,7 @@
                         "x": 12.0,
                         "y": -14.05
                     },
-                    "uuid": "fcabc61b-9793-42eb-a5b5-c00a46a09e9e"
+                    "uuid": "d339b776-9bd4-46ef-8652-bf89d02cc24f"
                 }
             ],
             "severity": "warning",

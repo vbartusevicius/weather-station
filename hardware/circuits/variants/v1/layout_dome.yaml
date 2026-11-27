@@ -48,7 +48,7 @@ frame:
   isolators: []
   power_nets: [+3V3]
   pours:
-    - { net: GND, layers: [In1.Cu], region: { x0: 0.0, y0: 0.0, x1: 15.6, y1: 15.6 } }   # whole disc (clipped to the outline)
+    - { net: GND, layers: [In1.Cu], region: { x0: 0.0, y0: 0.80, x1: 15.6, y1: 15.6 } }   # clipped to outline, clears y=0.41 mouse-bite tab
   no_coat_keepouts:
     - { x0: 2.9, y0: 6.2, x1: 12.7, y1: 9.4, layer: F.SilkS }
   connector_labels: { J1: "CROWN" }   # destination board / port, placed next to each connector
