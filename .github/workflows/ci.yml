@@ -2,8 +2,8 @@
 # the firmware release artifacts, and the hardware / CAD pipeline with its tests. Every job uses the same
 # docker compose containers as local development (see AGENTS.md "Commands").
 # Release (after every job passed, on a push to main or a manual run): named after the UTC commit time,
-# yyyy.mm.dd.hhmm, which is also the firmware version. Assets: firmware.bin, usb-flash-firmware.bin, the hardware
-# package (committed hardware/releases/v1 + build / calibration docs) and SHA256SUMS.txt. Nothing is rebuilt.
+# yyyy.mm.dd.hhmm, which is also the firmware version. Packaged by scripts/package_release.py: firmware.bin,
+# usb-flash-firmware.bin, aeromet-hardware.zip (boards/, enclosure/, optics/, docs/) and SHA256SUMS.txt. Nothing is rebuilt.
 name: CI
 
 on:
@@ -129,31 +129,19 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: aeromet-station-firmware
-          path: dist
-      - name: Package the hardware release (committed files, verified by the hardware job)
-        run: |
-          rm -rf pkg && mkdir -p pkg/aeromet-hardware-v1/docs
-          cp -r hardware/releases/v1/. pkg/aeromet-hardware-v1/
-          cp CALIBRATION.md docs/hardware.md docs/building.md pkg/aeromet-hardware-v1/docs/
-          (cd pkg && zip -qr ../dist/aeromet-hardware-v1.zip aeromet-hardware-v1 -x "*.DS_Store")
-          (cd dist && sha256sum firmware.bin usb-flash-firmware.bin aeromet-hardware-v1.zip > SHA256SUMS.txt)
-          ls -la dist
+          path: station/build/firmware
+      - name: Package release assets (shared packager)
+        run: python3 scripts/package_release.py --output dist --notes notes.md
       - name: Create / update the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           # the UTC commit time: the same string the firmware reports as its version (station/scripts/gen_version.py)
-          TAG="$(date -u -d "@$(git show -s --format=%ct HEAD)" +%Y.%m.%d.%H%M)"
-          cat > notes.md <<'NOTES'
-          | File | Use |
-          | :--- | :--- |
-          | `usb-flash-firmware.bin` | First flash of a new station over USB: `esptool.py --chip esp32c6 write_flash 0x0 usb-flash-firmware.bin` |
-          | `firmware.bin` | Updates from the Web UI (Setup → Firmware update); includes the crown firmware |
-          | `aeromet-hardware-v1.zip` | Manufacturing package: per board and panel ODB++ (AISLER), Gerber X2 + drills + IPC-D-356, MPN BOM + CPL (PCBWay, Eurocircuits), JLCPCB BOM / CPL; enclosure STL / STEP / print plates, drawings, renders, assembly parts list, build and calibration guides (docs/building.md: which file goes where) |
-          | `SHA256SUMS.txt` | Checksums of the files above |
-          NOTES
+          TAG="$(python3 scripts/package_release.py --print-tag)"
           if ! gh release view "$TAG" > /dev/null 2>&1; then
             gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md --generate-notes
+          else
+            gh release edit "$TAG" --notes-file notes.md
           fi
-          gh release upload "$TAG" dist/firmware.bin dist/usb-flash-firmware.bin dist/aeromet-hardware-v1.zip dist/SHA256SUMS.txt --clobber
+          gh release upload "$TAG" dist/* --clobber
           gh release edit "$TAG" --draft=false --latest   # public only now, with every file in place

@@ -114,6 +114,8 @@ def main():
     parser.add_argument("--test", action="store_true", help="run EDA + CAD pytest suites")
     parser.add_argument("--firmware", action="store_true",
                         help="build the station firmware release (firmware.bin + usb-flash-firmware.bin)")
+    parser.add_argument("--package", action="store_true",
+                        help="package GitHub Release assets into dist/ via scripts/package_release.py")
     parser.add_argument("--fresh", action="store_true", help="re-place and re-route boards from scratch")
     parser.add_argument("--in-eda", action="store_true", help="run EDA steps directly inside the eda container")
     parser.add_argument("--in-cad", action="store_true", help="run CAD steps directly inside the cad container")
@@ -127,16 +129,20 @@ def main():
         run_cad(do_test=args.test)
         return
 
-    only_firmware = args.firmware and not (args.eda or args.cad or args.release or args.test)
-    variants = [] if only_firmware else ([v for v in args.variants if v in ALL_VARIANTS] or list(ALL_VARIANTS))
-    with ThreadPoolExecutor(max_workers=max(1, len(variants))) as pool:
-        futures = [pool.submit(run_variant_on_host, v, args) for v in variants]
-        for f in futures:
-            f.result()
+    only_non_hw = (args.firmware or args.package) and not (args.eda or args.cad or args.release or args.test)
+    variants = [] if only_non_hw else ([v for v in args.variants if v in ALL_VARIANTS] or list(ALL_VARIANTS))
+    if variants:
+        with ThreadPoolExecutor(max_workers=len(variants)) as pool:
+            futures = [pool.submit(run_variant_on_host, v, args) for v in variants]
+            for f in futures:
+                f.result()
 
-    full = not (args.eda or args.cad or args.release or args.test or args.firmware)
+    full = not (args.eda or args.cad or args.release or args.test or args.firmware or args.package)
     if args.firmware or full:
         subprocess.run([sys.executable, str(REPO / "station/scripts/release_firmware.py")], cwd=REPO, check=True)
+    if args.package or full:
+        subprocess.run([sys.executable, str(REPO / "scripts/package_release.py"), "--output", str(REPO / "dist")],
+                       cwd=REPO, check=True)
     if args.test or full:
         subprocess.run(["docker", "compose", "--profile", "lint", "run", "--rm", "-T", "lint", "check", "."],
                        cwd=REPO, check=True)

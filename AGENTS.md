@@ -72,6 +72,14 @@ Run the checks for what you changed. The hardware tools (KiCad, SKiDL, fastroute
 - Hard-coded design-frame y values above the base take `+ ef.RAISE` (pagoda, probe sleeve) or `+ ef.UPPER`
   (wind tunnel and above).
 
+### Release assets
+- Package all GitHub Release assets through `scripts/package_release.py` (used by both `.github/workflows/ci.yml` and
+  manual runs): one hardware archive per variant (`aeromet-hardware.zip` for a single variant, or
+  `aeromet-<variant>-hardware.zip` with `boards/`, `enclosure/`, `optics/`, `docs/`), direct-flash firmware `.bin`
+  images (`usb-flash-firmware.bin`, `firmware.bin`), `SHA256SUMS.txt`, and a `| File | Use |` release body table.
+- Never attach helper scripts (`.py`, `.sh`, `.mjs`), intermediate build files (`.lpf`, `.json`, `.elf`, `.map`, `.svg`),
+  native test/simulator binaries, or ungrouped discipline-only archives as top-level release assets.
+
 ### Process
 - Before an order, run the `/manufacturing-review` skill (`.claude/skills/manufacturing-review/`) for an
   independent review.

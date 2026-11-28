@@ -5,6 +5,7 @@ __pycache__/
 .ruff_cache/
 .pio/
 .cache/
+dist/
 managed_components/
 hardware/build/
 mechanical/build/

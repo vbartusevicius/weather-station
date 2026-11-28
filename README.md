@@ -89,14 +89,16 @@ Open design questions and acceptance checks: [REVIEW_CHECKLIST.md](REVIEW_CHECKL
 ## Firmware
 
 Download from **[Releases](https://github.com/vbartusevicius/weather-station/releases)**: each release carries the
-firmware and the complete hardware package (`aeromet-hardware-v1.zip`: Gerbers, BOM, CPL, STL / STEP print plates,
-drawings, build and calibration guides). Every commit to `main` that passes CI is released, named after its UTC commit
+firmware, the complete hardware package (`aeromet-hardware.zip`: `boards/`, `enclosure/`, `optics/`, `docs/` and
+self-assembly BOMs) and `SHA256SUMS.txt`. Every commit to `main` that passes CI is released, named after its UTC commit
 time (`2026.10.24.0040`); the firmware reports the same version.
 
 | File | Use |
 | :--- | :--- |
 | `usb-flash-firmware.bin` | first flash of a new board over USB: `esptool.py --chip esp32c6 write_flash 0x0 usb-flash-firmware.bin` |
 | `firmware.bin` | later updates from the Web UI (Setup → Firmware update); carries the crown firmware too |
+| `aeromet-hardware.zip` | complete manufacturing package (`boards/`, `enclosure/`, `optics/`, `docs/`, BOMs) |
+| `SHA256SUMS.txt` | SHA-256 checksums for every release file above |
 
 The version is the UTC commit time, `yyyy.mm.dd.hhmm`. Local build: `python3 station/scripts/release_firmware.py`
 → `station/build/firmware/`.
